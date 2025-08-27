@@ -16,6 +16,9 @@ jobs:
       ANDROID_BUILD_TOOLS: 34.0.0
       ANDROID_HOME: /opt/android-sdk
     steps:
+      - name: Unset ANDROID_SDK_ROOT
+        run: unset ANDROID_SDK_ROOT
+
       - name: Checkout code
         uses: actions/checkout@v4
 

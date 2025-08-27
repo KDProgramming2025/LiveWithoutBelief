@@ -13,6 +13,7 @@ cache:
     - .gradle/caches
 
 before_script:
+  - unset ANDROID_SDK_ROOT
   - apt-get update --yes
   - apt-get install --yes wget tar unzip
   - wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
