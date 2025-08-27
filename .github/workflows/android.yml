@@ -52,6 +52,11 @@ jobs:
           sudo chown -R $USER $ANDROID_HOME
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
+      - name: Fix Android debug keystore permissions
+        run: |
+          mkdir -p ~/.config/.android
+          chmod -R 777 ~/.config ~/.android
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 

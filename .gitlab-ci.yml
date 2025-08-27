@@ -21,7 +21,9 @@ before_script:
   - unzip -q android-sdk.zip -d $ANDROID_HOME/cmdline-tools
   - mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
   - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
-  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+  - mkdir -p $ANDROID_HOME/licenses
+  - chmod -R 777 $ANDROID_HOME/licenses
+  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
   - export PATH=$PATH:$ANDROID_HOME/platform-tools
 
 stages:
