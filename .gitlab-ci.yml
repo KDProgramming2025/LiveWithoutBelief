@@ -4,6 +4,7 @@ variables:
   ANDROID_COMPILE_SDK: "34"
   ANDROID_BUILD_TOOLS: "34.0.0"
   ANDROID_HOME: "/sdk"
+  ANDROID_SDK_ROOT: ""
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
 
 cache:
@@ -13,7 +14,6 @@ cache:
     - .gradle/caches
 
 before_script:
-  - unset ANDROID_SDK_ROOT
   - apt-get update --yes
   - apt-get install --yes wget tar unzip
   - wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
@@ -21,6 +21,7 @@ before_script:
   - unzip -q android-sdk.zip -d $ANDROID_HOME/cmdline-tools
   - mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
   - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
+  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
   - export PATH=$PATH:$ANDROID_HOME/platform-tools
 
 stages:

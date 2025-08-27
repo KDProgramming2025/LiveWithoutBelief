@@ -15,10 +15,8 @@ jobs:
       ANDROID_COMPILE_SDK: 34
       ANDROID_BUILD_TOOLS: 34.0.0
       ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: ""
     steps:
-      - name: Unset ANDROID_SDK_ROOT
-        run: unset ANDROID_SDK_ROOT
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -48,7 +46,11 @@ jobs:
       - name: Install Android SDK Packages
         run: |
           yes | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
-          echo "y" | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Accept Licenses
+        run: |
+          sudo chown -R $USER $ANDROID_HOME
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
