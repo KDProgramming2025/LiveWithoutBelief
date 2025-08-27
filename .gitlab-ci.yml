@@ -6,7 +6,6 @@ variables:
   ANDROID_HOME: "/sdk"
   ANDROID_SDK_ROOT: ""
   ANDROID_SDK_HOME: "$CI_PROJECT_DIR/.android"
-  HOME: "$CI_PROJECT_DIR/.android"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
 
 cache:
