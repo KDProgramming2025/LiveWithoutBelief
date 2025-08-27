@@ -1,0 +1,36 @@
+# Android Studio/IntelliJ
+*.iml
+.idea/
+.gradle/
+local.properties
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# Ignore build folders in all modules
+**/build/
+
+# Ignore generated files
+**/generated/
+
+# OS-specific files
+Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
+
+# Crashlytics, fastlane, and other tools (if used)
+crashlytics-build.properties
+fastlane/
+
+# Log files
+*.log
+
+# Test outputs
+**/test-output/
+
+# Misc
+*.apk
+*.ap_
