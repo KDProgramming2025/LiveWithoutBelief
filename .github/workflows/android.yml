@@ -16,6 +16,7 @@ jobs:
       ANDROID_BUILD_TOOLS: 34.0.0
       ANDROID_HOME: /opt/android-sdk
       ANDROID_SDK_ROOT: ""
+      ANDROID_USER_HOME: ${{ github.workspace }}/.android
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -50,12 +51,8 @@ jobs:
       - name: Accept Licenses
         run: |
           sudo chown -R $USER $ANDROID_HOME
+          mkdir -p $ANDROID_USER_HOME
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      - name: Fix Android debug keystore permissions
-        run: |
-          mkdir -p ~/.config/.android
-          chmod -R 777 ~/.config ~/.android
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug

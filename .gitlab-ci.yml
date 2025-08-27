@@ -5,6 +5,7 @@ variables:
   ANDROID_BUILD_TOOLS: "34.0.0"
   ANDROID_HOME: "/sdk"
   ANDROID_SDK_ROOT: ""
+  ANDROID_SDK_HOME: "$CI_PROJECT_DIR/.android"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
 
 cache:
@@ -21,8 +22,7 @@ before_script:
   - unzip -q android-sdk.zip -d $ANDROID_HOME/cmdline-tools
   - mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
   - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
-  - mkdir -p $ANDROID_HOME/licenses
-  - chmod -R 777 $ANDROID_HOME/licenses
+  - mkdir -p $ANDROID_SDK_HOME
   - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
   - export PATH=$PATH:$ANDROID_HOME/platform-tools
 
