@@ -14,7 +14,7 @@ jobs:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
       ANDROID_COMPILE_SDK: 34
       ANDROID_BUILD_TOOLS: 34.0.0
-      ANDROID_SDK_ROOT: /opt/android-sdk
+      ANDROID_HOME: /opt/android-sdk
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,15 +37,15 @@ jobs:
 
       - name: Download Android SDK Command-line Tools
         run: |
-          sudo mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          sudo mkdir -p $ANDROID_HOME/cmdline-tools
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          sudo unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
-          sudo mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+          sudo unzip -q cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          sudo mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
 
       - name: Install Android SDK Packages
         run: |
-          yes | sudo $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
-          echo "y" | sudo $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+          yes | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
+          echo "y" | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
@@ -65,4 +65,3 @@ jobs:
         with:
           name: debug-apk
           path: app/build/outputs/
-
