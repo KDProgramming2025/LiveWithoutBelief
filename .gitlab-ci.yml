@@ -1,39 +1,45 @@
 image: gradle:8.5-jdk17
 
 variables:
-  ANDROID_COMPILE_SDK: "34"
+  ANDROID_COMPILE_SDK: "36"
   ANDROID_BUILD_TOOLS: "34.0.0"
-  ANDROID_HOME: "/sdk"
-  ANDROID_SDK_ROOT: ""
+  ANDROID_HOME: "$CI_PROJECT_DIR/.android-sdk"
+  ANDROID_SDK_ROOT: "$CI_PROJECT_DIR/.android-sdk"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dkotlin.compiler.execution.strategy=in-process -Dorg.gradle.caching=true"
 
+# Caches: separate Gradle & Android SDK (tied to compileSdk)
 cache:
-  key: "$CI_COMMIT_REF_SLUG"
-  paths:
-    - .gradle/wrapper
-    - .gradle/caches
+  - key: "gradle-${CI_COMMIT_REF_SLUG}"
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+  - key: "android-sdk-${ANDROID_COMPILE_SDK}"
+    paths:
+      - .android-sdk
 
 before_script:
   - apt-get update --yes
   - apt-get install --yes wget tar unzip
-  - wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
   - mkdir -p $ANDROID_HOME/cmdline-tools
-  - unzip -q android-sdk.zip -d $ANDROID_HOME/cmdline-tools
-  - mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
+  - if [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && unzip -q android-sdk.zip -d $ANDROID_HOME/cmdline-tools && mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest; fi
+  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools" || { echo "sdkmanager failed"; exit 1; }
   - mkdir -p $ANDROID_HOME/licenses
   - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-  - ls -lR $ANDROID_HOME/licenses
+  - $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list | sed -n '1,120p' || true
+  - ls -lR $ANDROID_HOME/licenses || true
   - export PATH=$PATH:$ANDROID_HOME/platform-tools
+  - chmod +x ./gradlew
 
 stages:
   - build
   - test
+  - quality
 
 build:
   stage: build
   script:
-    - ./gradlew assembleDebug
+    - ./gradlew --stacktrace --parallel --build-cache assembleDebug
   artifacts:
     paths:
       - app/build/outputs/
@@ -41,8 +47,13 @@ build:
 test:
   stage: test
   script:
-    - ./gradlew testDebugUnitTest
+    - ./gradlew --stacktrace --parallel --build-cache testDebugUnitTest
   artifacts:
     when: always
     reports:
       junit: app/build/test-results/testDebugUnitTest/*.xml
+
+quality:
+  stage: quality
+  script:
+    - ./gradlew --stacktrace --parallel --build-cache ktlintCheck detekt

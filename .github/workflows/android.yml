@@ -6,17 +6,20 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build & Test
+    name: Build Test Quality
     runs-on: ubuntu-latest
     env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      ANDROID_COMPILE_SDK: 34
+      ANDROID_COMPILE_SDK: 36
       ANDROID_BUILD_TOOLS: 34.0.0
-      ANDROID_HOME: /opt/android-sdk
-      ANDROID_SDK_ROOT: ""
-      ANDROID_USER_HOME: ${{ github.workspace }}/.android
+      ANDROID_HOME: ${{ github.workspace }}/.android-sdk
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,47 +27,46 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: 17
+          cache: gradle
 
-      - name: Set up JDK 18 for Gradle toolchains
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: 18
-
-      - name: Cache Gradle
+      - name: Cache Android SDK
+        id: cache-android
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          path: .android-sdk
+          key: android-sdk-${{ env.ANDROID_COMPILE_SDK }}-bt-${{ env.ANDROID_BUILD_TOOLS }}
 
-      - name: Download Android SDK Command-line Tools
+      - name: Download command line tools (if needed)
+        if: steps.cache-android.outputs.cache-hit != 'true'
         run: |
-          sudo mkdir -p $ANDROID_HOME/cmdline-tools
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          sudo unzip -q cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
-          sudo mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          unzip -q cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
 
-      - name: Install Android SDK Packages
+      - name: Install / Update Android SDK packages
         run: |
-          yes | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" \
+            "platforms;android-${ANDROID_COMPILE_SDK}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
+            "platform-tools"
+          mkdir -p "$ANDROID_HOME/licenses"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list | sed -n '1,120p' || true
 
-      - name: Accept Licenses
-        run: |
-          sudo chown -R $USER $ANDROID_HOME
-          mkdir -p $ANDROID_USER_HOME
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+      - name: Prepare Gradle
+        run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Assemble Debug
+        run: ./gradlew --stacktrace --parallel --build-cache assembleDebug
 
-      - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest
+      - name: Unit Tests
+        run: ./gradlew --stacktrace --parallel --build-cache testDebugUnitTest
+
+      - name: Static Analysis (ktlint & detekt)
+        run: ./gradlew --stacktrace --parallel --build-cache ktlintCheck detekt
 
       - name: Upload Test Results
         if: always()
@@ -73,8 +75,26 @@ jobs:
           name: test-results
           path: app/build/test-results/testDebugUnitTest/
 
-      - name: Upload APK
+      - name: Upload APKs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
-          path: app/build/outputs/
+          name: debug-apks
+          path: app/build/outputs/apk/**/debug/*.apk
+          if-no-files-found: ignore
+
+      - name: Upload Detekt Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detekt-report
+          path: '**/build/reports/detekt*'
+          if-no-files-found: ignore
+
+      - name: Upload Ktlint Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ktlint-reports
+          path: '**/build/reports/ktlint*'
+          if-no-files-found: ignore

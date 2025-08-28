@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "info.lwb.feature.annotations"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig { minSdk = 26 }
     buildFeatures { compose = true }
     composeOptions { kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get() }
