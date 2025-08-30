@@ -23,7 +23,7 @@ before_script:
   - apt-get install --yes wget tar unzip
   - mkdir -p $ANDROID_HOME/cmdline-tools
   - if [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then wget --quiet --output-document=android-sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && unzip -q android-sdk.zip -d $ANDROID_HOME/cmdline-tools && mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest; fi
-  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools" || { echo "sdkmanager failed"; exit 1; }
+  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools"
   - mkdir -p $ANDROID_HOME/licenses
   - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
   - $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list | sed -n '1,120p' || true
