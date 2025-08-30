@@ -33,6 +33,7 @@ include(":app")
 // Android core + feature modules
 include(":core:model")
 include(":core:common")
+include(":core:domain")
 include(":data:repo")
 include(":data:network")
 include(":feature:reader")

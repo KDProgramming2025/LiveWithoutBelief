@@ -17,6 +17,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
+    implementation(project(":core:domain"))
     implementation(libs.room.runtime)
     implementation("androidx.room:room-ktx:${libs.versions.room.get()}")
     ksp(libs.room.compiler)
