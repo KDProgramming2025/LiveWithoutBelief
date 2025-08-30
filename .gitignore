@@ -8,6 +8,7 @@ local.properties
 /captures/
 .externalNativeBuild/
 .cxx/
+.kotlin/
 
 # Ignore build folders in all modules
 **/build/

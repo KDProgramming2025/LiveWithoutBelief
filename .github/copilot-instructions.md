@@ -21,10 +21,13 @@ The content will be fetched from the server, so it should check if the file has 
 
 Also I want to create this app with the latest technologies and best practices currently being used by medium to large companies, I want to use all the tools and workflows. Github, Jira, CI/CD, TDD, MVVM, etc. It will be open source so that I can include it in my resume for the companies so that I can get hired in advanced countries.
 
-Search the web and update your info about everything related to Android Development, TDD on Android, CI/CD for Android, Jira for Android, Github for Android, Android Studio, Firebase for Android, Kotlin for Android, Jetpack for Android, Dependency injection for Android, and everything related to professional android development, don't skip anything, learn everything even if it takes hours I'll wait for you. The information you seek should not be older than 6 months. After that always remember what you have learned and keep in mind for every response in the future.
+Search the web and update your info about everything related to Android Development, TDD on Android, CI/CD for Android, Jira for Android, Github for Android, Android Studio, Firebase for Android, Kotlin for Android, Jetpack for Android, Dependency injection for Android, and everything related to professional android development. The information you seek should not be older than 6 months. After that always remember what you have learned and keep in mind for every response in the future.
 
-We will do this exactly how the medium companies do in real world. They certainly don't start with coding. Jira on Attlassian.net is used and github or other services are setup first, don't assume anything, include all and everything that's needed to be done in the real world. Even if it's just signing up in a website you should include that as a step. Don't bloat the response with multiple steps, only one single step at a time.
-For CI/CD and project management I want to use  Jira+Github+Gitlab. Guide me through everything.
+We will do this exactly how the medium companies do in real world. Include all and everything that's needed to be done in the real world. Even if it's just signing up in a website you should include that as a step. Don't bloat the response with multiple steps, only one single step at a time.
+For CI/CD and project management I want to use  Jira+Github+Gitlab.
 
-Project's Jira setup is in docs\backlog-moscow-jira.json
+Project's Jira setup is in docs\backlog-moscow-jira.json, this file is not for import to Jira. It's only for reference.
 Github CLI and Gitlab CLI are installed and GITHUB_TOKEN and GITLAB_TOKEN are set.
+
+Github CI workflow is set up in .github/workflows/android.yml
+Gitlab CI workflow is set up in .gitlab-ci.yml
