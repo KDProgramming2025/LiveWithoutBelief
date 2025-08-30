@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANDROID_COMPILE_SDK: 36
-      ANDROID_BUILD_TOOLS: 36.0.0
+      ANDROID_BUILD_TOOLS: 35.0.0
       ANDROID_HOME: ${{ github.workspace }}/.android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process
