@@ -7,9 +7,10 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import info.lwb.core.domain.ArticleRepository
 import info.lwb.data.network.ArticleApi
 import info.lwb.data.repo.db.AppDatabase
-import info.lwb.data.repo.repositories.ArticleRepository
+import info.lwb.data.repo.repositories.ArticleRepositoryImpl
 import javax.inject.Singleton
 
 @Module
@@ -28,5 +29,5 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideArticleRepository(api: ArticleApi, db: AppDatabase): ArticleRepository = ArticleRepository(api, db.articleDao())
+    fun provideArticleRepository(api: ArticleApi, db: AppDatabase): ArticleRepository = ArticleRepositoryImpl(api, db.articleDao())
 }

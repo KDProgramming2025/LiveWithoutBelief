@@ -3,7 +3,7 @@
     {
       "code": "E1",
       "summary": "E1 - Core Architecture & Modular Foundations",
-      "description": "Establish a production-grade multi-module Kotlin architecture (domain, data, feature layers) with MVVM, Dependency Injection, clear boundaries, dependency direction rules, ADR log, static analysis (detekt, lint, dependency guard), code coverage gating, and baseline performance & memory profiling harness.",
+      "description": "Establish a production-grade multi-module Kotlin architecture (domain, data, feature layers) with MVVM, Dependency Injection, clear boundaries, dependency direction rules, ADR log, static analysis (lint, dependency guard), code coverage gating, and baseline performance & memory profiling harness.",
       "priority": "Highest",
       "labels": [
         "architecture",
@@ -298,7 +298,8 @@
               "originalEstimateHours": 6,
               "startDate": "2025-09-01",
               "dueDate": "2025-09-01",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "E1"
             },
             {
               "id": "2",
@@ -309,7 +310,8 @@
               "originalEstimateHours": 4,
               "startDate": "2025-09-01",
               "dueDate": "2025-09-01",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "E1"
             },
             {
               "id": "3",
@@ -320,7 +322,8 @@
               "originalEstimateHours": 3,
               "startDate": "2025-09-02",
               "dueDate": "2025-09-02",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "E1"
             },
             {
               "id": "4",
@@ -331,7 +334,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-01",
               "dueDate": "2025-09-01",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "1"
             },
             {
               "id": "5",
@@ -342,7 +346,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-01",
               "dueDate": "2025-09-01",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "1"
             },
             {
               "id": "6",
@@ -353,7 +358,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-02",
               "dueDate": "2025-09-02",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "1"
             },
             {
               "id": "7",
@@ -364,7 +370,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-02",
               "dueDate": "2025-09-02",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "2"
             }
           ]
         }
@@ -383,7 +390,8 @@
               "originalEstimateHours": 4,
               "startDate": "2025-09-03",
               "dueDate": "2025-09-03",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "E2"
             },
             {
               "id": "9",
@@ -394,7 +402,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-03",
               "dueDate": "2025-09-03",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "E2"
             },
             {
               "id": "10",
@@ -405,7 +414,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-03",
               "dueDate": "2025-09-03",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "E2"
             },
             {
               "id": "11",
@@ -416,7 +426,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-04",
               "dueDate": "2025-09-04",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "8"
             },
             {
               "id": "12",
@@ -427,7 +438,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-04",
               "dueDate": "2025-09-04",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "8"
             },
             {
               "id": "13",
@@ -438,7 +450,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-04",
               "dueDate": "2025-09-04",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "8"
             },
             {
               "id": "14",
@@ -449,7 +462,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-04",
               "dueDate": "2025-09-04",
-              "priority": "Highest"
+              "priority": "Highest",
+              "parent": "8"
             }
           ]
         }
@@ -468,7 +482,8 @@
               "originalEstimateHours": 3,
               "startDate": "2025-09-05",
               "dueDate": "2025-09-05",
-              "priority": "High"
+              "priority": "High",
+              "parent": "E3"
             },
             {
               "id": "16",
@@ -479,7 +494,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-05",
               "dueDate": "2025-09-05",
-              "priority": "High"
+              "priority": "High",
+              "parent": "E3"
             },
             {
               "id": "17",
@@ -490,7 +506,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-05",
               "dueDate": "2025-09-05",
-              "priority": "High"
+              "priority": "High",
+              "parent": "E3"
             },
             {
               "id": "18",
@@ -501,7 +518,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-08",
               "dueDate": "2025-09-08",
-              "priority": "High"
+              "priority": "High",
+              "parent": "16"
             },
             {
               "id": "19",
@@ -512,7 +530,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-08",
               "dueDate": "2025-09-08",
-              "priority": "High"
+              "priority": "High",
+              "parent": "16"
             },
             {
               "id": "20",
@@ -523,7 +542,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-08",
               "dueDate": "2025-09-08",
-              "priority": "High"
+              "priority": "High",
+              "parent": "16"
             },
             {
               "id": "21",
@@ -534,7 +554,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-08",
               "dueDate": "2025-09-08",
-              "priority": "High"
+              "priority": "High",
+              "parent": "16"
             }
           ]
         }
@@ -553,7 +574,8 @@
               "originalEstimateHours": 3,
               "startDate": "2025-09-08",
               "dueDate": "2025-09-08",
-              "priority": "High"
+              "priority": "High",
+              "parent": "E4"
             },
             {
               "id": "23",
@@ -564,7 +586,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-08",
               "dueDate": "2025-09-08",
-              "priority": "High"
+              "priority": "High",
+              "parent": "E4"
             },
             {
               "id": "24",
@@ -575,7 +598,8 @@
               "originalEstimateHours": 2,
               "startDate": "2025-09-09",
               "dueDate": "2025-09-09",
-              "priority": "High"
+              "priority": "High",
+              "parent": "E4"
             },
             {
               "id": "25",
@@ -586,7 +610,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-09",
               "dueDate": "2025-09-09",
-              "priority": "High"
+              "priority": "High",
+              "parent": "23"
             },
             {
               "id": "26",
@@ -597,7 +622,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-09",
               "dueDate": "2025-09-09",
-              "priority": "High"
+              "priority": "High",
+              "parent": "23"
             },
             {
               "id": "27",
@@ -608,7 +634,8 @@
               "originalEstimateHours": 1,
               "startDate": "2025-09-09",
               "dueDate": "2025-09-09",
-              "priority": "High"
+              "priority": "High",
+              "parent": "23"
             }
           ]
         }
