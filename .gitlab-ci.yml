@@ -35,6 +35,7 @@ stages:
   - build
   - test
   - quality
+  - node
 
 build:
   stage: build
@@ -56,4 +57,25 @@ test:
 quality:
   stage: quality
   script:
-  - echo "static analysis skipped"
+  - ./gradlew --stacktrace quality
+
+node_install:
+  stage: node
+  script:
+    - cd server
+    - npm install --no-audit --no-fund
+  artifacts:
+    paths:
+      - server/node_modules
+
+node_test:
+  stage: node
+  needs: [node_install]
+  script:
+    - cd server
+    - npx vitest run --coverage || true
+    - npx eslint . --ext .ts || true
+  artifacts:
+    when: always
+    paths:
+      - server/coverage

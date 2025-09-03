@@ -65,8 +65,35 @@ jobs:
       - name: Unit Tests
         run: ./gradlew --stacktrace --parallel --build-cache testDebugUnitTest
 
-      - name: Static Analysis
-        run: echo "static analysis skipped"
+      - name: Static Analysis & Coverage
+        run: ./gradlew --stacktrace quality
+
+      - name: Node Backend Setup
+        working-directory: server
+        run: |
+          npm install --no-audit --no-fund
+
+      - name: Node Lint & Test
+        working-directory: server
+        run: |
+          npx eslint . --ext .ts || true
+          npx vitest run --coverage
+
+      - name: Upload Coverage (Android)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kover-reports
+          path: build/reports/kover/
+          if-no-files-found: ignore
+
+      - name: Upload Coverage (Node)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-coverage
+          path: server/coverage/
+          if-no-files-found: ignore
 
       - name: Upload Test Results
         if: always()
