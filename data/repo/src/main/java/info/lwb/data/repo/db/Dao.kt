@@ -8,6 +8,9 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE id = :id")
     suspend fun getArticle(id: String): ArticleEntity?
 
+    @Query("SELECT * FROM articles")
+    suspend fun listArticles(): List<ArticleEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertArticle(article: ArticleEntity)
 
@@ -22,6 +25,9 @@ interface ArticleDao {
 
     @Query("SELECT * FROM article_contents WHERE articleId = :articleId")
     suspend fun getContent(articleId: String): ArticleContentEntity?
+
+    @Query("SELECT * FROM article_contents WHERE articleId = :articleId")
+    suspend fun getArticleContent(articleId: String): ArticleContentEntity?
 }
 
 @Dao
