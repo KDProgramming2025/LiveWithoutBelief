@@ -11,11 +11,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 private class FakeArticleDao : ArticleDao {
-    override suspend fun getArticle(id: String): ArticleEntity? = null
-    override suspend fun upsertArticle(article: ArticleEntity) { }
-    override suspend fun upsertContent(content: ArticleContentEntity) { }
-    override suspend fun upsertArticleWithContent(article: ArticleEntity, content: ArticleContentEntity) { }
-    override suspend fun getContent(articleId: String): ArticleContentEntity? = null
+    private val articles = mutableListOf<ArticleEntity>()
+    private val contents = mutableMapOf<String, ArticleContentEntity>()
+    override suspend fun getArticle(id: String): ArticleEntity? = articles.firstOrNull { it.id == id }
+    override suspend fun listArticles(): List<ArticleEntity> = articles.toList()
+    override suspend fun upsertArticle(article: ArticleEntity) { articles.removeAll { it.id == article.id }; articles.add(article) }
+    override suspend fun upsertContent(content: ArticleContentEntity) { contents[content.articleId] = content }
+    override suspend fun upsertArticleWithContent(article: ArticleEntity, content: ArticleContentEntity) { upsertArticle(article); upsertContent(content) }
+    override suspend fun getContent(articleId: String): ArticleContentEntity? = contents[articleId]
+    override suspend fun getArticleContent(articleId: String): ArticleContentEntity? = contents[articleId]
 }
 
 class ArticleRepositoryTest {
@@ -28,7 +32,7 @@ class ArticleRepositoryTest {
                 ManifestItemDto("2", "Title 2", "t2", 1, "2025-01-02T00:00:00Z", 200)
             )
         }
-        val repo = ArticleRepository(api, FakeArticleDao())
+    val repo = ArticleRepositoryImpl(api, FakeArticleDao())
         val result = repo.syncManifest()
         assertEquals(2, result.size)
         assertEquals("Title 1", result[0].title)
@@ -39,7 +43,7 @@ class ArticleRepositoryTest {
         val api = object : ArticleApi {
             override suspend fun getManifest(): List<ManifestItemDto> = error("boom")
         }
-        val repo = ArticleRepository(api, FakeArticleDao())
+    val repo = ArticleRepositoryImpl(api, FakeArticleDao())
         val result = repo.syncManifest()
         assertTrue(result.isEmpty())
     }

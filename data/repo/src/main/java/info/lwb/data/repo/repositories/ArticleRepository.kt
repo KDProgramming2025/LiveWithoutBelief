@@ -24,8 +24,9 @@ class ArticleRepositoryImpl(
     override fun getArticles(): Flow<Result<List<Article>>> = flow {
         emit(Result.Loading)
         try {
-            val articles = articleDao.getAllArticles().map { it.toDomain() }
-            emit(Result.Success(articles))
+            val articles = articleDao.listArticles().map { it.toDomain() }
+            @Suppress("UNCHECKED_CAST")
+            emit(Result.Success(articles) as Result<List<Article>>)
         } catch (e: Exception) {
             emit(Result.Error(e))
         }
@@ -36,7 +37,8 @@ class ArticleRepositoryImpl(
         try {
             val content = articleDao.getArticleContent(articleId)?.toDomain()
             if (content != null) {
-                emit(Result.Success(content))
+                @Suppress("UNCHECKED_CAST")
+                emit(Result.Success(content) as Result<ArticleContent>)
             } else {
                 emit(Result.Error(Exception("Content not found")))
             }
@@ -49,7 +51,7 @@ class ArticleRepositoryImpl(
         // Sync from network
         val manifest = runCatching { api.getManifest() }.getOrDefault(emptyList())
         // For now, just insert stub if empty
-        if (articleDao.getAllArticles().isEmpty()) {
+    if (articleDao.listArticles().isEmpty()) {
             insertStubArticle()
         }
     }
