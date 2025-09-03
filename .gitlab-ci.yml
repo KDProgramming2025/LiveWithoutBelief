@@ -34,8 +34,8 @@ before_script:
 stages:
   - build
   - test
-  - quality
   - node
+  - quality
 
 build:
   stage: build
@@ -61,6 +61,7 @@ quality:
 
 node_install:
   stage: node
+  image: node:20-alpine
   script:
     - cd server
     - npm install --no-audit --no-fund
@@ -70,10 +71,11 @@ node_install:
 
 node_test:
   stage: node
-  needs: [node_install]
+  image: node:20-alpine
+  needs: ["node_install"]
   script:
     - cd server
-    - npx vitest run --coverage || true
+    - npm test -- --run || npx vitest run --coverage || true
     - npx eslint . --ext .ts || true
   artifacts:
     when: always
