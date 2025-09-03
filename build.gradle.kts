@@ -68,7 +68,7 @@ kover {
     reports {
         verify {
             rule("OverallLineCoverage") {
-                bound { minValue = 70 } // baseline; raise per module later
+                bound { minValue = 70 } // baseline; raise later
             }
         }
     }
@@ -82,5 +82,8 @@ tasks.register("quality") {
         sp.tasks.matching { it.name.contains("test", ignoreCase = true) && it.name.endsWith("UnitTest") }
     }
     dependsOn(testTasks)
+    // Include lint tasks from Android subprojects
+    val lintTasks = subprojects.flatMap { sp -> sp.tasks.matching { it.name == "lint" } }
+    dependsOn(lintTasks)
     dependsOn("detekt", "koverXmlReport", "dependencyGuard")
 }
