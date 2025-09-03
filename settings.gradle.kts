@@ -12,12 +12,8 @@ pluginManagement {
     }
     plugins {
         id("org.jetbrains.kotlin.jvm") version "2.0.21"
-        id("org.jetbrains.kotlin.plugin.spring") version "2.0.21"
-        id("org.jetbrains.kotlin.plugin.jpa") version "2.0.21"
         id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
         id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
-        id("org.springframework.boot") version "3.3.2"
-        id("io.spring.dependency-management") version "1.1.5"
     }
 }
 dependencyResolutionManagement {
@@ -40,4 +36,3 @@ include(":feature:reader")
 include(":feature:search")
 include(":feature:bookmarks")
 include(":feature:annotations")
-include(":server")
