@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb
 
 import android.os.Bundle
@@ -26,7 +30,7 @@ private fun appRoot() {
     val navController = rememberNavController()
     MaterialTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
-            AppNavHost(navController)
+            appNavHost(navController)
         }
     }
 }
@@ -36,7 +40,7 @@ private object Destinations {
 }
 
 @Composable
-private fun AppNavHost(navController: NavHostController) {
+private fun appNavHost(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Destinations.READER) {
         composable(Destinations.READER) { ReaderScreen() }
     }

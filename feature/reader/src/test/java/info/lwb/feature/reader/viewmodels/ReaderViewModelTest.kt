@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader.viewmodels
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
@@ -43,7 +47,7 @@ class ReaderViewModelTest {
     fun `articles state is updated when getArticlesUseCase emits success`() = runTest {
         // Given
         val expectedArticles = listOf(
-            Article("1", "Title 1", "slug1", 1, "2025-01-01", 100)
+            Article("1", "Title 1", "slug1", 1, "2025-01-01", 100),
         )
         val successResult = Result.Success(expectedArticles)
         coEvery { mockGetArticlesUseCase() } returns flowOf(successResult)
@@ -52,7 +56,7 @@ class ReaderViewModelTest {
         viewModel = ReaderViewModel(
             mockGetArticlesUseCase,
             mockGetArticleContentUseCase,
-            mockRefreshArticlesUseCase
+            mockRefreshArticlesUseCase,
         )
         advanceUntilIdle()
 
@@ -71,7 +75,7 @@ class ReaderViewModelTest {
         viewModel = ReaderViewModel(
             mockGetArticlesUseCase,
             mockGetArticleContentUseCase,
-            mockRefreshArticlesUseCase
+            mockRefreshArticlesUseCase,
         )
 
         // When
@@ -90,7 +94,7 @@ class ReaderViewModelTest {
         viewModel = ReaderViewModel(
             mockGetArticlesUseCase,
             mockGetArticleContentUseCase,
-            mockRefreshArticlesUseCase
+            mockRefreshArticlesUseCase,
         )
 
         // When
@@ -109,7 +113,7 @@ class ReaderViewModelTest {
         viewModel = ReaderViewModel(
             mockGetArticlesUseCase,
             mockGetArticleContentUseCase,
-            mockRefreshArticlesUseCase
+            mockRefreshArticlesUseCase,
         )
         // Then
         assertEquals(Result.Loading, viewModel.articles.value)
@@ -124,7 +128,7 @@ class ReaderViewModelTest {
         viewModel = ReaderViewModel(
             mockGetArticlesUseCase,
             mockGetArticleContentUseCase,
-            mockRefreshArticlesUseCase
+            mockRefreshArticlesUseCase,
         )
         viewModel.loadArticleContent(articleId)
         advanceUntilIdle()

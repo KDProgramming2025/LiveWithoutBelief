@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.core.model
 
 import kotlinx.serialization.Serializable
@@ -24,7 +28,8 @@ data class ArticleContent(
 data class ArticleAsset(
     val id: String,
     val articleId: String,
-    val type: String, // image | video
+    // image | video
+    val type: String,
     val uri: String,
     val checksum: String,
     val width: Int? = null,
@@ -61,8 +66,8 @@ data class Annotation(
 data class ThreadMessage(
     val id: String,
     val annotationId: String,
-    val type: String, // text | image | audio | pdf | system
+    // text | image | audio | pdf | system
+    val type: String,
     val contentRef: String,
     val createdAt: String,
 )
-
