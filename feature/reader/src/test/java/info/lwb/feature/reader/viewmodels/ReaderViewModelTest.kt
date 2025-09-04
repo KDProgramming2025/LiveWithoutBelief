@@ -100,4 +100,36 @@ class ReaderViewModelTest {
         // Then
         // Verify that the use case was called (mockk will verify if needed)
     }
+
+    @Test
+    fun `articles initial state is Loading until emission arrives`() = runTest {
+        // Given a delayed flow (no immediate success)
+        coEvery { mockGetArticlesUseCase() } returns flowOf(Result.Loading)
+        // When
+        viewModel = ReaderViewModel(
+            mockGetArticlesUseCase,
+            mockGetArticleContentUseCase,
+            mockRefreshArticlesUseCase
+        )
+        // Then
+        assertEquals(Result.Loading, viewModel.articles.value)
+    }
+
+    @Test
+    fun `articleContent error propagates to state`() = runTest {
+        val articleId = "err"
+        val error = RuntimeException("boom")
+        coEvery { mockGetArticleContentUseCase(articleId) } returns flowOf(Result.Error(error))
+        // When
+        viewModel = ReaderViewModel(
+            mockGetArticlesUseCase,
+            mockGetArticleContentUseCase,
+            mockRefreshArticlesUseCase
+        )
+        viewModel.loadArticleContent(articleId)
+        advanceUntilIdle()
+        // Then
+        val state = viewModel.articleContent.value
+        assert(state is Result.Error && state.throwable === error)
+    }
 }
