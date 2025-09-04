@@ -1,14 +1,24 @@
-LWB-18: <short imperative summary>
+<ISSUEKEY>: <short imperative summary (<=72 chars)>
 
-Details:
+Details (optional):
 - What changed:
 - Why:
-- Notes:
+- Risks / follow-up:
 
-Time: #time 0h 30m
-Refs: LWB-21 LWB-22 LWB-23
+# Smart Commit usage (Jira):
+# Each line with a command must repeat the issue key. Blank lines break parsing.
+# WRONG:
+#   Commit summary\n\nLWB-123\n#time 1h
+# RIGHT:
+#   Commit summary\n\nLWB-123 #time 1h\nLWB-123 #comment Adjust thresholds
+# Examples:
+# LWB-19 #time 30m #comment Refactor coverage rules
+# LWB-24 #time 45m #comment Improve ADR 0004 wording
 
-# Smart commit help:
-# LWB-21 #time 1h implement domain
-# LWB-22 #time 45m repository adjustments
-# Use separate commits for clearer time logs.
+# If multiple issues:
+# LWB-19 #comment Update build script
+# LWB-24 #time 10m
+
+# Avoid stuffing unrelated work into one commit; prefer one issue focus.
+
+# Remove all instructional lines (#) before saving commit.

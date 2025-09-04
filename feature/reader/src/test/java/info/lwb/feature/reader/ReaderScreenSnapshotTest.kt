@@ -1,11 +1,17 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader
 
 import app.cash.paparazzi.Paparazzi
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
-import org.junit.Ignore
 
-@Ignore("Paparazzi snapshot failing with IllegalAccessError under current AGP/Kotlin versions; pending version alignment")
+@Ignore(
+    "Paparazzi snapshot failing with IllegalAccessError under current AGP/Kotlin versions; pending version alignment",
+)
 class ReaderScreenSnapshotTest {
     @get:Rule
     val paparazzi = Paparazzi()

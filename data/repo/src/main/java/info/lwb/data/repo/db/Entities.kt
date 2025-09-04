@@ -1,9 +1,13 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.data.repo.db
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-import androidx.room.Index
 import androidx.room.Database
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
 import androidx.room.RoomDatabase
 
 @Entity(tableName = "articles")
@@ -36,7 +40,7 @@ data class ArticleAssetEntity(
     val sizeBytes: Long?,
 )
 
-@Entity(tableName = "bookmark_folders", indices = [Index(value=["userId","name"], unique = true)])
+@Entity(tableName = "bookmark_folders", indices = [Index(value = ["userId", "name"], unique = true)])
 data class BookmarkFolderEntity(
     @PrimaryKey val id: String,
     val userId: String,
@@ -44,7 +48,7 @@ data class BookmarkFolderEntity(
     val createdAt: String,
 )
 
-@Entity(tableName = "bookmarks", indices = [Index(value=["userId","articleId"], unique = true)])
+@Entity(tableName = "bookmarks", indices = [Index(value = ["userId", "articleId"], unique = true)])
 data class BookmarkEntity(
     @PrimaryKey val id: String,
     val userId: String,
@@ -53,7 +57,7 @@ data class BookmarkEntity(
     val createdAt: String,
 )
 
-@Entity(tableName = "annotations", indices = [Index(value=["userId","articleId"])])
+@Entity(tableName = "annotations", indices = [Index(value = ["userId", "articleId"])])
 data class AnnotationEntity(
     @PrimaryKey val id: String,
     val userId: String,
@@ -64,7 +68,7 @@ data class AnnotationEntity(
     val createdAt: String,
 )
 
-@Entity(tableName = "thread_messages", indices = [Index(value=["annotationId"])])
+@Entity(tableName = "thread_messages", indices = [Index(value = ["annotationId"])])
 data class ThreadMessageEntity(
     @PrimaryKey val id: String,
     val annotationId: String,
@@ -82,10 +86,10 @@ data class ThreadMessageEntity(
         BookmarkFolderEntity::class,
         BookmarkEntity::class,
         AnnotationEntity::class,
-        ThreadMessageEntity::class
+        ThreadMessageEntity::class,
     ],
     version = 1,
-    exportSchema = false
+    exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun articleDao(): ArticleDao
