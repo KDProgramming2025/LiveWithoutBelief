@@ -1,0 +1,10 @@
+# CODEOWNERS: enforce review paths
+# Adjust as contributors join.
+
+*       @KDProgramming2025
+docs/** @KDProgramming2025
+server/** @KDProgramming2025
+**/build.gradle.kts @KDProgramming2025
+**/settings.gradle.kts @KDProgramming2025
+detekt.yml @KDProgramming2025
+.github/workflows/** @KDProgramming2025
