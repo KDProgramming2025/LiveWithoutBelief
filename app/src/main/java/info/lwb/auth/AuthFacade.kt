@@ -31,6 +31,7 @@ class FirebaseCredentialAuthFacade(
     private val credentialManager: CredentialManager,
     private val context: Context,
     private val secureStorage: SecureStorage,
+    private val sessionValidator: SessionValidator,
 ) : AuthFacade {
     override suspend fun oneTapSignIn(activity: Activity): Result<AuthUser> = runCatching {
         // NOTE: serverClientId should be injected/configured (build config or remote config) – placeholder now
@@ -54,10 +55,16 @@ class FirebaseCredentialAuthFacade(
             val authUser = AuthUser(user.uid, user.displayName, user.email, user.photoUrl?.toString())
             // Cache minimal profile (LWB-31) and latest id token for reuse (LWB-29)
             secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
-            user.getIdToken(false).await().token?.let { secureStorage.putIdToken(it) }
+            user.getIdToken(false).await().token?.let { token ->
+                secureStorage.putIdToken(token)
+                // Validate with backend (placeholder always true for now)
+                sessionValidator.validate(token)
+            }
             authUser
         } catch (e: GetCredentialException) {
-            throw e
+            throw e // propagate for UI differentiation if needed
+        } catch (e: Exception) {
+            throw RuntimeException("Sign-in failed", e)
         }
     }
 
@@ -66,9 +73,10 @@ class FirebaseCredentialAuthFacade(
     }
 
     override suspend fun signOut() {
-        firebaseAuth.signOut()
+    val token = secureStorage.getIdToken()
+    runCatching { if (token != null) sessionValidator.revoke(token) }
+    firebaseAuth.signOut()
     secureStorage.clear()
-    // TODO revoke server session when backend available (LWB-30 extension)
     }
 
     override suspend fun refreshIdToken(forceRefresh: Boolean): Result<String> = runCatching {

@@ -18,7 +18,11 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
-    buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"CHANGE_ME_SERVER_CLIENT_ID"')
+        // Resolve Google server client id from env or Gradle property; fallback to placeholder
+        val serverId = System.getenv("GOOGLE_SERVER_CLIENT_ID")
+            ?: (project.findProperty("GOOGLE_SERVER_CLIENT_ID") as String?)
+            ?: "CHANGE_ME_SERVER_CLIENT_ID"
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"' + serverId + '"')
     }
 
     buildFeatures {
@@ -89,4 +93,6 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 
     implementation(libs.navigation.compose)
+    testImplementation(libs.mockk)
+    testImplementation(libs.coroutines.test)
 }
