@@ -69,7 +69,11 @@ dependencies {
     implementation(libs.hilt.android)
     kapt(libs.hilt.android.compiler)
 
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
     implementation(libs.play.services.auth)
+    implementation(libs.credential.manager)
+    implementation(libs.credential.manager.play.services)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
