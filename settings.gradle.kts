@@ -36,3 +36,6 @@ include(":feature:reader")
 include(":feature:search")
 include(":feature:bookmarks")
 include(":feature:annotations")
+
+// Benchmark module (macrobenchmark + baseline profile)
+include(":benchmark")
