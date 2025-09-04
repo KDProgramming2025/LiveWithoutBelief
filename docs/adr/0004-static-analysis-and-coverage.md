@@ -16,11 +16,9 @@ Existing tooling: Detekt (no baseline yet), Kover global rule (70%), custom depe
 ## Decision
 Introduce the following:
 1. Spotless + ktlint for formatting & style; enforced via `spotlessCheck` in `quality` pipeline and `spotlessApply` local.
-2. Kover verification rules (implemented):
+2. Kover verification rules (current):
    * Overall >= 70%.
-   * Core (info.lwb.core.*) >= 80%.
-   * Data (info.lwb.data.*) >= 70%.
-   * Feature (info.lwb.feature.*) >= 60% (UI heavy; will raise later as UI tests appear).
+   * Layered thresholds (core 80 / data 70 / feature 60) deferred due to DSL instability in plugin 0.9.0; will be implemented via custom XML verification script or future plugin upgrade.
 3. License header enforcement using root `LICENSE` for Kotlin sources.
 4. `quality` task now depends on: all unit tests, lint, detekt, koverXmlReport, dependencyGuard, spotlessCheck.
 5. Future (pending / optional):
