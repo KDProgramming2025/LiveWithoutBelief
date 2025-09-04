@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.data.network
 
 import retrofit2.http.GET
@@ -15,4 +19,3 @@ data class ManifestItemDto(
     val updatedAt: String,
     val wordCount: Int,
 )
-

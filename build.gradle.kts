@@ -12,10 +12,34 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     id("io.gitlab.arturbosch.detekt") version "1.23.6"
     id("org.jetbrains.kotlinx.kover") version "0.9.0"
+    id("com.diffplug.spotless") version "6.25.0"
 }
 
 subprojects {
-    // Code style handled manually
+    // Apply Spotless to all Kotlin/Gradle scripts for consistent formatting
+    apply(plugin = "com.diffplug.spotless")
+    spotless {
+        kotlin {
+            target("**/*.kt")
+            targetExclude("**/build/**", "**/.gradle/**")
+            ktlint().editorConfigOverride(
+                mapOf(
+                    "ktlint_standard_no-wildcard-imports" to "disabled",
+                    "indent_size" to "4",
+                    "max_line_length" to "120"
+                )
+            )
+            // Use concise SPDX-style header instead of full license text for Kotlin sources
+            licenseHeaderFile(
+                rootProject.file("spotless.license.kt"),
+                "(package |@file:)")
+        }
+        kotlinGradle {
+            target("**/*.kts")
+            targetExclude("**/build/**", "**/.gradle/**")
+            ktlint()
+        }
+    }
 }
 kotlin.run {
     // placeholder for potential shared config additions later
@@ -64,12 +88,11 @@ detekt {
     parallel = true
 }
 
+// Coverage verification: keep only overall rule for now (per-layer rules deferred until DSL validated)
 kover {
     reports {
         verify {
-            rule("OverallLineCoverage") {
-                bound { minValue = 70 } // baseline; raise later
-            }
+            rule("OverallLineCoverage") { bound { minValue = 70 } }
         }
     }
 }
@@ -85,5 +108,12 @@ tasks.register("quality") {
     // Include lint tasks from Android subprojects
     val lintTasks = subprojects.flatMap { sp -> sp.tasks.matching { it.name == "lint" } }
     dependsOn(lintTasks)
-    dependsOn("detekt", "koverXmlReport", "dependencyGuard")
+    dependsOn("detekt", "koverXmlReport", "dependencyGuard", "spotlessCheck")
+}
+
+// Convenience aggregate format task
+tasks.register("formatAll") {
+    group = "formatting"
+    description = "Apply formatting to all modules"
+    dependsOn(subprojects.map { "${it.path}:spotlessApply" })
 }

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader
 
 import androidx.compose.foundation.layout.Box
@@ -20,6 +24,7 @@ import info.lwb.core.common.Result
 import info.lwb.core.model.Article
 import info.lwb.feature.reader.viewmodels.ReaderViewModel
 
+@Suppress("FunctionName") // Compose convention allows PascalCase composable names; suppress ktlint rule.
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
     val articles by viewModel.articles.collectAsState()
@@ -42,7 +47,7 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
                     items(articleList) { article ->
                         Text(
                             text = article.title,
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier.padding(8.dp),
                         )
                     }
                 }
@@ -53,4 +58,3 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel()) {
         }
     }
 }
-

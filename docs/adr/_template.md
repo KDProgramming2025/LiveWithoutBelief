@@ -1,4 +1,12 @@
 ---
+ Title: <Title>
+---
+ Status: <Proposed|Accepted|Superseded>
+---
+ Consequences:
+---
+ Follow-Up / Migration:
+---
 status: Proposed | Accepted | Superseded
 date: 2025-09-04
 deciders: <names>
