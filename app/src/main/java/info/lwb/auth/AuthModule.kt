@@ -20,6 +20,9 @@ abstract class AuthBindingsModule {
     @Binds
     @Singleton
     abstract fun bindSecureStorage(impl: EncryptedPrefsSecureStorage): SecureStorage
+    @Binds
+    @Singleton
+    abstract fun bindSessionValidator(impl: NoopSessionValidator): SessionValidator
 }
 
 @Module
