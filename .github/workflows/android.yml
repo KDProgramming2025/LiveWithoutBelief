@@ -94,7 +94,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-lint
-          path: **/build/reports/lint-results*.xml
+          path: "**/build/reports/lint-results*.xml"
           if-no-files-found: ignore
 
       - name: Node Backend Setup
@@ -136,5 +136,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debug-apks
-          path: app/build/outputs/apk/**/debug/*.apk
+          path: "app/build/outputs/apk/**/debug/*.apk"
           if-no-files-found: ignore
