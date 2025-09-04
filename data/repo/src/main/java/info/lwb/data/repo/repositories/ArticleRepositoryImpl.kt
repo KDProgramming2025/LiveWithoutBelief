@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.data.repo.repositories
 
 import info.lwb.core.common.Result
@@ -6,15 +10,14 @@ import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.data.network.ArticleApi
 import info.lwb.data.network.ManifestItemDto
-import info.lwb.data.repo.db.ArticleDao
 import info.lwb.data.repo.db.ArticleContentEntity
+import info.lwb.data.repo.db.ArticleDao
 import info.lwb.data.repo.db.ArticleEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.util.UUID
 
 class ArticleRepositoryImpl(
     private val api: ArticleApi,
@@ -48,10 +51,8 @@ class ArticleRepositoryImpl(
     }
 
     override suspend fun refreshArticles() = withContext(Dispatchers.IO) {
-        // Fetch manifest (ignore failure silently for now)
         val manifest = runCatching { api.getManifest() }.getOrElse { emptyList() }
         if (manifest.isEmpty()) return@withContext
-        // Insert/update each manifest item if not already stored (no content yet)
         manifest.forEach { item ->
             val entity = ArticleEntity(
                 id = item.id,
@@ -59,13 +60,11 @@ class ArticleRepositoryImpl(
                 slug = item.slug,
                 version = item.version,
                 updatedAt = item.updatedAt,
-                wordCount = item.wordCount
+                wordCount = item.wordCount,
             )
             articleDao.upsertArticle(entity)
         }
     }
-
-    // Future: separate syncManifest that diffs and deletes missing.
 
     suspend fun syncManifest(): List<ManifestItemDto> = withContext(Dispatchers.IO) {
         runCatching { api.getManifest() }.getOrElse { emptyList() }
@@ -74,4 +73,3 @@ class ArticleRepositoryImpl(
 
 private fun ArticleEntity.toDomain() = Article(id, title, slug, version, updatedAt, wordCount)
 private fun ArticleContentEntity.toDomain() = ArticleContent(articleId, htmlBody, plainText, textHash)
-
