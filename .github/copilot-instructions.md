@@ -32,3 +32,4 @@ Github CLI and Gitlab CLI are installed and GITHUB_TOKEN and GITLAB_TOKEN are se
 Github CI workflow is set up in .github/workflows/android.yml
 Gitlab CI workflow is set up in .gitlab-ci.yml
 we only have github and gitlab remotes, no origin or other names.
+Don't forget to add spent time to the commit messages for each Jira issue.
