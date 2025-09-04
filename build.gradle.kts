@@ -88,12 +88,36 @@ detekt {
     parallel = true
 }
 
-// Coverage verification: keep only overall rule for now (per-layer rules deferred until DSL validated)
+// Coverage verification: overall + layered rules (per ADR 0004)
 kover {
     reports {
         verify {
-            rule("OverallLineCoverage") { bound { minValue = 70 } }
+            rule("OverallLineCoverage") {
+                bound { minValue = 70 }
+            }
+            rule("CoreLineCoverage") {
+                filters { includes("info.lwb.core.*") }
+                bound { minValue = 80 }
+            }
+            rule("DataLineCoverage") {
+                filters { includes("info.lwb.data.*") }
+                bound { minValue = 70 }
+            }
+            rule("FeatureLineCoverage") {
+                filters { includes("info.lwb.feature.*") }
+                bound { minValue = 60 }
+            }
         }
+    }
+}
+
+// Configure Detekt to emit SARIF for code scanning
+detekt {
+    reports {
+        sarif.required.set(true)
+        xml.required.set(false)
+        html.required.set(true)
+        txt.required.set(false)
     }
 }
 
