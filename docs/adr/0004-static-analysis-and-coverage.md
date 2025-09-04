@@ -16,17 +16,17 @@ Existing tooling: Detekt (no baseline yet), Kover global rule (70%), custom depe
 ## Decision
 Introduce the following:
 1. Spotless + ktlint for formatting & style; enforced via `spotlessCheck` in `quality` pipeline and `spotlessApply` local.
-2. Refined Kover verification rules (overall + layered thresholds):
-   * Overall >= 70% (temporary baseline).
+2. Kover verification rules (implemented):
+   * Overall >= 70%.
    * Core (info.lwb.core.*) >= 80%.
    * Data (info.lwb.data.*) >= 70%.
    * Feature (info.lwb.feature.*) >= 60% (UI heavy; will raise later as UI tests appear).
 3. License header enforcement using root `LICENSE` for Kotlin sources.
 4. `quality` task now depends on: all unit tests, lint, detekt, koverXmlReport, dependencyGuard, spotlessCheck.
-5. Future (not yet implemented):
+5. Future (pending / optional):
    * Android Lint baseline once UI modules expand.
    * Detekt baseline only if unavoidable noise emerges (prefer fixing issues instead of suppressing).
-   * Optional SARIF export (can be enabled when GitHub/GitLab code scanning configured).
+   * Security scan SARIF integration (Detekt SARIF now enabled; extend to dependency & secret scans).
 6. Suppression policy: prefer local `@Suppress("DetektRule")` with justification comment; avoid global disable.
 7. Coverage exclusions: generated code (Hilt, Room, buildConfig) implicitly excluded by default patterns—no manual broad exclusions added yet.
 
@@ -41,10 +41,11 @@ Introduce the following:
 * Adds minor build time overhead (Spotless + extra Kover filters), acceptable for quality gains.
 
 ## Follow-Up Tasks
-* Add pre-commit Git hook invoking `spotlessCheck` + `detekt` (Story TBD).
+* Add pre-commit Git hook invoking `spotlessCheck` + `detekt`.
 * Introduce UI screenshot / Paparazzi tests to lift feature module coverage.
 * Consider enabling compiler `-Werror` after initial warning audit.
 * Evaluate dependency analysis plugin for unused/undeclared detection (could supplement custom guard).
+* Add coverage badge generation (convert Kover XML to badge via CI step or shields endpoint once published).
 
 ## References
 * Detekt config: `detekt.yml`

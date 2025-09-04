@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Pre-commit quality gate (optional): run locally to fail fast.
+# Install with: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+echo "[pre-commit] Running Spotless check..."
+./gradlew -q spotlessCheck || { echo "[pre-commit] Spotless failed. Run ./gradlew formatAll"; exit 1; }
+
+echo "[pre-commit] Running Detekt (fast)..."
+./gradlew -q detekt || { echo "[pre-commit] Detekt violations found."; exit 1; }
+
+echo "[pre-commit] Running unit tests (debug, fast subset)..."
+./gradlew -q testDebugUnitTest || { echo "[pre-commit] Unit tests failed."; exit 1; }
+
+echo "[pre-commit] Success."
