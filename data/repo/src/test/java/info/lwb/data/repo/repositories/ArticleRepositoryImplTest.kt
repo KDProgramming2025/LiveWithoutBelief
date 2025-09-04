@@ -1,16 +1,20 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.data.repo.repositories
 
+import info.lwb.core.common.Result
+import info.lwb.data.network.ArticleApi
+import info.lwb.data.network.ManifestItemDto
 import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
 import info.lwb.data.repo.db.ArticleEntity
-import info.lwb.data.network.ArticleApi
-import info.lwb.data.network.ManifestItemDto
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import info.lwb.core.common.Result
 import org.junit.Before
 import org.junit.Test
 
@@ -19,9 +23,16 @@ class FakeArticleDao : ArticleDao {
     private val contents = mutableMapOf<String, ArticleContentEntity>()
     override suspend fun getArticle(id: String) = articles[id]
     override suspend fun listArticles() = articles.values.toList()
-    override suspend fun upsertArticle(article: ArticleEntity) { articles[article.id] = article }
-    override suspend fun upsertContent(content: ArticleContentEntity) { contents[content.articleId] = content }
-    override suspend fun upsertArticleWithContent(article: ArticleEntity, content: ArticleContentEntity) { upsertArticle(article); upsertContent(content) }
+    override suspend fun upsertArticle(article: ArticleEntity) {
+        articles[article.id] = article
+    }
+    override suspend fun upsertContent(content: ArticleContentEntity) {
+        contents[content.articleId] = content
+    }
+    override suspend fun upsertArticleWithContent(article: ArticleEntity, content: ArticleContentEntity) {
+        upsertArticle(article)
+        upsertContent(content)
+    }
     override suspend fun getContent(articleId: String) = contents[articleId]
     override suspend fun getArticleContent(articleId: String) = contents[articleId]
 }
@@ -40,12 +51,12 @@ class ArticleRepositoryImplTest {
     @Before
     fun setup() {
         // simple repo that currently relies only on DAO for tests
-    repo = ArticleRepositoryImpl(api = api, articleDao = dao)
+        repo = ArticleRepositoryImpl(api = api, articleDao = dao)
     }
 
     @Test
     fun emitsLocalArticles() = runTest {
-        dao.upsertArticle(ArticleEntity("id1","Title1","slug1",1,"now",100))
+        dao.upsertArticle(ArticleEntity("id1", "Title1", "slug1", 1, "now", 100))
         val emissions = mutableListOf<Result<*>>()
         repo.getArticles().collect { value ->
             emissions.add(value)
@@ -57,15 +68,17 @@ class ArticleRepositoryImplTest {
             @Suppress("UNCHECKED_CAST")
             val list = success.data as List<*>
             assertEquals(1, list.size)
-        } else error("Expected final Success, got $success with emissions=$emissions")
+        } else {
+            error("Expected final Success, got $success with emissions=$emissions")
+        }
     }
 
     @Test
     fun refreshArticles_syncsManifestItems() = runTest {
         // Given manifest with two items
         api.manifest = listOf(
-            ManifestItemDto("m1","M Title 1","m-slug-1",1,"2025-01-01T00:00:00Z",150),
-            ManifestItemDto("m2","M Title 2","m-slug-2",2,"2025-01-02T00:00:00Z",250)
+            ManifestItemDto("m1", "M Title 1", "m-slug-1", 1, "2025-01-01T00:00:00Z", 150),
+            ManifestItemDto("m2", "M Title 2", "m-slug-2", 2, "2025-01-02T00:00:00Z", 250),
         )
         // When
         repo.refreshArticles()

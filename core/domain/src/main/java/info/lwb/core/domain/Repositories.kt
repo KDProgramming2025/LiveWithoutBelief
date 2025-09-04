@@ -1,11 +1,15 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.core.domain
 
 import info.lwb.core.common.Result
+import info.lwb.core.model.Annotation
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
-import info.lwb.core.model.Annotation
 import info.lwb.core.model.ThreadMessage
 import kotlinx.coroutines.flow.Flow
 

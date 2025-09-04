@@ -2,9 +2,16 @@ name: Android CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'feature/**'
+      - 'fix/**'
+      - 'hotfix/**'
+      - 'release/**'
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+  workflow_dispatch:
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -68,6 +75,28 @@ jobs:
       - name: Static Analysis & Coverage
         run: ./gradlew --stacktrace quality
 
+      - name: Collect Detekt SARIF
+        if: always()
+        run: |
+          mkdir -p build/reports/detekt
+          ls -R build/reports || true
+
+      - name: Upload Detekt SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detekt-sarif
+          path: build/reports/detekt/*.sarif
+          if-no-files-found: warn
+
+      - name: Upload Lint Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-lint
+          path: "**/build/reports/lint-results*.xml"
+          if-no-files-found: ignore
+
       - name: Node Backend Setup
         working-directory: server
         run: |
@@ -107,5 +136,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debug-apks
-          path: app/build/outputs/apk/**/debug/*.apk
+          path: "app/build/outputs/apk/**/debug/*.apk"
           if-no-files-found: ignore
