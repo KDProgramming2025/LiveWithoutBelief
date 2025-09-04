@@ -52,6 +52,9 @@ val forbiddenPairs = listOf(
     "feature" to "info.lwb.data.network"
 )
 
+// Additional guard: prevent core modules from depending on feature or data impl layers
+val coreForbidden = listOf("feature", "data.repo", "data.network")
+
 tasks.register("dependencyGuard") {
     group = "verification"
     description = "Fails if a feature module imports data implementation packages"
