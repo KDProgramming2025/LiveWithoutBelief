@@ -17,6 +17,45 @@ plugins {
 subprojects {
     // Code style handled manually
 }
+kotlin.run {
+    // placeholder for potential shared config additions later
+}
+
+// Simple dependency guard (regex-based) to enforce no forbidden cross-layer imports.
+val forbiddenPairs = listOf(
+    // feature modules importing data impl packages
+    "feature" to "info.lwb.data.repo",
+    "feature" to "info.lwb.data.network"
+)
+
+tasks.register("dependencyGuard") {
+    group = "verification"
+    description = "Fails if a feature module imports data implementation packages"
+    doLast {
+        val violations = mutableListOf<String>()
+        subprojects.filter { it.path.startsWith(":feature:") }.forEach { featureProj ->
+            val srcDir = featureProj.projectDir.resolve("src")
+            if (srcDir.exists()) {
+                srcDir.walkTopDown()
+                    .filter { it.isFile && (it.extension == "kt" || it.extension == "kts") }
+                    .forEach { file ->
+                        val text = file.readText()
+                        forbiddenPairs.forEach { (from, target) ->
+                            if (featureProj.path.contains(from) && text.contains("import $target")) {
+                                violations += "${featureProj.path} imports forbidden $target in ${file.relativeTo(featureProj.projectDir)}"
+                            }
+                        }
+                    }
+            }
+        }
+        if (violations.isNotEmpty()) {
+            violations.forEach { println("[dependencyGuard] $it") }
+            throw GradleException("Dependency guard violations: ${violations.size}")
+        } else {
+            println("[dependencyGuard] No violations")
+        }
+    }
+}
 
 detekt {
     config.setFrom(files(rootProject.file("detekt.yml")))
@@ -29,7 +68,7 @@ kover {
     reports {
         verify {
             rule("OverallLineCoverage") {
-                bound { minValue = 70 } // baseline; raise per module later
+                bound { minValue = 70 } // baseline; raise later
             }
         }
     }
@@ -43,5 +82,8 @@ tasks.register("quality") {
         sp.tasks.matching { it.name.contains("test", ignoreCase = true) && it.name.endsWith("UnitTest") }
     }
     dependsOn(testTasks)
-    dependsOn("detekt", "koverXmlReport")
+    // Include lint tasks from Android subprojects
+    val lintTasks = subprojects.flatMap { sp -> sp.tasks.matching { it.name == "lint" } }
+    dependsOn(lintTasks)
+    dependsOn("detekt", "koverXmlReport", "dependencyGuard")
 }

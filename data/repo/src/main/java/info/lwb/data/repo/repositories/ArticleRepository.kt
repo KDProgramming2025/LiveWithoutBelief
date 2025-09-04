@@ -48,22 +48,24 @@ class ArticleRepositoryImpl(
     }
 
     override suspend fun refreshArticles() = withContext(Dispatchers.IO) {
-        // Sync from network
-        val manifest = runCatching { api.getManifest() }.getOrDefault(emptyList())
-        // For now, just insert stub if empty
-    if (articleDao.listArticles().isEmpty()) {
-            insertStubArticle()
+        // Fetch manifest (ignore failure silently for now)
+        val manifest = runCatching { api.getManifest() }.getOrElse { emptyList() }
+        if (manifest.isEmpty()) return@withContext
+        // Insert/update each manifest item if not already stored (no content yet)
+        manifest.forEach { item ->
+            val entity = ArticleEntity(
+                id = item.id,
+                title = item.title,
+                slug = item.slug,
+                version = item.version,
+                updatedAt = item.updatedAt,
+                wordCount = item.wordCount
+            )
+            articleDao.upsertArticle(entity)
         }
     }
 
-    private suspend fun insertStubArticle(id: String = UUID.randomUUID().toString()) = withContext(Dispatchers.IO) {
-        val article = ArticleEntity(
-            id = id,
-            title = "Sample", slug = "sample", version = 1, updatedAt = "2025-01-01T00:00:00Z", wordCount = 100
-        )
-        val content = ArticleContentEntity(articleId = id, htmlBody = "<p>Sample</p>", plainText = "Sample", textHash = "hash")
-        articleDao.upsertArticleWithContent(article, content)
-    }
+    // Future: separate syncManifest that diffs and deletes missing.
 
     suspend fun syncManifest(): List<ManifestItemDto> = withContext(Dispatchers.IO) {
         runCatching { api.getManifest() }.getOrElse { emptyList() }
