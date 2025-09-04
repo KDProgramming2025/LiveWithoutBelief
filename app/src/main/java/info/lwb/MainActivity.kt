@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Column
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
@@ -44,20 +45,23 @@ private fun appRoot(authFacade: AuthFacade) {
     MaterialTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
             var signedInState by remember { mutableStateOf(authFacade.currentUser()) }
-            if (signedInState == null) {
-                Column {
+            val scope = rememberCoroutineScope()
+            Column {
+                if (signedInState == null) {
                     Button(onClick = {
-                        // Launch sign-in
-                        (authFacade as? AuthFacade)?.let { facade ->
-                            // In absence of proper compose coroutine scope, rely on activity lifecycleScope via rememberUpdatedState pattern (simplified here)
+                        scope.launch {
+                            authFacade.oneTapSignIn(this@MainActivity).onSuccess { user ->
+                                signedInState = user
+                            }
                         }
                     }) { Text("One-Tap Sign In") }
-                }
-            } else {
-                Column {
+                } else {
                     Text("Hello ${signedInState?.displayName ?: signedInState?.email}")
                     Button(onClick = {
-                        // Sign out (actual coroutine call handled in activity for now)
+                        scope.launch {
+                            authFacade.signOut()
+                            signedInState = null
+                        }
                     }) { Text("Sign Out") }
                     appNavHost(navController)
                 }

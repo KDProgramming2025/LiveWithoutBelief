@@ -18,6 +18,7 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+    buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"CHANGE_ME_SERVER_CLIENT_ID"')
     }
 
     buildFeatures {
@@ -74,6 +75,7 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.credential.manager)
     implementation(libs.credential.manager.play.services)
+    implementation(libs.androidx.security.crypto)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
