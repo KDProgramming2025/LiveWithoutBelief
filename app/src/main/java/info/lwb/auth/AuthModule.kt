@@ -17,6 +17,9 @@ abstract class AuthBindingsModule {
     @Binds
     @Singleton
     abstract fun bindAuthFacade(impl: FirebaseCredentialAuthFacade): AuthFacade
+    @Binds
+    @Singleton
+    abstract fun bindSecureStorage(impl: EncryptedPrefsSecureStorage): SecureStorage
 }
 
 @Module
@@ -30,4 +33,9 @@ object AuthProvisionModule {
     @Singleton
     fun provideCredentialManager(@ApplicationContext context: Context): CredentialManager =
         CredentialManager.create(context)
+
+    @Provides
+    @Singleton
+    fun provideEncryptedStorage(@ApplicationContext context: Context): EncryptedPrefsSecureStorage =
+        EncryptedPrefsSecureStorage(context)
 }
