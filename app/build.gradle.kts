@@ -26,7 +26,10 @@ android {
     }
 
     buildFeatures {
+        // Compose UI toolkit
         compose = true
+        // Required because we declare custom buildConfigField(s) (e.g. GOOGLE_SERVER_CLIENT_ID)
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
