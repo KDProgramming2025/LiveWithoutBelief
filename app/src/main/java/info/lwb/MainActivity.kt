@@ -11,7 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.material3.Column
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -55,15 +56,16 @@ private fun appRoot(authFacade: AuthFacade) {
                 }
             })
             val state = vm.state.collectAsState()
+            val activity = LocalContext.current as android.app.Activity
             Column {
                 when(val s = state.value) {
                     is AuthUiState.SignedOut -> {
-                        Button(onClick = { vm.signIn { this@MainActivity } }) { Text("One-Tap Sign In") }
+                        Button(onClick = { vm.signIn { activity } }) { Text("One-Tap Sign In") }
                     }
                     is AuthUiState.Loading -> Text("Loading...")
                     is AuthUiState.Error -> {
                         Text("Error: ${s.message}")
-                        Button(onClick = { vm.signIn { this@MainActivity } }) { Text("Retry Sign-In") }
+                        Button(onClick = { vm.signIn { activity } }) { Text("Retry Sign-In") }
                     }
                     is AuthUiState.SignedIn -> {
                         Text("Hello ${s.user.displayName ?: s.user.email}")
