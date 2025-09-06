@@ -19,6 +19,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import info.lwb.auth.AuthFacade
+import info.lwb.auth.AuthViewModel
+import info.lwb.auth.AuthUiState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
@@ -44,26 +48,28 @@ private fun appRoot(authFacade: AuthFacade) {
     val navController = rememberNavController()
     MaterialTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
-            var signedInState by remember { mutableStateOf(authFacade.currentUser()) }
-            val scope = rememberCoroutineScope()
+            val vm: AuthViewModel = viewModel(factory = object: androidx.lifecycle.ViewModelProvider.Factory {
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return AuthViewModel(authFacade) as T
+                }
+            })
+            val state = vm.state.collectAsState()
             Column {
-                if (signedInState == null) {
-                    Button(onClick = {
-                        scope.launch {
-                            authFacade.oneTapSignIn(this@MainActivity).onSuccess { user ->
-                                signedInState = user
-                            }
-                        }
-                    }) { Text("One-Tap Sign In") }
-                } else {
-                    Text("Hello ${signedInState?.displayName ?: signedInState?.email}")
-                    Button(onClick = {
-                        scope.launch {
-                            authFacade.signOut()
-                            signedInState = null
-                        }
-                    }) { Text("Sign Out") }
-                    appNavHost(navController)
+                when(val s = state.value) {
+                    is AuthUiState.SignedOut -> {
+                        Button(onClick = { vm.signIn { this@MainActivity } }) { Text("One-Tap Sign In") }
+                    }
+                    is AuthUiState.Loading -> Text("Loading...")
+                    is AuthUiState.Error -> {
+                        Text("Error: ${s.message}")
+                        Button(onClick = { vm.signIn { this@MainActivity } }) { Text("Retry Sign-In") }
+                    }
+                    is AuthUiState.SignedIn -> {
+                        Text("Hello ${s.user.displayName ?: s.user.email}")
+                        Button(onClick = { vm.signOut() }) { Text("Sign Out") }
+                        appNavHost(navController)
+                    }
                 }
             }
         }
