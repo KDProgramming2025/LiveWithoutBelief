@@ -13,6 +13,7 @@ Early-stage Android + Node.js project exploring secular guidance and article con
 - `data` (network, repo)
 - `feature` (reader, etc.)
 - `server` (Node backend placeholder)
+	- Deploy procedure: see `server/README_DEPLOY.md`
 
 ## Quality
 `./gradlew quality` runs: tests, detekt, spotlessCheck, coverage verify, dependencyGuard.
