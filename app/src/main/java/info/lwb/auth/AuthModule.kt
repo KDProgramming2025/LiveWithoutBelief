@@ -21,7 +21,7 @@ abstract class AuthBindingsModule {
     abstract fun bindSecureStorage(impl: EncryptedPrefsSecureStorage): SecureStorage
     @Binds
     @Singleton
-    abstract fun bindSessionValidator(impl: NoopSessionValidator): SessionValidator
+    abstract fun bindSessionValidator(impl: RemoteSessionValidator): SessionValidator
     @Binds
     @Singleton
     abstract fun bindTokenRefresher(impl: FirebaseTokenRefresher): TokenRefresher
