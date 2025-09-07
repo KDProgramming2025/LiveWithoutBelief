@@ -19,6 +19,21 @@ Early-stage Android + Node.js project exploring secular guidance and article con
 
 Coverage thresholds (line): overall 70%, core 80%, data 70%, feature 60%.
 
+## Authentication (LWB-25)
+Implemented Google Identity Services sign-in with silent-first attempt and interactive fallback. Abstractions:
+- `AuthFacade` – public interface consumed by UI.
+- `GoogleSignInClientFacade` & `GoogleSignInIntentExecutor` – decouple Google Play Services & Activity Result.
+- `SignInExecutor` – wraps Firebase credential sign-in (await logic isolated).
+- `TokenRefresher` – isolates token Task -> suspend bridging.
+Secure storage via `EncryptedSharedPreferences` (AES256) stores ID token + basic profile (name/email/avatar).
+Sign-out clears storage and invokes placeholder `SessionValidator.revoke` (future backend integration).
+Instrumentation test (`GoogleSignInInstrumentedTest`) exercises interactive flow smoke; silent path & refresh covered by unit tests.
+
+### Future Hardening Ideas
+- Replace `NoopSessionValidator` with backend endpoint (token introspection + revocation) once server ready.
+- Map exceptions to structured domain errors (cancellation, network, developer config) for richer UI states.
+- Record analytics events on sign-in success/failure (post observability epic E8).
+
 ## Pre-commit Hook (optional)
 ```
 git config core.hooksPath .githooks

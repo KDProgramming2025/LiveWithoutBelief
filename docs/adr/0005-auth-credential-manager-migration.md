@@ -1,7 +1,7 @@
 # ADR 0005: Google One-Tap / Credential Manager Migration Strategy
 
 Date: 2025-09-06
-Status: Accepted (Interim)
+Status: Superseded
 
 ## Context
 
@@ -20,23 +20,16 @@ Our goals:
 
 ## Decision
 
-Temporarily retain a stub inside `FirebaseCredentialAuthFacade.oneTapSignIn` that throws a dedicated
-`UnsupportedOperationException` until the new Credential Manager based flow is implemented. We will create a
-separate Jira sub-task (to be filed) to:
-
-* Investigate current recommended approach (either updated Credential Manager Google ID option or fallback to
-  Google Identity Services via `BeginSignInRequest` / `SignInClient`).
-* Potentially refactor the facade to a two-phase intent-based flow if required by the modern API:
-  - `prepareSignIn(): SignInLaunchHandle` (contains an IntentSender or Intent).
-  - `completeSignIn(resultIntent: Intent): Result<AuthUser>`.
-* Add instrumentation tests exercising full flow with a fake backend validator and an emulated Google account.
+Implemented migration by abandoning Credential Manager for now and adopting Google Identity Services sign-in
+with a silent-first + interactive fallback strategy. Added test seams (`GoogleSignInClientFacade`,
+`GoogleSignInIntentExecutor`, `SignInExecutor`, `TokenRefresher`) enabling unit testing without real Tasks.
+Instrumentation test covers interactive launch smoke.
 
 ## Consequences
 
-* Current debug builds will show an error state after tapping sign-in (pending implementation) — acceptable in the
-  short term while we finalize API approach.
-* Unit tests remain green; no test currently relies on the concrete 1-tap implementation details.
-* Risk of forgetting the stub mitigated by adding the Jira sub-task and referencing this ADR.
+* Users now experience immediate silent sign-in when cached credentials exist; otherwise an intent-based flow.
+* Auth module unit tests validate silent path and refresh logic via abstractions (no hanging).
+* Interactive path validated via instrumentation (best-effort smoke w/ emulator account).
 
 ## Alternatives Considered
 
@@ -48,18 +41,13 @@ separate Jira sub-task (to be filed) to:
 
 ## Migration Outline (Target Sub-task)
 
-1. Research current Credential Manager Google sign-in option name(s) (GetGoogleIdOption or equivalent) + sample usage.
-2. Adjust `AuthFacade` either to keep a one-shot suspend (if API supports synchronous token return) or introduce a
-   two-step intent launch abstraction.
-3. Implement new concrete flow with proper error mapping (cancellation, no credentials, network, developer error).
-4. Persist ID token & profile (already implemented; reuse existing storage calls).
-5. Add instrumentation test on emulator (API 34+) validating happy path + cancellation path.
-6. Update README + this ADR with final API names and mark ADR status = Superseded.
+Superseded migration plan: Completed via Google Identity Services; reintroducing Credential Manager may become a
+future ADR if the ergonomic benefit outweighs added complexity.
 
 ## Testing Impact
 
-* Additional unit tests will mock the new abstraction once finalized.
-* Instrumentation layer will need a small test utility to drive ActivityResult.
+* Unit tests mock sign-in & token refresh using injected executors.
+* Instrumentation layer validates interactive launch path; future enhancement could assert UI state.
 
 ## References (internal only)
 
@@ -67,4 +55,4 @@ separate Jira sub-task (to be filed) to:
 * `AuthViewModel.kt` – UI state machine that will remain unchanged after migration (only underlying facade changes).
 
 ---
-Next action: Create Jira sub-task (LWB-XX) referencing this ADR and implement migration in a dedicated branch.
+No further action for this ADR; closed.
