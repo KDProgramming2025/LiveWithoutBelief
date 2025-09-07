@@ -39,3 +39,7 @@ fastlane/
 # Misc
 *.apk
 *.ap_
+
+# Keep only workflows inside .github (purge other sensitive meta files)
+.github/*
+!.github/workflows/

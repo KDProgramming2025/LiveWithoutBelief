@@ -26,6 +26,11 @@ interface AuthFacade {
     suspend fun refreshIdToken(forceRefresh: Boolean = false): Result<String>
 }
 
+/** Optional abstraction for One Tap / Credential Manager based Google ID token retrieval. */
+interface OneTapCredentialProvider {
+    suspend fun getIdToken(activity: Activity): String?
+}
+
 /**
  * Abstraction over Firebase token refresh so unit tests can mock without dealing with Task APIs.
  */
@@ -62,19 +67,26 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     private val intentExecutor: GoogleSignInIntentExecutor,
     private val tokenRefresher: TokenRefresher,
     private val signInExecutor: SignInExecutor,
+    private val oneTapProvider: OneTapCredentialProvider,
 ) : AuthFacade {
     override suspend fun oneTapSignIn(activity: Activity): Result<AuthUser> = runCatching {
-    val comp = activity as? ComponentActivity
-        // 1. Try silent sign-in first via facade
+        val comp = activity as? ComponentActivity
+        // 1. Try silent sign-in (cached GoogleSignIn account)
         val existing = signInClient.getLastSignedInAccount(activity)
-        val account: GoogleSignInAccount = if (existing != null) {
-            existing
-        } else {
-            requireNotNull(comp) { "Activity must be a ComponentActivity for interactive sign-in" }
-            intentExecutor.launch(comp) { signInClient.buildSignInIntent(activity) }
+        val idToken: String = when {
+            existing?.idToken != null -> existing.idToken!!
+            else -> {
+                // 2. Try One Tap (Credential Manager)
+                val oneTapToken = oneTapProvider.getIdToken(activity)
+                if (oneTapToken != null) oneTapToken else {
+                    // 3. Fallback to interactive classic Google Sign-In
+                    requireNotNull(comp) { "Activity must be a ComponentActivity for interactive sign-in" }
+                    val acct = intentExecutor.launch(comp) { signInClient.buildSignInIntent(activity) }
+                    acct.idToken ?: error("Missing idToken from interactive sign-in")
+                }
+            }
         }
-        val idToken = account.idToken ?: error("Missing idToken")
-    val user = signInExecutor.signIn(idToken)
+        val user = signInExecutor.signIn(idToken)
         val authUser = AuthUser(user.uid, user.displayName, user.email, user.photoUrl?.toString())
         secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
     runCatching { tokenRefresher.refresh(user, false) }.getOrNull()?.let { token ->
@@ -97,8 +109,14 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
 
     override suspend fun refreshIdToken(forceRefresh: Boolean): Result<String> = runCatching {
         val user = firebaseAuth.currentUser ?: error("No user to refresh")
-        val token = tokenRefresher.refresh(user, forceRefresh)
-        secureStorage.putIdToken(token)
-        token
+    val token = tokenRefresher.refresh(user, forceRefresh)
+    secureStorage.putIdToken(token)
+    val parsedExp = JwtUtils.extractExpiryEpochSeconds(token)
+    val storeExp = when {
+        parsedExp == null -> (System.currentTimeMillis() / 1000L) + (50 * 60) // fallback heuristic
+        else -> parsedExp - 5 * 60 // refresh 5m early
+    }
+    secureStorage.putTokenExpiry(storeExp)
+    token
     }
 }

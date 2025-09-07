@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.credential.manager)
     implementation(libs.credential.manager.play.services)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.google.identity)
     implementation(libs.okhttp)
 
     implementation(libs.androidx.core.ktx)
@@ -98,6 +99,8 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling.preview)
 
     testImplementation(libs.junit)
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.test:core:1.6.1")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     // Hilt instrumentation testing

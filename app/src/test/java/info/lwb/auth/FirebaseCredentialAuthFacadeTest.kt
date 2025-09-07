@@ -26,12 +26,13 @@ class FirebaseCredentialAuthFacadeTest {
     private val executor: GoogleSignInIntentExecutor = mockk(relaxed = true)
     private val tokenRefresher: TokenRefresher = mockk(relaxed = true)
     private val signInExecutor: SignInExecutor = mockk(relaxed = true)
+    private val oneTap: OneTapCredentialProvider = mockk(relaxed = true)
 
     private lateinit var facade: FirebaseCredentialAuthFacade
 
     @Before
     fun setUp() {
-    facade = FirebaseCredentialAuthFacade(firebaseAuth, context, storage, validator, signInClient, executor, tokenRefresher, signInExecutor)
+    facade = FirebaseCredentialAuthFacade(firebaseAuth, context, storage, validator, signInClient, executor, tokenRefresher, signInExecutor, oneTap)
     }
 
     @Test
@@ -42,9 +43,35 @@ class FirebaseCredentialAuthFacadeTest {
         every { signInClient.getLastSignedInAccount(any()) } returns acct
         mockFirebaseSignIn("uid1", "User", "user@example.com")
 
-        val result = facade.oneTapSignIn(mockk<Activity>(relaxed = true))
+    coEvery { oneTap.getIdToken(any()) } returns null
+    val result = facade.oneTapSignIn(mockk<Activity>(relaxed = true))
         assertTrue(result.isSuccess)
     coVerify { signInExecutor.signIn("token123") }
+    }
+
+    @Test
+    fun oneTapSignIn_usesOneTapWhenSilentMissing() = runTest {
+        every { signInClient.getLastSignedInAccount(any()) } returns null
+        coEvery { oneTap.getIdToken(any()) } returns "onetapToken"
+        mockFirebaseSignIn("uidOneTap", "TapUser", "tap@example.com")
+        val result = facade.oneTapSignIn(mockk<Activity>(relaxed = true))
+        assertTrue(result.isSuccess)
+        coVerify { signInExecutor.signIn("onetapToken") }
+        coVerify(exactly = 0) { executor.launch(any(), any()) }
+    }
+
+    @Test
+    fun oneTapSignIn_interactiveFallbackWhenBothSilentAndOneTapNull() = runTest {
+        every { signInClient.getLastSignedInAccount(any()) } returns null
+        coEvery { oneTap.getIdToken(any()) } returns null
+        val acct: GoogleSignInAccount = mockk { every { idToken } returns "interactiveToken" }
+        coEvery { executor.launch(any(), any()) } returns acct
+        every { signInClient.buildSignInIntent(any()) } returns mockk(relaxed = true)
+        mockFirebaseSignIn("uidInteractive", "InterUser", "inter@example.com")
+    val activity: Activity = mockk<androidx.activity.ComponentActivity>(relaxed = true)
+        val result = facade.oneTapSignIn(activity)
+        assertTrue(result.isSuccess)
+        coVerify { signInExecutor.signIn("interactiveToken") }
     }
 
     @Ignore("Covered via instrumentation test; Activity Result requires Android environment")

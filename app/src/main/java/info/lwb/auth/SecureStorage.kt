@@ -7,6 +7,8 @@ import androidx.security.crypto.MasterKey
 interface SecureStorage {
     fun putIdToken(token: String)
     fun getIdToken(): String?
+    fun putTokenExpiry(epochSeconds: Long?)
+    fun getTokenExpiry(): Long?
     fun clear()
     fun putProfile(name: String?, email: String?, avatar: String?)
     fun getProfile(): Triple<String?, String?, String?>
@@ -26,6 +28,12 @@ class EncryptedPrefsSecureStorage(context: Context) : SecureStorage {
 
     override fun putIdToken(token: String) { prefs.edit().putString("idToken", token).apply() }
     override fun getIdToken(): String? = prefs.getString("idToken", null)
+    override fun putTokenExpiry(epochSeconds: Long?) {
+        prefs.edit().apply {
+            if (epochSeconds == null) remove("idTokenExp") else putLong("idTokenExp", epochSeconds)
+        }.apply()
+    }
+    override fun getTokenExpiry(): Long? = if (prefs.contains("idTokenExp")) prefs.getLong("idTokenExp", -1L).takeIf { it > 0 } else null
     override fun clear() { prefs.edit().clear().apply() }
     override fun putProfile(name: String?, email: String?, avatar: String?) {
         prefs.edit()
