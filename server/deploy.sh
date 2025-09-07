@@ -94,19 +94,29 @@ if [[ "$MODE" != "reload" ]]; then
   git rev-parse HEAD > "$LAST_FILE"
 fi
 
+SAVED_NODE_ENV="${NODE_ENV:-}"
+export NPM_CONFIG_PRODUCTION=false
+export NODE_ENV=development
+
 if [[ $NEED_INSTALL -eq 1 ]]; then
-  log "Lock hash changed; running npm ci"; npm ci --no-audit --no-fund; echo "$LOCK_HASH" > "$LOCK_HASH_FILE";
+  log "Lock hash changed; running npm ci (with dev deps)"; npm ci --no-audit --no-fund; echo "$LOCK_HASH" > "$LOCK_HASH_FILE";
 else
   log "Skipping npm ci (lock unchanged)";
 fi
 
-# Ensure TypeScript compiler present (some earlier installs may have pruned dev deps)
 if [[ ! -x node_modules/.bin/tsc ]]; then
-  warn "TypeScript compiler missing; running npm ci to restore devDependencies";
-  npm ci --no-audit --no-fund || err "npm ci failed attempting to restore dev deps";
+  warn "TypeScript compiler missing; installing dev dependencies explicitly";
+  npm install --no-audit --no-fund --save-dev typescript || err "Failed to install typescript";
 fi
 
 log "Building (npm run build)..."; npm run --silent build
+
+# Restore original NODE_ENV (systemd passes production semantics)
+if [[ -n "$SAVED_NODE_ENV" ]]; then
+  export NODE_ENV="$SAVED_NODE_ENV"
+else
+  unset NODE_ENV
+fi
 
 restart_service() {
   if [[ $(id -un) == lwbapp ]]; then
@@ -135,7 +145,7 @@ done
 if [[ $ok -ne 1 ]]; then
   err "Local health check failed after $attempts attempts"
   if [[ -f "$PREV_FILE" ]]; then
-    warn "Rolling back"; prev=$(cat "$PREV_FILE"); git reset --hard "$prev"; npm ci --no-audit --no-fund || true; npx tsc -p tsconfig.json --pretty false || true; restart_service || true;
+  warn "Rolling back"; prev=$(cat "$PREV_FILE"); git reset --hard "$prev"; NPM_CONFIG_PRODUCTION=false NODE_ENV=development npm ci --no-audit --no-fund || true; npm run --silent build || true; restart_service || true;
   fi
   exit 1
 fi
