@@ -26,7 +26,7 @@ android {
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"' + serverId + '"')
         val authBase = System.getenv("AUTH_BASE_URL")
             ?: (project.findProperty("AUTH_BASE_URL") as String?)
-            ?: "http://localhost:8080"
+            ?: "https://aparat.feezor.net/lwb-api"
         buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
     }
 
