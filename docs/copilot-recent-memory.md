@@ -12,8 +12,9 @@ Recent snapshot:
 Latest:
 * Added PrefsRevocationStore (persistent hashed tokens) and bound via DI replacing in-memory default.
 * Added persistence test verifying revocation survives new instance.
+* Added LoggingValidationObserver + CompositeValidationObserver with fan-out test.
 
 Upcoming (auth focus):
-1. Telemetry/logging wiring for ValidationObserver.
-2. Externalize retry / refresh configs (remote or BuildConfig gating).
-3. Additional edge-case tests (multiple consecutive revokes, observer error handling).
+1. Externalize retry / refresh configs (remote or BuildConfig gating).
+2. Add metrics observer (structured events) + sampling.
+3. Edge-case tests: multiple consecutive revokes, forced network errors on composite.

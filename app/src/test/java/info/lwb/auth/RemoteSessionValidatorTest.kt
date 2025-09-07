@@ -140,4 +140,26 @@ class RemoteSessionValidatorTest {
         }
         assertTrue("Expected at least one result callback", obs.results.isNotEmpty())
     }
+
+    @Test
+    fun compositeObserver_fansOutEvents() = runTest {
+        class CObs: ValidationObserver {
+            var attempts = 0; var results = 0; var retries = 0
+            override fun onAttempt(attempt: Int, max: Int) { attempts++ }
+            override fun onResult(result: ValidationResult) { results++ }
+            override fun onRetry(delayMs: Long) { retries++ }
+        }
+        val a = CObs(); val b = CObs()
+        val composite = a.and(b)
+        // Trigger a single request (200 success, no retry)
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), composite, InMemoryRevocationStore())
+        val res = validator.validateDetailed("token")
+        assertTrue(res.isValid)
+        assertEquals(1, a.attempts)
+        assertEquals(1, b.attempts)
+        assertEquals(1, a.results)
+        assertEquals(1, b.results)
+        assertEquals(0, a.retries + b.retries)
+    }
 }

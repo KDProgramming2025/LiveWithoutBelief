@@ -81,9 +81,11 @@ object AuthProvisionModule {
     @Singleton
     fun provideValidationRetryPolicy(): ValidationRetryPolicy = ValidationRetryPolicy()
 
+    // Provide composite including logging (could extend with metrics later)
     @Provides
     @Singleton
-    fun provideValidationObserver(): ValidationObserver = NoopValidationObserver
+    fun provideCompositeValidationObserver(logging: LoggingValidationObserver): ValidationObserver =
+        NoopValidationObserver.and(logging)
 
     @Provides
     @Singleton
