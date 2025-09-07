@@ -62,6 +62,9 @@ cd "$APP_DIR"
 # Ensure git safe.directory to silence dubious ownership (when root created initial clone)
 git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
 
+# Capture initial commit hash (may change after pull)
+COMMIT_HASH="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
+
 if [[ "$MODE" != "reload" ]]; then
   git fetch --quiet origin "$TARGET_BRANCH" || warn "Fetch failed (continuing with local)"
   LATEST_REMOTE="$(git rev-parse "origin/$TARGET_BRANCH" 2>/dev/null || git rev-parse HEAD)"
@@ -74,6 +77,7 @@ if [[ "$MODE" != "reload" ]]; then
     log "No new commits; exiting."; exit 0; fi
   if [[ "$MODE" != "dry" && "$CURRENT_COMMIT" != "$LATEST_REMOTE" ]]; then
     log "Pulling new commits..."; git pull --ff-only origin "$TARGET_BRANCH"; CURRENT_COMMIT="$(git rev-parse HEAD)"; fi
+  COMMIT_HASH="$CURRENT_COMMIT"
 fi
 
 CHANGED_TS_FILES="$(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -E '^server/src/.*\.ts$' || true)"
@@ -158,4 +162,4 @@ if [[ -n "$PUBLIC_HEALTH" ]]; then
   if curl -fsS "$PUBLIC_HEALTH" | grep -q '"ok"'; then log "Public health OK"; else warn "Public health check failed (continuing)"; fi
 fi
 
-log "Deploy complete: $(git rev-parse HEAD)"
+log "Deploy complete: ${COMMIT_HASH}"
