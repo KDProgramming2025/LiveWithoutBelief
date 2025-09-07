@@ -1,13 +1,7 @@
 name: Android CI
 
 on:
-  push:
-    branches:
-      - main
-      - 'feature/**'
-      - 'fix/**'
-      - 'hotfix/**'
-      - 'release/**'
+  # CI now runs only for pull requests targeting main, or manual dispatch.
   pull_request:
     branches:
       - main
