@@ -37,11 +37,13 @@ android {
     val backoffMult = doubleCfg("AUTH_VALIDATION_BACKOFF_MULT", 2.0)
     val refreshLeadSec = longCfg("AUTH_REFRESH_LEAD_SECONDS", 300)
     val refreshPollSec = longCfg("AUTH_REFRESH_POLL_SECONDS", 30)
+    val metricsSamplePermille = intCfg("AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE", 1000)
     buildConfigField("int", "AUTH_VALIDATION_MAX_ATTEMPTS", maxAttempts.toString())
     buildConfigField("long", "AUTH_VALIDATION_BASE_DELAY_MS", baseDelay.toString() + 'L')
     buildConfigField("double", "AUTH_VALIDATION_BACKOFF_MULT", backoffMult.toString())
     buildConfigField("long", "AUTH_REFRESH_LEAD_SECONDS", refreshLeadSec.toString() + 'L')
     buildConfigField("long", "AUTH_REFRESH_POLL_SECONDS", refreshPollSec.toString() + 'L')
+    buildConfigField("int", "AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE", metricsSamplePermille.toString())
     }
 
     buildFeatures {

@@ -179,4 +179,35 @@ class RemoteSessionValidatorTest {
     assertTrue((snap["fail"] ?: 0) >= 0)
     assertTrue((snap["retries"] ?: 0) >= 0)
     }
+
+    @Test
+    fun compositeObserver_swallowsDelegateExceptions() = runTest {
+        class BadObserver: ValidationObserver {
+            override fun onAttempt(attempt: Int, max: Int) { throw RuntimeException("boom") }
+            override fun onResult(result: ValidationResult) { throw RuntimeException("boom2") }
+            override fun onRetry(delayMs: Long) { throw RuntimeException("boom3") }
+        }
+        val good = object: ValidationObserver {
+            var attempts=0; override fun onAttempt(attempt: Int, max: Int) { attempts++ }
+            override fun onResult(result: ValidationResult) { }
+            override fun onRetry(delayMs: Long) { }
+        }
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        val composite = good.and(BadObserver())
+        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), composite, InMemoryRevocationStore())
+        val res = validator.validateDetailed("token")
+        assertTrue(res.isValid)
+        assertEquals(1, good.attempts) // ensured good observer still ran
+    }
+
+    @Test
+    fun samplingObserver_doesNotDropAllWhen1000Permille() = runTest {
+        val metrics = MetricsValidationObserver()
+        val sampled = SamplingValidationObserver(metrics, 1000, java.util.Random(123))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), sampled, InMemoryRevocationStore())
+        validator.validateDetailed("token")
+        val snap = metrics.snapshot()
+        assertTrue((snap["attempts"] ?: 0) >= 1)
+    }
 }

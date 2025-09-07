@@ -14,8 +14,9 @@ Latest:
 * Added persistence test verifying revocation survives new instance.
 * Added LoggingValidationObserver + CompositeValidationObserver with fan-out test.
 * Added dynamic BuildConfig-based retry/refresh tuning & MetricsValidationObserver + test.
+* Added sampling + snapshot export observers, resilience to delegate exceptions, extended tests.
 
 Upcoming (auth focus):
-1. Sampling & structured export for metrics observer.
-2. Edge-case tests: multiple consecutive revokes, forced composite exception handling.
-3. Documentation update for new BuildConfig tuning knobs.
+1. README / docs for auth config knobs & observer pipeline.
+2. Potential persistent metrics queue (offline flush).
+3. Multi-process safety review for PrefsRevocationStore.

@@ -83,7 +83,17 @@ object AuthProvisionModule {
     fun provideCompositeValidationObserver(
         logging: LoggingValidationObserver,
         metrics: MetricsValidationObserver,
-    ): ValidationObserver = NoopValidationObserver.and(logging).and(metrics)
+    ): ValidationObserver {
+        val sampledMetrics: ValidationObserver = SamplingValidationObserver(
+            upstream = metrics,
+            samplePermille = BuildConfig.AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE
+        )
+        val exporter = SnapshotExportValidationObserver(metrics)
+        return NoopValidationObserver
+            .and(logging)
+            .and(sampledMetrics)
+            .and(exporter)
+    }
 
     @Provides
     @Singleton
