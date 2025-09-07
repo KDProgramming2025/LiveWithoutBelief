@@ -9,6 +9,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
+import info.lwb.BuildConfig
+import javax.inject.Qualifier
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -49,4 +53,18 @@ object AuthProvisionModule {
     @Provides
     @Singleton
     fun provideGoogleSignInIntentExecutor(): GoogleSignInIntentExecutor = ActivityResultGoogleSignInExecutor()
+
+    @Provides
+    @Singleton
+    fun provideAuthOkHttp(): OkHttpClient = OkHttpClient.Builder()
+        .callTimeout(10, TimeUnit.SECONDS)
+        .build()
+
+    @Provides
+    @AuthBaseUrl
+    fun provideAuthBaseUrl(): String = BuildConfig.AUTH_BASE_URL
 }
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AuthBaseUrl
