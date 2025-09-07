@@ -44,6 +44,7 @@ for a in "$@"; do
   case "$a" in
     --dry-run) MODE="dry" ;;
     --reload) MODE="reload" ;;
+  --restart) RESTART_ON_RELOAD=1 ;;
   esac
 done
 
@@ -99,6 +100,12 @@ else
   log "Skipping npm ci (lock unchanged)";
 fi
 
+# Ensure TypeScript compiler present (some earlier installs may have pruned dev deps)
+if [[ ! -x node_modules/.bin/tsc ]]; then
+  warn "TypeScript compiler missing; running npm ci to restore devDependencies";
+  npm ci --no-audit --no-fund || err "npm ci failed attempting to restore dev deps";
+fi
+
 log "Building (npm run build)..."; npm run --silent build
 
 restart_service() {
@@ -109,7 +116,11 @@ restart_service() {
   fi
 }
 
-log "Restarting service..."; restart_service
+if [[ "$MODE" == "reload" && -z "${RESTART_ON_RELOAD:-}" ]]; then
+  warn "Reload mode: skipping service restart (pass --restart to force).";
+else
+  log "Restarting service..."; restart_service
+fi
 
 PORT_ENV="${PORT:-4433}" # systemd sets PORT=4433
 LOCAL_HEALTH="http://127.0.0.1:${PORT_ENV}/health"
