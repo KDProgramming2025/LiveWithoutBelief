@@ -1,7 +1,6 @@
 package info.lwb.auth
 
 import android.content.Context
-import androidx.credentials.CredentialManager
 import com.google.firebase.auth.FirebaseAuth
 import dagger.Binds
 import dagger.Module
@@ -23,6 +22,12 @@ abstract class AuthBindingsModule {
     @Binds
     @Singleton
     abstract fun bindSessionValidator(impl: NoopSessionValidator): SessionValidator
+    @Binds
+    @Singleton
+    abstract fun bindTokenRefresher(impl: FirebaseTokenRefresher): TokenRefresher
+    @Binds
+    @Singleton
+    abstract fun bindSignInExecutor(impl: FirebaseSignInExecutor): SignInExecutor
 }
 
 @Module
@@ -34,11 +39,14 @@ object AuthProvisionModule {
 
     @Provides
     @Singleton
-    fun provideCredentialManager(@ApplicationContext context: Context): CredentialManager =
-        CredentialManager.create(context)
+    fun provideEncryptedStorage(@ApplicationContext context: Context): EncryptedPrefsSecureStorage =
+        EncryptedPrefsSecureStorage(context)
 
     @Provides
     @Singleton
-    fun provideEncryptedStorage(@ApplicationContext context: Context): EncryptedPrefsSecureStorage =
-        EncryptedPrefsSecureStorage(context)
+    fun provideGoogleSignInClient(): GoogleSignInClientFacade = DefaultGoogleSignInClientFacade()
+
+    @Provides
+    @Singleton
+    fun provideGoogleSignInIntentExecutor(): GoogleSignInIntentExecutor = ActivityResultGoogleSignInExecutor()
 }

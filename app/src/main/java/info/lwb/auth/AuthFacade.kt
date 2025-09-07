@@ -3,12 +3,8 @@ package info.lwb.auth
 import android.app.Activity
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
-import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
 import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import com.google.firebase.auth.FirebaseAuth
@@ -30,46 +26,58 @@ interface AuthFacade {
     suspend fun refreshIdToken(forceRefresh: Boolean = false): Result<String>
 }
 
+/**
+ * Abstraction over Firebase token refresh so unit tests can mock without dealing with Task APIs.
+ */
+interface TokenRefresher {
+    suspend fun refresh(user: com.google.firebase.auth.FirebaseUser, force: Boolean): String
+}
+
+class FirebaseTokenRefresher @javax.inject.Inject constructor() : TokenRefresher {
+    override suspend fun refresh(user: com.google.firebase.auth.FirebaseUser, force: Boolean): String {
+        return user.getIdToken(force).await().token ?: error("Token refresh returned null")
+    }
+}
+
+interface SignInExecutor {
+    suspend fun signIn(idToken: String): com.google.firebase.auth.FirebaseUser
+}
+
+class FirebaseSignInExecutor @javax.inject.Inject constructor(
+    private val firebaseAuth: FirebaseAuth,
+) : SignInExecutor {
+    override suspend fun signIn(idToken: String): com.google.firebase.auth.FirebaseUser {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        return firebaseAuth.signInWithCredential(credential).await().user
+            ?: error("Firebase user null after sign in")
+    }
+}
+
 class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     @ApplicationContext private val context: Context,
     private val secureStorage: SecureStorage,
     private val sessionValidator: SessionValidator,
+    private val signInClient: GoogleSignInClientFacade,
+    private val intentExecutor: GoogleSignInIntentExecutor,
+    private val tokenRefresher: TokenRefresher,
+    private val signInExecutor: SignInExecutor,
 ) : AuthFacade {
     override suspend fun oneTapSignIn(activity: Activity): Result<AuthUser> = runCatching {
-        val comp = activity as? ComponentActivity
-            ?: error("Activity must be a ComponentActivity for result API")
-        // 1. Try silent sign-in first
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(BuildConfig.GOOGLE_SERVER_CLIENT_ID)
-            .requestEmail()
-            .build()
-        val client = GoogleSignIn.getClient(activity, gso)
-        val existing = GoogleSignIn.getLastSignedInAccount(activity)
+    val comp = activity as? ComponentActivity
+        // 1. Try silent sign-in first via facade
+        val existing = signInClient.getLastSignedInAccount(activity)
         val account: GoogleSignInAccount = if (existing != null) {
             existing
         } else {
-            // Interactive sign-in via Activity Result
-            suspendCancellableCoroutine { cont ->
-                val launcher = comp.activityResultRegistry.register("google-sign-in-${System.nanoTime()}", ActivityResultContracts.StartActivityForResult()) { result ->
-                    try {
-                        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                        val acc = task.getResult(ApiException::class.java)
-                        cont.resume(acc)
-                    } catch (e: Exception) {
-                        cont.resumeWith(Result.failure(RuntimeException("Sign-in failed", e)))
-                    }
-                }
-                launcher.launch(client.signInIntent)
-            }
+            requireNotNull(comp) { "Activity must be a ComponentActivity for interactive sign-in" }
+            intentExecutor.launch(comp) { signInClient.buildSignInIntent(activity) }
         }
         val idToken = account.idToken ?: error("Missing idToken")
-        val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-        val user = firebaseAuth.signInWithCredential(firebaseCredential).await().user
-            ?: error("Firebase user null after sign in")
+    val user = signInExecutor.signIn(idToken)
         val authUser = AuthUser(user.uid, user.displayName, user.email, user.photoUrl?.toString())
         secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
-        user.getIdToken(false).await().token?.let { token ->
+    runCatching { tokenRefresher.refresh(user, false) }.getOrNull()?.let { token ->
             secureStorage.putIdToken(token)
             sessionValidator.validate(token)
         }
@@ -89,8 +97,8 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
 
     override suspend fun refreshIdToken(forceRefresh: Boolean): Result<String> = runCatching {
         val user = firebaseAuth.currentUser ?: error("No user to refresh")
-    val token = user.getIdToken(forceRefresh).await().token ?: error("Token refresh returned null")
-    secureStorage.putIdToken(token)
-    token
+        val token = tokenRefresher.refresh(user, forceRefresh)
+        secureStorage.putIdToken(token)
+        token
     }
 }
