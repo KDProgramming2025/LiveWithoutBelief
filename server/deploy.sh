@@ -59,6 +59,9 @@ fi
 
 cd "$APP_DIR"
 
+# Ensure git safe.directory to silence dubious ownership (when root created initial clone)
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+
 if [[ "$MODE" != "reload" ]]; then
   git fetch --quiet origin "$TARGET_BRANCH" || warn "Fetch failed (continuing with local)"
   LATEST_REMOTE="$(git rev-parse "origin/$TARGET_BRANCH" 2>/dev/null || git rev-parse HEAD)"
