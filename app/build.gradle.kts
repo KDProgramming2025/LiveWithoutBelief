@@ -108,4 +108,5 @@ dependencies {
     implementation(libs.navigation.compose)
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }
