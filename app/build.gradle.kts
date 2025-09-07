@@ -28,6 +28,20 @@ android {
             ?: (project.findProperty("AUTH_BASE_URL") as String?)
             ?: "https://aparat.feezor.net/lwb-api"
         buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
+    // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)
+    fun intCfg(key: String, def: Int) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toIntOrNull() ?: def
+    fun longCfg(key: String, def: Long) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toLongOrNull() ?: def
+    fun doubleCfg(key: String, def: Double) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toDoubleOrNull() ?: def
+    val maxAttempts = intCfg("AUTH_VALIDATION_MAX_ATTEMPTS", 3)
+    val baseDelay = longCfg("AUTH_VALIDATION_BASE_DELAY_MS", 50)
+    val backoffMult = doubleCfg("AUTH_VALIDATION_BACKOFF_MULT", 2.0)
+    val refreshLeadSec = longCfg("AUTH_REFRESH_LEAD_SECONDS", 300)
+    val refreshPollSec = longCfg("AUTH_REFRESH_POLL_SECONDS", 30)
+    buildConfigField("int", "AUTH_VALIDATION_MAX_ATTEMPTS", maxAttempts.toString())
+    buildConfigField("long", "AUTH_VALIDATION_BASE_DELAY_MS", baseDelay.toString() + 'L')
+    buildConfigField("double", "AUTH_VALIDATION_BACKOFF_MULT", backoffMult.toString())
+    buildConfigField("long", "AUTH_REFRESH_LEAD_SECONDS", refreshLeadSec.toString() + 'L')
+    buildConfigField("long", "AUTH_REFRESH_POLL_SECONDS", refreshPollSec.toString() + 'L')
     }
 
     buildFeatures {

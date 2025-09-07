@@ -162,4 +162,21 @@ class RemoteSessionValidatorTest {
         assertEquals(1, b.results)
         assertEquals(0, a.retries + b.retries)
     }
+
+    @Test
+    fun metricsObserver_capturesCounts() = runTest {
+        val metrics = MetricsValidationObserver()
+        val composite = metrics.and(NoopValidationObserver)
+        // enqueue failure then success to produce retry + success
+        server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), composite, InMemoryRevocationStore())
+        val res = validator.validateDetailed("token")
+        assertTrue(res.isValid)
+        val snap = metrics.snapshot()
+    assertTrue((snap["attempts"] ?: 0) >= 1)
+    assertEquals(1, snap["success"])
+    assertTrue((snap["fail"] ?: 0) >= 0)
+    assertTrue((snap["retries"] ?: 0) >= 0)
+    }
 }

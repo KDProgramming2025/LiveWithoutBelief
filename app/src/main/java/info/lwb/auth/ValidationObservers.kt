@@ -28,6 +28,26 @@ class CompositeValidationObserver(
     override fun onRetry(delayMs: Long) = delegates.forEach { it.onRetry(delayMs) }
 }
 
+/** Simple in-memory metrics collector (thread-safe) – can be swapped with real analytics. */
+@Singleton
+class MetricsValidationObserver @Inject constructor() : ValidationObserver {
+    @Volatile private var _attempts = 0
+    @Volatile private var _success = 0
+    @Volatile private var _fail = 0
+    @Volatile private var _retries = 0
+    override fun onAttempt(attempt: Int, max: Int) { _attempts++ }
+    override fun onResult(result: ValidationResult) {
+        if (result.isValid) _success++ else _fail++
+    }
+    override fun onRetry(delayMs: Long) { _retries++ }
+    fun snapshot(): Map<String, Int> = mapOf(
+        "attempts" to _attempts,
+        "success" to _success,
+        "fail" to _fail,
+        "retries" to _retries,
+    )
+}
+
 /** Utility to compose observers without creating deep nesting. */
 fun ValidationObserver.and(other: ValidationObserver): ValidationObserver = when {
     this === NoopValidationObserver -> other

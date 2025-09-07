@@ -77,15 +77,13 @@ object AuthProvisionModule {
     @AuthBaseUrl
     fun provideAuthBaseUrl(): String = BuildConfig.AUTH_BASE_URL
 
-    @Provides
-    @Singleton
-    fun provideValidationRetryPolicy(): ValidationRetryPolicy = ValidationRetryPolicy()
-
     // Provide composite including logging (could extend with metrics later)
     @Provides
     @Singleton
-    fun provideCompositeValidationObserver(logging: LoggingValidationObserver): ValidationObserver =
-        NoopValidationObserver.and(logging)
+    fun provideCompositeValidationObserver(
+        logging: LoggingValidationObserver,
+        metrics: MetricsValidationObserver,
+    ): ValidationObserver = NoopValidationObserver.and(logging).and(metrics)
 
     @Provides
     @Singleton
@@ -112,10 +110,18 @@ object AuthProvisionModule {
 
     @Provides
     @Singleton
-    fun provideTokenRefreshConfig(): TokenRefreshConfig {
-        // Future: read from remote config or properties; for now defaults
-        return TokenRefreshConfig()
-    }
+    fun provideTokenRefreshConfig(): TokenRefreshConfig = TokenRefreshConfig(
+        refreshLeadTimeSeconds = info.lwb.BuildConfig.AUTH_REFRESH_LEAD_SECONDS,
+        pollIntervalSeconds = info.lwb.BuildConfig.AUTH_REFRESH_POLL_SECONDS
+    )
+
+    @Provides
+    @Singleton
+    fun provideDynamicValidationRetryPolicy(): ValidationRetryPolicy = ValidationRetryPolicy(
+        maxAttempts = info.lwb.BuildConfig.AUTH_VALIDATION_MAX_ATTEMPTS,
+        baseDelayMs = info.lwb.BuildConfig.AUTH_VALIDATION_BASE_DELAY_MS,
+        backoffMultiplier = info.lwb.BuildConfig.AUTH_VALIDATION_BACKOFF_MULT
+    )
 
 }
 
