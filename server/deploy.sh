@@ -22,9 +22,22 @@ LOCK_HASH_FILE="$APP_DIR/.deploy_lock_hash"
 BRANCH_DEFAULT="main"
 
 color() { local c="$1"; shift; [[ -t 1 ]] || { echo "$*"; return; }; case "$c" in green) code='\e[32m';; yellow) code='\e[33m';; red) code='\e[31m';; blue) code='\e[34m';; *) code='';; esac; printf "%b%s\e[0m\n" "$code" "$*"; }
-log() { color blue "[deploy] $*" | tee -a "$LOG_FILE"; }
-warn() { color yellow "[deploy] $*" | tee -a "$LOG_FILE"; }
-err() { color red "[deploy] $*" | tee -a "$LOG_FILE"; }
+ensure_log_path() {
+  # If directory not writable, fallback to /tmp
+  if [ ! -w "$APP_DIR" ]; then
+    LOG_FILE="/tmp/lwb-deploy.log"
+  fi
+  # If log file not creatable, fallback again
+  if ! ( touch "$LOG_FILE" 2>/dev/null ); then
+    LOG_FILE="/tmp/lwb-deploy.log"
+    touch "$LOG_FILE" 2>/dev/null || true
+  fi
+}
+ensure_log_path
+
+log() { color blue "[deploy] $*" | { if [ -w "$(dirname "$LOG_FILE")" ]; then tee -a "$LOG_FILE"; else cat; fi; }; }
+warn() { color yellow "[deploy] $*" | { if [ -w "$(dirname "$LOG_FILE")" ]; then tee -a "$LOG_FILE"; else cat; fi; }; }
+err() { color red "[deploy] $*" | { if [ -w "$(dirname "$LOG_FILE")" ]; then tee -a "$LOG_FILE"; else cat; fi; }; }
 
 MODE="normal"
 for a in "$@"; do
