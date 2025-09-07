@@ -99,7 +99,7 @@ else
   log "Skipping npm ci (lock unchanged)";
 fi
 
-log "Building (tsc)..."; npx tsc -p tsconfig.json --pretty false
+log "Building (npm run build)..."; npm run --silent build
 
 restart_service() {
   if [[ $(id -un) == lwbapp ]]; then
