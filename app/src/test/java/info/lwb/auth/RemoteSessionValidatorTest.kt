@@ -23,7 +23,7 @@ class RemoteSessionValidatorTest {
         server.start()
         client = OkHttpClient.Builder().build()
         val base = server.url("").toString().trimEnd('/')
-        validator = RemoteSessionValidator(client, base)
+    validator = RemoteSessionValidator(client, base)
     }
 
     @After
@@ -76,5 +76,14 @@ class RemoteSessionValidatorTest {
         validator.revoke("token")
         // no assertion; just ensure no crash
         assertTrue(true)
+    }
+
+    @Test
+    fun validateDetailed_retriesOnServerErrorAndSucceeds() = runTest {
+    server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        val res = validator.validateDetailed("token")
+        assertTrue(res.isValid)
+        assertEquals(2, server.requestCount)
     }
 }

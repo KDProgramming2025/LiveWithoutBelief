@@ -1,7 +1,7 @@
 package info.lwb.auth
 
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -21,25 +21,45 @@ class RemoteSessionValidator @Inject constructor(
     override suspend fun validate(idToken: String): Boolean = validateDetailed(idToken).isValid
 
     override suspend fun validateDetailed(idToken: String): ValidationResult = withContext(Dispatchers.IO) {
-    val body = '{' + "\"idToken\":\"" + idToken + "\"}" // simple manual JSON avoids Android JSONObject in unit tests
-        val req = Request.Builder()
-            .url(endpoint("/v1/auth/validate"))
-            .post(body.toRequestBody("application/json".toMediaType()))
-            .build()
-        val callResult = runCatching { client.newCall(req).execute() }
-        callResult.fold(onSuccess = { resp ->
-            resp.use { r ->
-                when {
-                    r.isSuccessful -> ValidationResult(true, null)
-                    r.code == 401 -> ValidationResult(false, ValidationError.Unauthorized)
-                    r.code in 500..599 -> ValidationResult(false, ValidationError.Server(r.code))
-                    else -> ValidationResult(false, ValidationError.Unexpected("HTTP ${r.code}"))
+        val maxAttempts = 3
+        var attempt = 0
+        var last: ValidationResult
+        var lastServerRetryable = false
+        while (true) {
+            val body = '{' + "\"idToken\":\"" + idToken + "\"}"
+            val req = Request.Builder()
+                .url(endpoint("/v1/auth/validate"))
+                .post(body.toRequestBody("application/json".toMediaType()))
+                .build()
+            val result = runCatching { client.newCall(req).execute() }.fold(onSuccess = { resp ->
+                resp.use { r ->
+                    when {
+                        r.isSuccessful -> ValidationResult(true, null)
+                        r.code == 401 -> ValidationResult(false, ValidationError.Unauthorized)
+                        r.code in 500..599 -> {
+                            // mark if server suggested retry (presence of Retry-After header)
+                            lastServerRetryable = r.header("Retry-After") != null
+                            ValidationResult(false, ValidationError.Server(r.code))
+                        }
+                        else -> ValidationResult(false, ValidationError.Unexpected("HTTP ${r.code}"))
+                    }
                 }
+            }, onFailure = { e ->
+                // Swallow network logging in unit tests to avoid android.util.Log dependency
+                ValidationResult(false, ValidationError.Network)
+            })
+            last = result
+            val retryable = when (result.error) {
+                ValidationError.Network -> true
+                is ValidationError.Server -> lastServerRetryable
+                else -> false
             }
-        }, onFailure = { e ->
-            Log.w("RemoteSessionValidator", "validate network error: ${e.message}")
-            ValidationResult(false, ValidationError.Network)
-        })
+            if (result.isValid || !retryable || attempt == maxAttempts - 1) break
+            attempt++
+            // naive backoff (50ms,100ms)
+            delay(50L * attempt)
+        }
+        last
     }
 
     override suspend fun revoke(idToken: String) = withContext(Dispatchers.IO) {
@@ -48,9 +68,7 @@ class RemoteSessionValidator @Inject constructor(
             .url(endpoint("/v1/auth/revoke"))
             .post(body.toRequestBody("application/json".toMediaType()))
             .build()
-        runCatching { client.newCall(req).execute() }
-            .onFailure { Log.w("RemoteSessionValidator", "revoke network error: ${it.message}") }
-            .getOrNull()?.close()
+    runCatching { client.newCall(req).execute() }.getOrNull()?.close()
         Unit
     }
 }

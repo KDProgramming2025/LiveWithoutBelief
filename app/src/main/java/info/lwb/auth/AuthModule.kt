@@ -64,6 +64,7 @@ object AuthProvisionModule {
     @Provides
     @AuthBaseUrl
     fun provideAuthBaseUrl(): String = BuildConfig.AUTH_BASE_URL
+
 }
 
 @Qualifier

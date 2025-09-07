@@ -9,6 +9,10 @@ local.properties
 .externalNativeBuild/
 .cxx/
 .kotlin/
+.env
+google-services.json
+server/node_modules/
+server/dist/
 
 # Ignore build folders in all modules
 **/build/
