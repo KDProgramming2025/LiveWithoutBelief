@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure Node toolchain path (systemd may not inherit interactive PATH)
+export PATH="/opt/lwb-node/current/bin:${PATH}" || true
+
 # LiveWithoutBelief backend deploy script
 # Features:
 #  - Safe idempotent deploy (skip if no new commit)
