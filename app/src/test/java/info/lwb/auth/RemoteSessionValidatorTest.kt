@@ -7,8 +7,7 @@ import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 
@@ -45,6 +44,31 @@ class RemoteSessionValidatorTest {
         val ok = validator.validate("token")
         assertFalse(ok)
     }
+
+    @Test
+    fun validateDetailed_success() = runTest {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        val res = validator.validateDetailed("token")
+        assertTrue(res.isValid)
+        assertNull(res.error)
+    }
+
+    @Test
+    fun validateDetailed_unauthorized() = runTest {
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        val res = validator.validateDetailed("token")
+        assertFalse(res.isValid)
+        assertEquals(ValidationError.Unauthorized, res.error)
+    }
+
+    @Test
+    fun validateDetailed_serverError() = runTest {
+        server.enqueue(MockResponse().setResponseCode(503).setBody("{}"))
+        val res = validator.validateDetailed("token")
+        assertFalse(res.isValid)
+        assertTrue(res.error is ValidationError.Server)
+    }
+
 
     @Test
     fun revoke_doesNotThrow() = runTest {

@@ -56,6 +56,7 @@ object AuthProvisionModule {
 
     @Provides
     @Singleton
+    @AuthClient
     fun provideAuthOkHttp(): OkHttpClient = OkHttpClient.Builder()
         .callTimeout(10, TimeUnit.SECONDS)
         .build()
@@ -68,3 +69,7 @@ object AuthProvisionModule {
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class AuthBaseUrl
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AuthClient
