@@ -45,6 +45,30 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: true });
   app.register(cors, { origin: true });
 
+  // Explicit JSON content-type parser (Fastify v5 change diagnostics):
+  // We add this because production requests were failing with FST_ERR_CTP_INVALID_JSON_BODY
+  // while tests using app.inject succeeded (inject serializes payload differently).
+  // This parser logs a short snippet on parse failure for observability.
+  if (!app.hasContentTypeParser('application/json')) {
+    app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+      try {
+        const text = body as string;
+        const parsed = text.length ? JSON.parse(text) : {};
+        (req as any).rawBody = text;
+        done(null, parsed);
+      } catch (err: any) {
+        app.log.error({ err, event: 'json_parse_error', bodySnippet: (body as string).slice(0, 200) }, 'failed to parse JSON body');
+        done(err);
+      }
+    });
+  }
+
+  // Hook to log incoming request basic info (exclude health for noise reduction)
+  app.addHook('onRequest', async (req, _reply) => {
+    if (req.url === '/health') return;
+    app.log.info({ event: 'incoming_request', method: req.method, url: req.url, contentType: req.headers['content-type'], contentLength: req.headers['content-length'] }, 'incoming request');
+  });
+
   const oauthClient = new OAuth2Client(opts.googleClientId);
   const revocations = opts.revocations ?? new InMemoryRevocationStore();
   const jwtSecret = opts.jwtSecret || process.env.PWD_JWT_SECRET || 'DEV_ONLY_CHANGE_ME';

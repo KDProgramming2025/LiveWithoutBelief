@@ -1,1 +1,1 @@
-Current status: Added detailed server error parsing (regex) & installed. Pending: user re-test to see specific error message.
+Current status: Added explicit JSON parser & request logging to server (buildServer.ts) to fix FST_ERR_CTP_INVALID_JSON_BODY. Pending: commit, push, deploy, curl register to verify 200/409 and recaptcha flow.
