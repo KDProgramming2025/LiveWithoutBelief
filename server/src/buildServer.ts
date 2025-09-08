@@ -171,7 +171,6 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
     const { username, password, recaptchaToken } = parse.data;
   app.log.info({ event: 'pwd_login_attempt', username }, 'password login attempt');
-  if (!(await verifyRecaptcha(recaptchaToken))) return reply.code(400).send({ error: 'recaptcha_failed' });
     const user = users.findByUsername(username);
   if (!user) { app.log.warn({ event: 'pwd_login_invalid_user', username }, 'invalid username'); return reply.code(401).send({ error: 'invalid_credentials' }); }
     const ok = await bcrypt.compare(password, user.passwordHash);
