@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ensure Node toolchain path (systemd may not inherit interactive PATH)
-export PATH="/opt/lwb-node/current/bin:${PATH}" || true
+# Ensure Node toolchain path (force isolated Node 20 toolchain for all steps)
+NODE_HOME="/opt/lwb-node/current"
+export PATH="${NODE_HOME}/bin:${PATH}" || true
+NODE_BIN="${NODE_HOME}/bin/node"
+NPM_BIN="${NODE_HOME}/bin/npm"
+NPX_BIN="${NODE_HOME}/bin/npx"
+log "Using node: $($NODE_BIN -v 2>/dev/null || echo 'missing') | npm: $($NPM_BIN -v 2>/dev/null || echo 'missing')"
 
 # LiveWithoutBelief backend deploy script
 # Features:
@@ -106,17 +111,17 @@ export NPM_CONFIG_PRODUCTION=false
 export NODE_ENV=development
 
 if [[ $NEED_INSTALL -eq 1 ]]; then
-  log "Lock hash changed; running npm ci (with dev deps)"; npm ci --no-audit --no-fund; echo "$LOCK_HASH" > "$LOCK_HASH_FILE";
+  log "Lock hash changed; running npm ci (with dev deps)"; "$NPM_BIN" ci --no-audit --no-fund; echo "$LOCK_HASH" > "$LOCK_HASH_FILE";
 else
   log "Skipping npm ci (lock unchanged)";
 fi
 
 if [[ ! -x node_modules/.bin/tsc ]]; then
   warn "TypeScript compiler missing; installing dev dependencies explicitly";
-  npm install --no-audit --no-fund --save-dev typescript || err "Failed to install typescript";
+  "$NPM_BIN" install --no-audit --no-fund --save-dev typescript || err "Failed to install typescript";
 fi
 
-log "Building (npm run build)..."; npm run --silent build
+log "Building (npm run build)..."; "$NPM_BIN" run --silent build
 
 # Restore original NODE_ENV (systemd passes production semantics)
 if [[ -n "$SAVED_NODE_ENV" ]]; then
@@ -152,7 +157,7 @@ done
 if [[ $ok -ne 1 ]]; then
   err "Local health check failed after $attempts attempts"
   if [[ -f "$PREV_FILE" ]]; then
-  warn "Rolling back"; prev=$(cat "$PREV_FILE"); git reset --hard "$prev"; NPM_CONFIG_PRODUCTION=false NODE_ENV=development npm ci --no-audit --no-fund || true; npm run --silent build || true; restart_service || true;
+  warn "Rolling back"; prev=$(cat "$PREV_FILE"); git reset --hard "$prev"; NPM_CONFIG_PRODUCTION=false NODE_ENV=development "$NPM_BIN" ci --no-audit --no-fund || true; "$NPM_BIN" run --silent build || true; restart_service || true;
   fi
   exit 1
 fi
