@@ -76,6 +76,10 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const recaptchaMinScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.1);
 
   async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
+    if (process.env.RECAPTCHA_DEV_BYPASS === '1' && token === 'dev-bypass') {
+      app.log.warn({ event: 'recaptcha_dev_bypass' }, 'DEV ONLY recaptcha bypass used');
+      return true;
+    }
     if (!recaptchaSecret) return true; // allow in dev if not configured
     if (!token) { app.log.warn({ event: 'recaptcha_missing' }, 'recaptcha token missing'); return false; }
     try {
