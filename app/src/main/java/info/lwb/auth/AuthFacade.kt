@@ -73,7 +73,9 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     private val intentExecutor: GoogleSignInIntentExecutor,
     private val tokenRefresher: TokenRefresher,
     private val signInExecutor: SignInExecutor,
-    private val oneTapProvider: OneTapCredentialProvider
+    private val oneTapProvider: OneTapCredentialProvider,
+    @AuthClient private val http: okhttp3.OkHttpClient,
+    @AuthBaseUrl private val authBaseUrl: String,
 ) : AuthFacade {
     override suspend fun oneTapSignIn(activity: Activity): Result<AuthUser> = runCatching {
     if (BuildConfig.DEBUG) runCatching { android.util.Log.d(
@@ -150,7 +152,7 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     @Serializable private data class PasswordAuthRequest(val username: String, val password: String, val recaptchaToken: String? = null)
 
     private suspend fun passwordAuthRequest(path: String, username: String, password: String, recaptchaToken: String?): Result<Pair<String, AuthUser>> = runCatching {
-        val base = info.lwb.BuildConfig.AUTH_BASE_URL.trimEnd('/')
+        val base = authBaseUrl.trimEnd('/')
         val payload = PasswordAuthRequest(username = username, password = password, recaptchaToken = recaptchaToken)
     val json = Json.encodeToString(payload)
         if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "pwdAuth payloadSize=${json.length} path=$path hasRecaptcha=${recaptchaToken!=null}") }
@@ -159,8 +161,12 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
             .url(base + path)
             .post(body)
             .build()
-        val client = okhttp3.OkHttpClient()
-    val resp = client.newCall(req).execute()
+        val resp = try {
+            http.newCall(req).execute()
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) runCatching { android.util.Log.w("AuthFlow", "pwdAuth EXC path=$path msg=${e.message}", e) }
+            throw e
+        }
         resp.use { r ->
             if (!r.isSuccessful) {
                 val code = r.code
