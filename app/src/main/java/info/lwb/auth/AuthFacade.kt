@@ -11,6 +11,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
 import info.lwb.BuildConfig
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 data class AuthUser(
     val uid: String,
@@ -24,6 +28,8 @@ interface AuthFacade {
     fun currentUser(): AuthUser?
     suspend fun signOut()
     suspend fun refreshIdToken(forceRefresh: Boolean = false): Result<String>
+    suspend fun register(username: String, password: String, recaptchaToken: String? = null): Result<AuthUser>
+    suspend fun passwordLogin(username: String, password: String, recaptchaToken: String? = null): Result<AuthUser>
 }
 
 /** Optional abstraction for One Tap / Credential Manager based Google ID token retrieval. */
@@ -67,33 +73,54 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     private val intentExecutor: GoogleSignInIntentExecutor,
     private val tokenRefresher: TokenRefresher,
     private val signInExecutor: SignInExecutor,
-    private val oneTapProvider: OneTapCredentialProvider,
+    private val oneTapProvider: OneTapCredentialProvider
 ) : AuthFacade {
     override suspend fun oneTapSignIn(activity: Activity): Result<AuthUser> = runCatching {
+    if (BuildConfig.DEBUG) runCatching { android.util.Log.d(
+            "AuthFlow",
+            "oneTapSignIn:start serverClientId=${BuildConfig.GOOGLE_SERVER_CLIENT_ID.take(12)}… androidClientId=${BuildConfig.GOOGLE_ANDROID_CLIENT_ID.take(12)}…"
+    ) }
         val comp = activity as? ComponentActivity
         // 1. Try silent sign-in (cached GoogleSignIn account)
         val existing = signInClient.getLastSignedInAccount(activity)
+    if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "silentAccount: ${existing?.email} hasToken=${existing?.idToken?.isNotEmpty()==true}") }
         val idToken: String = when {
             existing?.idToken != null -> existing.idToken!!
             else -> {
                 // 2. Try One Tap (Credential Manager)
+                if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "attemptingOneTap") }
                 val oneTapToken = oneTapProvider.getIdToken(activity)
+                if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "oneTapTokenPresent=${oneTapToken!=null}") }
                 if (oneTapToken != null) oneTapToken else {
                     // 3. Fallback to interactive classic Google Sign-In
+                    if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "fallbackInteractiveSignIn") }
                     requireNotNull(comp) { "Activity must be a ComponentActivity for interactive sign-in" }
                     val acct = intentExecutor.launch(comp) { signInClient.buildSignInIntent(activity) }
+                    if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "interactiveResult email=${acct.email} hasToken=${acct.idToken!=null}") }
                     acct.idToken ?: error("Missing idToken from interactive sign-in")
                 }
             }
         }
+    if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "haveIdToken length=${idToken.length}") }
         val user = signInExecutor.signIn(idToken)
         val authUser = AuthUser(user.uid, user.displayName, user.email, user.photoUrl?.toString())
         secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
-    runCatching { tokenRefresher.refresh(user, false) }.getOrNull()?.let { token ->
+        runCatching { tokenRefresher.refresh(user, false) }.onFailure {
+            if (BuildConfig.DEBUG) android.util.Log.w("AuthFlow", "tokenRefreshFailed", it)
+        }.getOrNull()?.let { token ->
+        if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "refreshedIdToken length=${token.length}") }
             secureStorage.putIdToken(token)
             sessionValidator.validate(token)
         }
+    if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "oneTapSignIn:success uid=${authUser.uid}") }
         authUser
+    }.recoverCatching { e ->
+        val rb = if (e.isRegionBlocked()) RegionBlockedAuthException("Google sign-in appears blocked in your region.", e) else null
+        if (BuildConfig.DEBUG) runCatching {
+            if (rb != null) android.util.Log.e("AuthFlow", "oneTapSignIn:failure(region-block)", rb) else android.util.Log.e("AuthFlow", "oneTapSignIn:failure", e)
+        }
+        // Rethrow either wrapped or original to keep a failure Result without crashing caller
+        throw (rb ?: e)
     }
 
     override fun currentUser(): AuthUser? = firebaseAuth.currentUser?.let { u ->
@@ -119,4 +146,90 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     secureStorage.putTokenExpiry(storeExp)
     token
     }
+
+    @Serializable private data class PasswordAuthRequest(val username: String, val password: String, val recaptchaToken: String? = null)
+
+    private suspend fun passwordAuthRequest(path: String, username: String, password: String, recaptchaToken: String?): Result<Pair<String, AuthUser>> = runCatching {
+        val base = info.lwb.BuildConfig.AUTH_BASE_URL.trimEnd('/')
+        val payload = PasswordAuthRequest(username = username, password = password, recaptchaToken = recaptchaToken)
+    val json = Json.encodeToString(payload)
+        if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "pwdAuth payloadSize=${json.length} path=$path hasRecaptcha=${recaptchaToken!=null}") }
+        val body = okhttp3.RequestBody.create("application/json".toMediaTypeOrNull(), json)
+        val req = okhttp3.Request.Builder()
+            .url(base + path)
+            .post(body)
+            .build()
+        val client = okhttp3.OkHttpClient()
+    val resp = client.newCall(req).execute()
+        resp.use { r ->
+            if (!r.isSuccessful) {
+                val code = r.code
+        val errBody = runCatching { r.body?.string() }.getOrNull()
+        if (BuildConfig.DEBUG) runCatching { android.util.Log.w("AuthFlow", "pwdAuth FAIL path=$path code=$code body=${errBody?.take(300)}") }
+                var serverErr: String? = null
+                if (errBody != null && errBody.length < 4096) {
+                    val trimmed = errBody.trim()
+                    if (trimmed.startsWith("{")) {
+                        // Try naive extraction to avoid allocating a whole model
+                        Regex("\\\"error\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").find(trimmed)?.let { m -> serverErr = m.groupValues[1] }
+                    }
+                }
+                val msg = when (serverErr) {
+                    "recaptcha_failed" -> "reCAPTCHA verification failed. Please retry."
+                    "username_exists" -> "Username already taken"
+                    "invalid_credentials" -> "Invalid username or password"
+                    "invalid_body" -> "Invalid input"
+                    else -> when(code) {
+                        409 -> "Username already taken"
+                        401 -> "Invalid username or password"
+                        400 -> serverErr ?: "Invalid input"
+                        else -> serverErr ?: "Server error ($code)"
+                    }
+                }
+                error(msg)
+            }
+        val str = r.body?.string() ?: error("Empty body")
+        if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "pwdAuth OK path=$path bodySize=${str.length}") }
+            @Serializable data class UserPayload(val id: String, val username: String? = null)
+            @Serializable data class AuthResponse(val token: String, val user: UserPayload)
+            val parsed = Json.decodeFromString<AuthResponse>(str)
+            val authUser = AuthUser(parsed.user.id, parsed.user.username, null, null)
+            parsed.token to authUser
+        }
+    }
+
+    override suspend fun register(username: String, password: String, recaptchaToken: String?): Result<AuthUser> =
+        passwordAuthRequest("/v1/auth/register", username, password, recaptchaToken).map { (token, user) ->
+            secureStorage.putIdToken(token)
+            secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
+            sessionValidator.validate(token)
+            user
+        }
+
+    override suspend fun passwordLogin(username: String, password: String, recaptchaToken: String?): Result<AuthUser> =
+        passwordAuthRequest("/v1/auth/login", username, password, recaptchaToken).map { (token, user) ->
+            secureStorage.putIdToken(token)
+            secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
+            sessionValidator.validate(token)
+            user
+        }
 }
+
+class RegionBlockedAuthException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+class EmailLinkInitiatedException(val email: String, cause: Throwable? = null) : RuntimeException("Email link sent to $email", cause)
+
+private fun Throwable.isRegionBlocked(): Boolean {
+    var cur: Throwable? = this
+    while (cur != null) {
+        val msg = cur.message?.lowercase() ?: ""
+        if (msg.contains("403") && msg.contains("forbidden")) return true
+        if (msg.contains("verifyassertion") && msg.contains("permission")) return true
+        cur = cur.cause
+    }
+    return false
+}
+
+// Email link auth removed; password auth will be implemented separately.
+
+// Test helper (internal so accessible from unit tests in same module)
+internal fun testIsRegionBlocked(t: Throwable): Boolean = t.isRegionBlocked()
