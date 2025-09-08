@@ -53,21 +53,17 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     app.log.info({ event: 'incoming_request', method: req.method, url: req.url, contentType: req.headers['content-type'], contentLength: req.headers['content-length'] }, 'incoming request');
   });
 
-  // Debug endpoint to echo parsed & raw body (remove later)
-  app.post('/debug/echo', async (req: any) => ({ parsed: req.body, raw: req.rawBody }));
+  // (debug echo endpoint removed in production cleanup)
 
   const oauthClient = new OAuth2Client(opts.googleClientId);
   const revocations = opts.revocations ?? new InMemoryRevocationStore();
   const jwtSecret = opts.jwtSecret || process.env.PWD_JWT_SECRET || 'DEV_ONLY_CHANGE_ME';
   const users = buildUserStore();
+  app.log.info({ event: 'user_store_selected', impl: users.constructor.name }, 'User store initialized');
   const recaptchaSecret = process.env.RECAPTCHA_SECRET;
   const recaptchaMinScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.1);
 
   async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
-    if (process.env.RECAPTCHA_DEV_BYPASS === '1' && token === 'dev-bypass') {
-      app.log.warn({ event: 'recaptcha_dev_bypass' }, 'DEV ONLY recaptcha bypass used');
-      return true;
-    }
     if (!recaptchaSecret) return true; // allow in dev if not configured
     if (!token) { app.log.warn({ event: 'recaptcha_missing' }, 'recaptcha token missing'); return false; }
     try {
