@@ -7,7 +7,6 @@ export PATH="${NODE_HOME}/bin:${PATH}" || true
 NODE_BIN="${NODE_HOME}/bin/node"
 NPM_BIN="${NODE_HOME}/bin/npm"
 NPX_BIN="${NODE_HOME}/bin/npx"
-log "Using node: $($NODE_BIN -v 2>/dev/null || echo 'missing') | npm: $($NPM_BIN -v 2>/dev/null || echo 'missing')"
 
 # LiveWithoutBelief backend deploy script
 # Features:
@@ -43,6 +42,9 @@ ensure_log_path
 log() { color blue "[deploy] $*" | { if [ -w "$(dirname "$LOG_FILE")" ]; then tee -a "$LOG_FILE"; else cat; fi; }; }
 warn() { color yellow "[deploy] $*" | { if [ -w "$(dirname "$LOG_FILE")" ]; then tee -a "$LOG_FILE"; else cat; fi; }; }
 err() { color red "[deploy] $*" | { if [ -w "$(dirname "$LOG_FILE")" ]; then tee -a "$LOG_FILE"; else cat; fi; }; }
+
+# Now that logging is initialized, print toolchain versions
+log "Using node: $($NODE_BIN -v 2>/dev/null || echo 'missing') | npm: $($NPM_BIN -v 2>/dev/null || echo 'missing')"
 
 MODE="normal"
 for a in "$@"; do
