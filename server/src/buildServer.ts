@@ -2,9 +2,10 @@ import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { z } from 'zod';
-import crypto from 'crypto';
+import crypto from 'crypto'; // still used for revocation store IDs, etc.
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { buildUserStore } from './userStore.js';
 
 export interface ArticleManifestItem {
   id: string; title: string; slug: string; version: number; updatedAt: string; wordCount: number;
@@ -27,19 +28,6 @@ export interface BuildServerOptions {
   jwtSecret?: string; // for password tokens
 }
 
-// In-memory user store (replace with DB later)
-interface UserRecord { id: string; username: string; passwordHash: string; createdAt: string; }
-class InMemoryUserStore {
-  private byUsername = new Map<string, UserRecord>();
-  create(username: string, passwordHash: string): UserRecord | null {
-    const key = username.toLowerCase();
-    if (this.byUsername.has(key)) return null;
-    const rec: UserRecord = { id: crypto.randomBytes(12).toString('hex'), username: key, passwordHash, createdAt: new Date().toISOString() };
-    this.byUsername.set(key, rec);
-    return rec;
-  }
-  findByUsername(username: string): UserRecord | undefined { return this.byUsername.get(username.toLowerCase()); }
-}
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: true });
@@ -71,7 +59,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const oauthClient = new OAuth2Client(opts.googleClientId);
   const revocations = opts.revocations ?? new InMemoryRevocationStore();
   const jwtSecret = opts.jwtSecret || process.env.PWD_JWT_SECRET || 'DEV_ONLY_CHANGE_ME';
-  const users = new InMemoryUserStore();
+  const users = buildUserStore();
   const recaptchaSecret = process.env.RECAPTCHA_SECRET;
   const recaptchaMinScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.1);
 
@@ -158,7 +146,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   app.log.info({ event: 'pwd_register_attempt', username }, 'password register attempt');
   if (!(await verifyRecaptcha(recaptchaToken))) return reply.code(400).send({ error: 'recaptcha_failed' });
     const hash = await bcrypt.hash(password, 12);
-    const created = users.create(username, hash);
+  const created = await users.create(username, hash);
     if (!created) return reply.code(409).send({ error: 'username_exists' });
     const token = jwt.sign({ sub: created.id, username: created.username, typ: 'pwd' }, jwtSecret, { expiresIn: '1h' });
   app.log.info({ event: 'pwd_register_success', username: created.username }, 'password register success');
@@ -171,7 +159,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
     const { username, password, recaptchaToken } = parse.data;
   app.log.info({ event: 'pwd_login_attempt', username }, 'password login attempt');
-    const user = users.findByUsername(username);
+  const user = await users.findByUsername(username);
   if (!user) { app.log.warn({ event: 'pwd_login_invalid_user', username }, 'invalid username'); return reply.code(401).send({ error: 'invalid_credentials' }); }
     const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) { app.log.warn({ event: 'pwd_login_bad_password', username }, 'bad password'); return reply.code(401).send({ error: 'invalid_credentials' }); }
