@@ -13,6 +13,7 @@ local.properties
 google-services.json
 server/node_modules/
 server/dist/
+server_commands.sh
 
 # Ignore build folders in all modules
 **/build/
