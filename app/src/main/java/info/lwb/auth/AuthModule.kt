@@ -44,6 +44,9 @@ abstract class AuthBindingsModule {
     @Binds
     @Singleton
     abstract fun bindRevocationStore(impl: PrefsRevocationStore): RevocationStore
+    @Binds
+    @Singleton
+    abstract fun bindRecaptchaProvider(impl: GoogleRecaptchaTokenProvider): RecaptchaTokenProvider
 }
 
 @Module
@@ -164,6 +167,7 @@ class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
     private val call: CredentialCall
 ) : OneTapCredentialProvider {
     override suspend fun getIdToken(activity: android.app.Activity): String? = try {
+    if (info.lwb.BuildConfig.DEBUG) android.util.Log.d("AuthFlow", "CredentialManager:getIdToken:start")
         val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
             .setServerClientId(info.lwb.BuildConfig.GOOGLE_SERVER_CLIENT_ID)
             .setFilterByAuthorizedAccounts(false)
@@ -180,7 +184,11 @@ class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
             credential.type == com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
         ) {
             val googleCred = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data)
+            if (info.lwb.BuildConfig.DEBUG) android.util.Log.d("AuthFlow", "CredentialManager:success hasToken=${googleCred.idToken.isNotEmpty()}")
             googleCred.idToken
         } else null
-    } catch (_: Exception) { null }
+    } catch (e: Exception) {
+        if (info.lwb.BuildConfig.DEBUG) runCatching { android.util.Log.w("AuthFlow", "CredentialManager:failure", e) }
+        null
+    }
 }
