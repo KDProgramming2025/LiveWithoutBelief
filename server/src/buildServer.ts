@@ -2,6 +2,9 @@ import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { z } from 'zod';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 export interface ArticleManifestItem {
   id: string; title: string; slug: string; version: number; updatedAt: string; wordCount: number;
@@ -21,6 +24,21 @@ export class InMemoryRevocationStore implements RevocationStore {
 export interface BuildServerOptions {
   googleClientId: string;
   revocations?: RevocationStore;
+  jwtSecret?: string; // for password tokens
+}
+
+// In-memory user store (replace with DB later)
+interface UserRecord { id: string; username: string; passwordHash: string; createdAt: string; }
+class InMemoryUserStore {
+  private byUsername = new Map<string, UserRecord>();
+  create(username: string, passwordHash: string): UserRecord | null {
+    const key = username.toLowerCase();
+    if (this.byUsername.has(key)) return null;
+    const rec: UserRecord = { id: crypto.randomBytes(12).toString('hex'), username: key, passwordHash, createdAt: new Date().toISOString() };
+    this.byUsername.set(key, rec);
+    return rec;
+  }
+  findByUsername(username: string): UserRecord | undefined { return this.byUsername.get(username.toLowerCase()); }
 }
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
@@ -29,6 +47,34 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 
   const oauthClient = new OAuth2Client(opts.googleClientId);
   const revocations = opts.revocations ?? new InMemoryRevocationStore();
+  const jwtSecret = opts.jwtSecret || process.env.PWD_JWT_SECRET || 'DEV_ONLY_CHANGE_ME';
+  const users = new InMemoryUserStore();
+  const recaptchaSecret = process.env.RECAPTCHA_SECRET;
+  const recaptchaMinScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.1);
+
+  async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
+    if (!recaptchaSecret) return true; // allow in dev if not configured
+    if (!token) { app.log.warn({ event: 'recaptcha_missing' }, 'recaptcha token missing'); return false; }
+    try {
+      const params = new URLSearchParams();
+      params.append('secret', recaptchaSecret);
+      params.append('response', token);
+      const res = await fetch('https://www.google.com/recaptcha/api/siteverify', { method: 'POST', body: params as any });
+      const data: any = await res.json();
+      if (!data.success) { app.log.warn({ event: 'recaptcha_failed', success: data.success, errorCodes: data['error-codes'] }, 'recaptcha verification not successful'); return false; }
+      if (typeof data.score === 'number') {
+        const pass = data.score >= recaptchaMinScore;
+        if (!pass) app.log.warn({ event: 'recaptcha_low_score', score: data.score, threshold: recaptchaMinScore }, 'recaptcha score below threshold');
+        else app.log.info({ event: 'recaptcha_pass', score: data.score, threshold: recaptchaMinScore }, 'recaptcha passed');
+        return pass;
+      }
+      app.log.info({ event: 'recaptcha_pass_no_score' }, 'recaptcha passed (no score field)');
+      return true;
+    } catch (e) {
+      app.log.warn({ err: e }, 'recaptcha_verification_failed');
+      return false;
+    }
+  }
 
   app.get('/health', async () => ({ status: 'ok' }));
 
@@ -66,12 +112,59 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   });
 
   app.post('/v1/auth/revoke', async (req, reply) => {
-    const bodySchema = z.object({ idToken: z.string().min(10) });
+  // Accept either { idToken } for Google or { token } for password JWT
+  const body: any = (req as any).body || {};
+  let tokenValue: string | undefined = undefined;
+  if (typeof body.idToken === 'string') tokenValue = body.idToken;
+  else if (typeof body.token === 'string') tokenValue = body.token;
+  if (!tokenValue || tokenValue.length < 10) return reply.code(400).send({ error: 'invalid_body' });
+  await revocations.revoke(tokenValue);
+  return { revoked: true };
+  });
+
+  // ---- Username / Password Auth (username only, not email) ----
+  app.post('/v1/auth/register', async (req, reply) => {
+    const bodySchema = z.object({ username: z.string().min(3).max(40).regex(/^[A-Za-z0-9_\-]+$/), password: z.string().min(8).max(128), recaptchaToken: z.string().optional() });
     const parse = bodySchema.safeParse((req as any).body);
     if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
-    const { idToken } = parse.data;
-    await revocations.revoke(idToken);
-    return { revoked: true };
+    const { username, password, recaptchaToken } = parse.data;
+  app.log.info({ event: 'pwd_register_attempt', username }, 'password register attempt');
+  if (!(await verifyRecaptcha(recaptchaToken))) return reply.code(400).send({ error: 'recaptcha_failed' });
+    const hash = await bcrypt.hash(password, 12);
+    const created = users.create(username, hash);
+    if (!created) return reply.code(409).send({ error: 'username_exists' });
+    const token = jwt.sign({ sub: created.id, username: created.username, typ: 'pwd' }, jwtSecret, { expiresIn: '1h' });
+  app.log.info({ event: 'pwd_register_success', username: created.username }, 'password register success');
+    return { token, user: { id: created.id, username: created.username } };
+  });
+
+  app.post('/v1/auth/login', async (req, reply) => {
+    const bodySchema = z.object({ username: z.string().min(3).max(40), password: z.string().min(1), recaptchaToken: z.string().optional() });
+    const parse = bodySchema.safeParse((req as any).body);
+    if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
+    const { username, password, recaptchaToken } = parse.data;
+  app.log.info({ event: 'pwd_login_attempt', username }, 'password login attempt');
+  if (!(await verifyRecaptcha(recaptchaToken))) return reply.code(400).send({ error: 'recaptcha_failed' });
+    const user = users.findByUsername(username);
+  if (!user) { app.log.warn({ event: 'pwd_login_invalid_user', username }, 'invalid username'); return reply.code(401).send({ error: 'invalid_credentials' }); }
+    const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) { app.log.warn({ event: 'pwd_login_bad_password', username }, 'bad password'); return reply.code(401).send({ error: 'invalid_credentials' }); }
+    const token = jwt.sign({ sub: user.id, username: user.username, typ: 'pwd' }, jwtSecret, { expiresIn: '1h' });
+  app.log.info({ event: 'pwd_login_success', username }, 'password login success');
+    return { token, user: { id: user.id, username: user.username } };
+  });
+
+  app.post('/v1/auth/pwd/validate', async (req, reply) => {
+    const bodySchema = z.object({ token: z.string().min(10) });
+    const parse = bodySchema.safeParse((req as any).body);
+    if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
+    try {
+  const token = parse.data.token;
+  if (await revocations.isRevoked(token)) return reply.code(401).send({ error: 'revoked' });
+  const decoded: any = jwt.verify(token, jwtSecret);
+      if (decoded.typ !== 'pwd') return reply.code(401).send({ error: 'wrong_type' });
+  return { sub: decoded.sub, username: decoded.username, exp: decoded.exp };
+    } catch (e) { return reply.code(401).send({ error: 'invalid_token' }); }
   });
 
   return app;
