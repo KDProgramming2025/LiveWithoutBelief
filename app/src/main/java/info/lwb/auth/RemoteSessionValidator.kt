@@ -92,11 +92,15 @@ class RemoteSessionValidator @Inject constructor(
         if (revocationStore.isRevoked(idToken)) {
             return@withContext ValidationResult(false, ValidationError.Unauthorized)
         }
+        // Heuristic: password auth tokens are JWTs we issue (three segments, contains 'typ":"pwd')
+        fun isPasswordJwt(token: String): Boolean = token.count { it == '.' } == 2 && token.length < 300 // Google ID tokens are usually longer
+        val passwordMode = isPasswordJwt(idToken)
         while (true) {
             observer.onAttempt(attempt + 1, maxAttempts)
-            val body = '{' + "\"idToken\":\"" + idToken + "\"}"
+            val path = if (passwordMode) "/v1/auth/pwd/validate" else "/v1/auth/validate"
+            val body = if (passwordMode) '{' + "\"token\":\"" + idToken + "\"}" else '{' + "\"idToken\":\"" + idToken + "\"}"
             val req = Request.Builder()
-                .url(endpoint("/v1/auth/validate"))
+                .url(endpoint(path))
                 .post(body.toRequestBody("application/json".toMediaType()))
                 .build()
             val result = runCatching { client.newCall(req).execute() }.fold(onSuccess = { resp ->
@@ -140,7 +144,9 @@ class RemoteSessionValidator @Inject constructor(
 
     override suspend fun revoke(idToken: String) = withContext(Dispatchers.IO) {
         revocationStore.markRevoked(idToken)
-        val body = '{' + "\"idToken\":\"" + idToken + "\"}" // manual JSON
+    fun isPasswordJwt(token: String): Boolean = token.count { it == '.' } == 2 && token.length < 300
+    val passwordMode = isPasswordJwt(idToken)
+    val body = if (passwordMode) '{' + "\"token\":\"" + idToken + "\"}" else '{' + "\"idToken\":\"" + idToken + "\"}" // manual JSON
         val req = Request.Builder()
             .url(endpoint("/v1/auth/revoke"))
             .post(body.toRequestBody("application/json".toMediaType()))

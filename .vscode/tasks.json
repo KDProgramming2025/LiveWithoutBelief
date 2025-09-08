@@ -1,0 +1,40 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "gradle-test-app",
+			"type": "shell",
+			"command": "./gradlew.bat :app:testDebugUnitTest",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "gradle-test-app",
+			"type": "shell",
+			"command": "./gradlew.bat :app:testDebugUnitTest",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "gradle-install-app",
+			"type": "shell",
+			"command": "./gradlew.bat :app:installDebug",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "gradle-install-app",
+			"type": "shell",
+			"command": "./gradlew.bat :app:installDebug",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "gradle-install-app",
+			"type": "shell",
+			"command": "./gradlew.bat :app:installDebug",
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}

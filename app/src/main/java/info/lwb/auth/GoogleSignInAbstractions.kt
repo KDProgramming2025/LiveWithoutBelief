@@ -26,10 +26,15 @@ class DefaultGoogleSignInClientFacade : GoogleSignInClientFacade {
         GoogleSignIn.getLastSignedInAccount(activity)
 
     override fun buildSignInIntent(activity: Activity): Intent {
+        // IMPORTANT: requestIdToken must use the WEB (server) client id from Firebase (client_type=3) for FirebaseAuth.signInWithCredential
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(BuildConfig.GOOGLE_SERVER_CLIENT_ID)
             .requestEmail()
             .build()
+        if (BuildConfig.DEBUG) android.util.Log.d(
+            "AuthFlow",
+            "GoogleSignInOptions using serverId=${BuildConfig.GOOGLE_SERVER_CLIENT_ID.take(18)}… androidId=${BuildConfig.GOOGLE_ANDROID_CLIENT_ID.take(18)}…"
+        )
         return GoogleSignIn.getClient(activity, gso).signInIntent
     }
 }

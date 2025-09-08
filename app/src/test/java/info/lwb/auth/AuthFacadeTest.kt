@@ -39,9 +39,9 @@ class AuthFacadeTest {
         coEvery { signInExecutor.signIn("idTokenABC") } returns firebaseUser
         coEvery { tokenRefresher.refresh(firebaseUser, false) } returns "freshTokenXYZ"
         coEvery { sessionValidator.validate(any()) } returns true
-        val facade = FirebaseCredentialAuthFacade(firebaseAuth, context, secureStorage, sessionValidator, signInClient, intentExecutor, tokenRefresher, signInExecutor, oneTap)
-        val result = facade.oneTapSignIn(mockk(relaxed = true))
-        assertTrue(result.isSuccess)
+    val facade = FirebaseCredentialAuthFacade(firebaseAuth, context, secureStorage, sessionValidator, signInClient, intentExecutor, tokenRefresher, signInExecutor, oneTap)
+    val result = facade.oneTapSignIn(mockk(relaxed = true))
+    assertTrue(result.isSuccess)
         coVerify(exactly = 1) { signInExecutor.signIn("idTokenABC") }
         coVerify(exactly = 1) { tokenRefresher.refresh(firebaseUser, false) }
         verify(exactly = 1) { secureStorage.putProfile("Alice", "alice@example.com", null) }

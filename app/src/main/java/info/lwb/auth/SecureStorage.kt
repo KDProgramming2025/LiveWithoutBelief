@@ -44,4 +44,5 @@ class EncryptedPrefsSecureStorage(context: Context) : SecureStorage {
     }
     override fun getProfile(): Triple<String?, String?, String?> =
         Triple(prefs.getString("name", null), prefs.getString("email", null), prefs.getString("avatar", null))
+
 }

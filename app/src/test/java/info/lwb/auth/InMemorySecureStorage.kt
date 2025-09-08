@@ -15,4 +15,5 @@ class InMemorySecureStorage : SecureStorage {
     override fun clear() { token = null; exp = null; name = null; email = null; avatar = null }
     override fun putProfile(name: String?, email: String?, avatar: String?) { this.name = name; this.email = email; this.avatar = avatar }
     override fun getProfile(): Triple<String?, String?, String?> = Triple(name, email, avatar)
+    // Email link methods removed in production SecureStorage; test impl no-ops retained intentionally absent.
 }
