@@ -167,7 +167,9 @@ class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
     private val call: CredentialCall
 ) : OneTapCredentialProvider {
     override suspend fun getIdToken(activity: android.app.Activity): String? = try {
-    if (info.lwb.BuildConfig.DEBUG) android.util.Log.d("AuthFlow", "CredentialManager:getIdToken:start")
+        if (info.lwb.BuildConfig.DEBUG) {
+            android.util.Log.d("AuthFlow", "CredentialManager:getIdToken:start")
+        }
         val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
             .setServerClientId(info.lwb.BuildConfig.GOOGLE_SERVER_CLIENT_ID)
             .setFilterByAuthorizedAccounts(false)
@@ -188,7 +190,9 @@ class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
             googleCred.idToken
         } else null
     } catch (e: Exception) {
-        if (info.lwb.BuildConfig.DEBUG) runCatching { android.util.Log.w("AuthFlow", "CredentialManager:failure", e) }
+        if (info.lwb.BuildConfig.DEBUG) {
+            runCatching { android.util.Log.w("AuthFlow", "CredentialManager:failure", e) }
+        }
         null
     }
 }

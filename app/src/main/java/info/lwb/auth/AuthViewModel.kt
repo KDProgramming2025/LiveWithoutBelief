@@ -46,12 +46,12 @@ class AuthViewModel(
         if (_state.value is AuthUiState.Loading) return
         _state.value = AuthUiState.Loading
         viewModelScope.launch(mainDispatcher) {
-    val token = runCatching { recaptchaProvider.getToken(com.google.android.recaptcha.RecaptchaAction.SIGNUP) }.getOrNull()
-        if (token == null) {
-            _state.value = AuthUiState.Error("reCAPTCHA verification failed. Please try again.")
-            return@launch
-        }
-        facade.register(email, password, token).onSuccess { user ->
+            val token = runCatching { recaptchaProvider.getToken(com.google.android.recaptcha.RecaptchaAction.SIGNUP) }.getOrNull()
+            if (token == null) {
+                _state.value = AuthUiState.Error("reCAPTCHA verification failed. Please try again.")
+                return@launch
+            }
+            facade.register(email, password, token).onSuccess { user ->
                 _state.value = AuthUiState.SignedIn(user)
             }.onFailure { e -> _state.value = AuthUiState.Error(e.message ?: "Registration failed") }
         }
@@ -61,8 +61,8 @@ class AuthViewModel(
         if (_state.value is AuthUiState.Loading) return
         _state.value = AuthUiState.Loading
         viewModelScope.launch(mainDispatcher) {
-    // No reCAPTCHA on login per requirements
-    facade.passwordLogin(email, password, null).onSuccess { user ->
+            // No reCAPTCHA on login per requirements
+            facade.passwordLogin(email, password, null).onSuccess { user ->
                 _state.value = AuthUiState.SignedIn(user)
             }.onFailure { e -> _state.value = AuthUiState.Error(e.message ?: "Login failed") }
         }
