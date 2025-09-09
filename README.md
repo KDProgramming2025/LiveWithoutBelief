@@ -30,6 +30,13 @@ Early-stage Android + Node.js project exploring secular guidance and article con
 
 Coverage thresholds (line): overall 70%, core 80%, data 70%, feature 60%.
 
+CI performance notes
+- Gradle build cache and configuration-cache are enabled; Actions use setup-gradle caching.
+- Static analysis (quality) runs on a single JDK in the matrix to reduce duplication.
+
+TDD/Test Strategy
+- See `docs/test-strategy.md` for layers, TDD workflow, fixtures/builders, and CI mapping.
+
 ## Authentication (LWB-25)
 Implemented dual-path authentication:
 

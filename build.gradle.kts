@@ -57,6 +57,8 @@ val forbiddenPairs = listOf(
 val coreForbidden = listOf("feature", "data.repo", "data.network")
 
 tasks.register("dependencyGuard") {
+    // This task scans project sources via Project API at execution time; not CC-compatible.
+    notCompatibleWithConfigurationCache("Uses Project APIs and scans file tree at execution time")
     group = "verification"
     description = "Fails if a feature module imports data implementation packages"
     doLast {
