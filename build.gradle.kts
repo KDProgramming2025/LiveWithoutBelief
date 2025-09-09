@@ -13,6 +13,7 @@ plugins {
     id("io.gitlab.arturbosch.detekt") version "1.23.6"
     id("org.jetbrains.kotlinx.kover") version "0.9.0"
     id("com.diffplug.spotless") version "6.25.0"
+    alias(libs.plugins.play.publisher) apply false
 }
 
 subprojects {

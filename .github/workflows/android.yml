@@ -73,7 +73,7 @@ jobs:
       - name: Unit Tests
         run: ./gradlew --stacktrace --parallel --build-cache testDebugUnitTest
 
-  - name: Static Analysis & Coverage
+      - name: Static Analysis & Coverage
         run: ./gradlew --stacktrace quality
 
       - name: Collect Detekt SARIF

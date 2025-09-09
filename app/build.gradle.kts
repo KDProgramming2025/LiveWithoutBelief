@@ -143,6 +143,25 @@ android {
             )
         }
     }
+    // Optional release signing from environment (CI-friendly). If not provided, release stays unsigned.
+    val ksPath = System.getenv("SIGNING_KEYSTORE_PATH") ?: (project.findProperty("SIGNING_KEYSTORE_PATH") as String?)
+    val ksPass = System.getenv("SIGNING_KEYSTORE_PASSWORD") ?: (project.findProperty("SIGNING_KEYSTORE_PASSWORD") as String?)
+    val keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: (project.findProperty("SIGNING_KEY_ALIAS") as String?)
+    val keyPass = System.getenv("SIGNING_KEY_PASSWORD") ?: (project.findProperty("SIGNING_KEY_PASSWORD") as String?)
+    if (!ksPath.isNullOrBlank() && !ksPass.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPass.isNullOrBlank()) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(ksPath)
+                storePassword = ksPass
+                this.keyAlias = keyAlias
+                keyPassword = keyPass
+            }
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
+        println("[signing] Using provided release signing config")
+    } else {
+        println("[signing] No signing env provided; building unsigned release (OK for artifacts)")
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
