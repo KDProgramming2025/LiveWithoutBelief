@@ -284,358 +284,198 @@
       "goal": "Finalize internationalization, usability, performance optimizations, and Play Store assets for app launch."
     }
   ],
-  "backlogs": [
+    "backlogs": [
     {
-      "E1": {
-        "Sprint1": {
+      "E5": {
+        "Sprint2": {
           "Stories": [
             {
-              "id": "1",
+              "id": "LWB-45",
               "type": "Story",
-              "summary": "Set up Clean Architecture with MVVM and DI",
-              "description": "As a developer, I need a multi-module Kotlin architecture with MVVM and Dependency Injection to ensure modular, scalable development.",
-              "labels": ["architecture", "android", "backend", "mvp", "sprint1"],
+              "summary": "Ingest and process articles with media for backend storage and search",
+              "description": "As a system, I need to ingest ~4 .docx articles (~40 pages each, with ~10 images, ~1 audio, ~3 YouTube embeds) to convert them to HTML/text, extract assets, and enable full-text search for client retrieval.",
+              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
+              "originalEstimateHours": 10,
+              "startDate": "2025-09-10",
+              "dueDate": "2025-09-11",
+              "priority": "Highest",
+              "parent": "E5"
+            },
+            {
+              "id": "LWB-46",
+              "type": "Task",
+              "summary": "Set up Node.js ingestion endpoint",
+              "description": "Configure Node.js (Express.js) endpoint to handle .docx file uploads and initiate processing pipeline.",
+              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
+              "originalEstimateHours": 8,
+              "startDate": "2025-09-10",
+              "dueDate": "2025-09-11",
+              "priority": "Highest",
+              "parent": "E5"
+            },
+            {
+              "id": "LWB-47",
+              "type": "Task",
+              "summary": "Configure full-text search index",
+              "description": "Set up SQLite FTS or MiniSearch for full-text indexing of article content.",
+              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
               "originalEstimateHours": 6,
-              "startDate": "2025-09-01",
-              "dueDate": "2025-09-01",
+              "startDate": "2025-09-12",
+              "dueDate": "2025-09-12",
               "priority": "Highest",
-              "parent": "E1"
+              "parent": "E5"
             },
             {
-              "id": "2",
+              "id": "LWB-48",
               "type": "Task",
-              "summary": "Configure static analysis tools",
-              "description": "Set up detekt and lint for code quality and consistency across modules.",
-              "labels": ["architecture", "android", "mvp", "sprint1"],
+              "summary": "Persist normalized content",
+              "description": "Store sanitized HTML, plain text, and media assets with versioned manifest in backend database.",
+              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
+              "originalEstimateHours": 6,
+              "startDate": "2025-09-15",
+              "dueDate": "2025-09-15",
+              "priority": "Highest",
+              "parent": "E5"
+            },
+            {
+              "id": "LWB-49",
+              "type": "Sub-task",
+              "summary": "Parse .docx files",
+              "description": "Implement .docx parsing to extract headings, lists, quotes, and text content.",
+              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-09-10",
+              "dueDate": "2025-09-10",
+              "priority": "Highest",
+              "parent": "LWB-45"
+            },
+            {
+              "id": "LWB-50",
+              "type": "Sub-task",
+              "summary": "Extract media assets",
+              "description": "Extract and store ~10 images, ~1 audio, and ~3 YouTube embed codes per article with checksums.",
+              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-09-11",
+              "dueDate": "2025-09-11",
+              "priority": "Highest",
+              "parent": "LWB-45"
+            },
+            {
+              "id": "LWB-51",
+              "type": "Sub-task",
+              "summary": "Generate signed versioned manifest",
+              "description": "Create a signed manifest with version and checksums for client delta retrieval.",
+              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-09-12",
+              "dueDate": "2025-09-12",
+              "priority": "Highest",
+              "parent": "LWB-46"
+            },
+            {
+              "id": "LWB-52",
+              "type": "Sub-task",
+              "summary": "Sanitize HTML and text output",
+              "description": "Convert .docx content to sanitized HTML and plain text for safe rendering and search.",
+              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-09-15",
+              "dueDate": "2025-09-15",
+              "priority": "Highest",
+              "parent": "LWB-46"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "E6": {
+        "Sprint2": {
+          "Stories": [
+            {
+              "id": "LWB-53",
+              "type": "Story",
+              "summary": "Implement efficient client sync and offline content access",
+              "description": "As a user, I need efficient delta sync and offline access to ~4 articles to ensure seamless content availability.",
+              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
+              "originalEstimateHours": 6,
+              "startDate": "2025-09-19",
+              "dueDate": "2025-09-19",
+              "priority": "High",
+              "parent": "E6"
+            },
+            {
+              "id": "LWB-54",
+              "type": "Task",
+              "summary": "Configure delta sync mechanism",
+              "description": "Implement manifest-driven delta sync with hash/version diff for efficient content updates.",
+              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
               "originalEstimateHours": 4,
-              "startDate": "2025-09-01",
-              "dueDate": "2025-09-01",
-              "priority": "Highest",
-              "parent": "E1"
+              "startDate": "2025-09-19",
+              "dueDate": "2025-09-19",
+              "priority": "High",
+              "parent": "E6"
             },
             {
-              "id": "3",
+              "id": "LWB-55",
               "type": "Task",
-              "summary": "Set up dependency guard and profiling harness",
-              "description": "Configure dependency guard for module boundaries and baseline performance/memory profiling harness.",
-              "labels": ["architecture", "android", "mvp", "sprint1"],
-              "originalEstimateHours": 3,
-              "startDate": "2025-09-02",
-              "dueDate": "2025-09-02",
-              "priority": "Highest",
-              "parent": "E1"
-            },
-            {
-              "id": "4",
-              "type": "Sub-task",
-              "summary": "Implement domain layer",
-              "description": "Create domain layer with use cases and entities for Clean Architecture.",
-              "labels": ["architecture", "android", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-01",
-              "dueDate": "2025-09-01",
-              "priority": "Highest",
-              "parent": "1"
-            },
-            {
-              "id": "5",
-              "type": "Sub-task",
-              "summary": "Implement data layer",
-              "description": "Set up data layer with repositories and data sources.",
-              "labels": ["architecture", "android", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-01",
-              "dueDate": "2025-09-01",
-              "priority": "Highest",
-              "parent": "1"
-            },
-            {
-              "id": "6",
-              "type": "Sub-task",
-              "summary": "Implement feature layer",
-              "description": "Create feature layer with UI and business logic integration.",
-              "labels": ["architecture", "android", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-02",
-              "dueDate": "2025-09-02",
-              "priority": "Highest",
-              "parent": "1"
-            },
-            {
-              "id": "7",
-              "type": "Sub-task",
-              "summary": "Set up ADR log and coverage gating",
-              "description": "Configure Architecture Decision Record log and code coverage gating for quality assurance.",
-              "labels": ["architecture", "android", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-02",
-              "dueDate": "2025-09-02",
-              "priority": "Highest",
-              "parent": "2"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "E2": {
-        "Sprint1": {
-          "Stories": [
-            {
-              "id": "8",
-              "type": "Story",
-              "summary": "Implement one-tap Google login",
-              "description": "As a user, I need one-tap Google authentication without manual text entry to quickly access features like bookmarks and discussions, with optional login for reading.",
-              "labels": ["auth", "security", "mvp", "sprint1"],
+              "summary": "Set up Room persistence",
+              "description": "Configure Room database for local storage of articles and media assets.",
+              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
               "originalEstimateHours": 4,
-              "startDate": "2025-09-03",
-              "dueDate": "2025-09-03",
-              "priority": "Highest",
-              "parent": "E2"
+              "startDate": "2025-09-22",
+              "dueDate": "2025-09-22",
+              "priority": "High",
+              "parent": "E6"
             },
             {
-              "id": "9",
+              "id": "LWB-56",
               "type": "Task",
-              "summary": "Set up Firebase authentication",
-              "description": "Configure Firebase with Credential Manager for one-tap Google login.",
-              "labels": ["auth", "security", "mvp", "sprint1"],
+              "summary": "Implement caching and eviction strategy",
+              "description": "Set up caching and eviction policies for offline content, respecting connectivity and battery constraints.",
+              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-09-22",
+              "dueDate": "2025-09-22",
+              "priority": "High",
+              "parent": "E6"
+            },
+            {
+              "id": "LWB-57",
+              "type": "Sub-task",
+              "summary": "Add checksum verification",
+              "description": "Implement checksum verification for downloaded assets to ensure integrity.",
+              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
+              "originalEstimateHours": 1,
+              "startDate": "2025-09-19",
+              "dueDate": "2025-09-19",
+              "priority": "High",
+              "parent": "LWB-54"
+            },
+            {
+              "id": "LWB-58",
+              "type": "Sub-task",
+              "summary": "Implement exponential backoff for retries",
+              "description": "Add exponential backoff for resilient parallel downloads during sync.",
+              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
+              "originalEstimateHours": 1,
+              "startDate": "2025-09-19",
+              "dueDate": "2025-09-19",
+              "priority": "High",
+              "parent": "LWB-54"
+            },
+            {
+              "id": "LWB-59",
+              "type": "Sub-task",
+              "summary": "Configure periodic background sync",
+              "description": "Set up periodic background sync respecting connectivity and battery constraints.",
+              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
               "originalEstimateHours": 2,
-              "startDate": "2025-09-03",
-              "dueDate": "2025-09-03",
-              "priority": "Highest",
-              "parent": "E2"
-            },
-            {
-              "id": "10",
-              "type": "Task",
-              "summary": "Implement backend session validation",
-              "description": "Set up Node.js backend to validate Google authentication tokens.",
-              "labels": ["auth", "security", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-03",
-              "dueDate": "2025-09-03",
-              "priority": "Highest",
-              "parent": "E2"
-            },
-            {
-              "id": "11",
-              "type": "Sub-task",
-              "summary": "Configure token refresh",
-              "description": "Implement token refresh mechanism for sustained authentication.",
-              "labels": ["auth", "security", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-04",
-              "dueDate": "2025-09-04",
-              "priority": "Highest",
-              "parent": "8"
-            },
-            {
-              "id": "12",
-              "type": "Sub-task",
-              "summary": "Set up secure storage",
-              "description": "Configure secure storage for authentication tokens.",
-              "labels": ["auth", "security", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-04",
-              "dueDate": "2025-09-04",
-              "priority": "Highest",
-              "parent": "8"
-            },
-            {
-              "id": "13",
-              "type": "Sub-task",
-              "summary": "Implement sign-out",
-              "description": "Add sign-out functionality for user accounts.",
-              "labels": ["auth", "security", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-04",
-              "dueDate": "2025-09-04",
-              "priority": "Highest",
-              "parent": "8"
-            },
-            {
-              "id": "14",
-              "type": "Sub-task",
-              "summary": "Set up minimal profile bootstrap",
-              "description": "Implement minimal user profile setup without manual text entry.",
-              "labels": ["auth", "security", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-04",
-              "dueDate": "2025-09-04",
-              "priority": "Highest",
-              "parent": "8"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "E3": {
-        "Sprint1": {
-          "Stories": [
-            {
-              "id": "15",
-              "type": "Story",
-              "summary": "Establish CI/CD pipelines with Jira integration",
-              "description": "As a developer, I need automated CI/CD pipelines with GitHub, GitLab, and Jira integration to ensure efficient builds, tests, and deployments.",
-              "labels": ["ci-cd", "devops", "release", "mvp", "sprint1"],
-              "originalEstimateHours": 3,
-              "startDate": "2025-09-05",
-              "dueDate": "2025-09-05",
+              "startDate": "2025-09-22",
+              "dueDate": "2025-09-22",
               "priority": "High",
-              "parent": "E3"
-            },
-            {
-              "id": "16",
-              "type": "Task",
-              "summary": "Configure GitHub and GitLab pipelines",
-              "description": "Set up mirrored CI/CD pipelines in GitHub and GitLab with Jira webhooks and issue linking.",
-              "labels": ["ci-cd", "devops", "release", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-05",
-              "dueDate": "2025-09-05",
-              "priority": "High",
-              "parent": "E3"
-            },
-            {
-              "id": "17",
-              "type": "Task",
-              "summary": "Set up Play Console deployment",
-              "description": "Configure internal track deployment to Google Play Console with artifact signing.",
-              "labels": ["ci-cd", "devops", "release", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-05",
-              "dueDate": "2025-09-05",
-              "priority": "High",
-              "parent": "E3"
-            },
-            {
-              "id": "18",
-              "type": "Sub-task",
-              "summary": "Configure build matrix",
-              "description": "Set up build matrix for multiple configurations in CI/CD pipelines.",
-              "labels": ["ci-cd", "devops", "release", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-08",
-              "dueDate": "2025-09-08",
-              "priority": "High",
-              "parent": "16"
-            },
-            {
-              "id": "19",
-              "type": "Sub-task",
-              "summary": "Integrate detekt and lint",
-              "description": "Add detekt and lint checks to CI/CD pipelines.",
-              "labels": ["ci-cd", "devops", "release", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-08",
-              "dueDate": "2025-09-08",
-              "priority": "High",
-              "parent": "16"
-            },
-            {
-              "id": "20",
-              "type": "Sub-task",
-              "summary": "Set up tests and coverage thresholds",
-              "description": "Configure unit and instrumentation tests with coverage thresholds.",
-              "labels": ["ci-cd", "devops", "release", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-08",
-              "dueDate": "2025-09-08",
-              "priority": "High",
-              "parent": "16"
-            },
-            {
-              "id": "21",
-              "type": "Sub-task",
-              "summary": "Configure security scans and versioning",
-              "description": "Add dependency/security scans and automate versioning/changelog.",
-              "labels": ["ci-cd", "devops", "release", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-08",
-              "dueDate": "2025-09-08",
-              "priority": "High",
-              "parent": "16"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "E4": {
-        "Sprint1": {
-          "Stories": [
-            {
-              "id": "22",
-              "type": "Story",
-              "summary": "Define TDD strategy",
-              "description": "As a developer, I need a layered test strategy with TDD to ensure code quality and reliability.",
-              "labels": ["qa", "testing", "quality", "mvp", "sprint1"],
-              "originalEstimateHours": 3,
-              "startDate": "2025-09-08",
-              "dueDate": "2025-09-08",
-              "priority": "High",
-              "parent": "E4"
-            },
-            {
-              "id": "23",
-              "type": "Task",
-              "summary": "Implement test layers",
-              "description": "Set up unit, integration, DAO, and UI Compose test layers.",
-              "labels": ["qa", "testing", "quality", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-08",
-              "dueDate": "2025-09-08",
-              "priority": "High",
-              "parent": "E4"
-            },
-            {
-              "id": "24",
-              "type": "Task",
-              "summary": "Set up failure triage workflow",
-              "description": "Configure workflow for triaging test failures with hermetic environment utilities.",
-              "labels": ["qa", "testing", "quality", "mvp", "sprint1"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-09",
-              "dueDate": "2025-09-09",
-              "priority": "High",
-              "parent": "E4"
-            },
-            {
-              "id": "25",
-              "type": "Sub-task",
-              "summary": "Create test fixtures",
-              "description": "Develop test fixtures and data builders for consistent testing.",
-              "labels": ["qa", "testing", "quality", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-09",
-              "dueDate": "2025-09-09",
-              "priority": "High",
-              "parent": "23"
-            },
-            {
-              "id": "26",
-              "type": "Sub-task",
-              "summary": "Configure snapshot and visual tests",
-              "description": "Set up snapshot and visual tests for UI Compose components.",
-              "labels": ["qa", "testing", "quality", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-09",
-              "dueDate": "2025-09-09",
-              "priority": "High",
-              "parent": "23"
-            },
-            {
-              "id": "27",
-              "type": "Sub-task",
-              "summary": "Set up performance smoke tests",
-              "description": "Implement performance smoke tests for critical paths.",
-              "labels": ["qa", "testing", "quality", "mvp", "sprint1"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-09",
-              "dueDate": "2025-09-09",
-              "priority": "High",
-              "parent": "23"
+              "parent": "LWB-55"
             }
           ]
         }
