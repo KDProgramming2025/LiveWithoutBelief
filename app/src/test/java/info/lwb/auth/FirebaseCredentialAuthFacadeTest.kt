@@ -15,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.Ignore
+import okhttp3.OkHttpClient
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FirebaseCredentialAuthFacadeTest {
@@ -27,12 +28,14 @@ class FirebaseCredentialAuthFacadeTest {
     private val tokenRefresher: TokenRefresher = mockk(relaxed = true)
     private val signInExecutor: SignInExecutor = mockk(relaxed = true)
     private val oneTap: OneTapCredentialProvider = mockk(relaxed = true)
+    private val http: OkHttpClient = mockk(relaxed = true)
+    private val authBaseUrl: String = "https://example.invalid"
 
     private lateinit var facade: FirebaseCredentialAuthFacade
 
     @Before
     fun setUp() {
-    facade = FirebaseCredentialAuthFacade(firebaseAuth, context, storage, validator, signInClient, executor, tokenRefresher, signInExecutor, oneTap)
+    facade = FirebaseCredentialAuthFacade(firebaseAuth, context, storage, validator, signInClient, executor, tokenRefresher, signInExecutor, oneTap, http, authBaseUrl)
     }
 
     @Test

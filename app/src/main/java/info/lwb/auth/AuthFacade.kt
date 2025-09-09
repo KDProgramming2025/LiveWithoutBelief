@@ -10,11 +10,17 @@ import kotlin.coroutines.resume
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import info.lwb.BuildConfig
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import java.security.MessageDigest
+import android.util.Base64
 
 data class AuthUser(
     val uid: String,
@@ -149,20 +155,26 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     token
     }
 
-    @Serializable private data class PasswordAuthRequest(val username: String, val password: String, val recaptchaToken: String? = null)
+    @Serializable private data class PasswordAuthRequest(val username: String, val password: String, val altcha: String? = null)
 
     private suspend fun passwordAuthRequest(path: String, username: String, password: String, recaptchaToken: String?): Result<Pair<String, AuthUser>> = runCatching {
         val base = authBaseUrl.trimEnd('/')
-        val payload = PasswordAuthRequest(username = username, password = password, recaptchaToken = recaptchaToken)
+        val altchaTokenOrNull = if (path.endsWith("/register") && (recaptchaToken == null || recaptchaToken.isBlank())) {
+            // No reCAPTCHA token (blocked region or disabled). Fetch and solve ALTCHA.
+            if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "altcha:fetch+solve starting") }
+            fetchAndSolveAltcha(base)
+        } else recaptchaToken
+        val payload = PasswordAuthRequest(username = username, password = password, altcha = altchaTokenOrNull)
     val json = Json.encodeToString(payload)
-        if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "pwdAuth payloadSize=${json.length} path=$path hasRecaptcha=${recaptchaToken!=null}") }
-        val body = okhttp3.RequestBody.create("application/json".toMediaTypeOrNull(), json)
+        if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "pwdAuth payloadSize=${json.length} path=$path hasAltcha=${payload.altcha!=null}") }
+    val body = json.toRequestBody("application/json".toMediaType())
         val req = okhttp3.Request.Builder()
             .url(base + path)
             .post(body)
             .build()
         val resp = try {
-            http.newCall(req).execute()
+            // Offload blocking I/O to avoid NetworkOnMainThreadException
+            withContext(Dispatchers.IO) { http.newCall(req).execute() }
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) runCatching { android.util.Log.w("AuthFlow", "pwdAuth EXC path=$path msg=${e.message}", e) }
             throw e
@@ -202,6 +214,63 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
             val authUser = AuthUser(parsed.user.id, parsed.user.username, null, null)
             parsed.token to authUser
         }
+    }
+
+    @Serializable private data class AltchaChallenge(
+        val algorithm: String,
+        val challenge: String,
+        val salt: String,
+        val signature: String,
+        val maxnumber: Long? = null,
+    )
+
+    @Serializable private data class AltchaPayload(
+        val algorithm: String,
+        val challenge: String,
+        val number: Long,
+        val salt: String,
+        val signature: String,
+    )
+
+    private suspend fun fetchAndSolveAltcha(baseUrl: String): String = withContext(Dispatchers.IO) {
+        val url = "$baseUrl/v1/altcha/challenge"
+        val req = okhttp3.Request.Builder().url(url).get().build()
+        val resp = http.newCall(req).execute()
+        resp.use { r ->
+            if (!r.isSuccessful) error("ALTCHA challenge fetch failed (${r.code})")
+            val body = r.body?.string() ?: error("Empty ALTCHA challenge body")
+            val json = Json { ignoreUnknownKeys = true }
+            val ch = json.decodeFromString<AltchaChallenge>(body)
+            val max = (ch.maxnumber ?: 100_000L).coerceAtMost(1_000_000L)
+            val number = withContext(Dispatchers.Default) { solveAltcha(ch.algorithm, ch.challenge, ch.salt, max) }
+            if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "altcha:solved number=$number max=$max") }
+            val payload = AltchaPayload(ch.algorithm, ch.challenge, number, ch.salt, ch.signature)
+            val payloadJson = Json.encodeToString(payload)
+            Base64.encodeToString(payloadJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        }
+    }
+
+    private fun solveAltcha(algorithm: String, challengeHex: String, salt: String, max: Long): Long {
+        val algo = when (algorithm.uppercase()) {
+            "SHA-1" -> "SHA-1"
+            "SHA-512" -> "SHA-512"
+            else -> "SHA-256"
+        }
+        val md = MessageDigest.getInstance(algo)
+        for (n in 0L..max) {
+            md.reset()
+            md.update((salt + n.toString()).toByteArray(Charsets.UTF_8))
+            val h = md.digest().toHexLower()
+            if (h == challengeHex) return n
+        }
+        error("ALTCHA solution not found up to max=$max")
+    }
+
+    private fun ByteArray.toHexLower(): String = joinToString(separator = "") { b ->
+        val i = b.toInt() and 0xFF
+        val hi = "0123456789abcdef"[i ushr 4]
+        val lo = "0123456789abcdef"[i and 0x0F]
+        "$hi$lo"
     }
 
     override suspend fun register(username: String, password: String, recaptchaToken: String?): Result<AuthUser> =

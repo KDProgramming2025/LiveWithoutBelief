@@ -35,6 +35,117 @@
 			"command": "./gradlew.bat :app:installDebug",
 			"isBackground": false,
 			"group": "build"
+		},
+		{
+			"label": "gradle-install-app",
+			"type": "shell",
+			"command": "./gradlew.bat :app:installDebug",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "assemble and install debug",
+			"type": "shell",
+			"command": "gradlew.bat",
+			"args": [
+				":app:installDebug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "install debug (after network fix)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:installDebug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "gradle-install-app (on demand)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:installDebug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "assemble and install debug (post-altcha)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:installDebug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "install debug (altcha client)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:installDebug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "gradle-test-app (on demand)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:testDebugUnitTest"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "gradle-test-app (after fixes)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:testDebugUnitTest"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "gradle test app (confirm green)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:testDebugUnitTest"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
 		}
 	]
 }

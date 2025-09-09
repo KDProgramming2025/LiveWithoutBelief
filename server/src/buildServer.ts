@@ -6,6 +6,7 @@ import crypto from 'crypto'; // still used for revocation store IDs, etc.
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { buildUserStore } from './userStore.js';
+import { createChallenge, verifySolution, extractParams } from 'altcha-lib';
 
 export interface ArticleManifestItem {
   id: string; title: string; slug: string; version: number; updatedAt: string; wordCount: number;
@@ -60,38 +61,23 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const jwtSecret = opts.jwtSecret || process.env.PWD_JWT_SECRET || 'DEV_ONLY_CHANGE_ME';
   const users = buildUserStore();
   app.log.info({ event: 'user_store_selected', impl: users.constructor.name }, 'User store initialized');
-  const recaptchaSecret = process.env.RECAPTCHA_SECRET;
-  const recaptchaMinScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.1);
-
-  async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
-    if (process.env.RECAPTCHA_DEV_ALLOW === '1') {
-      app.log.warn({ event: 'recaptcha_dev_bypass' }, 'reCAPTCHA bypassed in DEV mode');
-      return true;
-    }
-    if (!recaptchaSecret) return true; // allow in dev if not configured
-    if (!token) { app.log.warn({ event: 'recaptcha_missing' }, 'recaptcha token missing'); return false; }
-    try {
-      const params = new URLSearchParams();
-      params.append('secret', recaptchaSecret);
-      params.append('response', token);
-      const res = await fetch('https://www.google.com/recaptcha/api/siteverify', { method: 'POST', body: params as any });
-      const data: any = await res.json();
-      if (!data.success) { app.log.warn({ event: 'recaptcha_failed', success: data.success, errorCodes: data['error-codes'] }, 'recaptcha verification not successful'); return false; }
-      if (typeof data.score === 'number') {
-        const pass = data.score >= recaptchaMinScore;
-        if (!pass) app.log.warn({ event: 'recaptcha_low_score', score: data.score, threshold: recaptchaMinScore }, 'recaptcha score below threshold');
-        else app.log.info({ event: 'recaptcha_pass', score: data.score, threshold: recaptchaMinScore }, 'recaptcha passed');
-        return pass;
-      }
-      app.log.info({ event: 'recaptcha_pass_no_score' }, 'recaptcha passed (no score field)');
-      return true;
-    } catch (e) {
-      app.log.warn({ err: e }, 'recaptcha_verification_failed');
-      return false;
-    }
-  }
+  // ALTCHA configuration
+  const ALTCHA_HMAC_KEY = process.env.ALTCHA_HMAC_KEY || process.env.PWD_JWT_SECRET || 'ALTCHA_DEV_ONLY_CHANGE_ME';
+  const ALTCHA_MAX_NUMBER = Number(process.env.ALTCHA_MAX_NUMBER || 100000);
+  const ALTCHA_EXPIRE_SECONDS = Number(process.env.ALTCHA_EXPIRE_SECONDS || 120); // 2 minutes default
 
   app.get('/health', async () => ({ status: 'ok' }));
+
+  // ALTCHA challenge endpoint for clients (Android WebView or in-app fetch)
+  app.get('/v1/altcha/challenge', async (req, reply) => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expires = nowSec + ALTCHA_EXPIRE_SECONDS;
+    // Encode expires in the salt per ALTCHA guidance
+    const saltParam = `expires=${expires}`;
+    const challenge = await createChallenge({ hmacKey: ALTCHA_HMAC_KEY, maxNumber: ALTCHA_MAX_NUMBER, params: { expires: String(expires) } });
+    // Return challenge to client
+    return reply.code(200).send(challenge);
+  });
 
   app.get('/v1/articles/manifest', async () => {
     const now = new Date().toISOString();
@@ -139,12 +125,22 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 
   // ---- Username / Password Auth (username only, not email) ----
   app.post('/v1/auth/register', async (req, reply) => {
-    const bodySchema = z.object({ username: z.string().min(3).max(40).regex(/^[A-Za-z0-9_\-]+$/), password: z.string().min(8).max(128), recaptchaToken: z.string().optional() });
+    const bodySchema = z.object({
+      username: z.string().min(3).max(40).regex(/^[A-Za-z0-9_\-]+$/),
+      password: z.string().min(8).max(128),
+      // ALTCHA payload submitted by client; Base64 JSON string
+      altcha: z.string().min(20),
+    });
     const parse = bodySchema.safeParse((req as any).body);
     if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
-    const { username, password, recaptchaToken } = parse.data;
+    const { username, password, altcha } = parse.data;
   app.log.info({ event: 'pwd_register_attempt', username }, 'password register attempt');
-  if (!(await verifyRecaptcha(recaptchaToken))) return reply.code(400).send({ error: 'recaptcha_failed' });
+    // Verify ALTCHA payload
+    const verified = await verifySolution(altcha, ALTCHA_HMAC_KEY, true);
+    if (!verified) {
+      app.log.warn({ event: 'altcha_failed', username }, 'ALTCHA verification failed');
+      return reply.code(400).send({ error: 'altcha_failed' });
+    }
     const hash = await bcrypt.hash(password, 12);
   const created = await users.create(username, hash);
     if (!created) return reply.code(409).send({ error: 'username_exists' });
