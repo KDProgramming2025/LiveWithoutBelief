@@ -51,6 +51,7 @@ Next steps:
 09-09 LWB-40 test layers:
 - :core:test-fixtures (MainDispatcherRule, JsonResource, builders) in place and used.
 - :ui:design-system with Paparazzi snapshot tests (light/dark) — enabled locally and on CI.
+- feature:reader has a minimal header snapshot; removed an ignored screen snapshot test to keep zero disabled tests.
 - Macrobenchmark StartupBenchmark added (device-run only; compiles on CI).
 - Foojay toolchain resolver enabled; CI uses PR + manual triggers only.
 - Opened PR #9 from feature/LWB-40 → main: https://github.com/KDProgramming2025/LiveWithoutBelief/pull/9

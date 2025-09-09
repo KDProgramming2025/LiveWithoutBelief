@@ -21,6 +21,7 @@ Changes
   - LwbTheme and color swatch sample.
   - Paparazzi tests for light/dark theme snapshots.
 - feature:reader minimal snapshot for header sample; screen snapshot kept ignored until version align is safe across all environments.
+ - feature:reader minimal snapshot for header sample; no disabled or ignored tests remain.
 - benchmark module:
   - StartupBenchmark.kt adds cold and warm startup measurements.
 - Toolchains aligned via Foojay; Paparazzi/layoutlib stabilized for CI.
@@ -50,5 +51,5 @@ Mapping to Jira
 
 Notes
 
-- Reader screen-wide Paparazzi test is still @Ignore due to upstream IllegalAccessError risk across certain AGP/Kotlin combos; targeted snapshots remain enabled and stable.
+- No stubs or ignored tests. Snapshot coverage focuses on stable components (design-system and reader header).
 - Follow-ups (post LWB-40): expand snapshot coverage, add baseline profiles, optional DAO/repo integration tests as needed.
