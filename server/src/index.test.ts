@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { buildServer, InMemoryRevocationStore } from './buildServer.js';
+import type { FastifyInstance } from 'fastify';
 
-let app: any;
+let app: FastifyInstance;
 // password flow tests (no email link now)
 const googleClientId = 'test-client';
 
@@ -10,14 +11,16 @@ const googleClientId = 'test-client';
 import * as googleAuth from 'google-auth-library';
 
 class FakeTicket {
-  constructor(private payload: any) {}
-  getPayload() { return this.payload; }
+  constructor(private payload: Record<string, unknown>) {}
+  // Casting here is acceptable for a test double
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getPayload() { return this.payload as any; }
 }
 
 beforeAll(async () => {
   // Patch verifyIdToken to return canned payload for specific tokens
-  // @ts-ignore
-  googleAuth.OAuth2Client.prototype.verifyIdToken = async function ({ idToken, audience }: any) {
+  // @ts-expect-error override for tests
+  googleAuth.OAuth2Client.prototype.verifyIdToken = async function ({ idToken, audience }: { idToken: string; audience: string }) {
     if (audience !== googleClientId) throw new Error('bad_audience');
     if (idToken === 'good-token') {
       return new FakeTicket({ sub: 'uid123', email: 'u@example.com', name: 'U Test', picture: 'http://x/y.png', iss: 'https://accounts.google.com', exp: Math.floor(Date.now()/1000)+3600 });
@@ -25,17 +28,8 @@ beforeAll(async () => {
     throw new Error('invalid token');
   };
   process.env.NODE_ENV = 'test';
-  // Set reCAPTCHA secret to force verification path in tests we control with fetch mock
-  process.env.RECAPTCHA_SECRET = 'test-recaptcha-secret';
-  // Mock global fetch for reCAPTCHA calls; we'll override per test when needed
-  // @ts-ignore
-  global.fetch = async (url: string, init: any) => {
-    // default success high score
-    return {
-      async json() { return { success: true, score: 0.9 }; }
-    } as any;
-  };
-  app = buildServer({ googleClientId, revocations: new InMemoryRevocationStore(), jwtSecret: 'test-secret' });
+  // Enable ALTCHA bypass for tests
+  app = buildServer({ googleClientId, revocations: new InMemoryRevocationStore(), jwtSecret: 'test-secret', altchaBypass: true });
   await app.ready();
 });
 
@@ -81,11 +75,11 @@ describe('password auth', () => {
   test('register then login and validate token', async () => {
   const username = 'userexample';
   const password = 'StrongPass123!';
-  const regRes = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, recaptchaToken: 'ok' } });
+  const regRes = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, altcha: 'x'.repeat(24) } });
     expect(regRes.statusCode).toBe(200);
     const regBody = regRes.json();
     expect(regBody.token).toBeTruthy();
-  const loginRes = await app.inject({ method: 'POST', url: '/v1/auth/login', payload: { username, password, recaptchaToken: 'ok' } });
+  const loginRes = await app.inject({ method: 'POST', url: '/v1/auth/login', payload: { username, password } });
     expect(loginRes.statusCode).toBe(200);
     const loginBody = loginRes.json();
   expect(loginBody.user.username).toBe(username);
@@ -96,26 +90,10 @@ describe('password auth', () => {
   test('duplicate register blocked', async () => {
   const username = 'dupuser';
   const password = 'AnotherStrong1!';
-  const first = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, recaptchaToken: 'ok' } });
+  const first = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, altcha: 'x'.repeat(24) } });
     expect(first.statusCode).toBe(200);
-  const second = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, recaptchaToken: 'ok' } });
+  const second = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, altcha: 'x'.repeat(24) } });
     expect(second.statusCode).toBe(409);
   });
-
-  test('recaptcha failure rejects register', async () => {
-    // Override fetch to simulate failure
-    // @ts-ignore
-    global.fetch = async () => ({ async json() { return { success: false, 'error-codes': ['invalid-input-response'] }; } }) as any;
-  const r = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username: 'r1user', password: 'StrongPass123!', recaptchaToken: 'x' } });
-    expect(r.statusCode).toBe(400);
-    expect(r.json()).toEqual({ error: 'recaptcha_failed' });
-  });
-
-  test('recaptcha low score rejected', async () => {
-    // @ts-ignore
-    global.fetch = async () => ({ async json() { return { success: true, score: 0.05 }; } }) as any;
-  const r = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username: 'r2user', password: 'StrongPass123!', recaptchaToken: 'y' } });
-    expect(r.statusCode).toBe(400);
-    expect(r.json()).toEqual({ error: 'recaptcha_failed' });
-  });
+  // ALTCHA failure scenarios are not tested here because bypass is enabled for deterministic flows.
 });
