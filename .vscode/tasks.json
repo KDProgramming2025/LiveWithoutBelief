@@ -146,6 +146,45 @@
 				"$gradle-worker"
 			],
 			"group": "build"
+		},
+		{
+			"label": "gradle lint app (to reproduce CI lint error)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:lintDebug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "gradle lint app (verify fix)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:lintDebug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
+		},
+		{
+			"label": "gradle lint app (verify plugin fix)",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:lintDebug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle-worker"
+			],
+			"group": "build"
 		}
 	]
 }

@@ -165,9 +165,14 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
             fetchAndSolveAltcha(base)
         } else recaptchaToken
         val payload = PasswordAuthRequest(username = username, password = password, altcha = altchaTokenOrNull)
-    val json = Json.encodeToString(payload)
-        if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "pwdAuth payloadSize=${json.length} path=$path hasAltcha=${payload.altcha!=null}") }
-    val body = json.toRequestBody("application/json".toMediaType())
+        val json = Json.encodeToString(payload)
+        if (BuildConfig.DEBUG) runCatching {
+            android.util.Log.d(
+                "AuthFlow",
+                "pwdAuth payloadSize=${json.length} path=$path hasAltcha=${payload.altcha!=null}"
+            )
+        }
+        val body = json.toRequestBody("application/json".toMediaType())
         val req = okhttp3.Request.Builder()
             .url(base + path)
             .post(body)
@@ -182,8 +187,13 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         resp.use { r ->
             if (!r.isSuccessful) {
                 val code = r.code
-        val errBody = runCatching { r.body?.string() }.getOrNull()
-        if (BuildConfig.DEBUG) runCatching { android.util.Log.w("AuthFlow", "pwdAuth FAIL path=$path code=$code body=${errBody?.take(300)}") }
+                val errBody = runCatching { r.body?.string() }.getOrNull()
+                if (BuildConfig.DEBUG) runCatching {
+                    android.util.Log.w(
+                        "AuthFlow",
+                        "pwdAuth FAIL path=$path code=$code body=${errBody?.take(300)}"
+                    )
+                }
                 var serverErr: String? = null
                 if (errBody != null && errBody.length < 4096) {
                     val trimmed = errBody.trim()
@@ -206,8 +216,10 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
                 }
                 error(msg)
             }
-        val str = r.body?.string() ?: error("Empty body")
-        if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "pwdAuth OK path=$path bodySize=${str.length}") }
+            val str = r.body?.string() ?: error("Empty body")
+            if (BuildConfig.DEBUG) runCatching {
+                android.util.Log.d("AuthFlow", "pwdAuth OK path=$path bodySize=${str.length}")
+            }
             @Serializable data class UserPayload(val id: String, val username: String? = null)
             @Serializable data class AuthResponse(val token: String, val user: UserPayload)
             val parsed = Json.decodeFromString<AuthResponse>(str)

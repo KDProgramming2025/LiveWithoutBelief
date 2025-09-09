@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.compose)
+    // Make plugin available on classpath but don't apply automatically
+    alias(libs.plugins.google.services) apply false
     // For JSON parsing in AuthFacade (kotlinx serialization)
     alias(libs.plugins.kotlin.serialization)
 }
