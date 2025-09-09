@@ -185,6 +185,19 @@
 				"$gradle-worker"
 			],
 			"group": "build"
+		},
+		{
+			"label": "gradle-test-reader",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":feature:reader:testDebugUnitTest"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gradle"
+			],
+			"group": "build"
 		}
 	]
 }

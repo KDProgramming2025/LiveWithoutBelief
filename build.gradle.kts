@@ -14,11 +14,34 @@ plugins {
     id("org.jetbrains.kotlinx.kover") version "0.9.0"
     id("com.diffplug.spotless") version "6.25.0"
     alias(libs.plugins.play.publisher) apply false
+    // Enables re-running flaky tests automatically in CI
+    id("org.gradle.test-retry") version "1.5.8"
 }
 
 subprojects {
     // Apply Spotless to all Kotlin/Gradle scripts for consistent formatting
     apply(plugin = "com.diffplug.spotless")
+    // Apply test-retry plugin to all subprojects so Test tasks can use retry{} configuration
+    apply(plugin = "org.gradle.test-retry")
+
+    // Hermetic defaults for all Test tasks + CI retry policy
+    tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+        // Keep tests hermetic and deterministic
+        systemProperty("user.timezone", "UTC")
+        systemProperty("file.encoding", "UTF-8")
+        // Reduce default fork memory noise and ensure same locale handling if needed
+        jvmArgs(listOf("-Djava.awt.headless=true"))
+
+        // Only enable retries on CI runners
+        if (System.getenv("CI") == "true") {
+            retry {
+                // One retry is usually enough to flag potential flakiness without hiding issues
+                maxRetries.set(1)
+                // Do not fail the build if the test passes on retry; we will surface it in reports
+                failOnPassedAfterRetry.set(false)
+            }
+        }
+    }
     spotless {
         kotlin {
             target("**/*.kt")

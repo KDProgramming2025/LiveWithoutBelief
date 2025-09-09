@@ -55,3 +55,8 @@ Next steps:
 - Macrobenchmark StartupBenchmark added (device-run only; compiles on CI).
 - Foojay toolchain resolver enabled; CI uses PR + manual triggers only.
 - Opened PR #9 from feature/LWB-40 → main: https://github.com/KDProgramming2025/LiveWithoutBelief/pull/9
+
+09-10 LWB-41 failure triage workflow:
+- Added org.gradle.test-retry plugin and hermetic Test settings (UTC, UTF-8) across subprojects; retries enabled only on CI.
+- New script scripts/triage_junit.py parses JUnit XML and emits build/reports/triage/{summary.md,failures.txt}.
+- Android CI now runs triage step after tests and uploads triage artifacts per JDK matrix.

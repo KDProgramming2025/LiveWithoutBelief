@@ -24,7 +24,8 @@ jobs:
       ANDROID_BUILD_TOOLS: ${{ matrix.build-tools }}
       ANDROID_HOME: ${{ github.workspace }}/.android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process"
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process"
+  CI: "true"
       GIT_TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout code
@@ -74,6 +75,20 @@ jobs:
 
       - name: Unit Tests
         run: ./gradlew --stacktrace --parallel --build-cache testDebugUnitTest
+
+      - name: Triage Test Failures (Android)
+        if: always()
+        run: |
+          python3 scripts/triage_junit.py app/build/test-results/testDebugUnitTest/*.xml || true
+          ls -R build/reports/triage || true
+
+      - name: Upload Triage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-report-jdk${{ matrix.java }}
+          path: build/reports/triage/
+          if-no-files-found: ignore
 
       - name: Assemble Debug
         run: ./gradlew --stacktrace --parallel --build-cache assembleDebug
