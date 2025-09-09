@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   android:
-    name: Android • JDK ${{ matrix.java }} • SDK ${{ matrix.sdk }}
+  name: Android • JDK ${{ matrix.java }} • SDK ${{ matrix.sdk }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -36,6 +36,12 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: gradle
+
+      - name: Gradle cache/setup
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: false
+          gradle-version: wrapper
 
       - name: Cache Android SDK
         id: cache-android
@@ -71,7 +77,8 @@ jobs:
       - name: Unit Tests
         run: ./gradlew --stacktrace --parallel --build-cache testDebugUnitTest
 
-      - name: Static Analysis & Coverage
+      - name: Static Analysis & Coverage (single JDK)
+        if: matrix.java == 17
         run: ./gradlew --stacktrace quality
 
       - name: Collect Detekt SARIF
