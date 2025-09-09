@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "info.lwb.feature.reader"
-    compileSdk = 36
+    compileSdk = 35
     defaultConfig { minSdk = 26 }
     buildFeatures { compose = true }
     composeOptions { kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get() }

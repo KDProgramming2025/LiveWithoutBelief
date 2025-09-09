@@ -71,11 +71,11 @@ jobs:
       - name: Prepare Gradle
         run: chmod +x ./gradlew
 
-      - name: Assemble Debug
-        run: ./gradlew --stacktrace --parallel --build-cache assembleDebug
-
       - name: Unit Tests
         run: ./gradlew --stacktrace --parallel --build-cache testDebugUnitTest
+
+      - name: Assemble Debug
+        run: ./gradlew --stacktrace --parallel --build-cache assembleDebug
 
       - name: Static Analysis & Coverage (single JDK)
         if: matrix.java == 17
