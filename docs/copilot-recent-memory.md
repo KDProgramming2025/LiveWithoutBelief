@@ -60,3 +60,8 @@ Next steps:
 - Added org.gradle.test-retry plugin and hermetic Test settings (UTC, UTF-8) across subprojects; retries enabled only on CI.
 - New script scripts/triage_junit.py parses JUnit XML and emits build/reports/triage/{summary.md,failures.txt}.
 - Android CI now runs triage step after tests and uploads triage artifacts per JDK matrix.
+
+09-10 LWB-45 ingestion core:
+- server/src/ingestion added with parseDocx and extractMedia, plus types and tests (Vitest).
+- Dependencies added: mammoth, sanitize-html; local mammoth .d.ts shim.
+- Branch feature/LWB-45-ingestion pushed; server tests PASS. Open PR from feature/LWB-45-ingestion → main.
