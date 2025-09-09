@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   android:
-  name: Android • JDK ${{ matrix.java }} • SDK ${{ matrix.sdk }}
+    name: Android JDK ${{ matrix.java }} SDK ${{ matrix.sdk }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,7 +24,7 @@ jobs:
       ANDROID_BUILD_TOOLS: ${{ matrix.build-tools }}
       ANDROID_HOME: ${{ github.workspace }}/.android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
-      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process"
       GIT_TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout code
@@ -127,7 +127,7 @@ jobs:
           if-no-files-found: ignore
 
   node:
-    name: Server • Node ${{ matrix.node }} • ${{ github.ref_name }}
+    name: Server Node ${{ matrix.node }} ${{ github.ref_name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
