@@ -31,8 +31,19 @@ android {
         applicationId = "info.lwb"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // Versioning: derive from env GIT_TAG (e.g., v0.2.3) when available; else fallback
+        val gitTag = System.getenv("GIT_TAG") ?: (project.findProperty("GIT_TAG") as String?)
+        val parsed = gitTag?.removePrefix("v")
+        val verName = parsed ?: "0.1.0"
+        val verCode = verName.split('.').let { parts ->
+            val major = parts.getOrNull(0)?.toIntOrNull() ?: 0
+            val minor = parts.getOrNull(1)?.toIntOrNull() ?: 1
+            val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+            // semantic version to code: MMMmmpp (e.g., 0.1.0 -> 001010)
+            (major * 10000) + (minor * 100) + patch
+        }
+        versionCode = verCode
+        versionName = verName
     testInstrumentationRunner = "info.lwb.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
         // Resolve Google client ids (web/server & android). Prefer explicit env/gradle; else parse google-services.json if placeholders.
@@ -131,6 +142,25 @@ android {
                 "proguard-rules.pro",
             )
         }
+    }
+    // Optional release signing from environment (CI-friendly). If not provided, release stays unsigned.
+    val ksPath = System.getenv("SIGNING_KEYSTORE_PATH") ?: (project.findProperty("SIGNING_KEYSTORE_PATH") as String?)
+    val ksPass = System.getenv("SIGNING_KEYSTORE_PASSWORD") ?: (project.findProperty("SIGNING_KEYSTORE_PASSWORD") as String?)
+    val keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: (project.findProperty("SIGNING_KEY_ALIAS") as String?)
+    val keyPass = System.getenv("SIGNING_KEY_PASSWORD") ?: (project.findProperty("SIGNING_KEY_PASSWORD") as String?)
+    if (!ksPath.isNullOrBlank() && !ksPass.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPass.isNullOrBlank()) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(ksPath)
+                storePassword = ksPass
+                this.keyAlias = keyAlias
+                keyPassword = keyPass
+            }
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
+        println("[signing] Using provided release signing config")
+    } else {
+        println("[signing] No signing env provided; building unsigned release (OK for artifacts)")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

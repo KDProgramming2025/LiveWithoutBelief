@@ -36,3 +36,14 @@ Next steps:
 	- Normalizing indentation inside `viewModelScope.launch {}` blocks in `AuthViewModel.kt`.
 - Pushed commit 9bb68ea to feature/LWB-25-auth; local `:app:lintDebug` now passes.
 - CI should re-run; monitor PR https://github.com/KDProgramming2025/LiveWithoutBelief/pull/6.
+
+09-09 LWB-33 CI pipelines fixes:
+- Unique artifact names per Android JDK matrix to avoid 409 conflict (suffix -jdk${{ matrix.java }}).
+- Fixed YAML indentation for artifact upload steps; ensured they are under android job steps.
+- Node coverage artifact includes node version in name.
+- Dependency Review job set to continue-on-error for unsupported repos; still runs on PRs.
+- Typed server/src/userStore.ts to remove any and satisfy ESLint in Node jobs.
+- Pushed to feature/LWB-33-ci-pipelines; PR should retrigger and go greener. Pending: confirm Node lint passes and that Dependency Review is non-blocking.
+
+09-09 CI trigger scope update:
+- CI now runs only on pull_request (to main) and workflow_dispatch; push triggers removed per request.

@@ -1,3 +1,13 @@
+## Releases and versions (in plain English)
+
+- When we merge to `main`, a bot (release-please) prepares a "Release PR" with a changelog and a version like `v0.2.0`.
+- When we merge that Release PR, GitHub creates a tag and a Release. Our Android build reads that tag to set the app version automatically.
+- You don’t need to type versions into Gradle. The tag drives `versionName` and `versionCode`.
+
+### Optional: Play Console upload (internal testing)
+
+We can later add a CI job to upload a build to the Play Console’s internal testing track. That needs Play API credentials, and the app module will use the "Play Publisher" Gradle plugin to push the AAB. You’ll provide credentials as CI secrets. This is optional and can be added when you’re ready to test on Play.
+
 # Live Without Belief
 
 Early-stage Android + Node.js project exploring secular guidance and article consumption with private annotations.

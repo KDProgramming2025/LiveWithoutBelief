@@ -1,10 +1,8 @@
-name: Android CI
+name: CI
 
 on:
-  # CI now runs only for pull requests targeting main, or manual dispatch.
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -12,24 +10,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Test Quality
+  android:
+    name: Android • JDK ${{ matrix.java }} • SDK ${{ matrix.sdk }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [17, 21]
+        sdk: [36]
+        build-tools: ["35.0.0"]
     env:
-      ANDROID_COMPILE_SDK: 36
-      ANDROID_BUILD_TOOLS: 35.0.0
+      ANDROID_COMPILE_SDK: ${{ matrix.sdk }}
+      ANDROID_BUILD_TOOLS: ${{ matrix.build-tools }}
       ANDROID_HOME: ${{ github.workspace }}/.android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process
+      GIT_TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: ${{ matrix.java }}
           cache: gradle
 
       - name: Cache Android SDK
@@ -79,7 +84,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: detekt-sarif
+          name: detekt-sarif-jdk${{ matrix.java }}
           path: build/reports/detekt/*.sarif
           if-no-files-found: warn
 
@@ -87,48 +92,83 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-lint
+          name: android-lint-jdk${{ matrix.java }}
           path: "**/build/reports/lint-results*.xml"
           if-no-files-found: ignore
-
-      - name: Node Backend Setup
-        working-directory: server
-        run: |
-          npm install --no-audit --no-fund
-
-      - name: Node Lint & Test
-        working-directory: server
-        run: |
-          npx eslint . --ext .ts || true
-          npx vitest run --coverage
 
       - name: Upload Coverage (Android)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kover-reports
+          name: kover-reports-jdk${{ matrix.java }}
           path: build/reports/kover/
-          if-no-files-found: ignore
-
-      - name: Upload Coverage (Node)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-coverage
-          path: server/coverage/
           if-no-files-found: ignore
 
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-jdk${{ matrix.java }}
           path: app/build/test-results/testDebugUnitTest/
 
       - name: Upload APKs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: debug-apks
+          name: debug-apks-jdk${{ matrix.java }}
           path: "app/build/outputs/apk/**/debug/*.apk"
           if-no-files-found: ignore
+
+  node:
+    name: Server • Node ${{ matrix.node }} • ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    env:
+      GIT_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install deps
+        working-directory: server
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        working-directory: server
+        run: npx eslint . --ext .ts
+
+      - name: Test with Coverage
+        working-directory: server
+        run: npx vitest run --coverage
+
+      - name: Upload Coverage (Node)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-coverage-node${{ matrix.node }}
+          path: server/coverage/
+          if-no-files-found: ignore
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
