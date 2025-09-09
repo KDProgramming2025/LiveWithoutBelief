@@ -26,5 +26,7 @@ CI mapping
 - Lint/Detekt/Coverage thresholds block PR.
 
 Failure triage
-- Re-run failed tests; if flaky, quarantine with @Ignore and open issue.
-- Keep test logs and artifacts uploaded in CI.
+- Hermetic defaults: tests run with UTC timezone and UTF-8 encoding to remove environment variance.
+- CI auto-retry: Gradle test-retry runs a single retry only on CI; if a test passes on retry, build stays green but the triage report will flag it.
+- Re-run locally with --tests Class#method to reproduce; if flaky, quarantine with @Ignore and open a Jira ticket.
+- CI uploads artifacts: JUnit XML, triage summary (build/reports/triage/summary.md), and failure list (failures.txt).
