@@ -79,7 +79,7 @@ jobs:
 
       - name: Static Analysis & Coverage (single JDK)
         if: matrix.java == 17
-        run: ./gradlew --stacktrace quality
+        run: ./gradlew --stacktrace --no-configuration-cache quality
 
       - name: Collect Detekt SARIF
         if: always()
