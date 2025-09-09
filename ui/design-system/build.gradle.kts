@@ -30,10 +30,4 @@ dependencies {
     testImplementation(project(":core:test-fixtures"))
 }
 
-// CI-only exclusion for Paparazzi snapshot tests until layoutlib/AGP compatibility is verified
-tasks.withType<Test>().configureEach {
-    if (System.getenv("CI") == "true") {
-        exclude("**/*SnapshotTest*", "**/*Paparazzi*", "**/LwbThemeSnapshotTest.*")
-        systemProperty("paparazzi.skip", "true")
-    }
-}
+// Run all tests, including Paparazzi, on CI

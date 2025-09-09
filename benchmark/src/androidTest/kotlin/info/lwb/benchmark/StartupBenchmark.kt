@@ -32,4 +32,18 @@ class StartupBenchmark {
     ) {
         startActivityAndWait()
     }
+
+    @Test
+    fun warmStartup() = benchmarkRule.measureRepeated(
+        packageName = TARGET_PACKAGE,
+        metrics = listOf(StartupTimingMetric()),
+        iterations = 5,
+        startupMode = StartupMode.WARM,
+        setupBlock = {
+            // Ensure app is in background for warm start
+            pressHome()
+        }
+    ) {
+        startActivityAndWait()
+    }
 }

@@ -4,8 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Removed explicit jvmToolchain to avoid requiring local JDK 17
-// Rely on current JDK; can reintroduce when JDK 17 installed
+// Align on JDK 17 across JVM modules for test-fixtures compatibility
+kotlin {
+    jvmToolchain(17)
+}
 
 dependencies {
     implementation(libs.kotlinx.serialization.json)
