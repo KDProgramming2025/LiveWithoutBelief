@@ -1,32 +1,15 @@
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
+import 'dotenv/config';
+import { buildServer } from './buildServer.js';
 
-export interface ArticleManifestItem {
-  id: string;
-  title: string;
-  slug: string;
-  version: number;
-  updatedAt: string;
-  wordCount: number;
-}
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'CHANGE_ME';
+const PORT = Number(process.env.PORT || process.env.SERVER_API_PORT || 8080);
+const HOST = process.env.HOST || '0.0.0.0';
 
-const app = Fastify({ logger: true });
-app.register(cors, { origin: true });
+const app = buildServer({ googleClientId: GOOGLE_CLIENT_ID });
 
-app.get('/health', async () => ({ status: 'ok' }));
-
-app.get('/v1/articles/manifest', async () => {
-  const now = new Date().toISOString();
-  const items: ArticleManifestItem[] = [
-    { id: 'sample-1', title: 'Sample Article 1', slug: 'sample-1', version: 1, updatedAt: now, wordCount: 600 },
-    { id: 'sample-2', title: 'Sample Article 2', slug: 'sample-2', version: 1, updatedAt: now, wordCount: 750 }
-  ];
-  return items;
-});
-
-const port = Number(process.env.PORT || 8080);
-app.listen({ port, host: '0.0.0.0' }).catch((err: unknown) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
+app.listen({ port: PORT, host: HOST }).then(() => {
+  app.log.info({ port: PORT }, 'server started');
+}).catch((err) => {
+  app.log.error({ err }, 'failed to start');
   process.exit(1);
 });

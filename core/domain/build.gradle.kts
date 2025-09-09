@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(libs.coroutines.core)
     testImplementation(libs.junit)
+    testImplementation(kotlin("test"))
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
 }

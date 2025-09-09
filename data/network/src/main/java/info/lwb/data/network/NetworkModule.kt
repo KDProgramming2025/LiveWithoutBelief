@@ -21,7 +21,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-    private const val BASE_URL = "http://10.0.2.2:8080/" // emulator to host
+    private const val BASE_URL = "http://10.0.2.2:4433/" // emulator to host (port updated from 8080)
 
     @Provides
     @Singleton
