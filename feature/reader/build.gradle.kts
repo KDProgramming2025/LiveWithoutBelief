@@ -36,6 +36,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.androidx.core.testing)
+    testImplementation(project(":core:test-fixtures"))
 }
 
 // CI-only exclusion for Paparazzi snapshot tests until layoutlib/AGP compatibility is verified

@@ -11,6 +11,8 @@ dependencies {
     api(libs.junit)
     api(libs.coroutines.test)
     api(libs.mockk)
+    api(libs.okhttp.mockwebserver)
+    api(libs.kotlinx.serialization.json)
 }
 
 // Expose fixtures to other modules' tests via testFixtures-like pattern

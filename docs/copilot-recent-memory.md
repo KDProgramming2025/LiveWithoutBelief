@@ -47,3 +47,9 @@ Next steps:
 
 09-09 CI trigger scope update:
 - CI now runs only on pull_request (to main) and workflow_dispatch; push triggers removed per request.
+
+09-09 LWB-40 scaffolding:
+- Added :core:test-fixtures module with Kotlin/JVM + api deps; initial utilities: MainDispatcherRule, JsonResource, Fixtures.
+- Added :ui:design-system module with Compose theme (LwbTheme) and a simple ColorSwatch component; Paparazzi snapshot tests for light/dark.
+- Enabled toolchain auto-provisioning via Foojay resolver in settings to fix local JDK 17 requirement.
+- Snapshot tests remain skipped on CI via module gradle configs; they run locally and pass.
