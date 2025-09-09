@@ -16,6 +16,10 @@ pluginManagement {
         id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
     }
 }
+// Enable JDK toolchain auto-provisioning on developer machines
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+}
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -39,3 +43,7 @@ include(":feature:annotations")
 
 // Benchmark module (macrobenchmark + baseline profile)
 include(":benchmark")
+
+// Test utilities and UI design system
+include(":core:test-fixtures")
+include(":ui:design-system")
