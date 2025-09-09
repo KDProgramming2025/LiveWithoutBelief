@@ -27,6 +27,7 @@ jobs:
       ANDROID_HOME: ${{ github.workspace }}/.android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process
+      GIT_TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -66,10 +67,10 @@ jobs:
       - name: Prepare Gradle
         run: chmod +x ./gradlew
 
-  - name: Assemble Debug
+      - name: Assemble Debug
         run: ./gradlew --stacktrace --parallel --build-cache assembleDebug
 
-  - name: Unit Tests
+      - name: Unit Tests
         run: ./gradlew --stacktrace --parallel --build-cache testDebugUnitTest
 
   - name: Static Analysis & Coverage
@@ -121,12 +122,14 @@ jobs:
           if-no-files-found: ignore
 
   node:
-    name: Server • Node ${{ matrix.node }}
+    name: Server • Node ${{ matrix.node }} • ${{ github.ref_name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         node: [20, 22]
+    env:
+      GIT_TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
