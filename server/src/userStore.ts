@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { Pool, PoolClient } from 'pg';
+import type { ConnectionOptions as TlsConnectionOptions } from 'tls';
 
 export interface UserRecord { id: string; username: string; passwordHash: string; createdAt: string; }
 export interface UserStore {
@@ -29,11 +30,12 @@ export class PostgresUserStore implements UserStore {
     this.pool = new Pool({ connectionString: url, ssl: this.sslConfig(url) });
   }
 
-  private sslConfig(url: string) {
-    if (/localhost|127.0.0.1/.test(url)) return false as any;
+  private sslConfig(url: string): boolean | TlsConnectionOptions {
+    if (/localhost|127.0.0.1/.test(url)) return false;
     // Allow disable via env
-    if (process.env.DB_SSL_DISABLE === '1') return false as any;
-    return { rejectUnauthorized: false } as any; // managed services often need this relaxed unless CA provided
+    if (process.env.DB_SSL_DISABLE === '1') return false;
+    const cfg: TlsConnectionOptions = { rejectUnauthorized: false };
+    return cfg; // managed services often need this relaxed unless CA provided
   }
 
   private async ensureSchema() {
@@ -71,8 +73,9 @@ export class PostgresUserStore implements UserStore {
       ));
       const row = res.rows[0];
       return { id: row.id, username: row.username, passwordHash: row.password_hash, createdAt: row.created_at.toISOString?.() || row.created_at };
-    } catch (e: any) {
-      if (e.code === '23505') return null; // unique violation
+    } catch (e: unknown) {
+      const code = (e && typeof e === 'object' && 'code' in e) ? (e as { code?: string }).code : undefined;
+      if (code === '23505') return null; // unique violation
       throw e;
     }
   }
