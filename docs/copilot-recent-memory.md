@@ -29,3 +29,10 @@ Next:
 Next steps:
 - Merge PR after review; then create branch for next story.
 - Consider rotating ALTCHA_HMAC_KEY and documenting envs in README.
+
+09-09 CI lint fixes:
+- Addressed lint SuspiciousIndentation in app by:
+	- Bracing single-line debug log in `AuthModule.kt` and catch block.
+	- Normalizing indentation inside `viewModelScope.launch {}` blocks in `AuthViewModel.kt`.
+- Pushed commit 9bb68ea to feature/LWB-25-auth; local `:app:lintDebug` now passes.
+- CI should re-run; monitor PR https://github.com/KDProgramming2025/LiveWithoutBelief/pull/6.
