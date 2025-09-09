@@ -19,3 +19,13 @@ Next:
 	- Reinstalled debug APK successfully to device M2010J19SG (Android 12) via Gradle :app:installDebug.
 - Optional: add DB migrations framework and persist revocations.
 - After on-device confirm, disable dev bypass for prod; ensure reCAPTCHA site key/secret and allowed origins are correct.
+
+09-09 ALTCHA migration and PR:
+- Removed Google reCAPTCHA entirely; added ALTCHA challenge endpoint on server and server-side verification; configured env ALTCHA_HMAC_KEY.
+- Android app now fetches and solves ALTCHA for registration; login remains without CAPTCHA; all network calls use Dispatchers.IO.
+- Unit tests updated for new constructor deps and re-run: PASS locally (testDebugUnitTest green).
+- Branch feature/LWB-25-auth pushed and PR opened: https://github.com/KDProgramming2025/LiveWithoutBelief/pull/6
+
+Next steps:
+- Merge PR after review; then create branch for next story.
+- Consider rotating ALTCHA_HMAC_KEY and documenting envs in README.

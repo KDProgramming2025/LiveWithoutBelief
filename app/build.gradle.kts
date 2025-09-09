@@ -4,9 +4,21 @@ plugins {
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.services)
     // For JSON parsing in AuthFacade (kotlinx serialization)
     alias(libs.plugins.kotlin.serialization)
+}
+
+// Apply Google Services plugin only if a google-services.json is present (CI-safe)
+val hasGoogleServicesJson = listOf(
+    file("google-services.json"),
+    file("src/google-services.json"),
+    file("src/debug/google-services.json"),
+).any { it.exists() }
+if (hasGoogleServicesJson) {
+    apply(plugin = "com.google.gms.google-services")
+    println("[google-services] google-services.json found; applying plugin")
+} else {
+    println("[google-services] google-services.json not found; skipping plugin (OK for CI)")
 }
 
 android {
