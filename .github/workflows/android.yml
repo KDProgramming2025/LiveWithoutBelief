@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  # CI now runs only for pull requests targeting main, or manual dispatch.
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -98,7 +96,7 @@ jobs:
           path: "**/build/reports/lint-results*.xml"
           if-no-files-found: ignore
 
-  - name: Upload Coverage (Android)
+      - name: Upload Coverage (Android)
         if: always()
         uses: actions/upload-artifact@v4
         with:
