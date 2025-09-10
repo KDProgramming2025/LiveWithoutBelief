@@ -143,7 +143,9 @@ class ArticleRepositoryImpl(
                 }
             }.awaitAll()
         }
-        // ensure Unit return
+    // After sync, apply eviction policy to limit offline cache footprint.
+    applyEvictionPolicy(manifest)
+    // ensure Unit return
         Unit
     }
 
@@ -156,7 +158,23 @@ class ArticleRepositoryImpl(
         val rows = articleDao.searchArticlesLike(query.trim(), limit, offset)
         rows.map { Article(it.id, it.title, it.slug, it.version, it.updatedAt, it.wordCount) }
     }
+    // Keep the most recent 'KEEP_RECENT_COUNT' articles' content/assets; evict older ones.
+    private suspend fun applyEvictionPolicy(manifest: List<ManifestItemDto>) {
+        val keepIds = manifest
+            .sortedByDescending { it.updatedAt }
+            .take(KEEP_RECENT_COUNT)
+            .map { it.id }
+        try {
+            articleDao.deleteContentsNotIn(keepIds)
+            articleDao.deleteAssetsNotIn(keepIds)
+        } catch (_: Exception) {
+            // Avoid failing the whole refresh on eviction issues.
+        }
+    }
 }
+
+// Keep most recent N content cached
+private const val KEEP_RECENT_COUNT = 4
 
 private fun ArticleEntity.toDomain() = Article(id, title, slug, version, updatedAt, wordCount)
 private fun ArticleContentEntity.toDomain() = ArticleContent(articleId, htmlBody, plainText, textHash)

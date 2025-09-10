@@ -57,6 +57,25 @@ class FakeArticleDao : ArticleDao {
     }
     override suspend fun listAssets(articleId: String): List<info.lwb.data.repo.db.ArticleAssetEntity> =
         assets[articleId]?.values?.toList() ?: emptyList()
+    override suspend fun deleteContentsNotIn(keepIds: List<String>) {
+        val keep = keepIds.toSet()
+        val iter = contents.keys.iterator()
+        while (iter.hasNext()) {
+            val k = iter.next()
+            if (!keep.contains(k)) iter.remove()
+        }
+    }
+    override suspend fun deleteAssetsNotIn(keepIds: List<String>) {
+        val keep = keepIds.toSet()
+        val articleIds = assets.keys.toList()
+        for (aid in articleIds) {
+            if (!keep.contains(aid)) {
+                assets.remove(aid)
+            }
+        }
+    }
+    override suspend fun clearAllContents() { contents.clear() }
+    override suspend fun clearAllAssets() { assets.clear() }
     override suspend fun searchArticlesLike(q: String, limit: Int, offset: Int): List<ArticleSearchRow> {
         // Simple in-memory LIKE: case-insensitive contains on title/plainText
         val lowered = q.lowercase()
@@ -225,5 +244,29 @@ class ArticleRepositoryImplTest {
         failingRepo.refreshArticles()
         // Then - no articles inserted
         assertEquals(0, dao.listArticles().size)
+    }
+
+    @Test
+    fun refreshArticles_appliesEviction_keepsMostRecentN() = runTest {
+        // Given 6 manifest items with increasing updatedAt
+        api.manifest = (1..6).map { i ->
+            ManifestItemDto("id$i", "T$i", "s$i", i, "2025-01-0${i}T00:00:00Z", i * 10)
+        }
+        // Provide article bodies so content gets stored
+        (1..6).forEach { i ->
+            api.articles["id$i"] = ArticleDto(
+                id = "id$i", slug = "s$i", title = "T$i", version = i, wordCount = i * 10,
+                updatedAt = "2025-01-0${i}T00:00:00Z", checksum = "", html = "<p>$i</p>", text = "$i",
+                sections = emptyList(), media = emptyList()
+            )
+        }
+        // When
+        repo.refreshArticles()
+        // Then: eviction keeps most recent 4 contents
+        val kept = (3..6).map { i -> dao.getArticleContent("id$i") != null }
+        // id1 and id2 contents should be evicted
+        val evicted = listOf(dao.getArticleContent("id1"), dao.getArticleContent("id2"))
+        assertEquals(listOf(true, true, true, true), kept)
+        assertEquals(listOf(null, null), evicted)
     }
 }
