@@ -82,7 +82,7 @@ export async function parseDocx(filePath: string, opts: ParseDocxOptions = {}): 
       images.push({ type: 'audio', id, src: href, checksum: checksum(Buffer.from(href, 'utf8')) });
     }
   }
-  return { sections, media: images, wordCount: words.length };
+  return { sections, media: images, wordCount: words.length, html, text: textOnly };
 }
 
 export async function extractMedia(filePath: string): Promise<ExtractedMediaItem[]> {

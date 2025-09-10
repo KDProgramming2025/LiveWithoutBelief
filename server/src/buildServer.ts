@@ -7,6 +7,9 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { buildUserStore } from './userStore.js';
 import { createChallenge, verifySolution } from 'altcha-lib';
+import { buildContentStore, computeChecksumForNormalized } from './contentStore.js';
+import type { SectionKind } from './contentStore.js';
+import crypto from 'crypto';
 
 export interface ArticleManifestItem {
   id: string; title: string; slug: string; version: number; updatedAt: string; wordCount: number;
@@ -63,6 +66,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const revocations = opts.revocations ?? new InMemoryRevocationStore();
   const jwtSecret = opts.jwtSecret || process.env.PWD_JWT_SECRET || 'DEV_ONLY_CHANGE_ME';
   const users = buildUserStore();
+  const content = buildContentStore();
   app.log.info({ event: 'user_store_selected', impl: users.constructor.name }, 'User store initialized');
   // ALTCHA configuration
   const ALTCHA_HMAC_KEY = process.env.ALTCHA_HMAC_KEY || process.env.PWD_JWT_SECRET || 'ALTCHA_DEV_ONLY_CHANGE_ME';
@@ -81,7 +85,18 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     return reply.code(200).send(challenge);
   });
 
-  // NOTE: Article list/manifest endpoint will be implemented when persistence is added (LWB-48).
+  // LWB-48: Article manifests list and fetch
+  app.get('/v1/articles/manifest', async (_req, reply) => {
+    const items = await content.listManifests();
+    return reply.code(200).send({ items });
+  });
+
+  app.get('/v1/articles/:id', async (req, reply) => {
+    const id = (req.params as { id: string }).id;
+    const art = await content.getArticle(id);
+    if (!art) return reply.code(404).send({ error: 'not_found' });
+    return reply.code(200).send(art);
+  });
 
   app.post('/v1/auth/validate', async (req, reply) => {
     const bodySchema = z.object({ idToken: z.string().min(10) });
@@ -202,17 +217,36 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       const { parseDocx } = await import('./ingestion/docx.js');
       const parsed = await parseDocx(tmp, { withHtml: true });
       try { await fs.unlink(tmp); } catch { /* ignore */ }
+      // Derive title from first heading or filename; id/slug from title
+      const firstHeading = parsed.sections.find(s => s.kind === 'heading' && s.text?.trim());
+      const filename = (filePart as { filename?: string })?.filename;
+      const baseTitle = firstHeading?.text?.trim() || (filename ? filename.replace(/\.[^.]+$/, '') : 'Untitled');
+      const slug = baseTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80) || 'untitled';
+      const title = baseTitle.slice(0, 140);
+      const version = 1; // MVP; later from request or store
+      // Build normalized checksum (manifest-like)
+      const checksum = computeChecksumForNormalized({ id: slug, version, sections: parsed.sections, media: parsed.media });
+  const secret = process.env.MANIFEST_SECRET;
+  const sig = secret ? crypto.createHmac('sha256', secret).update(checksum).digest('hex') : undefined;
+      // Persist
+      await content.upsertArticle({
+        id: slug,
+        slug,
+        title,
+        version,
+        wordCount: parsed.wordCount,
+        sections: parsed.sections.map((s, idx) => ({ order: idx, kind: s.kind as SectionKind, level: s.level, text: s.text, html: s.html, mediaRefId: s.mediaRefId })),
+        media: parsed.media.map(m => ({ id: m.id, type: m.type, filename: m.filename, contentType: m.contentType, src: m.src, checksum: m.checksum })),
+        checksum,
+        signature: sig,
+        html: parsed.html,
+        text: parsed.text,
+      });
       const base = { wordCount: parsed.wordCount, sections: parsed.sections.length, media: parsed.media.length };
-      const secret = process.env.MANIFEST_SECRET;
+      // Return manifest if secret exists (as before)
       if (secret) {
-        // Derive title from first heading or filename; id as a simple slug of title
-        const firstHeading = parsed.sections.find(s => s.kind === 'heading' && s.text?.trim());
-        const filename = (filePart as { filename?: string })?.filename;
-        const baseTitle = firstHeading?.text?.trim() || (filename ? filename.replace(/\.[^.]+$/, '') : 'Untitled');
-        const slug = baseTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80) || 'untitled';
-        const title = baseTitle.slice(0, 140);
         const { buildManifest } = await import('./ingestion/manifest.js');
-        const manifest = buildManifest({ id: slug, title, version: 1, sections: parsed.sections, media: parsed.media, wordCount: parsed.wordCount }, secret);
+        const manifest = buildManifest({ id: slug, title, version, sections: parsed.sections, media: parsed.media, wordCount: parsed.wordCount }, secret);
         return reply.code(200).send({ ...base, manifest });
       }
       return reply.code(200).send(base);

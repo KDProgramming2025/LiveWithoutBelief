@@ -1,5 +1,5 @@
 Date: 2025-09-10
-Branch: feature/LWB-47-search
+Branch: main
 
 Completed (server):
 - LWB-51: Signed manifest builder (checksum + HMAC) implemented; optional manifest returned by /v1/ingest/docx when MANIFEST_SECRET is set.
@@ -14,5 +14,9 @@ Notes:
 - No TODO/FIXME markers in server/src related to LWB-46/51/52.
 - MANIFEST_SECRET gates manifest emission by design.
 
+Recent:
+- LWB-47 PR merged; local cleanup complete.
+- Started LWB-48 on branch feature/LWB-48-persist. Implemented server persistence layer with in-memory/PG store, wired ingestion to save article, added endpoints: GET /v1/articles/manifest and GET /v1/articles/:id. All server tests pass (12/12).
+
 Next:
-- LWB-47: Navigation wired. Consider adding UI tests for SearchViewModel behavior and polish (snippets/highlighting). Prepare PR.
+- Decide on immediate task: lightweight tests for SearchViewModel or start next Jira ticket.

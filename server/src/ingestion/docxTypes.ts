@@ -25,5 +25,7 @@ export interface ParsedDocxResult {
   sections: ParsedDocxSection[];
   media: ExtractedMediaItem[];
   wordCount: number;
+  html?: string; // sanitized HTML when requested
+  text?: string; // plain text extracted from document
   // Optional consolidated sanitized HTML or text can be added later if needed
 }

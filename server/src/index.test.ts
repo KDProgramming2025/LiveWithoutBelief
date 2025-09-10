@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { buildServer, InMemoryRevocationStore } from './buildServer.js';
+import type { ArticleManifestItem } from './buildServer.js';
 import type { FastifyInstance } from 'fastify';
 
 let app: FastifyInstance;
@@ -8,7 +9,7 @@ const googleClientId = 'test-client';
 
 // Mock ingestion module globally for ESM to avoid heavy processing during tests
 vi.mock('./ingestion/docx.js', () => ({
-  parseDocx: async () => ({ sections: [{ kind: 'heading', level: 1, text: 'T' }], media: [], wordCount: 3 })
+  parseDocx: async () => ({ sections: [{ kind: 'heading', level: 1, text: 'T' }, { kind: 'paragraph', text: 'Hello' }], media: [], wordCount: 3, html: '<h1>T</h1><p>Hello</p>', text: 'T Hello' })
 }));
 
 // naive stub of google-auth-library by monkey-patching global import cache
@@ -119,11 +120,30 @@ describe('ingestion endpoint', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.wordCount).toBe(3);
-    expect(body.sections).toBe(1);
+  expect(body.sections).toBe(2);
     // manifest is optional based on env
     if (body.manifest) {
       expect(body.manifest.checksum).toBeTruthy();
       expect(body.manifest.signature).toBeTruthy();
     }
+  });
+
+  test('after ingest, manifests list includes the article and article is retrievable', async () => {
+    // list manifests
+    const list = await app.inject({ method: 'GET', url: '/v1/articles/manifest' });
+    expect(list.statusCode).toBe(200);
+    const listBody = list.json();
+    expect(Array.isArray(listBody.items)).toBe(true);
+  const item = listBody.items.find((it: ArticleManifestItem) => it.id === 't' || it.slug === 't');
+    // depending on slug derivation, it should include something similar
+    expect(listBody.items.length).toBeGreaterThan(0);
+    // fetch first item
+    const id = (item?.id) ?? listBody.items[0].id;
+    const get = await app.inject({ method: 'GET', url: `/v1/articles/${id}` });
+    expect(get.statusCode).toBe(200);
+    const article = get.json();
+    expect(article.id).toBeTruthy();
+    expect(article.sections?.length).toBeGreaterThan(0);
+    expect(article.wordCount).toBe(3);
   });
 });
