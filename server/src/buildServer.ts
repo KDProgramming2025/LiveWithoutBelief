@@ -209,7 +209,14 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       const { parseDocx } = await import('./ingestion/docx.js');
       const parsed = await parseDocx(tmp, { withHtml: true });
       try { await fs.unlink(tmp); } catch { /* ignore */ }
-      return reply.code(200).send({ wordCount: parsed.wordCount, sections: parsed.sections.length, media: parsed.media.length });
+      const base = { wordCount: parsed.wordCount, sections: parsed.sections.length, media: parsed.media.length };
+      const secret = process.env.MANIFEST_SECRET;
+      if (secret) {
+        const { buildManifest } = await import('./ingestion/manifest.js');
+        const manifest = buildManifest({ id: 'upload', title: 'upload', version: 1, sections: parsed.sections, media: parsed.media, wordCount: parsed.wordCount }, secret);
+        return reply.code(200).send({ ...base, manifest });
+      }
+      return reply.code(200).send(base);
     } catch (err) {
       req.log?.error({ err }, 'ingest failed');
       return reply.code(500).send({ error: 'ingest_failed' });
