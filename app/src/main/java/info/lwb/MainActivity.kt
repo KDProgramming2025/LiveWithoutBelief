@@ -42,6 +42,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import info.lwb.feature.reader.ReaderScreen
+import info.lwb.feature.search.SearchRoute
 import info.lwb.auth.RecaptchaTokenProvider
 import info.lwb.auth.CachingRecaptchaProvider
 
@@ -55,14 +56,14 @@ class MainActivity : ComponentActivity() {
         val initialLink = intent?.dataString
         // Wrap provider with a short-lived cache (60s) to reduce repeated network calls.
         val cachedProvider = CachingRecaptchaProvider(recaptchaProvider, ttlMillis = 60_000L)
-    setContent { appRoot(authFacade, cachedProvider, initialLink) }
+        setContent { appRoot(authFacade, cachedProvider, initialLink) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         val link = intent.dataString
         val cachedProvider = CachingRecaptchaProvider(recaptchaProvider, ttlMillis = 60_000L)
-    setContent { appRoot(authFacade, cachedProvider, link) }
+        setContent { appRoot(authFacade, cachedProvider, link) }
     }
 }
 
@@ -71,10 +72,10 @@ private fun appRoot(authFacade: AuthFacade, recaptchaProvider: RecaptchaTokenPro
     val navController = rememberNavController()
     MaterialTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
-        val vm: AuthViewModel = viewModel(factory = object: androidx.lifecycle.ViewModelProvider.Factory {
+            val vm: AuthViewModel = viewModel(factory = object: androidx.lifecycle.ViewModelProvider.Factory {
                 override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                     @Suppress("UNCHECKED_CAST")
-            return AuthViewModel(authFacade, recaptchaProvider) as T
+                    return AuthViewModel(authFacade, recaptchaProvider) as T
                 }
             })
             val state = vm.state.collectAsState()
@@ -103,6 +104,8 @@ private fun appRoot(authFacade: AuthFacade, recaptchaProvider: RecaptchaTokenPro
                     is AuthUiState.SignedIn -> {
                         Text("Hello ${s.user.displayName ?: s.user.email}")
                         Button(onClick = { vm.signOut() }) { Text("Sign Out") }
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = { navController.navigate(Destinations.SEARCH) }) { Text("Search") }
                         appNavHost(navController)
                     }
                 }
@@ -161,11 +164,13 @@ private fun PasswordAuthSection(vm: AuthViewModel) {
 
 private object Destinations {
     const val READER = "reader"
+    const val SEARCH = "search"
 }
 
 @Composable
 private fun appNavHost(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Destinations.READER) {
         composable(Destinations.READER) { ReaderScreen() }
+        composable(Destinations.SEARCH) { SearchRoute() }
     }
 }

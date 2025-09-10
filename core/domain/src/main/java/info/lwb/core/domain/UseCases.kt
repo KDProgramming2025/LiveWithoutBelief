@@ -24,6 +24,11 @@ class RefreshArticlesUseCase(private val articleRepository: ArticleRepository) {
     suspend operator fun invoke() = articleRepository.refreshArticles()
 }
 
+class SearchArticlesUseCase(private val articleRepository: ArticleRepository) {
+    suspend operator fun invoke(query: String, limit: Int = 25, offset: Int = 0) =
+        articleRepository.searchLocal(query, limit, offset)
+}
+
 class GetBookmarksUseCase(private val bookmarkRepository: BookmarkRepository) {
     operator fun invoke(): Flow<Result<List<Bookmark>>> = bookmarkRepository.getBookmarks()
 }

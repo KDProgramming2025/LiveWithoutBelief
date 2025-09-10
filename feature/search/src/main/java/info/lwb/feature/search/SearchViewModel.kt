@@ -6,7 +6,7 @@ package info.lwb.feature.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import info.lwb.core.domain.ArticleRepository
+import info.lwb.core.domain.SearchArticlesUseCase
 import info.lwb.core.model.Article
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val articleRepo: ArticleRepository,
+    private val searchArticles: SearchArticlesUseCase,
 ) : ViewModel() {
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query
@@ -26,7 +26,7 @@ class SearchViewModel @Inject constructor(
     fun onQueryChange(q: String) {
         _query.value = q
         viewModelScope.launch {
-            _results.value = if (q.isBlank()) emptyList() else articleRepo.searchLocal(q, limit = 50)
+            _results.value = if (q.isBlank()) emptyList() else searchArticles(q, limit = 50)
         }
     }
 }
