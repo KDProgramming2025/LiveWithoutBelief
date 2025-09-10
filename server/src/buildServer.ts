@@ -81,14 +81,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     return reply.code(200).send(challenge);
   });
 
-  app.get('/v1/articles/manifest', async () => {
-    const now = new Date().toISOString();
-    const items: ArticleManifestItem[] = [
-      { id: 'sample-1', title: 'Sample Article 1', slug: 'sample-1', version: 1, updatedAt: now, wordCount: 600 },
-      { id: 'sample-2', title: 'Sample Article 2', slug: 'sample-2', version: 1, updatedAt: now, wordCount: 750 }
-    ];
-    return items;
-  });
+  // NOTE: Article list/manifest endpoint will be implemented when persistence is added (LWB-48).
 
   app.post('/v1/auth/validate', async (req, reply) => {
     const bodySchema = z.object({ idToken: z.string().min(10) });
@@ -212,8 +205,14 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       const base = { wordCount: parsed.wordCount, sections: parsed.sections.length, media: parsed.media.length };
       const secret = process.env.MANIFEST_SECRET;
       if (secret) {
+        // Derive title from first heading or filename; id as a simple slug of title
+        const firstHeading = parsed.sections.find(s => s.kind === 'heading' && s.text?.trim());
+        const filename = (filePart as { filename?: string })?.filename;
+        const baseTitle = firstHeading?.text?.trim() || (filename ? filename.replace(/\.[^.]+$/, '') : 'Untitled');
+        const slug = baseTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80) || 'untitled';
+        const title = baseTitle.slice(0, 140);
         const { buildManifest } = await import('./ingestion/manifest.js');
-        const manifest = buildManifest({ id: 'upload', title: 'upload', version: 1, sections: parsed.sections, media: parsed.media, wordCount: parsed.wordCount }, secret);
+        const manifest = buildManifest({ id: slug, title, version: 1, sections: parsed.sections, media: parsed.media, wordCount: parsed.wordCount }, secret);
         return reply.code(200).send({ ...base, manifest });
       }
       return reply.code(200).send(base);
