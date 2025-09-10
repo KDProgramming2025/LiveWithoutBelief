@@ -1,5 +1,5 @@
 Date: 2025-09-10
-Branch: feature/LWB-53-client-sync
+Branch: feature/LWB-55-room-and-periodic-sync (local active)
 
 Completed (server):
 - LWB-51: Signed manifest builder (checksum + HMAC) implemented; optional manifest returned by /v1/ingest/docx when MANIFEST_SECRET is set.
@@ -16,7 +16,11 @@ Notes:
 
 Recent:
 - LWB-48: Implemented and deployed with Postgres; endpoints for manifest and article details. PR #14 green after lint fixes.
-- LWB-53: Created branch feature/LWB-53-client-sync. Android: added ArticleDto/SectionDto/MediaDto and getArticle() in network; implemented ArticleRepositoryImpl.refreshArticles() to fetch manifest and per-article content with text hash delta; unit tests added and passing for repo module.
+- LWB-53: feature/LWB-53-client-sync branch open (PR #15). Android repo implements delta fetch, tests passing.
+- LWB-54/57/58: Implemented retry with backoff, checksum validation, and version-aware delta; merged via PR #16. Local cleanup done (deleted feature/LWB-54-delta-sync; also deleted stale feature/LWB-48-persist). Main fast-forwarded.
+- LWB-55: Room DAO extended for media assets; repository persists and prunes assets in sync.
+- LWB-59: WorkManager periodic sync added (EntryPoint injection); scheduled from Application on startup; unit test uses Robolectric runner.
 
 Next:
-- Finish LWB-53: add more tests as needed; wire periodic sync later if in scope; open PR.
+- Run full unit tests (done; green) and open PR for feature/LWB-55-room-and-periodic-sync covering LWB-55 and LWB-59.
+- After merge: consider instrumentation test for WorkManager schedule and asset UI wiring.

@@ -33,6 +33,16 @@ interface ArticleDao {
     @Query("SELECT * FROM article_contents WHERE articleId = :articleId")
     suspend fun getArticleContent(articleId: String): ArticleContentEntity?
 
+    // ----- Assets -----
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAssets(assets: List<ArticleAssetEntity>)
+
+    @Query("DELETE FROM article_assets WHERE articleId = :articleId AND id NOT IN (:keepIds)")
+    suspend fun pruneAssetsForArticle(articleId: String, keepIds: List<String>)
+
+    @Query("SELECT * FROM article_assets WHERE articleId = :articleId")
+    suspend fun listAssets(articleId: String): List<ArticleAssetEntity>
+
     // Lightweight local search across title and plain text body (no FTS; uses LIKE)
     @Query(
         "SELECT a.id AS id, a.title AS title, a.slug AS slug, a.version AS version, a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText " +
