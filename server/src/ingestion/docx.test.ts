@@ -3,7 +3,7 @@ import { describe, test, expect, vi } from 'vitest';
 // Mock mammoth to return deterministic HTML so tests are hermetic
 vi.mock('mammoth', () => ({
   default: {
-    images: { inline: (handler: any) => handler },
+    images: { inline: (handler: (img: { contentType?: string; read: (enc: 'base64'|'binary') => Promise<string> }) => unknown) => handler },
     convertToHtml: async () => ({ value: '<h1>Title</h1><p>Hello world</p><ul><li>A</li><li>B</li></ul>' })
   }
 }));

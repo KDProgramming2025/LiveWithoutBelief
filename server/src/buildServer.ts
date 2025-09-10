@@ -187,10 +187,10 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     try {
       // Body may contain fields and file(s) when attachFieldsToBody=true
       // We expect a single file field named 'file'
-      const body: any = (req as FastifyRequest).body;
-      let filePart = body?.file;
+  const body = (req as FastifyRequest & { body?: unknown }).body as Record<string, unknown> | undefined;
+  let filePart = body && typeof body === 'object' ? (body as Record<string, unknown>)['file'] as { file?: AsyncIterable<unknown> } | undefined : undefined;
       // If not attached, parse via parts iterator as fallback
-      if (!filePart || typeof filePart !== 'object' || !filePart.file) {
+  if (!filePart || typeof filePart !== 'object' || !('file' in filePart) || !filePart.file) {
         const parts = req.parts();
         for await (const p of parts) {
           if (p.type === 'file' && p.fieldname === 'file') { filePart = p; break; }

@@ -1,19 +1,13 @@
-import fs from 'fs/promises';
-import path from 'path';
 import crypto from 'crypto';
 import sanitizeHtml from 'sanitize-html';
 import mammothDefault from 'mammoth';
 import { ParsedDocxResult, ParseDocxOptions, ParsedDocxSection, ExtractedMediaItem } from './docxTypes.js';
+import type { ImageHandler } from 'mammoth';
 
 // Very small HTML -> sections parser: recognize headings, paragraphs, lists, blockquotes, and embedded iframes
 function htmlToSections(html: string): ParsedDocxSection[] {
   const sections: ParsedDocxSection[] = [];
-  // naive segmentation by block tags
-  const blocks = html
-    .replace(/\n+/g, '\n')
-    .split(/<(h[1-6]|p|ul|ol|blockquote|figure|iframe)(\s|>)/i)
-    .filter(Boolean);
-  // The above split is simplistic; instead, fallback to scanning with regex for key blocks
+  // Scan with regex for key blocks
   const re = /<(h[1-6]|p|ul|ol|blockquote|iframe)([^>]*)>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
@@ -49,9 +43,12 @@ export async function parseDocx(filePath: string, opts: ParseDocxOptions = {}): 
   // Use mammoth to convert .docx to HTML, and capture images via convertImage callback
   const images: ExtractedMediaItem[] = [];
   // Support both ESM default with props and named exports shim
-  const mammoth: any = (mammothDefault as any)?.convertToHtml ? (mammothDefault as any) : (mammothDefault as any);
+  const mammoth = mammothDefault as unknown as {
+    images: { inline: (handler: ImageHandler) => ImageHandler };
+    convertToHtml: (input: { path: string }, options?: { convertImage?: ImageHandler }) => Promise<{ value: string }>;
+  };
   const result = await mammoth.convertToHtml({ path: filePath }, {
-    convertImage: mammoth.images.inline(async (image: any) => {
+    convertImage: mammoth.images.inline(async (image: { contentType?: string; read: (encoding: 'base64' | 'binary') => Promise<string> }) => {
       const buffer = await image.read('base64');
       const data = Buffer.from(buffer, 'base64');
       const contentType = image.contentType as string | undefined;
