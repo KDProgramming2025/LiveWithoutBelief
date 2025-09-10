@@ -32,7 +32,27 @@ interface ArticleDao {
 
     @Query("SELECT * FROM article_contents WHERE articleId = :articleId")
     suspend fun getArticleContent(articleId: String): ArticleContentEntity?
+
+    // Lightweight local search across title and plain text body (no FTS; uses LIKE)
+    @Query(
+        "SELECT a.id AS id, a.title AS title, a.slug AS slug, a.version AS version, a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText " +
+            "FROM articles a JOIN article_contents c ON c.articleId = a.id " +
+            "WHERE (c.plainText LIKE '%' || :q || '%' OR a.title LIKE '%' || :q || '%') " +
+            "ORDER BY a.updatedAt DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun searchArticlesLike(q: String, limit: Int, offset: Int): List<ArticleSearchRow>
 }
+
+// POJO for search results (Room maps query columns by name)
+data class ArticleSearchRow(
+    val id: String,
+    val title: String,
+    val slug: String,
+    val version: Int,
+    val updatedAt: String,
+    val wordCount: Int,
+    val plainText: String,
+)
 
 @Dao
 interface BookmarkDao {

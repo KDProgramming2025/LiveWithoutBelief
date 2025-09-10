@@ -1,5 +1,5 @@
 Date: 2025-09-10
-Branch: feature/LWB-46-manifest-sanitize
+Branch: feature/LWB-47-search
 
 Completed (server):
 - LWB-51: Signed manifest builder (checksum + HMAC) implemented; optional manifest returned by /v1/ingest/docx when MANIFEST_SECRET is set.
@@ -15,5 +15,4 @@ Notes:
 - MANIFEST_SECRET gates manifest emission by design.
 
 Next:
-- Open PR for feature/LWB-46-manifest-sanitize and run CI.
-- Plan persistence (LWB-48) and indexing (LWB-47); replace sample manifest endpoint with real data once persistence exists.
+- Implement LWB-47: Local Android search only (no server). Added DAO LIKE-based search, repo API searchLocal, Hilt VM, and Compose screen in feature/search. Wire into app nav next.
