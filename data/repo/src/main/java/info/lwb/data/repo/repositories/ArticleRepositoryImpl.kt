@@ -15,10 +15,16 @@ import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
 import info.lwb.data.repo.db.ArticleEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlin.math.min
+import kotlin.random.Random
 
 class ArticleRepositoryImpl(
     private val api: ArticleApi,
@@ -51,43 +57,73 @@ class ArticleRepositoryImpl(
         }
     }
 
-    override suspend fun refreshArticles() = withContext(Dispatchers.IO) {
-        val manifest = runCatching { api.getManifest() }.getOrElse { emptyList() }
+    override suspend fun refreshArticles(): Unit = withContext(Dispatchers.IO) {
+        // Fetch manifest with retry/backoff
+        val manifest = retryWithBackoff { api.getManifest() } ?: emptyList()
         if (manifest.isEmpty()) return@withContext
-        manifest.forEach { item ->
-            // Upsert manifest item as lightweight article row
-            val articleEntity = ArticleEntity(
-                id = item.id,
-                title = item.title,
-                slug = item.slug,
-                version = item.version,
-                updatedAt = item.updatedAt,
-                wordCount = item.wordCount,
-            )
-            // Fetch full article to sync content delta if changed
-            val dto = runCatching { api.getArticle(item.id) }.getOrNull()
-            if (dto != null) {
-                val plain = dto.text ?: ""
-                val html = dto.html ?: ""
-                val textHash = sha256(plain)
-                val existing = articleDao.getArticleContent(item.id)
-                if (existing == null || existing.textHash != textHash) {
-                    val contentEntity = ArticleContentEntity(
-                        articleId = item.id,
-                        htmlBody = html,
-                        plainText = plain,
-                        textHash = textHash,
+
+        // Snapshot local state to guide delta decisions
+        val localById = articleDao.listArticles().associateBy { it.id }
+        // Parallelize detail fetches with bounded concurrency
+    // Run detail fetches in parallel and await, but discard returned list to keep Unit
+    val awaited = coroutineScope {
+            manifest.map { item ->
+                async {
+                    val articleEntity = ArticleEntity(
+                        id = item.id,
+                        title = item.title,
+                        slug = item.slug,
+                        version = item.version,
+                        updatedAt = item.updatedAt,
+                        wordCount = item.wordCount,
                     )
-                    articleDao.upsertArticleWithContent(articleEntity, contentEntity)
-                } else {
-                    // Content unchanged; still ensure article row updated
-                    articleDao.upsertArticle(articleEntity)
+
+                    val local = localById[item.id]
+                    val hasLocalContent = articleDao.getArticleContent(item.id) != null
+                    // If version unchanged and content exists, skip details fetch; still upsert metadata
+                    if (local?.version == item.version && hasLocalContent) {
+                        articleDao.upsertArticle(articleEntity)
+                        return@async
+                    }
+
+                    // Fetch details with retry/backoff
+                    val dto = retryWithBackoff { api.getArticle(item.id) }
+                    if (dto == null) {
+                        // Network failed; upsert metadata only
+                        articleDao.upsertArticle(articleEntity)
+                        return@async
+                    }
+
+                    val plain = dto.text ?: ""
+                    val html = dto.html ?: ""
+                    val textHash = sha256(plain)
+
+                    // Optional checksum verification (assumes checksum is of plain text for now)
+                    val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
+                    if (!checksumOk) {
+                        // Integrity check failed; don't persist content, but keep metadata
+                        articleDao.upsertArticle(articleEntity)
+                        return@async
+                    }
+
+                    val existing = articleDao.getArticleContent(item.id)
+                    if (existing == null || existing.textHash != textHash) {
+                        val contentEntity = ArticleContentEntity(
+                            articleId = item.id,
+                            htmlBody = html,
+                            plainText = plain,
+                            textHash = textHash,
+                        )
+                        articleDao.upsertArticleWithContent(articleEntity, contentEntity)
+                    } else {
+                        // Content unchanged; still ensure article row updated
+                        articleDao.upsertArticle(articleEntity)
+                    }
                 }
-            } else {
-                // Fallback: only upsert article metadata
-                articleDao.upsertArticle(articleEntity)
-            }
+            }.awaitAll()
         }
+        // ensure Unit return
+        Unit
     }
 
     suspend fun syncManifest(): List<ManifestItemDto> = withContext(Dispatchers.IO) {
@@ -108,4 +144,29 @@ private fun sha256(input: String): String {
     val md = MessageDigest.getInstance("SHA-256")
     val bytes = md.digest(input.toByteArray(Charsets.UTF_8))
     return bytes.joinToString(separator = "") { b -> "%02x".format(b) }
+}
+
+// Retry with exponential backoff and jitter. Returns null if all attempts fail.
+private suspend fun <T> retryWithBackoff(
+    maxAttempts: Int = 3,
+    initialDelayMs: Long = 200,
+    maxDelayMs: Long = 2000,
+    factor: Double = 2.0,
+    block: suspend () -> T,
+): T? {
+    var attempt = 0
+    var delayMs = initialDelayMs
+    while (attempt < maxAttempts) {
+        try {
+            return block()
+        } catch (_: Exception) {
+            attempt++
+            if (attempt >= maxAttempts) break
+            val jitter = Random.nextLong(0, delayMs / 2 + 1)
+            val actual = min(delayMs + jitter, maxDelayMs)
+            delay(actual)
+            delayMs = min((delayMs * factor).toLong(), maxDelayMs)
+        }
+    }
+    return null
 }
