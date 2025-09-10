@@ -111,12 +111,12 @@ class ArticleRepositoryImplTest {
         )
         api.articles["m1"] = ArticleDto(
             id = "m1", slug = "m-slug-1", title = "M Title 1", version = 1, wordCount = 150,
-            updatedAt = "2025-01-01T00:00:00Z", checksum = "x", html = "<p>A</p>", text = "A",
+            updatedAt = "2025-01-01T00:00:00Z", checksum = "", html = "<p>A</p>", text = "A",
             sections = listOf(SectionDto(0, "paragraph", text = "A")), media = emptyList()
         )
         api.articles["m2"] = ArticleDto(
             id = "m2", slug = "m-slug-2", title = "M Title 2", version = 2, wordCount = 250,
-            updatedAt = "2025-01-02T00:00:00Z", checksum = "y", html = "<p>B</p>", text = "B",
+            updatedAt = "2025-01-02T00:00:00Z", checksum = "", html = "<p>B</p>", text = "B",
             sections = listOf(SectionDto(0, "paragraph", text = "B")), media = emptyList()
         )
         // When
@@ -132,6 +132,67 @@ class ArticleRepositoryImplTest {
         assertEquals("B", c2?.plainText)
         check(!c1?.textHash.isNullOrBlank())
         check(!c2?.textHash.isNullOrBlank())
+    }
+
+    @Test
+    fun refreshArticles_skipsDetailWhenVersionUnchangedAndHasContent() = runTest {
+        // Existing article with version 3 and content
+        dao.upsertArticle(ArticleEntity("x1", "Title X", "slug-x", 3, "2025-01-03", 100))
+        dao.upsertContent(ArticleContentEntity("x1", "<p>old</p>", "old", "hash-old"))
+
+        // Manifest has same version
+        api.manifest = listOf(ManifestItemDto("x1", "Title X", "slug-x", 3, "2025-01-03", 100))
+        // API should not be called for details if version unchanged and content exists; even if provided, repo should not overwrite
+        api.articles["x1"] = ArticleDto(
+            id = "x1", slug = "slug-x", title = "Title X", version = 3, wordCount = 100,
+            updatedAt = "2025-01-03", checksum = "irrelevant", html = "<p>new</p>", text = "new",
+            sections = emptyList(), media = emptyList()
+        )
+
+        repo.refreshArticles()
+        val c = dao.getArticleContent("x1")
+        assertEquals("old", c?.plainText) // unchanged
+    }
+
+    @Test
+    fun refreshArticles_dropsContentOnChecksumMismatch() = runTest {
+        api.manifest = listOf(ManifestItemDto("c1", "C1", "c1", 1, "2025-01-01", 10))
+        // Provide checksum that won't match sha256("hello")
+        api.articles["c1"] = ArticleDto(
+            id = "c1", slug = "c1", title = "C1", version = 1, wordCount = 10,
+            updatedAt = "2025-01-01", checksum = "bad", html = "<p>hello</p>", text = "hello",
+            sections = emptyList(), media = emptyList()
+        )
+        repo.refreshArticles()
+        // Content should not be saved due to checksum mismatch; article metadata still present
+        val art = dao.getArticle("c1")
+        val content = dao.getArticleContent("c1")
+        assertEquals("C1", art?.title)
+        assertEquals(null, content)
+    }
+
+    @Test
+    fun refreshArticles_retriesOnFailureThenSucceeds() = runTest {
+        // API fails first time for getArticle, succeeds next
+        api.manifest = listOf(ManifestItemDto("r1", "R1", "r1", 1, "2025-01-01", 10))
+        var attempts = 0
+        val retryingApi = object : ArticleApi {
+            override suspend fun getManifest(): List<ManifestItemDto> = api.manifest
+            override suspend fun getArticle(id: String): ArticleDto {
+                attempts++
+                if (attempts == 1) error("transient")
+                return ArticleDto(
+                    id = id, slug = "r1", title = "R1", version = 1, wordCount = 10,
+                    updatedAt = "2025-01-01", checksum = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", // sha256("hello")
+                    html = "<p>hello</p>", text = "hello", sections = emptyList(), media = emptyList()
+                )
+            }
+        }
+        val retryingRepo = ArticleRepositoryImpl(api = retryingApi, articleDao = dao)
+
+        retryingRepo.refreshArticles()
+        val c = dao.getArticleContent("r1")
+        assertEquals("hello", c?.plainText)
     }
 
     @Test
