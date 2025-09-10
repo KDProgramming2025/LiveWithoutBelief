@@ -197,6 +197,8 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
     implementation(libs.play.services.auth)
     implementation(libs.credential.manager)
     implementation(libs.credential.manager.play.services)

@@ -286,196 +286,68 @@
   ],
     "backlogs": [
     {
-      "E5": {
-        "Sprint2": {
+      "E8": {
+        "Sprint3": {
           "Stories": [
             {
-              "id": "LWB-45",
+              "id": "LWB-60",
               "type": "Story",
-              "summary": "Ingest and process articles with media for backend storage and search",
-              "description": "As a system, I need to ingest ~4 .docx articles (~40 pages each, with ~10 images, ~1 audio, ~3 YouTube embeds) to convert them to HTML/text, extract assets, and enable full-text search for client retrieval.",
-              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
-              "originalEstimateHours": 10,
-              "startDate": "2025-09-10",
-              "dueDate": "2025-09-11",
-              "priority": "Highest",
-              "parent": "E5"
-            },
-            {
-              "id": "LWB-46",
-              "type": "Task",
-              "summary": "Set up Node.js ingestion endpoint",
-              "description": "Configure Node.js (Express.js) endpoint to handle .docx file uploads and initiate processing pipeline.",
-              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
-              "originalEstimateHours": 8,
-              "startDate": "2025-09-10",
-              "dueDate": "2025-09-11",
-              "priority": "Highest",
-              "parent": "E5"
-            },
-            {
-              "id": "LWB-47",
-              "type": "Task",
-              "summary": "Configure full-text search index",
-              "description": "Set up SQLite FTS or MiniSearch for full-text indexing of article content.",
-              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
-              "originalEstimateHours": 6,
-              "startDate": "2025-09-12",
-              "dueDate": "2025-09-12",
-              "priority": "Highest",
-              "parent": "E5"
-            },
-            {
-              "id": "LWB-48",
-              "type": "Task",
-              "summary": "Persist normalized content",
-              "description": "Store sanitized HTML, plain text, and media assets with versioned manifest in backend database.",
-              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
-              "originalEstimateHours": 6,
-              "startDate": "2025-09-15",
-              "dueDate": "2025-09-15",
-              "priority": "Highest",
-              "parent": "E5"
-            },
-            {
-              "id": "LWB-49",
-              "type": "Sub-task",
-              "summary": "Parse .docx files",
-              "description": "Implement .docx parsing to extract headings, lists, quotes, and text content.",
-              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-10",
-              "dueDate": "2025-09-10",
-              "priority": "Highest",
-              "parent": "LWB-45"
-            },
-            {
-              "id": "LWB-50",
-              "type": "Sub-task",
-              "summary": "Extract media assets",
-              "description": "Extract and store ~10 images, ~1 audio, and ~3 YouTube embed codes per article with checksums.",
-              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-11",
-              "dueDate": "2025-09-11",
-              "priority": "Highest",
-              "parent": "LWB-45"
-            },
-            {
-              "id": "LWB-51",
-              "type": "Sub-task",
-              "summary": "Generate signed versioned manifest",
-              "description": "Create a signed manifest with version and checksums for client delta retrieval.",
-              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-12",
-              "dueDate": "2025-09-12",
-              "priority": "Highest",
-              "parent": "LWB-46"
-            },
-            {
-              "id": "LWB-52",
-              "type": "Sub-task",
-              "summary": "Sanitize HTML and text output",
-              "description": "Convert .docx content to sanitized HTML and plain text for safe rendering and search.",
-              "labels": ["ingestion", "content", "backend", "mvp", "sprint2"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-15",
-              "dueDate": "2025-09-15",
-              "priority": "Highest",
-              "parent": "LWB-46"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "E6": {
-        "Sprint2": {
-          "Stories": [
-            {
-              "id": "LWB-53",
-              "type": "Story",
-              "summary": "Implement efficient client sync and offline content access",
-              "description": "As a user, I need efficient delta sync and offline access to ~4 articles to ensure seamless content availability.",
-              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
-              "originalEstimateHours": 6,
-              "startDate": "2025-09-19",
-              "dueDate": "2025-09-19",
-              "priority": "High",
-              "parent": "E6"
-            },
-            {
-              "id": "LWB-54",
-              "type": "Task",
-              "summary": "Configure delta sync mechanism",
-              "description": "Implement manifest-driven delta sync with hash/version diff for efficient content updates.",
-              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
+              "summary": "Integrate telemetry for crash and analytics monitoring",
+              "description": "As a developer, I need crash reporting and analytics telemetry to monitor app performance and user interactions without sensitive data.",
+              "labels": ["analytics", "observability", "mvp", "sprint3"],
               "originalEstimateHours": 4,
-              "startDate": "2025-09-19",
-              "dueDate": "2025-09-19",
+              "startDate": "2025-09-23",
+              "dueDate": "2025-09-24",
               "priority": "High",
-              "parent": "E6"
+              "parent": "E8"
             },
             {
-              "id": "LWB-55",
-              "type": "Task",
-              "summary": "Set up Room persistence",
-              "description": "Configure Room database for local storage of articles and media assets.",
-              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
-              "originalEstimateHours": 4,
-              "startDate": "2025-09-22",
-              "dueDate": "2025-09-22",
-              "priority": "High",
-              "parent": "E6"
-            },
-            {
-              "id": "LWB-56",
-              "type": "Task",
-              "summary": "Implement caching and eviction strategy",
-              "description": "Set up caching and eviction policies for offline content, respecting connectivity and battery constraints.",
-              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
-              "originalEstimateHours": 4,
-              "startDate": "2025-09-22",
-              "dueDate": "2025-09-22",
-              "priority": "High",
-              "parent": "E6"
-            },
-            {
-              "id": "LWB-57",
+              "id": "LWB-61",
               "type": "Sub-task",
-              "summary": "Add checksum verification",
-              "description": "Implement checksum verification for downloaded assets to ensure integrity.",
-              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
+              "summary": "Set up Crashlytics and Analytics SDK",
+              "description": "Integrate Firebase Crashlytics and Analytics SDK for crash reporting and event tracking.",
+              "labels": ["analytics", "observability", "mvp", "sprint3"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-09-23",
+              "dueDate": "2025-09-23",
+              "priority": "High",
+              "parent": "LWB-60"
+            },
+            {
+              "id": "LWB-62",
+              "type": "Sub-task",
+              "summary": "Define event taxonomy and logging strategy",
+              "description": "Create a neutral event taxonomy and logging strategy avoiding sensitive personal data.",
+              "labels": ["analytics", "observability", "mvp", "sprint3"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-09-23",
+              "dueDate": "2025-09-23",
+              "priority": "High",
+              "parent": "LWB-60"
+            },
+            {
+              "id": "LWB-63",
+              "type": "Sub-task",
+              "summary": "Configure performance traces",
+              "description": "Set up performance traces for key app operations in telemetry system.",
+              "labels": ["analytics", "observability", "mvp", "sprint3"],
               "originalEstimateHours": 1,
-              "startDate": "2025-09-19",
-              "dueDate": "2025-09-19",
+              "startDate": "2025-09-24",
+              "dueDate": "2025-09-24",
               "priority": "High",
-              "parent": "LWB-54"
+              "parent": "LWB-60"
             },
             {
-              "id": "LWB-58",
+              "id": "LWB-64",
               "type": "Sub-task",
-              "summary": "Implement exponential backoff for retries",
-              "description": "Add exponential backoff for resilient parallel downloads during sync.",
-              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
+              "summary": "Document telemetry dashboard",
+              "description": "Create documentation for telemetry dashboard setup and usage.",
+              "labels": ["analytics", "observability", "mvp", "sprint3"],
               "originalEstimateHours": 1,
-              "startDate": "2025-09-19",
-              "dueDate": "2025-09-19",
+              "startDate": "2025-09-24",
+              "dueDate": "2025-09-24",
               "priority": "High",
-              "parent": "LWB-54"
-            },
-            {
-              "id": "LWB-59",
-              "type": "Sub-task",
-              "summary": "Configure periodic background sync",
-              "description": "Set up periodic background sync respecting connectivity and battery constraints.",
-              "labels": ["content-sync", "offline", "android", "mvp", "sprint2"],
-              "originalEstimateHours": 2,
-              "startDate": "2025-09-22",
-              "dueDate": "2025-09-22",
-              "priority": "High",
-              "parent": "LWB-55"
+              "parent": "LWB-60"
             }
           ]
         }
