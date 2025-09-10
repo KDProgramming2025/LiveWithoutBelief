@@ -151,6 +151,8 @@ export class PostgresContentStore implements ContentStore {
       const artRow = a.rows[0];
       const secs = await c.query('SELECT ord, kind, level, text, html, media_ref_id FROM article_sections WHERE article_id=$1 ORDER BY ord', [id]);
       const media = await c.query('SELECT id, type, filename, content_type, src, checksum FROM media_assets WHERE article_id=$1', [id]);
+      type SectionRow = { ord: number | string; kind: SectionKind; level: number | null; text: string | null; html: string | null; media_ref_id: string | null };
+      type MediaRow = { id: string; type: MediaRecord['type']; filename: string | null; content_type: string | null; src: string | null; checksum: string | null };
       return {
         id: artRow.id,
         slug: artRow.slug,
@@ -163,8 +165,8 @@ export class PostgresContentStore implements ContentStore {
         text: artRow.text,
         createdAt: artRow.created_at.toISOString?.() || artRow.created_at,
         updatedAt: artRow.updated_at.toISOString?.() || artRow.updated_at,
-        sections: secs.rows.map((r: any) => ({ order: Number(r.ord), kind: r.kind, level: r.level, text: r.text, html: r.html, mediaRefId: r.media_ref_id })),
-        media: media.rows.map((r: any) => ({ id: r.id, type: r.type, filename: r.filename, contentType: r.content_type, src: r.src, checksum: r.checksum }))
+        sections: (secs.rows as SectionRow[]).map((r) => ({ order: Number(r.ord), kind: r.kind, level: r.level ?? undefined, text: r.text ?? undefined, html: r.html ?? undefined, mediaRefId: r.media_ref_id ?? undefined })),
+        media: (media.rows as MediaRow[]).map((r) => ({ id: r.id, type: r.type, filename: r.filename ?? undefined, contentType: r.content_type ?? undefined, src: r.src ?? undefined, checksum: r.checksum ?? undefined }))
       } as StoredArticle;
     });
   }

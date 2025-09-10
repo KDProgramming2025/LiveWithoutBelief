@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { buildServer, InMemoryRevocationStore } from './buildServer.js';
+import type { ArticleManifestItem } from './buildServer.js';
 import type { FastifyInstance } from 'fastify';
 
 let app: FastifyInstance;
@@ -133,7 +134,7 @@ describe('ingestion endpoint', () => {
     expect(list.statusCode).toBe(200);
     const listBody = list.json();
     expect(Array.isArray(listBody.items)).toBe(true);
-    const item = listBody.items.find((it: any) => it.id === 't' || it.slug === 't');
+  const item = listBody.items.find((it: ArticleManifestItem) => it.id === 't' || it.slug === 't');
     // depending on slug derivation, it should include something similar
     expect(listBody.items.length).toBeGreaterThan(0);
     // fetch first item

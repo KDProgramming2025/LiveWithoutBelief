@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import { buildUserStore } from './userStore.js';
 import { createChallenge, verifySolution } from 'altcha-lib';
 import { buildContentStore, computeChecksumForNormalized } from './contentStore.js';
+import type { SectionKind } from './contentStore.js';
 import crypto from 'crypto';
 
 export interface ArticleManifestItem {
@@ -234,7 +235,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
         title,
         version,
         wordCount: parsed.wordCount,
-        sections: parsed.sections.map((s, idx) => ({ order: idx, kind: s.kind as any, level: s.level, text: s.text, html: s.html, mediaRefId: s.mediaRefId })),
+        sections: parsed.sections.map((s, idx) => ({ order: idx, kind: s.kind as SectionKind, level: s.level, text: s.text, html: s.html, mediaRefId: s.mediaRefId })),
         media: parsed.media.map(m => ({ id: m.id, type: m.type, filename: m.filename, contentType: m.contentType, src: m.src, checksum: m.checksum })),
         checksum,
         signature: sig,

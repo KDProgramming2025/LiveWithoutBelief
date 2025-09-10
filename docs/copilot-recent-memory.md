@@ -15,7 +15,8 @@ Notes:
 - MANIFEST_SECRET gates manifest emission by design.
 
 Recent:
-- LWB-47 PR merged; remote feature branch deleted by user. Local cleanup done: committed local edits, switched to main, deleted local branch, pruned remotes.
+- LWB-47 PR merged; local cleanup complete.
+- Started LWB-48 on branch feature/LWB-48-persist. Implemented server persistence layer with in-memory/PG store, wired ingestion to save article, added endpoints: GET /v1/articles/manifest and GET /v1/articles/:id. All server tests pass (12/12).
 
 Next:
 - Decide on immediate task: lightweight tests for SearchViewModel or start next Jira ticket.
