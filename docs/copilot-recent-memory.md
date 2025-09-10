@@ -15,4 +15,4 @@ Notes:
 - MANIFEST_SECRET gates manifest emission by design.
 
 Next:
-- Implement LWB-47: Local Android search only (no server). Added DAO LIKE-based search, repo API searchLocal, Hilt VM, and Compose screen in feature/search. Wire into app nav next.
+- LWB-47: Navigation wired. Consider adding UI tests for SearchViewModel behavior and polish (snippets/highlighting). Prepare PR.
