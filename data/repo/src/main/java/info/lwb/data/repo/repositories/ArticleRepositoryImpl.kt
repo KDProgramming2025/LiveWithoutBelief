@@ -9,6 +9,7 @@ import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.data.network.ArticleApi
+import java.security.MessageDigest
 import info.lwb.data.network.ManifestItemDto
 import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
@@ -54,7 +55,8 @@ class ArticleRepositoryImpl(
         val manifest = runCatching { api.getManifest() }.getOrElse { emptyList() }
         if (manifest.isEmpty()) return@withContext
         manifest.forEach { item ->
-            val entity = ArticleEntity(
+            // Upsert manifest item as lightweight article row
+            val articleEntity = ArticleEntity(
                 id = item.id,
                 title = item.title,
                 slug = item.slug,
@@ -62,7 +64,29 @@ class ArticleRepositoryImpl(
                 updatedAt = item.updatedAt,
                 wordCount = item.wordCount,
             )
-            articleDao.upsertArticle(entity)
+            // Fetch full article to sync content delta if changed
+            val dto = runCatching { api.getArticle(item.id) }.getOrNull()
+            if (dto != null) {
+                val plain = dto.text ?: ""
+                val html = dto.html ?: ""
+                val textHash = sha256(plain)
+                val existing = articleDao.getArticleContent(item.id)
+                if (existing == null || existing.textHash != textHash) {
+                    val contentEntity = ArticleContentEntity(
+                        articleId = item.id,
+                        htmlBody = html,
+                        plainText = plain,
+                        textHash = textHash,
+                    )
+                    articleDao.upsertArticleWithContent(articleEntity, contentEntity)
+                } else {
+                    // Content unchanged; still ensure article row updated
+                    articleDao.upsertArticle(articleEntity)
+                }
+            } else {
+                // Fallback: only upsert article metadata
+                articleDao.upsertArticle(articleEntity)
+            }
         }
     }
 
@@ -79,3 +103,9 @@ class ArticleRepositoryImpl(
 
 private fun ArticleEntity.toDomain() = Article(id, title, slug, version, updatedAt, wordCount)
 private fun ArticleContentEntity.toDomain() = ArticleContent(articleId, htmlBody, plainText, textHash)
+
+private fun sha256(input: String): String {
+    val md = MessageDigest.getInstance("SHA-256")
+    val bytes = md.digest(input.toByteArray(Charsets.UTF_8))
+    return bytes.joinToString(separator = "") { b -> "%02x".format(b) }
+}
