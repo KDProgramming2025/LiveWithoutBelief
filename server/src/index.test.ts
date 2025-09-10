@@ -1,10 +1,15 @@
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { buildServer, InMemoryRevocationStore } from './buildServer.js';
 import type { FastifyInstance } from 'fastify';
 
 let app: FastifyInstance;
 // password flow tests (no email link now)
 const googleClientId = 'test-client';
+
+// Mock ingestion module globally for ESM to avoid heavy processing during tests
+vi.mock('./ingestion/docx.js', () => ({
+  parseDocx: async () => ({ sections: [{ kind: 'heading', level: 1, text: 'T' }], media: [], wordCount: 3 })
+}));
 
 // naive stub of google-auth-library by monkey-patching global import cache
 // We rely on the real module inside buildServer, so we monkey patch its prototype method at runtime.
@@ -96,4 +101,24 @@ describe('password auth', () => {
     expect(second.statusCode).toBe(409);
   });
   // ALTCHA failure scenarios are not tested here because bypass is enabled for deterministic flows.
+});
+
+describe('ingestion endpoint', () => {
+  test('uploads a docx and returns summary', async () => {
+    const boundary = '----lwb-boundary';
+    const payload =
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"; filename="t.docx"\r\n` +
+      `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n` +
+      `dummy\r\n` +
+      `--${boundary}--\r\n`;
+    const res = await app.inject({
+      method: 'POST', url: '/v1/ingest/docx',
+      payload, headers: { 'content-type': `multipart/form-data; boundary=${boundary}` }
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.wordCount).toBe(3);
+    expect(body.sections).toBe(1);
+  });
 });

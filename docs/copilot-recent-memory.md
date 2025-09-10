@@ -65,3 +65,9 @@ Next steps:
 - server/src/ingestion added with parseDocx and extractMedia, plus types and tests (Vitest).
 - Dependencies added: mammoth, sanitize-html; local mammoth .d.ts shim.
 - Branch feature/LWB-45-ingestion pushed; server tests PASS. Open PR from feature/LWB-45-ingestion → main.
+
+09-10 LWB-45 ingestion endpoint:
+- Added @fastify/multipart and wired POST /v1/ingest/docx in server/src/buildServer.ts.
+- Fixed plugin version mismatch by upgrading @fastify/multipart to ^9.2.1 (compatible with Fastify v5).
+- Added integration test in server/src/index.test.ts mocking ingestion via vi.mock; avoids heavy processing.
+- Ran npm install and all server tests now PASS (9/9). PR remains open for review.
