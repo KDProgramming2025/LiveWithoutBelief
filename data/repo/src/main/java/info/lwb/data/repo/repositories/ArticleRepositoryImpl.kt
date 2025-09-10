@@ -69,6 +69,12 @@ class ArticleRepositoryImpl(
     suspend fun syncManifest(): List<ManifestItemDto> = withContext(Dispatchers.IO) {
         runCatching { api.getManifest() }.getOrElse { emptyList() }
     }
+
+    override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> = withContext(Dispatchers.IO) {
+        if (query.isBlank()) return@withContext emptyList()
+        val rows = articleDao.searchArticlesLike(query.trim(), limit, offset)
+        rows.map { Article(it.id, it.title, it.slug, it.version, it.updatedAt, it.wordCount) }
+    }
 }
 
 private fun ArticleEntity.toDomain() = Article(id, title, slug, version, updatedAt, wordCount)

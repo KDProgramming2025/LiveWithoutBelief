@@ -17,6 +17,7 @@ interface ArticleRepository {
     fun getArticles(): Flow<Result<List<Article>>>
     fun getArticleContent(articleId: String): Flow<Result<ArticleContent>>
     suspend fun refreshArticles()
+    suspend fun searchLocal(query: String, limit: Int = 25, offset: Int = 0): List<Article>
 }
 
 interface BookmarkRepository {

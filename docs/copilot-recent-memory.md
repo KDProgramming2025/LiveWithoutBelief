@@ -1,5 +1,5 @@
 Date: 2025-09-10
-Branch: feature/LWB-46-manifest-sanitize
+Branch: feature/LWB-47-search
 
 Completed (server):
 - LWB-51: Signed manifest builder (checksum + HMAC) implemented; optional manifest returned by /v1/ingest/docx when MANIFEST_SECRET is set.
@@ -15,5 +15,4 @@ Notes:
 - MANIFEST_SECRET gates manifest emission by design.
 
 Next:
-- Open PR for feature/LWB-46-manifest-sanitize and run CI.
-- Plan persistence (LWB-48) and indexing (LWB-47); replace sample manifest endpoint with real data once persistence exists.
+- LWB-47: Navigation wired. Consider adding UI tests for SearchViewModel behavior and polish (snippets/highlighting). Prepare PR.
