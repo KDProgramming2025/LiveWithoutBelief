@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import { buildUserStore } from './userStore.js';
 import { createChallenge, verifySolution } from 'altcha-lib';
 import { buildContentStore, computeChecksumForNormalized } from './contentStore.js';
+import crypto from 'crypto';
 
 export interface ArticleManifestItem {
   id: string; title: string; slug: string; version: number; updatedAt: string; wordCount: number;
@@ -224,9 +225,8 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       const version = 1; // MVP; later from request or store
       // Build normalized checksum (manifest-like)
       const checksum = computeChecksumForNormalized({ id: slug, version, sections: parsed.sections, media: parsed.media });
-      const secret = process.env.MANIFEST_SECRET;
-      const signature = secret ? (await import('crypto')).then(({ default: crypto }) => crypto.createHmac('sha256', secret).update(checksum).digest('hex')) : Promise.resolve<string | undefined>(undefined);
-      const sig = await signature;
+  const secret = process.env.MANIFEST_SECRET;
+  const sig = secret ? crypto.createHmac('sha256', secret).update(checksum).digest('hex') : undefined;
       // Persist
       await content.upsertArticle({
         id: slug,
