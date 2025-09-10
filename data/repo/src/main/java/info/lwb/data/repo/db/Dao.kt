@@ -43,6 +43,19 @@ interface ArticleDao {
     @Query("SELECT * FROM article_assets WHERE articleId = :articleId")
     suspend fun listAssets(articleId: String): List<ArticleAssetEntity>
 
+    // ----- Eviction helpers -----
+    @Query("DELETE FROM article_contents WHERE articleId NOT IN (:keepIds)")
+    suspend fun deleteContentsNotIn(keepIds: List<String>)
+
+    @Query("DELETE FROM article_assets WHERE articleId NOT IN (:keepIds)")
+    suspend fun deleteAssetsNotIn(keepIds: List<String>)
+
+    @Query("DELETE FROM article_contents")
+    suspend fun clearAllContents()
+
+    @Query("DELETE FROM article_assets")
+    suspend fun clearAllAssets()
+
     // Lightweight local search across title and plain text body (no FTS; uses LIKE)
     @Query(
         "SELECT a.id AS id, a.title AS title, a.slug AS slug, a.version AS version, a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText " +

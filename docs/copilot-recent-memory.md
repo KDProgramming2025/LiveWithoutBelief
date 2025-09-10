@@ -1,5 +1,5 @@
 Date: 2025-09-10
-Branch: feature/LWB-55-room-and-periodic-sync (local active)
+Branch: feature/LWB-56-cache-eviction (local active)
 
 Completed (server):
 - LWB-51: Signed manifest builder (checksum + HMAC) implemented; optional manifest returned by /v1/ingest/docx when MANIFEST_SECRET is set.
@@ -20,7 +20,8 @@ Recent:
 - LWB-54/57/58: Implemented retry with backoff, checksum validation, and version-aware delta; merged via PR #16. Local cleanup done (deleted feature/LWB-54-delta-sync; also deleted stale feature/LWB-48-persist). Main fast-forwarded.
 - LWB-55: Room DAO extended for media assets; repository persists and prunes assets in sync.
 - LWB-59: WorkManager periodic sync added (EntryPoint injection); scheduled from Application on startup; unit test uses Robolectric runner.
+- LWB-56: Implemented eviction policy keeping most recent 4 articles’ content/assets; added DAO helpers, repository logic, and unit tests.
 
 Next:
-- Run full unit tests (done; green) and open PR for feature/LWB-55-room-and-periodic-sync covering LWB-55 and LWB-59.
+- Open PRs: #17 (LWB-55/59) already open; create PR for LWB-56 cache+eviction.
 - After merge: consider instrumentation test for WorkManager schedule and asset UI wiring.
