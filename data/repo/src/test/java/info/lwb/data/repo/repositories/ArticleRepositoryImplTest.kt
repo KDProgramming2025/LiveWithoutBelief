@@ -25,6 +25,7 @@ import org.junit.Test
 class FakeArticleDao : ArticleDao {
     private val articles = mutableMapOf<String, ArticleEntity>()
     private val contents = mutableMapOf<String, ArticleContentEntity>()
+    private val assets = mutableMapOf<String, MutableMap<String, info.lwb.data.repo.db.ArticleAssetEntity>>()
     override suspend fun getArticle(id: String) = articles[id]
     override suspend fun listArticles() = articles.values.toList()
     override suspend fun upsertArticle(article: ArticleEntity) {
@@ -39,6 +40,23 @@ class FakeArticleDao : ArticleDao {
     }
     override suspend fun getContent(articleId: String) = contents[articleId]
     override suspend fun getArticleContent(articleId: String) = contents[articleId]
+    override suspend fun upsertAssets(assets: List<info.lwb.data.repo.db.ArticleAssetEntity>) {
+        assets.groupBy { it.articleId }.forEach { (aid, list) ->
+            val bucket = this.assets.getOrPut(aid) { mutableMapOf() }
+            list.forEach { a -> bucket[a.id] = a }
+        }
+    }
+    override suspend fun pruneAssetsForArticle(articleId: String, keepIds: List<String>) {
+        val bucket = assets[articleId] ?: return
+        val keep = keepIds.toSet()
+        val iter = bucket.keys.iterator()
+        while (iter.hasNext()) {
+            val id = iter.next()
+            if (!keep.contains(id)) iter.remove()
+        }
+    }
+    override suspend fun listAssets(articleId: String): List<info.lwb.data.repo.db.ArticleAssetEntity> =
+        assets[articleId]?.values?.toList() ?: emptyList()
     override suspend fun searchArticlesLike(q: String, limit: Int, offset: Int): List<ArticleSearchRow> {
         // Simple in-memory LIKE: case-insensitive contains on title/plainText
         val lowered = q.lowercase()

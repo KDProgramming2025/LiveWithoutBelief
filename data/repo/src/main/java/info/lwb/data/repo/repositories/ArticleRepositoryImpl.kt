@@ -119,6 +119,27 @@ class ArticleRepositoryImpl(
                         // Content unchanged; still ensure article row updated
                         articleDao.upsertArticle(articleEntity)
                     }
+
+                    // Persist media assets (idempotent) and prune removed ones
+                    val mediaEntities = dto.media.map { m ->
+                        info.lwb.data.repo.db.ArticleAssetEntity(
+                            id = m.id,
+                            articleId = item.id,
+                            type = m.type,
+                            uri = m.src ?: (m.filename ?: ""),
+                            checksum = m.checksum ?: "",
+                            width = null,
+                            height = null,
+                            sizeBytes = null,
+                        )
+                    }
+                    if (mediaEntities.isNotEmpty()) {
+                        articleDao.upsertAssets(mediaEntities)
+                        articleDao.pruneAssetsForArticle(item.id, mediaEntities.map { it.id })
+                    } else {
+                        // No media in payload; prune all existing for this article
+                        articleDao.pruneAssetsForArticle(item.id, emptyList())
+                    }
                 }
             }.awaitAll()
         }
