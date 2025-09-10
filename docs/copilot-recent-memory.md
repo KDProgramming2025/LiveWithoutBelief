@@ -71,3 +71,8 @@ Next steps:
 - Fixed plugin version mismatch by upgrading @fastify/multipart to ^9.2.1 (compatible with Fastify v5).
 - Added integration test in server/src/index.test.ts mocking ingestion via vi.mock; avoids heavy processing.
 - Ran npm install and all server tests now PASS (9/9). PR remains open for review.
+
+09-10 CI workflow fixes:
+- android.yml env indentation corrected; workflow_dispatch now works. Manually dispatched CI for branch feature/LWB-45-ingestion; PR-triggered run is in progress.
+- release.yml job-level if indentation fixed; remains manual or release-please only. Earlier runs on feature branch were due to malformed YAML.
+- Note: GitHub “Automatic Dependency Submission (Gradle)” runs under dynamic event separately from our workflows; that’s why you saw only the dynamic pipeline previously.
