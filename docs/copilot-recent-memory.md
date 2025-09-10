@@ -1,5 +1,5 @@
 Date: 2025-09-10
-Branch: feature/LWB-56-cache-eviction (local active)
+Branch: feature/LWB-60-telemetry (local active)
 
 Completed (server):
 - LWB-51: Signed manifest builder (checksum + HMAC) implemented; optional manifest returned by /v1/ingest/docx when MANIFEST_SECRET is set.
@@ -21,7 +21,9 @@ Recent:
 - LWB-55: Room DAO extended for media assets; repository persists and prunes assets in sync.
 - LWB-59: WorkManager periodic sync added (EntryPoint injection); scheduled from Application on startup; unit test uses Robolectric runner.
 - LWB-56: Implemented eviction policy keeping most recent 4 articles’ content/assets; added DAO helpers, repository logic, and unit tests.
+ - LWB-60: Added Firebase Analytics, Crashlytics, and Performance Monitoring; Telemetry facade with init/logEvent/recordCaught/startTrace; App initializes Telemetry and logs app_start; Robolectric smoke test passing pre-perf; added perf trace around ArticleSyncWorker.refreshArticles.
 
 Next:
 - Open PRs: #17 (LWB-55/59) already open; create PR for LWB-56 cache+eviction.
 - After merge: consider instrumentation test for WorkManager schedule and asset UI wiring.
+ - Run tests post-perf addition; open PR for LWB-60 Telemetry; draft event taxonomy doc (LWB-62) and dashboard/readme notes (LWB-64).

@@ -1,249 +1,132 @@
 {
   "epics": [
     {
-      "code": "E1",
-      "summary": "E1 - Core Architecture & Modular Foundations",
-      "description": "Establish a production-grade multi-module Kotlin architecture (domain, data, feature layers) with MVVM, Dependency Injection, clear boundaries, dependency direction rules, ADR log, static analysis (lint, dependency guard), code coverage gating, and baseline performance & memory profiling harness.",
-      "priority": "Highest",
-      "labels": [
-        "architecture",
-        "android",
-        "backend",
-        "mvp"
-      ],
-      "startDate": "2025-09-01",
-      "dueDate": "2025-09-03",
-      "workHours": 17
+      "id": "E1",
+      "name": "Core Architecture & Modular Foundations",
+      "description": "Set up Clean Architecture with MVVM, DI, multi-module Kotlin, static analysis, and profiling harness.",
+      "originalEstimateHours": 17,
+      "sprint": "Sprint1",
+      "priority": "Highest"
     },
     {
-      "code": "E2",
-      "summary": "E2 - Frictionless Google Sign-In & Account Lifecycle",
-      "description": "Provide one-tap Google authentication (Credential Manager + Firebase), token refresh & secure storage, backend session validation, sign-out, and minimal profile bootstrap without manual text entry. Login optional for reading content.",
-      "priority": "Highest",
-      "labels": [
-        "auth",
-        "security",
-        "mvp"
-      ],
-      "startDate": "2025-09-04",
-      "dueDate": "2025-09-05",
-      "workHours": 11
+      "id": "E2",
+      "name": "Frictionless Google Sign-In & Account Lifecycle",
+      "description": "Implement one-tap Google login via Firebase/Credential Manager with backend session validation.",
+      "originalEstimateHours": 11,
+      "sprint": "Sprint1",
+      "priority": "Highest"
     },
     {
-      "code": "E3",
-      "summary": "E3 - CI/CD, Quality Gates & Release Automation",
-      "description": "Set up GitHub + GitLab mirrored pipelines with full Jira integration (webhooks, issue linking, pipeline triggers): build matrix, detekt & lint, unit & instrumentation tests, coverage thresholds, dependency & security scans, artifact signing, Play Console internal track deployment, versioning & changelog automation.",
-      "priority": "High",
-      "labels": [
-        "ci-cd",
-        "devops",
-        "release",
-        "mvp"
-      ],
-      "startDate": "2025-09-08",
-      "dueDate": "2025-09-09",
-      "workHours": 11
+      "id": "E3",
+      "name": "CI/CD, Quality Gates & Release Automation",
+      "description": "Establish GitHub/GitLab CI/CD pipelines with Jira integration, tests, lint, detekt, and Play internal track deploy.",
+      "originalEstimateHours": 11,
+      "sprint": "Sprint1",
+      "priority": "High"
     },
     {
-      "code": "E4",
-      "summary": "E4 - Holistic Test Strategy & Quality Tooling",
-      "description": "Define and implement layered test strategy (unit, integration, DAO, UI Compose tests, snapshot/visual, performance smoke) with fixtures, test data builders, hermetic environment utilities, and baseline failure triage workflow for TDD.",
-      "priority": "High",
-      "labels": [
-        "qa",
-        "testing",
-        "quality",
-        "mvp"
-      ],
-      "startDate": "2025-09-10",
-      "dueDate": "2025-09-11",
-      "workHours": 11
+      "id": "E4",
+      "name": "Holistic Test Strategy & Quality Tooling",
+      "description": "Define TDD strategy with unit, integration, DAO, UI Compose tests, and coverage thresholds.",
+      "originalEstimateHours": 11,
+      "sprint": "Sprint1",
+      "priority": "High"
     },
     {
-      "code": "E5",
-      "summary": "E5 - Article & Media Ingestion + Storage Pipeline",
-      "description": "Implement Node.js backend (e.g., Express.js) to ingest ~4 .docx articles (~40 pages each, with headings, lists, quotes, ~10 images, ~1 audio, ~3 YouTube embed codes per article), convert to sanitized HTML + plain text, extract assets with checksums, generate signed versioned manifest, create full-text search index (e.g., SQLite FTS or MiniSearch), and persist normalized content for client delta retrieval.",
-      "priority": "Highest",
-      "labels": [
-        "ingestion",
-        "content",
-        "backend",
-        "mvp"
-      ],
-      "startDate": "2025-09-12",
-      "dueDate": "2025-09-19",
-      "workHours": 44
+      "id": "E5",
+      "name": "Article & Media Ingestion + Storage Pipeline",
+      "description": "Build Node.js/TypeScript ingestion pipeline for ~4 .docx articles (~40 pages each, with images, audio, YouTube embeds), converting to HTML/text with full-text search and versioning.",
+      "originalEstimateHours": 44,
+      "sprint": "Sprint2",
+      "priority": "Highest"
     },
     {
-      "code": "E6",
-      "summary": "E6 - Client Delta Sync, Caching & Offline Integrity",
-      "description": "Deliver efficient manifest-driven delta sync (hash/version diff), resilient parallel downloads with retry + exponential backoff, integrity verification (checksums), Room persistence, eviction strategy, and background periodic sync respecting connectivity & battery constraints for ~4 articles.",
-      "priority": "High",
-      "labels": [
-        "content-sync",
-        "offline",
-        "android",
-        "mvp"
-      ],
-      "startDate": "2025-09-22",
-      "dueDate": "2025-09-24",
-      "workHours": 22
+      "id": "E6",
+      "name": "Client Delta Sync, Caching & Offline Integrity",
+      "description": "Implement manifest-driven delta sync, Room persistence, and offline caching with checksum verification and background sync.",
+      "originalEstimateHours": 22,
+      "sprint": "Sprint2",
+      "priority": "High"
     },
     {
-      "code": "E7",
-      "summary": "E7 - Security Hardening & Compliance Foundations",
-      "description": "Apply transport & data security (HTTPS, HSTS eval, optional cert pin strategy decision), secure credential storage, rate limiting, basic abuse detection, privacy policy alignment, and minimal governance for dependency vulnerabilities.",
-      "priority": "Highest",
-      "labels": [
-        "security",
-        "privacy",
-        "compliance",
-        "mvp"
-      ],
-      "startDate": "2025-09-25",
-      "dueDate": "2025-09-26",
-      "workHours": 11
+      "id": "E7",
+      "name": "Observability & Telemetry Layer",
+      "description": "Integrate Firebase Crashlytics and Analytics for crash reporting and privacy-respecting usage tracking.",
+      "originalEstimateHours": 11,
+      "sprint": "Sprint3",
+      "priority": "High"
     },
     {
-      "code": "E8",
-      "summary": "E8 - Observability & Telemetry Layer",
-      "description": "Integrate crash + analytics SDK (Crashlytics + Analytics), define neutral event taxonomy (no sensitive personal data), abstraction facade, logging strategy, performance traces, and dashboard documentation.",
-      "priority": "High",
-      "labels": [
-        "analytics",
-        "observability",
-        "mvp"
-      ],
-      "startDate": "2025-09-29",
-      "dueDate": "2025-09-30",
-      "workHours": 11
+      "id": "E8",
+      "name": "Reading & Interactive Consumption Experience",
+      "description": "Deliver reader UI (Jetpack Compose, typography controls, media rendering, in-article search, pagination, reading progress) with light/dark themes, multi-window/large screen layouts, and reading statistics.",
+      "originalEstimateHours": 29,
+      "sprint": "Sprint4,Sprint6",
+      "priority": "High"
     },
     {
-      "code": "E9",
-      "summary": "E9 - Reading & Interactive Consumption Experience",
-      "description": "Provide a comfortable reader with Jetpack Compose: paginated/segmented layout, typography controls (font scale, line height, light/dark themes, dynamic color), inline media rendering (images, audio, YouTube embeds via WebView/API), in-article search, scroll & page progress, semantic accessibility (headings, landmarks), and footnote/reference handling.",
-      "priority": "High",
-      "labels": [
-        "reader",
-        "ui",
-        "accessibility",
-        "mvp"
-      ],
-      "startDate": "2025-10-01",
-      "dueDate": "2025-10-03",
-      "workHours": 22
+      "id": "E9",
+      "name": "Bookmarking & Personal Library Organization",
+      "description": "Implement bookmark saving, folder organization, global full-text search, article tagging, and rule-based recommendations.",
+      "originalEstimateHours": 25,
+      "sprint": "Sprint4,Sprint6",
+      "priority": "High"
     },
     {
-      "code": "E10",
-      "summary": "E10 - Bookmarking & Personal Library Organization",
-      "description": "Allow users to save, categorize, reorder, and manage bookmarks via folders/collections with undo, persistence tests, scalable data model for tagging, and global full-text search/filtering UI (search bar, tag/category filters, query input).",
-      "priority": "High",
-      "labels": [
-        "bookmarks",
-        "ui",
-        "mvp"
-      ],
-      "startDate": "2025-10-06",
-      "dueDate": "2025-10-08",
-      "workHours": 22
+      "id": "E10",
+      "name": "Private Annotations & Personal Discussions",
+      "description": "Enable private text/media-anchored annotations, discussion threads with text/image/audio/PDF attachments, notifications, and in-app update notices for manifest schema changes.",
+      "originalEstimateHours": 47,
+      "sprint": "Sprint4",
+      "priority": "Highest"
     },
     {
-      "code": "E11",
-      "summary": "E11 - Private Annotations & Personal Discussions",
-      "description": "Enable precise text/media-anchored highlights, color-coded annotations, and strictly private per-user async discussion threads (supporting text, image, link/file attachments) with conflict resolution, secure local caching, and both in-app and push notifications (via FCM) for admin responses.",
-      "priority": "Highest",
-      "labels": [
-        "annotations",
-        "privacy",
-        "attachments",
-        "mvp"
-      ],
-      "startDate": "2025-10-09",
-      "dueDate": "2025-10-16",
-      "workHours": 41
+      "id": "E11",
+      "name": "Documentation, Developer Experience & OSS",
+      "description": "Create open-source documentation (README, contribution guide, ADR, OpenAPI contract, content authoring guide).",
+      "originalEstimateHours": 11,
+      "sprint": "Sprint5",
+      "priority": "High"
     },
     {
-      "code": "E12",
-      "summary": "E12 - Documentation, Developer Experience & OSS",
-      "description": "Expand README (purpose, architecture diagram), ADR templates, OpenAPI contract for Node.js backend, ingestion & manifest schema reference, and developer setup scripts for open-source readiness.",
-      "priority": "High",
-      "labels": [
-        "docs",
-        "community",
-        "oss",
-        "mvp"
-      ],
-      "startDate": "2025-10-17",
-      "dueDate": "2025-10-20",
-      "workHours": 11
+      "id": "E12",
+      "name": "Minimal Admin Operations UI",
+      "description": "Build Node.js/TypeScript-based admin web UI for content ingestion queue and user support view.",
+      "originalEstimateHours": 8,
+      "sprint": "Sprint5",
+      "priority": "Medium"
     },
     {
-      "code": "E13",
-      "summary": "E13 - Minimal Admin Operations UI",
-      "description": "Provide secure (scoped) Node.js-based web UI on Linux server for ingestion queue visibility, retry/approve actions, viewing/responding to user discussion threads (triggering in-app and push notifications via FCM), and basic content health metrics without exposing other users’ private data.",
-      "priority": "Medium",
-      "labels": [
-        "admin",
-        "web",
-        "ops"
-      ],
-      "startDate": "2025-10-21",
-      "dueDate": "2025-10-21",
-      "workHours": 8
+      "id": "E13",
+      "name": "Internationalization & Localization Readiness",
+      "description": "Prepare string externalization, RTL support, and language metadata toggle stub.",
+      "originalEstimateHours": 6,
+      "sprint": "Sprint6",
+      "priority": "Medium"
     },
     {
-      "code": "E14",
-      "summary": "E14 - Internationalization & Localization Readiness",
-      "description": "Externalize user-facing strings, structure resource qualifiers, RTL & layout mirroring validation, language metadata in manifest, and preparatory toggle path (without translations).",
-      "priority": "Medium",
-      "labels": [
-        "localization",
-        "i18n"
-      ],
-      "startDate": "2025-10-22",
-      "dueDate": "2025-10-22",
-      "workHours": 6
+      "id": "E14",
+      "name": "Usability, Accessibility & Polish",
+      "description": "Ensure WCAG compliance (scalable text, contrast, TalkBack, heading semantics) and in-app settings for theme, text size, analytics opt-in/out.",
+      "originalEstimateHours": 11,
+      "sprint": "Sprint6",
+      "priority": "Medium"
     },
     {
-      "code": "E15",
-      "summary": "E15 - Usability, Accessibility & Polish",
-      "description": "Refine interaction flows, add empty/error states with guidance, ensure WCAG color & contrast, TalkBack ordering, scalable text, and dynamic color fallback for light/dark themes.",
-      "priority": "Medium",
-      "labels": [
-        "ux",
-        "accessibility",
-        "polish"
-      ],
-      "startDate": "2025-10-23",
-      "dueDate": "2025-10-24",
-      "workHours": 11
+      "id": "E15",
+      "name": "Performance & Runtime Optimization",
+      "description": "Optimize Compose rendering, memory usage, and app performance for ~4 articles.",
+      "originalEstimateHours": 11,
+      "sprint": "Sprint6",
+      "priority": "Medium"
     },
     {
-      "code": "E16",
-      "summary": "E16 - Performance & Runtime Optimization",
-      "description": "Optimize Compose rendering (recomposition auditing), pre-compute layout, lazy loading of heavy modules, cold/warm start tracing, memory leak detection workflow.",
-      "priority": "Medium",
-      "labels": [
-        "performance",
-        "optimization"
-      ],
-      "startDate": "2025-10-27",
-      "dueDate": "2025-10-28",
-      "workHours": 11
-    },
-    {
-      "code": "E17",
-      "summary": "E17 - Store Listing & Policy Readiness",
-      "description": "Prepare Play Store assets (icon, feature graphic, screenshots), internal testing track, app signing config, privacy & data safety declaration, and release checklist automation.",
-      "priority": "High",
-      "labels": [
-        "release",
-        "compliance",
-        "mvp"
-      ],
-      "startDate": "2025-10-29",
-      "dueDate": "2025-10-30",
-      "workHours": 11
+      "id": "E16",
+      "name": "Store Listing & Policy Readiness",
+      "description": "Prepare Play Store assets and compliance for app launch.",
+      "originalEstimateHours": 11,
+      "sprint": "Sprint6",
+      "priority": "High"
     }
   ],
   "sprints": [

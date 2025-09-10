@@ -7,16 +7,20 @@ import android.app.Application
 import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.perf.FirebasePerformance
+import com.google.firebase.perf.metrics.Trace
 
 /** Minimal telemetry facade to keep SDKs behind a tiny API. */
 object Telemetry {
     @Volatile private var analytics: FirebaseAnalytics? = null
     @Volatile private var crashlytics: FirebaseCrashlytics? = null
+    @Volatile private var perf: FirebasePerformance? = null
 
     fun init(app: Application) {
         // Best-effort init; safe to call multiple times.
         runCatching { analytics = FirebaseAnalytics.getInstance(app) }
         runCatching { crashlytics = FirebaseCrashlytics.getInstance() }
+    runCatching { perf = FirebasePerformance.getInstance() }
     }
 
     fun logEvent(name: String, params: Map<String, Any?> = emptyMap()) {
@@ -38,5 +42,18 @@ object Telemetry {
 
     fun recordCaught(t: Throwable) {
         crashlytics?.recordException(t)
+    }
+
+    fun startTrace(name: String): CloseableTrace? {
+        val p = perf ?: return null
+        val trace = runCatching { p.newTrace(name.take(32)) }.getOrNull() ?: return null
+        trace.start()
+        return CloseableTrace(trace)
+    }
+}
+
+class CloseableTrace(private val trace: Trace) : AutoCloseable {
+    override fun close() {
+        runCatching { trace.stop() }
     }
 }
