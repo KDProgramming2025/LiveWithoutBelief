@@ -6,6 +6,9 @@ package info.lwb.data.repo.repositories
 
 import info.lwb.core.common.Result
 import info.lwb.data.network.ArticleApi
+import info.lwb.data.network.ArticleDto
+import info.lwb.data.network.MediaDto
+import info.lwb.data.network.SectionDto
 import info.lwb.data.network.ManifestItemDto
 import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
@@ -63,7 +66,9 @@ class FakeArticleDao : ArticleDao {
 
 class StubArticleApi : ArticleApi {
     var manifest: List<ManifestItemDto> = emptyList()
+    var articles: MutableMap<String, ArticleDto> = mutableMapOf()
     override suspend fun getManifest(): List<ManifestItemDto> = manifest
+    override suspend fun getArticle(id: String): ArticleDto = articles[id] ?: error("not found")
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -104,12 +109,29 @@ class ArticleRepositoryImplTest {
             ManifestItemDto("m1", "M Title 1", "m-slug-1", 1, "2025-01-01T00:00:00Z", 150),
             ManifestItemDto("m2", "M Title 2", "m-slug-2", 2, "2025-01-02T00:00:00Z", 250),
         )
+        api.articles["m1"] = ArticleDto(
+            id = "m1", slug = "m-slug-1", title = "M Title 1", version = 1, wordCount = 150,
+            updatedAt = "2025-01-01T00:00:00Z", checksum = "x", html = "<p>A</p>", text = "A",
+            sections = listOf(SectionDto(0, "paragraph", text = "A")), media = emptyList()
+        )
+        api.articles["m2"] = ArticleDto(
+            id = "m2", slug = "m-slug-2", title = "M Title 2", version = 2, wordCount = 250,
+            updatedAt = "2025-01-02T00:00:00Z", checksum = "y", html = "<p>B</p>", text = "B",
+            sections = listOf(SectionDto(0, "paragraph", text = "B")), media = emptyList()
+        )
         // When
         repo.refreshArticles()
         // Then - articles should be inserted based on manifest (NOT stub)
         val listed = dao.listArticles()
         assertEquals(2, listed.size)
         assertEquals("M Title 1", listed.first { it.id == "m1" }.title)
+        // And content hashed and saved
+        val c1 = dao.getArticleContent("m1")
+        val c2 = dao.getArticleContent("m2")
+        assertEquals("A", c1?.plainText)
+        assertEquals("B", c2?.plainText)
+        check(!c1?.textHash.isNullOrBlank())
+        check(!c2?.textHash.isNullOrBlank())
     }
 
     @Test
@@ -117,6 +139,7 @@ class ArticleRepositoryImplTest {
         // Simulate failure API
         val failingApi = object : ArticleApi {
             override suspend fun getManifest(): List<ManifestItemDto> = error("boom")
+            override suspend fun getArticle(id: String): ArticleDto = error("not used")
         }
         val failingRepo = ArticleRepositoryImpl(api = failingApi, articleDao = dao)
         // When
