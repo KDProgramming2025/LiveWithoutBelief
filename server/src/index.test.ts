@@ -120,5 +120,10 @@ describe('ingestion endpoint', () => {
     const body = res.json();
     expect(body.wordCount).toBe(3);
     expect(body.sections).toBe(1);
+    // manifest is optional based on env
+    if (body.manifest) {
+      expect(body.manifest.checksum).toBeTruthy();
+      expect(body.manifest.signature).toBeTruthy();
+    }
   });
 });
