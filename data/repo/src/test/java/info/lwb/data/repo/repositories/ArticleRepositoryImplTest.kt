@@ -9,6 +9,7 @@ import info.lwb.data.network.ArticleApi
 import info.lwb.data.network.ManifestItemDto
 import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
+import info.lwb.data.repo.db.ArticleSearchRow
 import info.lwb.data.repo.db.ArticleEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -35,6 +36,29 @@ class FakeArticleDao : ArticleDao {
     }
     override suspend fun getContent(articleId: String) = contents[articleId]
     override suspend fun getArticleContent(articleId: String) = contents[articleId]
+    override suspend fun searchArticlesLike(q: String, limit: Int, offset: Int): List<ArticleSearchRow> {
+        // Simple in-memory LIKE: case-insensitive contains on title/plainText
+        val lowered = q.lowercase()
+        return articles.values
+            .asSequence()
+            .mapNotNull { a ->
+                val c = contents[a.id] ?: return@mapNotNull null
+                val match = a.title.lowercase().contains(lowered) || c.plainText.lowercase().contains(lowered)
+                if (match) ArticleSearchRow(
+                    id = a.id,
+                    title = a.title,
+                    slug = a.slug,
+                    version = a.version,
+                    updatedAt = a.updatedAt,
+                    wordCount = a.wordCount,
+                    plainText = c.plainText,
+                ) else null
+            }
+            .sortedByDescending { it.updatedAt }
+            .drop(offset)
+            .take(limit)
+            .toList()
+    }
 }
 
 class StubArticleApi : ArticleApi {
