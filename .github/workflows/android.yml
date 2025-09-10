@@ -24,8 +24,8 @@ jobs:
       ANDROID_BUILD_TOOLS: ${{ matrix.build-tools }}
       ANDROID_HOME: ${{ github.workspace }}/.android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/.android-sdk
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process"
-  CI: "true"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true -Dkotlin.compiler.execution.strategy=in-process"
+      CI: "true"
       GIT_TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout code

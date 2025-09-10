@@ -1,5 +1,6 @@
 import Fastify, { FastifyInstance, FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
@@ -33,6 +34,7 @@ export interface BuildServerOptions {
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: true });
   app.register(cors, { origin: true });
+  app.register(multipart, { attachFieldsToBody: true, limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
 
   // Override Fastify default JSON parser to capture raw body & diagnose production failures.
   try { app.removeContentTypeParser('application/json'); } catch (_) { /* ignore */ }
@@ -178,6 +180,40 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     if (decoded.typ !== 'pwd') return reply.code(401).send({ error: 'wrong_type' });
   return { sub: decoded.sub, username: decoded.username, exp: decoded.exp };
     } catch (e) { return reply.code(401).send({ error: 'invalid_token' }); }
+  });
+
+  // ---- Ingestion: .docx upload ----
+  app.post('/v1/ingest/docx', async (req, reply) => {
+    try {
+      // Body may contain fields and file(s) when attachFieldsToBody=true
+      // We expect a single file field named 'file'
+  const body = (req as FastifyRequest & { body?: unknown }).body as Record<string, unknown> | undefined;
+  let filePart = body && typeof body === 'object' ? (body as Record<string, unknown>)['file'] as { file?: AsyncIterable<unknown> } | undefined : undefined;
+      // If not attached, parse via parts iterator as fallback
+  if (!filePart || typeof filePart !== 'object' || !('file' in filePart) || !filePart.file) {
+        const parts = req.parts();
+        for await (const p of parts) {
+          if (p.type === 'file' && p.fieldname === 'file') { filePart = p; break; }
+        }
+      }
+      if (!filePart || !filePart.file) return reply.code(400).send({ error: 'missing_file' });
+      // Save to a temp file to pass a path to parser (mammoth prefers path)
+      const buffers: Buffer[] = [];
+      for await (const chunk of filePart.file) { buffers.push(chunk as Buffer); }
+      const buf = Buffer.concat(buffers);
+      const fs = await import('fs/promises');
+      const os = await import('os');
+      const path = await import('path');
+      const tmp = path.join(os.tmpdir(), `lwb-upload-${Date.now()}-${Math.random().toString(16).slice(2)}.docx`);
+      await fs.writeFile(tmp, buf);
+      const { parseDocx } = await import('./ingestion/docx.js');
+      const parsed = await parseDocx(tmp, { withHtml: true });
+      try { await fs.unlink(tmp); } catch { /* ignore */ }
+      return reply.code(200).send({ wordCount: parsed.wordCount, sections: parsed.sections.length, media: parsed.media.length });
+    } catch (err) {
+      req.log?.error({ err }, 'ingest failed');
+      return reply.code(500).send({ error: 'ingest_failed' });
+    }
   });
 
   return app;

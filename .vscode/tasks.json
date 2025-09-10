@@ -198,6 +198,19 @@
 				"$gradle"
 			],
 			"group": "build"
+		},
+		{
+			"label": "gradle-test-app",
+			"type": "shell",
+			"command": "./gradlew.bat",
+			"args": [
+				":app:testDebugUnitTest"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
 		}
 	]
 }

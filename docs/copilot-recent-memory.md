@@ -60,3 +60,19 @@ Next steps:
 - Added org.gradle.test-retry plugin and hermetic Test settings (UTC, UTF-8) across subprojects; retries enabled only on CI.
 - New script scripts/triage_junit.py parses JUnit XML and emits build/reports/triage/{summary.md,failures.txt}.
 - Android CI now runs triage step after tests and uploads triage artifacts per JDK matrix.
+
+09-10 LWB-45 ingestion core:
+- server/src/ingestion added with parseDocx and extractMedia, plus types and tests (Vitest).
+- Dependencies added: mammoth, sanitize-html; local mammoth .d.ts shim.
+- Branch feature/LWB-45-ingestion pushed; server tests PASS. Open PR from feature/LWB-45-ingestion → main.
+
+09-10 LWB-45 ingestion endpoint:
+- Added @fastify/multipart and wired POST /v1/ingest/docx in server/src/buildServer.ts.
+- Fixed plugin version mismatch by upgrading @fastify/multipart to ^9.2.1 (compatible with Fastify v5).
+- Added integration test in server/src/index.test.ts mocking ingestion via vi.mock; avoids heavy processing.
+- Ran npm install and all server tests now PASS (9/9). PR remains open for review.
+
+09-10 CI workflow fixes:
+- android.yml env indentation corrected; workflow_dispatch now works. Manually dispatched CI for branch feature/LWB-45-ingestion; PR-triggered run is in progress.
+- release.yml job-level if indentation fixed; remains manual or release-please only. Earlier runs on feature branch were due to malformed YAML.
+- Note: GitHub “Automatic Dependency Submission (Gradle)” runs under dynamic event separately from our workflows; that’s why you saw only the dynamic pipeline previously.
