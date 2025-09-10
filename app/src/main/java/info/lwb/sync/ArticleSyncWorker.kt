@@ -18,6 +18,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import info.lwb.core.domain.ArticleRepository
 import java.util.concurrent.TimeUnit
+import info.lwb.telemetry.Telemetry
 
 class ArticleSyncWorker(
     appContext: Context,
@@ -30,10 +31,12 @@ class ArticleSyncWorker(
     }
 
     override suspend fun doWork(): Result = try {
+    Telemetry.startTrace("sync_refresh").use { _ ->
         val entryPoint = EntryPointAccessors.fromApplication(applicationContext, AppEntryPoint::class.java)
         val repo = entryPoint.articleRepository()
         repo.refreshArticles()
-        Result.success()
+    }
+    Result.success()
     } catch (e: Exception) {
         Result.retry()
     }

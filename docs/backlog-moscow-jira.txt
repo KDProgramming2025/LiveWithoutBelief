@@ -3,7 +3,7 @@ MoSCoW PRIORITIZATION
 ====================
 Must Have (M)
 1. Android app foundation (Kotlin, Jetpack Compose, MVVM modular architecture already scaffolded) hardened for production.
-2. Secure backend (Spring Boot) serving article manifest & content with versioning.
+2. Secure backend (NodeJs Typescript) serving article manifest & content with versioning.
 3. Word-authored (.docx) article ingestion pipeline converting to HTML (preserving headings, lists, images, basic formatting) + plain text + asset extraction + checksum & versioning.
 4. Client content sync: delta detection via manifest (version/hash) and redownload changed articles/assets.
 5. Offline storage (Room) for articles, assets, bookmarks, annotations.
