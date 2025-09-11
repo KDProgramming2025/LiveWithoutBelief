@@ -28,8 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.NavigateBefore
-import androidx.compose.material.icons.filled.NavigateNext
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -295,8 +293,9 @@ private fun SearchBar(query: String, occurrences: Int, currentIndex: Int, onPrev
         )
         if (occurrences > 0) {
             Text("$currentIndex/$occurrences", modifier = Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.labelSmall)
-            IconButton(onClick = onPrev) { Icon(Icons.Filled.NavigateBefore, contentDescription = "Prev") }
-            IconButton(onClick = onNext) { Icon(Icons.Filled.NavigateNext, contentDescription = "Next") }
+            Button(onClick = onPrev, enabled = occurrences > 0) { Text("Prev") }
+            Spacer(Modifier.width(4.dp))
+            Button(onClick = onNext, enabled = occurrences > 0) { Text("Next") }
         }
     }
 }
