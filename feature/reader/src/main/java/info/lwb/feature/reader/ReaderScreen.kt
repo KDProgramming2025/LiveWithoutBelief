@@ -28,7 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Pause
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.MediaItem
@@ -182,7 +181,7 @@ private fun AudioPlayer(url: String) {
                 player.play(); isPlaying = true
             }
         }) {
-            if (player.isPlaying) Icon(Icons.Filled.Pause, contentDescription = "Pause") else Icon(Icons.Filled.PlayArrow, contentDescription = "Play")
+            Icon(Icons.Filled.PlayArrow, contentDescription = if (player.isPlaying) "Pause" else "Play")
         }
         Spacer(Modifier.width(8.dp))
         Text(text = url.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
