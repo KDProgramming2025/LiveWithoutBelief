@@ -18,6 +18,7 @@ import info.lwb.data.network.ArticleApi
 import info.lwb.data.repo.db.AppDatabase
 import info.lwb.data.repo.repositories.ArticleRepositoryImpl
 import javax.inject.Singleton
+import info.lwb.data.repo.repositories.ReadingProgressRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -54,4 +55,8 @@ object DatabaseModule {
     @Singleton
     fun provideArticleRepository(api: ArticleApi, db: AppDatabase): ArticleRepository =
         ArticleRepositoryImpl(api, db.articleDao())
+
+    @Provides
+    fun provideReadingProgressRepository(db: AppDatabase): ReadingProgressRepository =
+        ReadingProgressRepository(db.readingProgressDao())
 }

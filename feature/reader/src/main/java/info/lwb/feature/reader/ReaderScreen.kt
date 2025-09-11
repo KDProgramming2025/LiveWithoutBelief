@@ -4,6 +4,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +37,9 @@ fun ReaderScreen(
     articleTitle: String,
     htmlBody: String,
     settings: ReaderSettingsState,
+    pages: List<Page>? = null,
+    currentPageIndex: Int = 0,
+    onPageChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val blocks = remember(htmlBody) { parseHtmlToBlocks(htmlBody) }
@@ -50,17 +56,44 @@ fun ReaderScreen(
     ) { padding ->
         Column(Modifier.padding(padding)) {
             SearchBar(searchQuery) { searchQuery = it }
-            LazyColumn(Modifier.fillMaxSize()) {
-                items(blocks.size) { idx ->
-                    val b = blocks[idx]
-                    when (b) {
-                        is ContentBlock.Paragraph -> ParagraphBlock(b.text, searchQuery, settings)
-                        is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
-                        is ContentBlock.Image -> AsyncImage(model = b.url, contentDescription = b.alt, modifier = Modifier.fillMaxWidth().height(220.dp))
-                        is ContentBlock.Audio -> AudioBlock(b.url)
-                        is ContentBlock.YouTube -> YouTubeBlock(b.videoId)
+            val pageList = pages
+            if (pageList != null && pageList.size > 1) {
+                // Simple horizontal pager substitute using Row + manual buttons (avoid new dependency)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Page ${currentPageIndex + 1} / ${pageList.size}", style = MaterialTheme.typography.labelMedium)
+                    Row {
+                        androidx.compose.material3.Button(enabled = currentPageIndex > 0, onClick = { onPageChange((currentPageIndex - 1).coerceAtLeast(0)) }) { Text("Prev") }
+                        Spacer(Modifier.width(8.dp))
+                        androidx.compose.material3.Button(enabled = currentPageIndex < pageList.lastIndex, onClick = { onPageChange((currentPageIndex + 1).coerceAtMost(pageList.lastIndex)) }) { Text("Next") }
                     }
-                    Spacer(Modifier.height(12.dp))
+                }
+                val pageBlocks = remember(currentPageIndex, pageList) { pageList.getOrNull(currentPageIndex)?.blocks ?: emptyList() }
+                LazyColumn(Modifier.fillMaxSize()) {
+                    items(pageBlocks.size) { idx ->
+                        val b = pageBlocks[idx]
+                        when (b) {
+                            is ContentBlock.Paragraph -> ParagraphBlock(b.text, searchQuery, settings)
+                            is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
+                            is ContentBlock.Image -> AsyncImage(model = b.url, contentDescription = b.alt, modifier = Modifier.fillMaxWidth().height(220.dp))
+                            is ContentBlock.Audio -> AudioBlock(b.url)
+                            is ContentBlock.YouTube -> YouTubeBlock(b.videoId)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+            } else {
+                LazyColumn(Modifier.fillMaxSize()) {
+                    items(blocks.size) { idx ->
+                        val b = blocks[idx]
+                        when (b) {
+                            is ContentBlock.Paragraph -> ParagraphBlock(b.text, searchQuery, settings)
+                            is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
+                            is ContentBlock.Image -> AsyncImage(model = b.url, contentDescription = b.alt, modifier = Modifier.fillMaxWidth().height(220.dp))
+                            is ContentBlock.Audio -> AudioBlock(b.url)
+                            is ContentBlock.YouTube -> YouTubeBlock(b.videoId)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
                 }
             }
         }
