@@ -32,4 +32,5 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.room.testing)
     testImplementation(libs.mockk)
+    testImplementation("androidx.test:core:1.6.1")
 }
