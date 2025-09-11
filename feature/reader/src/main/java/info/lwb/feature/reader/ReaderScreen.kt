@@ -1,5 +1,7 @@
 package info.lwb.feature.reader
 
+import androidx.compose.material3.ExperimentalMaterial3Api
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.TopAppBar
@@ -26,6 +28,7 @@ data class ReaderSettingsState(
     val onLineHeightChange: (Double) -> Unit,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
     articleTitle: String,

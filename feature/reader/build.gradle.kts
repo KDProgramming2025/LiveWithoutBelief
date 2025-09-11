@@ -39,6 +39,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.androidx.core.testing)
+    testImplementation("androidx.test:core:1.6.1")
     testImplementation(project(":core:test-fixtures"))
 }
 
