@@ -71,3 +71,12 @@ data class ThreadMessage(
     val contentRef: String,
     val createdAt: String,
 )
+
+@Serializable
+data class ReadingProgress(
+    val articleId: String,
+    val pageIndex: Int,
+    val totalPages: Int,
+    val progress: Double,
+    val updatedAt: String,
+)

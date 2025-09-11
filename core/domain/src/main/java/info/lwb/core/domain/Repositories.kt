@@ -11,6 +11,7 @@ import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
 import info.lwb.core.model.ThreadMessage
+import info.lwb.core.model.ReadingProgress
 import kotlinx.coroutines.flow.Flow
 
 interface ArticleRepository {
@@ -32,4 +33,9 @@ interface AnnotationRepository {
     fun getThreadMessages(annotationId: String): Flow<Result<List<ThreadMessage>>>
     suspend fun addAnnotation(articleId: String, startOffset: Int, endOffset: Int, anchorHash: String): Result<String>
     suspend fun addThreadMessage(annotationId: String, type: String, contentRef: String): Result<String>
+}
+
+interface ReadingProgressRepository {
+    fun observe(articleId: String): Flow<ReadingProgress?>
+    suspend fun update(articleId: String, pageIndex: Int, totalPages: Int)
 }

@@ -8,6 +8,7 @@ import app.cash.paparazzi.Paparazzi
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.runtime.Composable
 
 @Ignore(
     "Paparazzi snapshot failing with IllegalAccessError under current AGP/Kotlin versions; pending version alignment",
@@ -18,8 +19,23 @@ class ReaderScreenSnapshotTest {
 
     @Test
     fun snapshot_readerPlaceholder() {
+        val sampleHtml = """
+            <h1>Title</h1>
+            <p>This is a short paragraph for snapshot.</p>
+            <img src='https://example.com/img.png' alt='img'/>
+        """.trimIndent()
+        val settings = ReaderSettingsState(
+            fontScale = 1.0,
+            lineHeight = 1.2,
+            onFontScaleChange = {},
+            onLineHeightChange = {},
+        )
         paparazzi.snapshot {
-            ReaderScreen()
+            ReaderScreen(
+                articleTitle = "Snapshot",
+                htmlBody = sampleHtml,
+                settings = settings,
+            )
         }
     }
 }

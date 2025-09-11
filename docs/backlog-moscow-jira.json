@@ -170,67 +170,683 @@
     "backlogs": [
     {
       "E8": {
-        "Sprint3": {
+        "Sprint4": {
           "Stories": [
             {
-              "id": "LWB-60",
+              "id": "LWB-65",
               "type": "Story",
-              "summary": "Integrate telemetry for crash and analytics monitoring",
-              "description": "As a developer, I need crash reporting and analytics telemetry to monitor app performance and user interactions without sensitive data.",
-              "labels": ["analytics", "observability", "mvp", "sprint3"],
-              "originalEstimateHours": 4,
-              "startDate": "2025-09-23",
-              "dueDate": "2025-09-24",
+              "summary": "Deliver reader UI for article consumption",
+              "description": "As a user, I need a reader UI to consume ~4 articles with typography controls, media rendering, in-article search, pagination, themes, and multi-window support.",
+              "labels": ["reader-ui", "accessibility", "mvp", "sprint4"],
+              "originalEstimateHours": 10,
+              "startDate": "2025-09-25",
+              "dueDate": "2025-09-29",
               "priority": "High",
               "parent": "E8"
             },
             {
-              "id": "LWB-61",
+              "id": "LWB-66",
               "type": "Sub-task",
-              "summary": "Set up Crashlytics and Analytics SDK",
-              "description": "Integrate Firebase Crashlytics and Analytics SDK for crash reporting and event tracking.",
-              "labels": ["analytics", "observability", "mvp", "sprint3"],
+              "summary": "Implement Jetpack Compose reader UI",
+              "description": "Build reader UI using Jetpack Compose for article display.",
+              "labels": ["reader-ui", "accessibility", "mvp", "sprint4"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-09-25",
+              "dueDate": "2025-09-25",
+              "priority": "High",
+              "parent": "LWB-65"
+            },
+            {
+              "id": "LWB-67",
+              "type": "Sub-task",
+              "summary": "Add typography controls",
+              "description": "Implement text size and line spacing controls in reader UI.",
+              "labels": ["reader-ui", "accessibility", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-09-25",
+              "dueDate": "2025-09-25",
+              "priority": "High",
+              "parent": "LWB-65"
+            },
+            {
+              "id": "LWB-68",
+              "type": "Sub-task",
+              "summary": "Implement media rendering",
+              "description": "Render images, audio, and YouTube embeds in articles.",
+              "labels": ["reader-ui", "accessibility", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-09-26",
+              "dueDate": "2025-09-26",
+              "priority": "High",
+              "parent": "LWB-65"
+            },
+            {
+              "id": "LWB-69",
+              "type": "Sub-task",
+              "summary": "Enable in-article search",
+              "description": "Add full-text search within individual articles.",
+              "labels": ["reader-ui", "search", "mvp", "sprint4"],
               "originalEstimateHours": 2,
-              "startDate": "2025-09-23",
-              "dueDate": "2025-09-23",
+              "startDate": "2025-09-26",
+              "dueDate": "2025-09-26",
               "priority": "High",
-              "parent": "LWB-60"
+              "parent": "LWB-65"
             },
             {
-              "id": "LWB-62",
+              "id": "LWB-70",
               "type": "Sub-task",
-              "summary": "Define event taxonomy and logging strategy",
-              "description": "Create a neutral event taxonomy and logging strategy avoiding sensitive personal data.",
-              "labels": ["analytics", "observability", "mvp", "sprint3"],
+              "summary": "Implement pagination and reading progress",
+              "description": "Add progressive pagination and persist reading progress.",
+              "labels": ["reader-ui", "accessibility", "mvp", "sprint4"],
               "originalEstimateHours": 2,
-              "startDate": "2025-09-23",
-              "dueDate": "2025-09-23",
+              "startDate": "2025-09-29",
+              "dueDate": "2025-09-29",
               "priority": "High",
-              "parent": "LWB-60"
+              "parent": "LWB-65"
             },
             {
-              "id": "LWB-63",
+              "id": "LWB-71",
               "type": "Sub-task",
-              "summary": "Configure performance traces",
-              "description": "Set up performance traces for key app operations in telemetry system.",
-              "labels": ["analytics", "observability", "mvp", "sprint3"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-24",
-              "dueDate": "2025-09-24",
+              "summary": "Implement light and dark themes",
+              "description": "Support dynamic color light/dark themes.",
+              "labels": ["reader-ui", "accessibility", "mvp", "sprint4"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-09-29",
+              "dueDate": "2025-09-29",
               "priority": "High",
-              "parent": "LWB-60"
+              "parent": "LWB-65"
             },
             {
-              "id": "LWB-64",
+              "id": "LWB-72",
               "type": "Sub-task",
-              "summary": "Document telemetry dashboard",
-              "description": "Create documentation for telemetry dashboard setup and usage.",
-              "labels": ["analytics", "observability", "mvp", "sprint3"],
-              "originalEstimateHours": 1,
-              "startDate": "2025-09-24",
-              "dueDate": "2025-09-24",
+              "summary": "Support multi-window and large screen layouts",
+              "description": "Implement adaptive layouts for multi-window and large screens (e.g., tablets, foldables).",
+              "labels": ["reader-ui", "accessibility", "mvp", "sprint4"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-09-29",
+              "dueDate": "2025-09-29",
               "priority": "High",
-              "parent": "LWB-60"
+              "parent": "LWB-65"
+            }
+          ]
+        }
+      },
+      "E9": {
+        "Sprint4": {
+          "Stories": [
+            {
+              "id": "LWB-73",
+              "type": "Story",
+              "summary": "Enable bookmarking and library organization with search",
+              "description": "As a user, I need to save, organize, and search bookmarks for ~4 articles with tagging and folder support.",
+              "labels": ["bookmarks", "search", "mvp", "sprint4"],
+              "originalEstimateHours": 7,
+              "startDate": "2025-09-30",
+              "dueDate": "2025-10-03",
+              "priority": "High",
+              "parent": "E9"
+            },
+            {
+              "id": "LWB-74",
+              "type": "Sub-task",
+              "summary": "Implement bookmark saving",
+              "description": "Enable adding/removing bookmarks for articles.",
+              "labels": ["bookmarks", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-09-30",
+              "dueDate": "2025-09-30",
+              "priority": "High",
+              "parent": "LWB-73"
+            },
+            {
+              "id": "LWB-75",
+              "type": "Sub-task",
+              "summary": "Implement folder organization",
+              "description": "Support folder creation and bookmark categorization.",
+              "labels": ["bookmarks", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-09-30",
+              "dueDate": "2025-09-30",
+              "priority": "High",
+              "parent": "LWB-73"
+            },
+            {
+              "id": "LWB-76",
+              "type": "Sub-task",
+              "summary": "Implement global full-text search",
+              "description": "Enable full-text search across bookmarked articles’ titles and bodies.",
+              "labels": ["bookmarks", "search", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-01",
+              "dueDate": "2025-10-01",
+              "priority": "High",
+              "parent": "LWB-73"
+            },
+            {
+              "id": "LWB-77",
+              "type": "Sub-task",
+              "summary": "Implement article tagging",
+              "description": "Add tagging taxonomy (e.g., science, history) and filter support.",
+              "labels": ["bookmarks", "search", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-01",
+              "dueDate": "2025-10-01",
+              "priority": "High",
+              "parent": "LWB-73"
+            },
+            {
+              "id": "LWB-78",
+              "type": "Sub-task",
+              "summary": "Integrate Room for bookmarks",
+              "description": "Store bookmarks and tags in Room database with sync support.",
+              "labels": ["bookmarks", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-02",
+              "dueDate": "2025-10-02",
+              "priority": "High",
+              "parent": "LWB-73"
+            },
+            {
+              "id": "LWB-79",
+              "type": "Sub-task",
+              "summary": "Implement bookmark management UI",
+              "description": "Build Jetpack Compose UI for viewing and managing bookmarks/folders.",
+              "labels": ["bookmarks", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-03",
+              "dueDate": "2025-10-03",
+              "priority": "High",
+              "parent": "LWB-73"
+            }
+          ]
+        }
+      },
+      "E10": {
+        "Sprint4": {
+          "Stories": [
+            {
+              "id": "LWB-80",
+              "type": "Story",
+              "summary": "Implement private annotations and discussion threads",
+              "description": "As a user, I need private annotations and discussion threads with text/image/audio/PDF attachments, notifications, and update notices for manifest changes.",
+              "labels": ["annotations", "discussions", "mvp", "sprint4"],
+              "originalEstimateHours": 12,
+              "startDate": "2025-10-06",
+              "dueDate": "2025-10-13",
+              "priority": "Highest",
+              "parent": "E10"
+            },
+            {
+              "id": "LWB-81",
+              "type": "Sub-task",
+              "summary": "Implement text-anchored annotations",
+              "description": "Enable private text-anchored annotations with highlight UX and handles.",
+              "labels": ["annotations", "mvp", "sprint4"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-10-06",
+              "dueDate": "2025-10-06",
+              "priority": "Highest",
+              "parent": "LWB-80"
+            },
+            {
+              "id": "LWB-82",
+              "type": "Sub-task",
+              "summary": "Implement discussion threads",
+              "description": "Support private discussion threads with text/image attachments.",
+              "labels": ["discussions", "mvp", "sprint4"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-10-07",
+              "dueDate": "2025-10-07",
+              "priority": "Highest",
+              "parent": "LWB-80"
+            },
+            {
+              "id": "LWB-83",
+              "type": "Sub-task",
+              "summary": "Implement notification system",
+              "description": "Add notifications for new discussion thread replies.",
+              "labels": ["discussions", "mvp", "sprint4"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-08",
+              "dueDate": "2025-10-08",
+              "priority": "Highest",
+              "parent": "LWB-80"
+            },
+            {
+              "id": "LWB-84",
+              "type": "Sub-task",
+              "summary": "Implement in-app update notice",
+              "description": "Notify users of manifest schema changes requiring app updates.",
+              "labels": ["annotations", "mvp", "sprint4"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-09",
+              "dueDate": "2025-10-09",
+              "priority": "Highest",
+              "parent": "LWB-80"
+            },
+            {
+              "id": "LWB-85",
+              "type": "Sub-task",
+              "summary": "Support audio attachments",
+              "description": "Enable audio note attachments in discussion threads.",
+              "labels": ["discussions", "mvp", "sprint4"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-10",
+              "dueDate": "2025-10-10",
+              "priority": "Highest",
+              "parent": "LWB-80"
+            },
+            {
+              "id": "LWB-86",
+              "type": "Sub-task",
+              "summary": "Support PDF attachments",
+              "description": "Enable PDF attachments in discussion threads.",
+              "labels": ["discussions", "mvp", "sprint4"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-10",
+              "dueDate": "2025-10-10",
+              "priority": "Highest",
+              "parent": "LWB-80"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "E11": {
+        "Sprint5": {
+          "Stories": [
+            {
+              "id": "LWB-87",
+              "type": "Story",
+              "summary": "Produce open-source documentation for developer onboarding and content authoring",
+              "description": "As a developer or content author, I need comprehensive documentation (README, contribution guide, ADR, API contract) to understand and contribute to the project.",
+              "labels": ["documentation", "oss", "mvp", "sprint5"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-10-14",
+              "dueDate": "2025-10-15",
+              "priority": "High",
+              "parent": "E11"
+            },
+            {
+              "id": "LWB-88",
+              "type": "Sub-task",
+              "summary": "Write README",
+              "description": "Create README with project overview, setup instructions, and content authoring guide.",
+              "labels": ["documentation", "oss", "mvp", "sprint5"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-14",
+              "dueDate": "2025-10-14",
+              "priority": "High",
+              "parent": "LWB-87"
+            },
+            {
+              "id": "LWB-89",
+              "type": "Sub-task",
+              "summary": "Write contribution guide",
+              "description": "Document contribution guidelines for code and content submissions.",
+              "labels": ["documentation", "oss", "mvp", "sprint5"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-14",
+              "dueDate": "2025-10-14",
+              "priority": "High",
+              "parent": "LWB-87"
+            },
+            {
+              "id": "LWB-90",
+              "type": "Sub-task",
+              "summary": "Document architecture decision records",
+              "description": "Create ADRs for Clean Architecture, Node.js/TypeScript, and key tech choices.",
+              "labels": ["documentation", "oss", "mvp", "sprint5"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-15",
+              "dueDate": "2025-10-15",
+              "priority": "High",
+              "parent": "LWB-87"
+            },
+            {
+              "id": "LWB-91",
+              "type": "Sub-task",
+              "summary": "Create OpenAPI contract",
+              "description": "Document Node.js/TypeScript backend API using OpenAPI specification.",
+              "labels": ["documentation", "oss", "mvp", "sprint5"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-15",
+              "dueDate": "2025-10-15",
+              "priority": "High",
+              "parent": "LWB-87"
+            }
+          ]
+        }
+      },
+      "E12": {
+        "Sprint5": {
+          "Stories": [
+            {
+              "id": "LWB-92",
+              "type": "Story",
+              "summary": "Build admin web UI for content ingestion and user support",
+              "description": "As an admin, I need a web UI to monitor content ingestion queue status and view user support data without exposing user content.",
+              "labels": ["admin-ui", "backend", "sprint5"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-15",
+              "dueDate": "2025-10-16",
+              "priority": "Medium",
+              "parent": "E12"
+            },
+            {
+              "id": "LWB-93",
+              "type": "Sub-task",
+              "summary": "Develop ingestion queue status view",
+              "description": "Build Node.js/TypeScript-based UI for monitoring content ingestion queue.",
+              "labels": ["admin-ui", "backend", "sprint5"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-15",
+              "dueDate": "2025-10-15",
+              "priority": "Medium",
+              "parent": "LWB-92"
+            },
+            {
+              "id": "LWB-94",
+              "type": "Sub-task",
+              "summary": "Develop user support view",
+              "description": "Create UI for viewing user support data without exposing private content.",
+              "labels": ["admin-ui", "backend", "sprint5"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-16",
+              "dueDate": "2025-10-16",
+              "priority": "Medium",
+              "parent": "LWB-92"
+            },
+            {
+              "id": "LWB-95",
+              "type": "Sub-task",
+              "summary": "Integrate Node.js/TypeScript backend for admin UI",
+              "description": "Connect admin UI to Node.js/TypeScript backend APIs for data retrieval.",
+              "labels": ["admin-ui", "backend", "sprint5"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-16",
+              "dueDate": "2025-10-16",
+              "priority": "Medium",
+              "parent": "LWB-92"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "E8": {
+        "Sprint6": {
+          "Stories": [
+            {
+              "id": "LWB-96",
+              "type": "Story",
+              "summary": "Enable reading statistics for user engagement",
+              "description": "As a user, I need local tracking of reading time and words read to understand my engagement.",
+              "labels": ["reader-ui", "stats", "sprint6"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-17",
+              "dueDate": "2025-10-17",
+              "priority": "High",
+              "parent": "E8"
+            },
+            {
+              "id": "LWB-97",
+              "type": "Sub-task",
+              "summary": "Implement reading statistics tracking",
+              "description": "Track reading time and words read locally using Jetpack Compose and Room.",
+              "labels": ["reader-ui", "stats", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-17",
+              "dueDate": "2025-10-17",
+              "priority": "High",
+              "parent": "LWB-96"
+            }
+          ]
+        }
+      },
+      "E9": {
+        "Sprint6": {
+          "Stories": [
+            {
+              "id": "LWB-98",
+              "type": "Story",
+              "summary": "Enable rule-based article recommendations",
+              "description": "As a user, I need rule-based recommendations to discover relevant articles based on bookmarks and tags.",
+              "labels": ["bookmarks", "recommendations", "sprint6"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-17",
+              "dueDate": "2025-10-17",
+              "priority": "High",
+              "parent": "E9"
+            },
+            {
+              "id": "LWB-99",
+              "type": "Sub-task",
+              "summary": "Implement rule-based recommendation engine",
+              "description": "Build rule-based recommendation engine using article tags and bookmark history.",
+              "labels": ["bookmarks", "recommendations", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-17",
+              "dueDate": "2025-10-17",
+              "priority": "High",
+              "parent": "LWB-98"
+            }
+          ]
+        }
+      },
+      "E13": {
+        "Sprint6": {
+          "Stories": [
+            {
+              "id": "LWB-100",
+              "type": "Story",
+              "summary": "Prepare app for internationalization and localization",
+              "description": "As a developer, I need string externalization and RTL support to prepare for future localization.",
+              "labels": ["i18n", "sprint6"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-20",
+              "dueDate": "2025-10-20",
+              "priority": "Medium",
+              "parent": "E13"
+            },
+            {
+              "id": "LWB-101",
+              "type": "Sub-task",
+              "summary": "Externalize string resources",
+              "description": "Move all UI strings to external resources for i18n readiness.",
+              "labels": ["i18n", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-20",
+              "dueDate": "2025-10-20",
+              "priority": "Medium",
+              "parent": "LWB-100"
+            },
+            {
+              "id": "LWB-102",
+              "type": "Sub-task",
+              "summary": "Add RTL support",
+              "description": "Implement right-to-left layout support for localization.",
+              "labels": ["i18n", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-20",
+              "dueDate": "2025-10-20",
+              "priority": "Medium",
+              "parent": "LWB-100"
+            }
+          ]
+        }
+      },
+      "E14": {
+        "Sprint6": {
+          "Stories": [
+            {
+              "id": "LWB-103",
+              "type": "Story",
+              "summary": "Enhance usability and accessibility",
+              "description": "As a user, I need accessible UI (scalable text, contrast, TalkBack) and in-app settings for customization.",
+              "labels": ["accessibility", "usability", "settings", "mvp", "sprint6"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-10-21",
+              "dueDate": "2025-10-22",
+              "priority": "Medium",
+              "parent": "E14"
+            },
+            {
+              "id": "LWB-104",
+              "type": "Sub-task",
+              "summary": "Implement scalable text and contrast",
+              "description": "Ensure scalable text sizes and high-contrast UI for WCAG compliance.",
+              "labels": ["accessibility", "usability", "mvp", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-21",
+              "dueDate": "2025-10-21",
+              "priority": "Medium",
+              "parent": "LWB-103"
+            },
+            {
+              "id": "LWB-105",
+              "type": "Sub-task",
+              "summary": "Add TalkBack labels",
+              "description": "Add TalkBack labels for screen reader accessibility.",
+              "labels": ["accessibility", "usability", "mvp", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-21",
+              "dueDate": "2025-10-21",
+              "priority": "Medium",
+              "parent": "LWB-103"
+            },
+            {
+              "id": "LWB-106",
+              "type": "Sub-task",
+              "summary": "Ensure heading semantics in HTML",
+              "description": "Apply proper heading semantics in rendered article HTML for accessibility.",
+              "labels": ["accessibility", "usability", "mvp", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-22",
+              "dueDate": "2025-10-22",
+              "priority": "Medium",
+              "parent": "LWB-103"
+            },
+            {
+              "id": "LWB-107",
+              "type": "Sub-task",
+              "summary": "Implement in-app settings",
+              "description": "Add settings for theme override, text size, line spacing, and analytics opt-in/out.",
+              "labels": ["settings", "usability", "mvp", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-22",
+              "dueDate": "2025-10-22",
+              "priority": "Medium",
+              "parent": "LWB-103"
+            }
+          ]
+        }
+      },
+      "E15": {
+        "Sprint6": {
+          "Stories": [
+            {
+              "id": "LWB-108",
+              "type": "Story",
+              "summary": "Optimize app performance",
+              "description": "As a user, I need a performant app with optimized rendering and low resource usage for ~4 articles.",
+              "labels": ["performance", "sprint6"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-10-22",
+              "dueDate": "2025-10-23",
+              "priority": "Medium",
+              "parent": "E15"
+            },
+            {
+              "id": "LWB-109",
+              "type": "Sub-task",
+              "summary": "Optimize Jetpack Compose rendering",
+              "description": "Reduce recomposition and optimize rendering in reader UI.",
+              "labels": ["performance", "sprint6"],
+              "originalEstimateHours": 3,
+              "startDate": "2025-10-22",
+              "dueDate": "2025-10-22",
+              "priority": "Medium",
+              "parent": "LWB-108"
+            },
+            {
+              "id": "LWB-110",
+              "type": "Sub-task",
+              "summary": "Reduce memory usage",
+              "description": "Optimize memory usage for article rendering and caching.",
+              "labels": ["performance", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-23",
+              "dueDate": "2025-10-23",
+              "priority": "Medium",
+              "parent": "LWB-108"
+            },
+            {
+              "id": "LWB-111",
+              "type": "Sub-task",
+              "summary": "Improve startup time",
+              "description": "Optimize app startup time for faster user access.",
+              "labels": ["performance", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-23",
+              "dueDate": "2025-10-23",
+              "priority": "Medium",
+              "parent": "LWB-108"
+            }
+          ]
+        }
+      },
+      "E16": {
+        "Sprint6": {
+          "Stories": [
+            {
+              "id": "LWB-112",
+              "type": "Story",
+              "summary": "Prepare Play Store assets and compliance",
+              "description": "As a developer, I need Play Store assets and policy compliance for app launch.",
+              "labels": ["play-store", "mvp", "sprint6"],
+              "originalEstimateHours": 4,
+              "startDate": "2025-10-23",
+              "dueDate": "2025-10-24",
+              "priority": "High",
+              "parent": "E16"
+            },
+            {
+              "id": "LWB-113",
+              "type": "Sub-task",
+              "summary": "Create Play Store assets",
+              "description": "Prepare app icons, screenshots, and descriptions for Play Store.",
+              "labels": ["play-store", "mvp", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-23",
+              "dueDate": "2025-10-23",
+              "priority": "High",
+              "parent": "LWB-112"
+            },
+            {
+              "id": "LWB-114",
+              "type": "Sub-task",
+              "summary": "Ensure Play Store policy compliance",
+              "description": "Verify app compliance with Play Store policies (e.g., privacy, content).",
+              "labels": ["play-store", "mvp", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-24",
+              "dueDate": "2025-10-24",
+              "priority": "High",
+              "parent": "LWB-112"
+            },
+            {
+              "id": "LWB-115",
+              "type": "Sub-task",
+              "summary": "Test internal track deployment",
+              "description": "Test app deployment to Play Store internal track using CI/CD pipeline.",
+              "labels": ["play-store", "mvp", "sprint6"],
+              "originalEstimateHours": 2,
+              "startDate": "2025-10-24",
+              "dueDate": "2025-10-24",
+              "priority": "High",
+              "parent": "LWB-112"
             }
           ]
         }

@@ -78,6 +78,16 @@ data class ThreadMessageEntity(
     val createdAt: String,
 )
 
+// Reading progress for pagination / resume (one row per article)
+@Entity(tableName = "reading_progress")
+data class ReadingProgressEntity(
+    @PrimaryKey val articleId: String,
+    val pageIndex: Int,
+    val totalPages: Int,
+    val progress: Double, // 0.0 - 1.0
+    val updatedAt: String,
+)
+
 @Database(
     entities = [
         ArticleEntity::class,
@@ -87,8 +97,9 @@ data class ThreadMessageEntity(
         BookmarkEntity::class,
         AnnotationEntity::class,
         ThreadMessageEntity::class,
+        ReadingProgressEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -97,4 +108,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun folderDao(): FolderDao
     abstract fun annotationDao(): AnnotationDao
     abstract fun threadMessageDao(): ThreadMessageDao
+    abstract fun readingProgressDao(): ReadingProgressDao
 }

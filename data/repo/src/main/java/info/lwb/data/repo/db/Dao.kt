@@ -118,3 +118,12 @@ interface ThreadMessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun add(message: ThreadMessageEntity)
 }
+
+@Dao
+interface ReadingProgressDao {
+    @Query("SELECT * FROM reading_progress WHERE articleId = :articleId")
+    fun observe(articleId: String): Flow<ReadingProgressEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(progress: ReadingProgressEntity)
+}
