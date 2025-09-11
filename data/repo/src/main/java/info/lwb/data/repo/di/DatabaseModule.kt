@@ -6,6 +6,8 @@ package info.lwb.data.repo.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,10 +22,19 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS reading_progress (articleId TEXT NOT NULL PRIMARY KEY, pageIndex INTEGER NOT NULL, totalPages INTEGER NOT NULL, progress REAL NOT NULL, updatedAt TEXT NOT NULL)"
+            )
+        }
+    }
     @Provides
     @Singleton
     fun provideDb(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "lwb.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "lwb.db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
 
     @Provides fun provideArticleDao(db: AppDatabase): info.lwb.data.repo.db.ArticleDao = db.articleDao()
 
@@ -35,6 +46,9 @@ object DatabaseModule {
 
     @Provides
     fun provideThreadMessageDao(db: AppDatabase): info.lwb.data.repo.db.ThreadMessageDao = db.threadMessageDao()
+
+    @Provides
+    fun provideReadingProgressDao(db: AppDatabase): info.lwb.data.repo.db.ReadingProgressDao = db.readingProgressDao()
 
     @Provides
     @Singleton
