@@ -36,7 +36,7 @@ class ReaderViewModel @Inject constructor(
         pageIndexState,
         fontScale,
         lineHeight,
-    ) { (articleId), pages, pageIndex, fScale, lHeight ->
+    ) { articleId, pages, pageIndex, fScale, lHeight ->
         ReaderUiState(
             articleId = articleId,
             pages = pages,
