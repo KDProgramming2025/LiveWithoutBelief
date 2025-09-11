@@ -28,8 +28,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.NavigateBefore
+import androidx.compose.material.icons.filled.NavigateNext
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import android.webkit.WebView
@@ -57,6 +60,10 @@ fun ReaderScreen(
 ) {
     val blocks = remember(htmlBody) { parseHtmlToBlocks(htmlBody) }
     var searchQuery by remember { mutableStateOf("") }
+    var searchOccurrences by remember { mutableStateOf(listOf<IntRange>()) }
+    var currentSearchIndex by remember { mutableStateOf(0) }
+    val configuration = LocalConfiguration.current
+    val isWide = configuration.screenWidthDp >= 600
     Scaffold(
         modifier = modifier,
     topBar = { TopAppBar(title = { Text(articleTitle) }) },
@@ -68,7 +75,25 @@ fun ReaderScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding)) {
-            SearchBar(searchQuery) { searchQuery = it }
+            SearchBar(searchQuery,
+                occurrences = searchOccurrences.size,
+                currentIndex = if (searchOccurrences.isEmpty()) 0 else currentSearchIndex + 1,
+                onPrev = {
+                    if (searchOccurrences.isNotEmpty()) currentSearchIndex = (currentSearchIndex - 1 + searchOccurrences.size) % searchOccurrences.size
+                },
+                onNext = {
+                    if (searchOccurrences.isNotEmpty()) currentSearchIndex = (currentSearchIndex + 1) % searchOccurrences.size
+                }
+            ) { q ->
+                searchQuery = q
+            }
+            // Recompute matches whenever query or blocks change (using full content for simplicity)
+            LaunchedEffect(searchQuery, blocks) {
+                searchOccurrences = if (searchQuery.isBlank()) emptyList() else blocks.filterIsInstance<ContentBlock.Paragraph>()
+                    .flatMap { para -> Regex(Regex.escape(searchQuery), RegexOption.IGNORE_CASE).findAll(para.text).map { it.range } }
+                    .toList()
+                currentSearchIndex = 0
+            }
             val pageList = pages
             if (pageList != null && pageList.size > 1) {
                 // Simple horizontal pager substitute using Row + manual buttons (avoid new dependency)
@@ -81,7 +106,31 @@ fun ReaderScreen(
                     }
                 }
                 val pageBlocks = remember(currentPageIndex, pageList) { pageList.getOrNull(currentPageIndex)?.blocks ?: emptyList() }
-                LazyColumn(Modifier.fillMaxSize()) {
+                val contentModifier = if (isWide) Modifier.weight(1f) else Modifier.fillMaxSize()
+                val toc: List<HeadingItem> = remember(pageList) { buildHeadingItems(pageList) }
+                Row(Modifier.fillMaxSize()) {
+                    if (isWide && toc.isNotEmpty()) {
+                        Surface(tonalElevation = 1.dp, modifier = Modifier.width(220.dp).fillMaxHeight()) {
+                            LazyColumn(Modifier.fillMaxSize().padding(8.dp)) {
+                                items(toc.size) { i ->
+                                    val h = toc[i]
+                                    Text(
+                                        text = h.text,
+                                        style = when (h.level) {
+                                            1 -> MaterialTheme.typography.titleMedium
+                                            2 -> MaterialTheme.typography.titleSmall
+                                            else -> MaterialTheme.typography.bodySmall
+                                        },
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).let { m ->
+                                            if (h.pageIndex == currentPageIndex) m else m
+                                        }
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                }
+                            }
+                        }
+                    }
+                    LazyColumn(contentModifier) {
                     items(pageBlocks.size) { idx ->
                         val b = pageBlocks[idx]
                         when (b) {
@@ -93,6 +142,7 @@ fun ReaderScreen(
                         }
                         Spacer(Modifier.height(12.dp))
                     }
+                }
                 }
             } else {
                 LazyColumn(Modifier.fillMaxSize()) {
@@ -235,11 +285,18 @@ private fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double, 
 }
 
 @Composable
-private fun SearchBar(query: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onChange,
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("Search in article") }
-    )
+private fun SearchBar(query: String, occurrences: Int, currentIndex: Int, onPrev: () -> Unit, onNext: () -> Unit, onChange: (String) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onChange,
+            modifier = Modifier.weight(1f),
+            placeholder = { Text("Search") }
+        )
+        if (occurrences > 0) {
+            Text("$currentIndex/$occurrences", modifier = Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.labelSmall)
+            IconButton(onClick = onPrev) { Icon(Icons.Filled.NavigateBefore, contentDescription = "Prev") }
+            IconButton(onClick = onNext) { Icon(Icons.Filled.NavigateNext, contentDescription = "Next") }
+        }
+    }
 }

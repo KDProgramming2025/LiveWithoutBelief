@@ -76,3 +76,10 @@ fun paginate(blocks: List<ContentBlock>, fontScale: Double, targetCharsPerPage: 
     if (current.isNotEmpty()) pages.add(Page(pages.size, current.toList()))
     return pages
 }
+
+// Heading extraction from pages for Table of Contents / navigation
+data class HeadingItem(val level: Int, val text: String, val pageIndex: Int)
+
+fun buildHeadingItems(pages: List<Page>): List<HeadingItem> = pages.flatMap { page ->
+    page.blocks.filterIsInstance<ContentBlock.Heading>().map { h -> HeadingItem(h.level, h.text, page.index) }
+}

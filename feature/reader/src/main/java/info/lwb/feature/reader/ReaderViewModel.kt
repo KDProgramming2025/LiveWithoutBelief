@@ -30,6 +30,8 @@ class ReaderViewModel @Inject constructor(
         paginate(blocks, fontScale = scale)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val headings = pagesState.map { buildHeadingItems(it) }
+
     val uiState: StateFlow<ReaderUiState> = combine(
         articleIdState,
         pagesState,
