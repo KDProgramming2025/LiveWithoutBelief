@@ -2,7 +2,13 @@ package info.lwb.feature.reader
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.*
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,7 +37,7 @@ fun ReaderScreen(
     var searchQuery by remember { mutableStateOf("") }
     Scaffold(
         modifier = modifier,
-        topBar = { SmallTopAppBar(title = { Text(articleTitle) }) },
+    topBar = { TopAppBar(title = { Text(articleTitle) }) },
         bottomBar = {
             ReaderControlsBar(settings = settings) { font, line ->
                 settings.onFontScaleChange(font)
