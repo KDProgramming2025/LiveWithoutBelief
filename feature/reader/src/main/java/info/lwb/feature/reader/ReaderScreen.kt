@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import androidx.compose.material3.Button
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,6 +37,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import android.webkit.WebView
 import android.webkit.WebSettings
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.tooling.preview.Preview
 
 // Data holder for reader settings provided by caller (ViewModel layer wires flows & mutations)
 data class ReaderSettingsState(
@@ -119,9 +121,10 @@ fun ReaderScreen(
                                             2 -> MaterialTheme.typography.titleSmall
                                             else -> MaterialTheme.typography.bodySmall
                                         },
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).let { m ->
-                                            if (h.pageIndex == currentPageIndex) m else m
-                                        }
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onPageChange(h.pageIndex) }
+                                            .padding(vertical = 4.dp)
                                     )
                                     Spacer(Modifier.height(2.dp))
                                 }
@@ -303,4 +306,34 @@ private fun SearchBar(query: String, occurrences: Int, currentIndex: Int, onPrev
 // TODO(LWB-71): Reintroduce @Preview composables for light/dark themes once ui-tooling-preview
 // dependency is added and kapt NonExistentClass issue resolved. Removed temporarily to restore
 // successful build.
+@Preview(name = "Reader Light", showBackground = true)
+@Composable
+private fun PreviewReaderLight() {
+    val sampleHtml = """
+        <h1>Sample Title</h1>
+        <p>Paragraph one with some text for preview.</p>
+        <p>Paragraph two with more content to demonstrate scaling.</p>
+        <img src='https://example.com/x.png' alt='x'/>
+    """.trimIndent()
+    ReaderScreen(
+        articleTitle = "Preview Article",
+        htmlBody = sampleHtml,
+        settings = ReaderSettingsState(1.0, 1.2, {}, {}),
+    )
+}
+
+@Preview(name = "Reader Dark", showBackground = true)
+@Composable
+private fun PreviewReaderDark() {
+    val sampleHtml = """
+        <h1>Sample Title</h1>
+        <p>Dark theme paragraph example.</p>
+        <audio src='https://example.com/a.mp3'></audio>
+    """.trimIndent()
+    ReaderScreen(
+        articleTitle = "Preview Dark",
+        htmlBody = sampleHtml,
+        settings = ReaderSettingsState(1.0, 1.2, {}, {}),
+    )
+}
 
