@@ -4,6 +4,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +61,7 @@ fun ReaderScreen(
 ) {
     val blocks = remember(htmlBody) { parseHtmlToBlocks(htmlBody) }
     var searchQuery by remember { mutableStateOf("") }
-    var searchOccurrences by remember { mutableStateOf(listOf<IntRange>()) }
+    var searchHits by remember { mutableStateOf(listOf<SearchHit>()) }
     var currentSearchIndex by remember { mutableStateOf(0) }
     val configuration = LocalConfiguration.current
     val isWide = configuration.screenWidthDp >= 600
@@ -76,22 +77,20 @@ fun ReaderScreen(
     ) { padding ->
         Column(Modifier.padding(padding)) {
             SearchBar(searchQuery,
-                occurrences = searchOccurrences.size,
-                currentIndex = if (searchOccurrences.isEmpty()) 0 else currentSearchIndex + 1,
+                occurrences = searchHits.size,
+                currentIndex = if (searchHits.isEmpty()) 0 else currentSearchIndex + 1,
                 onPrev = {
-                    if (searchOccurrences.isNotEmpty()) currentSearchIndex = (currentSearchIndex - 1 + searchOccurrences.size) % searchOccurrences.size
+                    if (searchHits.isNotEmpty()) currentSearchIndex = (currentSearchIndex - 1 + searchHits.size) % searchHits.size
                 },
                 onNext = {
-                    if (searchOccurrences.isNotEmpty()) currentSearchIndex = (currentSearchIndex + 1) % searchOccurrences.size
+                    if (searchHits.isNotEmpty()) currentSearchIndex = (currentSearchIndex + 1) % searchHits.size
                 }
             ) { q ->
                 searchQuery = q
             }
             // Recompute matches whenever query or blocks change (using full content for simplicity)
             LaunchedEffect(searchQuery, blocks) {
-                searchOccurrences = if (searchQuery.isBlank()) emptyList() else blocks.filterIsInstance<ContentBlock.Paragraph>()
-                    .flatMap { para -> Regex(Regex.escape(searchQuery), RegexOption.IGNORE_CASE).findAll(para.text).map { it.range } }
-                    .toList()
+                searchHits = buildSearchHits(pages, blocks, searchQuery)
                 currentSearchIndex = 0
             }
             val pageList = pages
@@ -106,6 +105,14 @@ fun ReaderScreen(
                     }
                 }
                 val pageBlocks = remember(currentPageIndex, pageList) { pageList.getOrNull(currentPageIndex)?.blocks ?: emptyList() }
+                val listState = rememberLazyListState()
+                // Auto-scroll to current hit if it's on this page
+                LaunchedEffect(currentSearchIndex, searchHits, currentPageIndex) {
+                    val hit = searchHits.getOrNull(currentSearchIndex)
+                    if (hit != null && hit.pageIndex == currentPageIndex) {
+                        listState.animateScrollToItem(hit.blockIndex)
+                    }
+                }
                 val contentModifier = if (isWide) Modifier.weight(1f) else Modifier.fillMaxSize()
                 val toc: List<HeadingItem> = remember(pageList) { buildHeadingItems(pageList) }
                 Row(Modifier.fillMaxSize()) {
@@ -131,11 +138,16 @@ fun ReaderScreen(
                             }
                         }
                     }
-                    LazyColumn(contentModifier) {
+                    LazyColumn(contentModifier, state = listState) {
                     items(pageBlocks.size) { idx ->
                         val b = pageBlocks[idx]
                         when (b) {
-                            is ContentBlock.Paragraph -> ParagraphBlock(b.text, searchQuery, settings)
+                            is ContentBlock.Paragraph -> ParagraphBlock(
+                                text = b.text,
+                                query = searchQuery,
+                                settings = settings,
+                                activeRange = searchHits.getOrNull(currentSearchIndex)?.takeIf { it.pageIndex == currentPageIndex && it.blockIndex == idx }?.range
+                            )
                             is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
                             is ContentBlock.Image -> AsyncImage(model = b.url, contentDescription = b.alt, modifier = Modifier.fillMaxWidth().height(220.dp))
                             is ContentBlock.Audio -> AudioBlock(b.url)
@@ -146,11 +158,21 @@ fun ReaderScreen(
                 }
                 }
             } else {
-                LazyColumn(Modifier.fillMaxSize()) {
+                val listState = rememberLazyListState()
+                LaunchedEffect(currentSearchIndex, searchHits) {
+                    val hit = searchHits.getOrNull(currentSearchIndex)
+                    if (hit != null) listState.animateScrollToItem(hit.blockIndex)
+                }
+                LazyColumn(Modifier.fillMaxSize(), state = listState) {
                     items(blocks.size) { idx ->
                         val b = blocks[idx]
                         when (b) {
-                            is ContentBlock.Paragraph -> ParagraphBlock(b.text, searchQuery, settings)
+                            is ContentBlock.Paragraph -> ParagraphBlock(
+                                text = b.text,
+                                query = searchQuery,
+                                settings = settings,
+                                activeRange = searchHits.getOrNull(currentSearchIndex)?.takeIf { it.blockIndex == idx }?.range
+                            )
                             is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
                             is ContentBlock.Image -> AsyncImage(model = b.url, contentDescription = b.alt, modifier = Modifier.fillMaxWidth().height(220.dp))
                             is ContentBlock.Audio -> AudioBlock(b.url)
@@ -165,13 +187,14 @@ fun ReaderScreen(
 }
 
 @Composable
-private fun ParagraphBlock(text: String, query: String, settings: ReaderSettingsState) {
+private fun ParagraphBlock(text: String, query: String, settings: ReaderSettingsState, activeRange: IntRange? = null) {
     val matches = if (query.isBlank()) emptyList() else Regex(Regex.escape(query), RegexOption.IGNORE_CASE).findAll(text).map { it.range }.toList()
     val annotated = buildAnnotatedString {
         var lastIndex = 0
         matches.forEach { range ->
             if (range.first > lastIndex) append(text.substring(lastIndex, range.first))
-            withStyle(MaterialTheme.typography.bodyLarge.toSpanStyle().copy(background = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))) {
+            val highlightColor = if (activeRange == range) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.55f) else MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+            withStyle(MaterialTheme.typography.bodyLarge.toSpanStyle().copy(background = highlightColor)) {
                 append(text.substring(range))
             }
             lastIndex = range.last + 1
