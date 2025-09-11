@@ -22,11 +22,12 @@ class ContentParserTest {
         val imgs = blocks.filterIsInstance<ContentBlock.Image>()
         val aud = blocks.filterIsInstance<ContentBlock.Audio>()
         val yt = blocks.filterIsInstance<ContentBlock.YouTube>()
-        assertEquals(1, headings.size)
-        assertEquals(2, paras.size)
-        assertEquals(1, imgs.size)
-        assertEquals(1, aud.size)
-        assertEquals(1, yt.size)
+    // Assert at least expected counts (parser may include additional paragraphs if whitespace treated as paragraph)
+    assertEquals(1, headings.size)
+    assertEquals(2, paras.size) // exactly two <p> tags present
+    assertEquals(1, imgs.size)
+    assertEquals(1, aud.size)
+    assertEquals(1, yt.size)
     }
 
     @Test
