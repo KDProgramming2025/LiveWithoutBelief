@@ -22,6 +22,20 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import android.webkit.WebView
+import android.webkit.WebSettings
+import androidx.compose.ui.viewinterop.AndroidView
 
 // Data holder for reader settings provided by caller (ViewModel layer wires flows & mutations)
 data class ReaderSettingsState(
@@ -134,18 +148,66 @@ private fun HeadingBlock(level: Int, text: String) {
 @Composable
 private fun AudioBlock(url: String) {
     Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Audio: $url", style = MaterialTheme.typography.bodyMedium)
+        AudioPlayer(url)
+    }
+}
+
+@Composable
+private fun AudioPlayer(url: String) {
+    val context = LocalContext.current
+    var isPlaying by remember { mutableStateOf(false) }
+    var ready by remember { mutableStateOf(false) }
+    val player = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val item = MediaItem.fromUri(url)
+            setMediaItem(item)
+            prepare()
+            addListener(object : androidx.media3.common.Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    ready = playbackState != androidx.media3.common.Player.STATE_BUFFERING && playbackState != androidx.media3.common.Player.STATE_IDLE
+                }
+            })
         }
+    }
+    DisposableEffect(Unit) { onDispose { player.release() } }
+    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (!ready) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(12.dp))
+        }
+        IconButton(onClick = {
+            if (player.isPlaying) {
+                player.pause(); isPlaying = false
+            } else {
+                player.play(); isPlaying = true
+            }
+        }) {
+            if (player.isPlaying) Icon(Icons.Default.Pause, contentDescription = "Pause") else Icon(Icons.Default.PlayArrow, contentDescription = "Play")
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(text = url.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
     }
 }
 
 @Composable
 private fun YouTubeBlock(videoId: String) {
     Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-        Box(Modifier.height(200.dp), contentAlignment = Alignment.Center) {
-            Text("YouTube: $videoId", style = MaterialTheme.typography.bodyMedium)
-        }
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            factory = { ctx ->
+                WebView(ctx).apply {
+                    settings.javaScriptEnabled = true
+                    settings.cacheMode = WebSettings.LOAD_DEFAULT
+                    loadData(
+                        """<html><body style='margin:0;padding:0;'><iframe width='100%' height='100%' src='https://www.youtube.com/embed/$videoId' frameborder='0' allowfullscreen></iframe></body></html>""",
+                        "text/html",
+                        "utf-8"
+                    )
+                }
+            }
+        )
     }
 }
 
