@@ -6,9 +6,9 @@ Completed (Reader Feature LWB-65 & subtasks):
 Partially Done:
 Recently Completed:
 - LWB-71: Light/Dark previews restored with ui-tooling & tooling-preview dependencies added; kapt error resolved.
+- LWB-69: Search enhanced with SearchHit model, auto-scroll to active match, distinct active highlight.
 
 Outstanding Improvements:
-- Scroll to active search result and highlight active match distinctly.
 - Reinstate stable parser structural test (currently ignored) & add page navigation tests.
 Outstanding Improvements:
 - Reintroduce previews (add ui-tooling-preview dependency) and verify theming.
