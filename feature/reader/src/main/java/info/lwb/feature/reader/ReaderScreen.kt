@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
 @Composable
@@ -70,7 +71,12 @@ private fun ParagraphBlock(text: String, query: String, settings: ReaderSettings
         }
         if (lastIndex < text.length) append(text.substring(lastIndex))
     }
-    Text(annotated, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = (MaterialTheme.typography.bodyLarge.lineHeight * settings.lineHeight).sp))
+    val baseStyle = MaterialTheme.typography.bodyLarge
+    val scaledStyle = baseStyle.copy(
+        fontSize = (baseStyle.fontSize * settings.fontScale).coerceAtLeast(10.sp),
+        lineHeight = (baseStyle.lineHeight * settings.lineHeight)
+    )
+    Text(annotated, style = scaledStyle)
 }
 
 @Composable

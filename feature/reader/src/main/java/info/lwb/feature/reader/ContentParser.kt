@@ -39,7 +39,7 @@ fun parseHtmlToBlocks(html: String): List<ContentBlock> {
     val paragraphs = paragraphRegex.findAll(remaining).map { stripTags(it.groupValues[1]).trim() }.filter { it.isNotBlank() }.toList()
     if (paragraphs.isEmpty()) {
         val plain = stripTags(remaining)
-        plain.split(/\n{2,}/.toRegex()).map { it.trim() }.filter { it.isNotBlank() }.forEach { blocks.add(ContentBlock.Paragraph(it)) }
+        plain.split(Regex("\n{2,}")).map { it.trim() }.filter { it.isNotBlank() }.forEach { blocks.add(ContentBlock.Paragraph(it)) }
     } else {
         paragraphs.forEach { blocks.add(ContentBlock.Paragraph(it)) }
     }
