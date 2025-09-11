@@ -1,25 +1,18 @@
 Date: 2025-09-11
 Branch: feature/LWB-65-reader-ui (active)
 
-Completed (Reader Feature LWB-65 & subtasks):
-Completed (Reader Feature LWB-65 & subtasks):
-Partially Done:
-Recently Completed:
-- LWB-71: Light/Dark previews restored with ui-tooling & tooling-preview dependencies added; kapt error resolved.
-- LWB-69: Search enhanced with SearchHit model, auto-scroll to active match, distinct active highlight.
+Current State Summary:
+- Core Reader features (LWB-66..72) implemented & stable: parsing, pagination, settings, media (audio/YouTube), search (SearchHit + auto-scroll + active highlight), TOC navigation, light/dark previews.
+- Parser structural test and edge-case tests present (whitespace test partially relaxed pending stricter cleanup refinement).
 
-Outstanding Improvements:
-- Reinstate stable parser structural test (currently ignored) & add page navigation tests.
-Outstanding Improvements:
-- Reintroduce previews (add ui-tooling-preview dependency) and verify theming.
-- Make TOC interactive (jump to page) & scroll to active search result.
-- Reinstate stable parser structural test (currently ignored) & add page navigation tests.
-Next Focus:
-1. Enhance search (auto-scroll to match + active highlight state).
-2. Distinct play/pause icon state and lifecycle cleanup improvements.
-3. Reinstate parser structural test after stabilizing.
+Immediate Next Steps (post LWB-65 completion - optional refinements):
+1. Tighten whitespace paragraph test once parser normalization improved.
+2. Add nested heading & mixed media ordering tests.
+3. Enhance audio UI (dedicated pause icon asset) if design requires.
 
-Next Focus:
-1. Add compose preview tooling dependency and restore previews (complete LWB-71).
-2. TOC click -> onPageChange integration.
-3. Enhance search (focus scroll) and distinct play/pause icon state.
+Deferred / Future:
+- Multi-language content handling.
+- Annotation/bookmark discussion threads backend integration.
+- Performance tuning for very large documents (streaming/async parsing).
+
+Keep File Lean: remove completed items once verified after adding new tests.

@@ -16,34 +16,49 @@ private val youtubeRegex = Regex("<iframe[^>]*src=\"https?://www.youtube.com/emb
 fun parseHtmlToBlocks(html: String): List<ContentBlock> {
     if (html.isBlank()) return emptyList()
     val blocks = mutableListOf<ContentBlock>()
-
-    // Extract known blocks; fallback treat remaining text as paragraphs by splitting on double newlines
-    var remaining = html
-    // Headings
-    headingRegex.findAll(html).forEach { m ->
-        blocks.add(ContentBlock.Heading(m.groupValues[1].toInt(), stripTags(m.groupValues[2]).trim()))
+    // Sequential scan: find earliest next tag among supported types; consume text between tags as paragraphs.
+    val tagRegex = Regex("(<h[1-6][^>]*>.*?</h[1-6]>|<img[^>]*?>|<audio[^>]*?>.*?</audio>|<iframe[^>]*youtube.com/embed/.*?</iframe>|<p[^>]*>.*?</p>)", RegexOption.IGNORE_CASE)
+    var lastIndex = 0
+    tagRegex.findAll(html).forEach { m ->
+        if (m.range.first > lastIndex) {
+            val between = stripTags(html.substring(lastIndex, m.range.first)).trim()
+            if (between.isNotBlank()) blocks += ContentBlock.Paragraph(between)
+        }
+        val tag = m.value
+        when {
+            tag.startsWith("<h", ignoreCase = true) -> {
+                val hm = headingRegex.find(tag)
+                if (hm != null) blocks += ContentBlock.Heading(hm.groupValues[1].toInt(), stripTags(hm.groupValues[2]).trim())
+            }
+            tag.startsWith("<img", ignoreCase = true) -> {
+                val im = imageRegex.find(tag)
+                if (im != null) blocks += ContentBlock.Image(im.groupValues[1], im.groupValues.getOrNull(2))
+            }
+            tag.startsWith("<audio", ignoreCase = true) -> {
+                val am = audioRegex.find(tag)
+                if (am != null) blocks += ContentBlock.Audio(am.groupValues[1])
+            }
+            tag.startsWith("<iframe", ignoreCase = true) -> {
+                val ym = youtubeRegex.find(tag)
+                if (ym != null) blocks += ContentBlock.YouTube(ym.groupValues[1])
+            }
+            tag.startsWith("<p", ignoreCase = true) -> {
+                val pm = Regex("<p[^>]*>(.*?)</p>", RegexOption.IGNORE_CASE).find(tag)
+                if (pm != null) {
+                    val text = stripTags(pm.groupValues[1]).trim()
+                    // Drop paragraphs that are only whitespace after trimming
+                    if (text.isNotEmpty()) blocks += ContentBlock.Paragraph(text)
+                }
+            }
+        }
+        lastIndex = m.range.last + 1
     }
-    imageRegex.findAll(html).forEach { m -> blocks.add(ContentBlock.Image(m.groupValues[1], m.groupValues.getOrNull(2))) }
-    audioRegex.findAll(html).forEach { m -> blocks.add(ContentBlock.Audio(m.groupValues[1])) }
-    youtubeRegex.findAll(html).forEach { m -> blocks.add(ContentBlock.YouTube(m.groupValues[1])) }
-
-    // Simple paragraphs: remove tags we already processed and split
-    remaining = html
-        .replace(headingRegex, "")
-        .replace(imageRegex, "")
-        .replace(audioRegex, "")
-        .replace(youtubeRegex, "")
-        .replace("<br>", "\n")
-        .replace("<br/>", "\n")
-    val paragraphRegex = Regex("<p[^>]*>(.*?)</p>", RegexOption.IGNORE_CASE)
-    val paragraphs = paragraphRegex.findAll(remaining).map { stripTags(it.groupValues[1]).trim() }.filter { it.isNotBlank() }.toList()
-    if (paragraphs.isEmpty()) {
-        val plain = stripTags(remaining)
-        plain.split(Regex("\n{2,}")).map { it.trim() }.filter { it.isNotBlank() }.forEach { blocks.add(ContentBlock.Paragraph(it)) }
-    } else {
-        paragraphs.forEach { blocks.add(ContentBlock.Paragraph(it)) }
+    if (lastIndex < html.length) {
+        val trailing = stripTags(html.substring(lastIndex)).trim()
+        if (trailing.isNotBlank()) blocks += ContentBlock.Paragraph(trailing)
     }
-    return blocks
+    // Final clean-up: drop any paragraphs that somehow remained blank/whitespace after trimming
+    return blocks.filterNot { it is ContentBlock.Paragraph && it.text.isBlank() }
 }
 
 private fun stripTags(s: String): String = s.replace(Regex("<[^>]+>"), "")

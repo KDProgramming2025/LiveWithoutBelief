@@ -41,7 +41,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
-import info.lwb.feature.reader.ReaderScreen
+import info.lwb.feature.reader.ReaderRoute
 import info.lwb.feature.search.SearchRoute
 import info.lwb.auth.RecaptchaTokenProvider
 import info.lwb.auth.CachingRecaptchaProvider
@@ -170,7 +170,7 @@ private object Destinations {
 @Composable
 private fun appNavHost(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Destinations.READER) {
-        composable(Destinations.READER) { ReaderScreen() }
+    composable(Destinations.READER) { ReaderRoute() }
         composable(Destinations.SEARCH) { SearchRoute() }
     }
 }

@@ -3,33 +3,37 @@ package info.lwb.feature.reader
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.junit.Ignore
 
 class ContentParserTest {
-    @Ignore("Parser block count assertions unstable; refine parser then re-enable")
     @Test
     fun parse_basicHtml_extractsBlocks() {
+        // NOTE: Triple-quoted Kotlin strings don't require escaping quotes. The previous version
+        // mistakenly included backslashes (\") which made the parser regexes (expecting src="...") fail
+        // causing image/audio/iframe blocks to be missed. This version removes the spurious backslashes.
         val html = """
             <h1>Title</h1>
             <p>First paragraph.</p>
-            <img src=\"https://example.com/img.png\" alt=\"Alt\" />
+            <img src="https://example.com/img.png" alt="Alt" />
             <p>Second paragraph.</p>
-            <audio src=\"https://example.com/a.mp3\"></audio>
-            <iframe src=\"https://www.youtube.com/embed/abc12345\"></iframe>
+            <audio src="https://example.com/a.mp3"></audio>
+            <iframe src="https://www.youtube.com/embed/abc12345"></iframe>
         """.trimIndent()
-        val blocks = parseHtmlToBlocks(html)
-        // We don't enforce order strictly because we pool different regexes; ensure presence counts
-        val headings = blocks.filterIsInstance<ContentBlock.Heading>()
-        val paras = blocks.filterIsInstance<ContentBlock.Paragraph>()
-        val imgs = blocks.filterIsInstance<ContentBlock.Image>()
-        val aud = blocks.filterIsInstance<ContentBlock.Audio>()
-        val yt = blocks.filterIsInstance<ContentBlock.YouTube>()
-    // Assert at least expected counts (parser may include additional paragraphs if whitespace treated as paragraph)
-    assert(headings.size >= 1)
-    assert(paras.size >= 2) { "Expected >=2 paragraphs, got ${paras.size}: $paras" }
-    assert(imgs.size >= 1)
-    assert(aud.size >= 1)
-    assert(yt.size >= 1)
+    val blocks = parseHtmlToBlocks(html)
+    val headings = blocks.filterIsInstance<ContentBlock.Heading>()
+    val paras = blocks.filterIsInstance<ContentBlock.Paragraph>()
+    val imgs = blocks.filterIsInstance<ContentBlock.Image>()
+    val aud = blocks.filterIsInstance<ContentBlock.Audio>()
+    val yt = blocks.filterIsInstance<ContentBlock.YouTube>()
+
+    println("DEBUG parser counts -> h=${headings.size} p=${paras.size} img=${imgs.size} aud=${aud.size} yt=${yt.size} blocks=$blocks")
+
+    // Exact expectations for this controlled snippet
+    assertEquals(1, headings.size)
+    assertEquals("Title", headings.single().text)
+    assertEquals(2, paras.size)
+    assertEquals(1, imgs.size)
+    assertEquals(1, aud.size)
+    assertEquals(1, yt.size)
     }
 
     @Test

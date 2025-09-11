@@ -1,6 +1,8 @@
 package info.lwb.feature.reader
 
 import android.content.Context
+import javax.inject.Inject
+import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
@@ -14,7 +16,7 @@ private const val DS_NAME = "reader_settings"
 
 private val Context.dataStore by preferencesDataStore(name = DS_NAME)
 
-class ReaderSettingsRepository(private val context: Context) {
+class ReaderSettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
     private object Keys {
         val FONT_SCALE = doublePreferencesKey("font_scale")
         val LINE_HEIGHT = doublePreferencesKey("line_height")

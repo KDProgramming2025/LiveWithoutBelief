@@ -255,7 +255,7 @@ private fun AudioPlayer(url: String) {
                 player.play(); isPlaying = true
             }
         }) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = if (player.isPlaying) "Pause" else "Play")
+            Icon(Icons.Filled.PlayArrow, contentDescription = if (player.isPlaying) "Pause audio" else "Play audio")
         }
         Spacer(Modifier.width(8.dp))
         Text(text = url.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
