@@ -182,7 +182,7 @@ private fun AudioPlayer(url: String) {
                 player.play(); isPlaying = true
             }
         }) {
-            if (player.isPlaying) Icon(Icons.Default.Pause, contentDescription = "Pause") else Icon(Icons.Default.PlayArrow, contentDescription = "Play")
+            if (player.isPlaying) Icon(Icons.Filled.Pause, contentDescription = "Pause") else Icon(Icons.Filled.PlayArrow, contentDescription = "Play")
         }
         Spacer(Modifier.width(8.dp))
         Text(text = url.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
