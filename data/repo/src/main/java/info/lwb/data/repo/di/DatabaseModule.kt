@@ -18,7 +18,8 @@ import info.lwb.data.network.ArticleApi
 import info.lwb.data.repo.db.AppDatabase
 import info.lwb.data.repo.repositories.ArticleRepositoryImpl
 import javax.inject.Singleton
-import info.lwb.data.repo.repositories.ReadingProgressRepository
+import info.lwb.core.domain.ReadingProgressRepository
+import info.lwb.data.repo.repositories.ReadingProgressRepositoryImpl
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -58,5 +59,5 @@ object DatabaseModule {
 
     @Provides
     fun provideReadingProgressRepository(db: AppDatabase): ReadingProgressRepository =
-        ReadingProgressRepository(db.readingProgressDao())
+        ReadingProgressRepositoryImpl(db.readingProgressDao())
 }

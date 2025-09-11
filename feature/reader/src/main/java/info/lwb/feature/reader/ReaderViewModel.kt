@@ -3,7 +3,7 @@ package info.lwb.feature.reader
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import info.lwb.data.repo.repositories.ReadingProgressRepository
+import info.lwb.core.domain.ReadingProgressRepository
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
