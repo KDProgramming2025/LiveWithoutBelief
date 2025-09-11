@@ -44,66 +44,6 @@ fun ReaderScreen(
                         is ContentBlock.YouTube -> YouTubeBlock(b.videoId)
                     }
                     Spacer(Modifier.height(12.dp))
-                }
-            }
-        }
-    }
-}
-
-data class ReaderSettingsState(
-    val fontScale: Double,
-    val lineHeight: Double,
-    val onFontScaleChange: (Double) -> Unit,
-    val onLineHeightChange: (Double) -> Unit,
-)
-
-@Composable
-private fun ParagraphBlock(text: String, query: String, settings: ReaderSettingsState) {
-    val matches = if (query.isBlank()) emptyList() else Regex(Regex.escape(query), RegexOption.IGNORE_CASE).findAll(text).map { it.range }.toList()
-    val annotated = buildAnnotatedString {
-        var lastIndex = 0
-        matches.forEach { range ->
-            if (range.first > lastIndex) append(text.substring(lastIndex, range.first))
-            withStyle(MaterialTheme.typography.bodyLarge.toSpanStyle().copy(background = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))) {
-                append(text.substring(range))
-            }
-            lastIndex = range.last + 1
-        }
-        if (lastIndex < text.length) append(text.substring(lastIndex))
-    }
-    val baseStyle = MaterialTheme.typography.bodyLarge
-    val scaledStyle = baseStyle.copy(
-        fontSize = (baseStyle.fontSize * settings.fontScale).coerceAtLeast(10.sp),
-        lineHeight = (baseStyle.lineHeight * settings.lineHeight)
-    )
-    Text(annotated, style = scaledStyle)
-}
-
-@Composable
-private fun HeadingBlock(level: Int, text: String) {
-    val style = when (level) {
-        1 -> MaterialTheme.typography.headlineMedium
-        2 -> MaterialTheme.typography.headlineSmall
-        3 -> MaterialTheme.typography.titleLarge
-        else -> MaterialTheme.typography.titleMedium
-    }
-    Text(text, style = style)
-}
-
-@Composable
-private fun AudioBlock(url: String) {
-    // Placeholder – real ExoPlayer integration could go here
-    Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Audio: $url", style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-}
-
-@Composable
-private fun YouTubeBlock(videoId: String) {
-    Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-        Box(Modifier.height(200.dp), contentAlignment = Alignment.Center) {
             Text("YouTube: $videoId", style = MaterialTheme.typography.bodyMedium)
         }
     }
