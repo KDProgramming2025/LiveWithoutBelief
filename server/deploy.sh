@@ -153,8 +153,8 @@ location ^~ /LWB/Admin/ {
 location ^~ /LWB/Articles/ {
 		alias /var/www/LWB/Articles/;
 		index index.html;
-		# Resolve to file, directory, or directory index.html
-		try_files $request_filename $request_filename/ $request_filename/index.html =404;
+		# Resolve to file or directory; 'index' will serve index.html for directories
+		try_files $uri $uri/ =404;
 		add_header Cache-Control "public, max-age=60";
 }
 NGINX
