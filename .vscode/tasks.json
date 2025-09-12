@@ -211,6 +211,46 @@
 				"$gcc"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Package Admin Web and API artifacts",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-NonInteractive",
+				"-Command",
+				"Set-StrictMode -Version Latest; $ErrorActionPreference='Stop';",
+				"Remove-Item -Force -EA SilentlyContinue tmp\\admin-web-dist.zip, tmp\\admin-web-dist.tar.gz, tmp\\admin-api-dist.zip;",
+				"if (Test-Path admin\\web\\dist) { Remove-Item -Recurse -Force admin\\web\\dist };",
+				"cd admin\\web; npm ci; npm run build; cd ..\\..;",
+				"New-Item -ItemType Directory -Force tmp > $null;",
+				"Compress-Archive -Path admin\\web\\dist\\* -DestinationPath tmp\\admin-web-dist.zip -Force;",
+				"if (Test-Path admin\\api\\dist) { Remove-Item -Recurse -Force admin\\api\\dist };",
+				"cd admin\\api; npm ci; npm run build; cd ..\\..;",
+				"Compress-Archive -Path admin\\api\\dist\\* -DestinationPath tmp\\admin-api-dist.zip -Force;",
+				"Write-Host '[PACK] Artifacts ready'"
+			]
+		},
+		{
+			"label": "Package Admin artifacts (fixed quoting)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-NonInteractive",
+				"-Command",
+				"Set-StrictMode -Version Latest; $ErrorActionPreference='Stop';",
+				"Remove-Item -Force -EA SilentlyContinue tmp\\admin-web-dist.zip, tmp\\admin-web-dist.tar.gz, tmp\\admin-api-dist.zip;",
+				"if (Test-Path admin\\web\\dist) { Remove-Item -Recurse -Force admin\\web\\dist };",
+				"cd admin\\web; npm ci; npm run build; cd ..\\..;",
+				"New-Item -ItemType Directory -Force tmp > $null;",
+				"Compress-Archive -Path admin\\web\\dist\\* -DestinationPath tmp\\admin-web-dist.zip -Force;",
+				"if (Test-Path admin\\api\\dist) { Remove-Item -Recurse -Force admin\\api\\dist };",
+				"cd admin\\api; npm ci; npm run build; cd ..\\..;",
+				"Compress-Archive -Path admin\\api\\dist\\* -DestinationPath tmp\\admin-api-dist.zip -Force;",
+				"Write-Host '[PACK] Artifacts ready'"
+			]
 		}
 	]
 }
