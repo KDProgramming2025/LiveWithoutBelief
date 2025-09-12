@@ -1,9 +1,11 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import android.app.Activity
-import dagger.hilt.android.testing.HiltAndroidTest
 import com.google.firebase.auth.FirebaseAuth
-import androidx.test.platform.app.InstrumentationRegistry
 
 /** Lightweight provider without full Hilt graph for auth instrumentation smoke. */
 object TestAuthFacadeProvider {
@@ -16,6 +18,15 @@ object TestAuthFacadeProvider {
         val executor = ActivityResultGoogleSignInExecutor()
         val tokenRefresher = FirebaseTokenRefresher()
         val signInExecutor = FirebaseSignInExecutor(firebase)
-        return FirebaseCredentialAuthFacade(firebase, context, secure, session, signInClient, executor, tokenRefresher, signInExecutor)
+        return FirebaseCredentialAuthFacade(
+            firebase,
+            context,
+            secure,
+            session,
+            signInClient,
+            executor,
+            tokenRefresher,
+            signInExecutor,
+        )
     }
 }

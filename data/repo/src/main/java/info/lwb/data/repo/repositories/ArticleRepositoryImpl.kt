@@ -9,7 +9,6 @@ import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.data.network.ArticleApi
-import java.security.MessageDigest
 import info.lwb.data.network.ManifestItemDto
 import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
@@ -23,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -65,8 +65,8 @@ class ArticleRepositoryImpl(
         // Snapshot local state to guide delta decisions
         val localById = articleDao.listArticles().associateBy { it.id }
         // Parallelize detail fetches with bounded concurrency
-    // Run detail fetches in parallel and await, but discard returned list to keep Unit
-    val awaited = coroutineScope {
+        // Run detail fetches in parallel and await, but discard returned list to keep Unit
+        val awaited = coroutineScope {
             manifest.map { item ->
                 async {
                     val articleEntity = ArticleEntity(
@@ -143,9 +143,9 @@ class ArticleRepositoryImpl(
                 }
             }.awaitAll()
         }
-    // After sync, apply eviction policy to limit offline cache footprint.
-    applyEvictionPolicy(manifest)
-    // ensure Unit return
+        // After sync, apply eviction policy to limit offline cache footprint.
+        applyEvictionPolicy(manifest)
+        // ensure Unit return
         Unit
     }
 
@@ -153,11 +153,14 @@ class ArticleRepositoryImpl(
         runCatching { api.getManifest() }.getOrElse { emptyList() }
     }
 
-    override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> = withContext(Dispatchers.IO) {
+    override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> = withContext(
+        Dispatchers.IO,
+    ) {
         if (query.isBlank()) return@withContext emptyList()
         val rows = articleDao.searchArticlesLike(query.trim(), limit, offset)
         rows.map { Article(it.id, it.title, it.slug, it.version, it.updatedAt, it.wordCount) }
     }
+
     // Keep the most recent 'KEEP_RECENT_COUNT' articles' content/assets; evict older ones.
     private suspend fun applyEvictionPolicy(manifest: List<ManifestItemDto>) {
         val keepIds = manifest

@@ -7,13 +7,12 @@ package info.lwb.data.repo.repositories
 import info.lwb.core.common.Result
 import info.lwb.data.network.ArticleApi
 import info.lwb.data.network.ArticleDto
-import info.lwb.data.network.MediaDto
-import info.lwb.data.network.SectionDto
 import info.lwb.data.network.ManifestItemDto
+import info.lwb.data.network.SectionDto
 import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
-import info.lwb.data.repo.db.ArticleSearchRow
 import info.lwb.data.repo.db.ArticleEntity
+import info.lwb.data.repo.db.ArticleSearchRow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
@@ -74,8 +73,12 @@ class FakeArticleDao : ArticleDao {
             }
         }
     }
-    override suspend fun clearAllContents() { contents.clear() }
-    override suspend fun clearAllAssets() { assets.clear() }
+    override suspend fun clearAllContents() {
+        contents.clear()
+    }
+    override suspend fun clearAllAssets() {
+        assets.clear()
+    }
     override suspend fun searchArticlesLike(q: String, limit: Int, offset: Int): List<ArticleSearchRow> {
         // Simple in-memory LIKE: case-insensitive contains on title/plainText
         val lowered = q.lowercase()
@@ -84,15 +87,19 @@ class FakeArticleDao : ArticleDao {
             .mapNotNull { a ->
                 val c = contents[a.id] ?: return@mapNotNull null
                 val match = a.title.lowercase().contains(lowered) || c.plainText.lowercase().contains(lowered)
-                if (match) ArticleSearchRow(
-                    id = a.id,
-                    title = a.title,
-                    slug = a.slug,
-                    version = a.version,
-                    updatedAt = a.updatedAt,
-                    wordCount = a.wordCount,
-                    plainText = c.plainText,
-                ) else null
+                if (match) {
+                    ArticleSearchRow(
+                        id = a.id,
+                        title = a.title,
+                        slug = a.slug,
+                        version = a.version,
+                        updatedAt = a.updatedAt,
+                        wordCount = a.wordCount,
+                        plainText = c.plainText,
+                    )
+                } else {
+                    null
+                }
             }
             .sortedByDescending { it.updatedAt }
             .drop(offset)
@@ -149,12 +156,12 @@ class ArticleRepositoryImplTest {
         api.articles["m1"] = ArticleDto(
             id = "m1", slug = "m-slug-1", title = "M Title 1", version = 1, wordCount = 150,
             updatedAt = "2025-01-01T00:00:00Z", checksum = "", html = "<p>A</p>", text = "A",
-            sections = listOf(SectionDto(0, "paragraph", text = "A")), media = emptyList()
+            sections = listOf(SectionDto(0, "paragraph", text = "A")), media = emptyList(),
         )
         api.articles["m2"] = ArticleDto(
             id = "m2", slug = "m-slug-2", title = "M Title 2", version = 2, wordCount = 250,
             updatedAt = "2025-01-02T00:00:00Z", checksum = "", html = "<p>B</p>", text = "B",
-            sections = listOf(SectionDto(0, "paragraph", text = "B")), media = emptyList()
+            sections = listOf(SectionDto(0, "paragraph", text = "B")), media = emptyList(),
         )
         // When
         repo.refreshArticles()
@@ -183,7 +190,7 @@ class ArticleRepositoryImplTest {
         api.articles["x1"] = ArticleDto(
             id = "x1", slug = "slug-x", title = "Title X", version = 3, wordCount = 100,
             updatedAt = "2025-01-03", checksum = "irrelevant", html = "<p>new</p>", text = "new",
-            sections = emptyList(), media = emptyList()
+            sections = emptyList(), media = emptyList(),
         )
 
         repo.refreshArticles()
@@ -198,7 +205,7 @@ class ArticleRepositoryImplTest {
         api.articles["c1"] = ArticleDto(
             id = "c1", slug = "c1", title = "C1", version = 1, wordCount = 10,
             updatedAt = "2025-01-01", checksum = "bad", html = "<p>hello</p>", text = "hello",
-            sections = emptyList(), media = emptyList()
+            sections = emptyList(), media = emptyList(),
         )
         repo.refreshArticles()
         // Content should not be saved due to checksum mismatch; article metadata still present
@@ -220,8 +227,10 @@ class ArticleRepositoryImplTest {
                 if (attempts == 1) error("transient")
                 return ArticleDto(
                     id = id, slug = "r1", title = "R1", version = 1, wordCount = 10,
-                    updatedAt = "2025-01-01", checksum = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", // sha256("hello")
-                    html = "<p>hello</p>", text = "hello", sections = emptyList(), media = emptyList()
+                    updatedAt = "2025-01-01",
+                    // sha256("hello")
+                    checksum = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+                    html = "<p>hello</p>", text = "hello", sections = emptyList(), media = emptyList(),
                 )
             }
         }
@@ -257,7 +266,7 @@ class ArticleRepositoryImplTest {
             api.articles["id$i"] = ArticleDto(
                 id = "id$i", slug = "s$i", title = "T$i", version = i, wordCount = i * 10,
                 updatedAt = "2025-01-0${i}T00:00:00Z", checksum = "", html = "<p>$i</p>", text = "$i",
-                sections = emptyList(), media = emptyList()
+                sections = emptyList(), media = emptyList(),
             )
         }
         // When

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import kotlinx.coroutines.Dispatchers
@@ -37,14 +41,16 @@ interface RevocationStore {
 
 class InMemoryRevocationStore @Inject constructor() : RevocationStore {
     private val revoked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-    override fun markRevoked(token: String) { revoked.add(token) }
+    override fun markRevoked(token: String) {
+        revoked.add(token)
+    }
     override fun isRevoked(token: String): Boolean = token in revoked
 }
 
 /** Simple persistent implementation backed by encrypted shared preferences (same security profile as SecureStorage). */
 @Singleton
 class PrefsRevocationStore @Inject constructor(
-    @dagger.hilt.android.qualifiers.ApplicationContext appContext: android.content.Context
+    @dagger.hilt.android.qualifiers.ApplicationContext appContext: android.content.Context,
 ) : RevocationStore {
     private val prefs by lazy {
         // Use normal (not encrypted) SharedPreferences because tokens are already short-lived; however
@@ -52,11 +58,14 @@ class PrefsRevocationStore @Inject constructor(
         // For now keep lightweight to avoid double encryption overhead.
         appContext.getSharedPreferences("revocations.store", android.content.Context.MODE_PRIVATE)
     }
+
     // Key format: token hash -> 1 (value unused). Store only SHA-256 to avoid persisting raw tokens.
     private fun hash(token: String): String = try {
         val md = java.security.MessageDigest.getInstance("SHA-256")
         md.digest(token.toByteArray()).joinToString("") { "%02x".format(it) }
-    } catch (_: Exception) { token } // fall back to raw (rare)
+    } catch (_: Exception) {
+        token
+    } // fall back to raw (rare)
 
     override fun markRevoked(token: String) {
         val h = hash(token)
@@ -84,8 +93,8 @@ class RemoteSessionValidator @Inject constructor(
     override suspend fun validate(idToken: String): Boolean = validateDetailed(idToken).isValid
 
     override suspend fun validateDetailed(idToken: String): ValidationResult = withContext(Dispatchers.IO) {
-    val maxAttempts = retryPolicy.maxAttempts.coerceAtLeast(1)
-    var attempt = 0 // zero-based attempt index
+        val maxAttempts = retryPolicy.maxAttempts.coerceAtLeast(1)
+        var attempt = 0 // zero-based attempt index
         var last: ValidationResult
         var lastServerRetryable = false
         // Short-circuit if locally revoked (avoid network traffic)
@@ -93,12 +102,17 @@ class RemoteSessionValidator @Inject constructor(
             return@withContext ValidationResult(false, ValidationError.Unauthorized)
         }
         // Heuristic: password auth tokens are JWTs we issue (three segments, contains 'typ":"pwd')
-        fun isPasswordJwt(token: String): Boolean = token.count { it == '.' } == 2 && token.length < 300 // Google ID tokens are usually longer
+        fun isPasswordJwt(token: String): Boolean =
+            token.count { it == '.' } == 2 && token.length < 300 // Google ID tokens are usually longer
         val passwordMode = isPasswordJwt(idToken)
         while (true) {
             observer.onAttempt(attempt + 1, maxAttempts)
             val path = if (passwordMode) "/v1/auth/pwd/validate" else "/v1/auth/validate"
-            val body = if (passwordMode) '{' + "\"token\":\"" + idToken + "\"}" else '{' + "\"idToken\":\"" + idToken + "\"}"
+            val body = if (passwordMode) {
+                '{' + "\"token\":\"" + idToken + "\"}"
+            } else {
+                '{' + "\"idToken\":\"" + idToken + "\"}"
+            }
             val req = Request.Builder()
                 .url(endpoint(path))
                 .post(body.toRequestBody("application/json".toMediaType()))
@@ -113,7 +127,10 @@ class RemoteSessionValidator @Inject constructor(
                             lastServerRetryable = r.header("Retry-After") != null
                             ValidationResult(false, ValidationError.Server(r.code))
                         }
-                        else -> ValidationResult(false, ValidationError.Unexpected("HTTP ${r.code}"))
+                        else -> ValidationResult(
+                            false,
+                            ValidationError.Unexpected("HTTP ${r.code}"),
+                        )
                     }
                 }
             }, onFailure = { e ->
@@ -129,11 +146,17 @@ class RemoteSessionValidator @Inject constructor(
             }
             if (result.isValid || !retryable || attempt == maxAttempts - 1) break
             attempt++
-            val computedDelay = if (attempt == 0) 0L else {
-                // exponential style: base * multiplier^(attempt-1)
-                val factor = Math.pow(retryPolicy.backoffMultiplier, (attempt - 1).toDouble())
-                (retryPolicy.baseDelayMs * factor).toLong()
-            }
+            val computedDelay =
+                if (attempt == 0) {
+                    0L
+                } else {
+                    // exponential style: base * multiplier^(attempt-1)
+                    val factor = Math.pow(
+                        retryPolicy.backoffMultiplier,
+                        (attempt - 1).toDouble(),
+                    )
+                    (retryPolicy.baseDelayMs * factor).toLong()
+                }
             if (computedDelay > 0) {
                 observer.onRetry(computedDelay)
                 delay(computedDelay)
@@ -144,9 +167,13 @@ class RemoteSessionValidator @Inject constructor(
 
     override suspend fun revoke(idToken: String) = withContext(Dispatchers.IO) {
         revocationStore.markRevoked(idToken)
-    fun isPasswordJwt(token: String): Boolean = token.count { it == '.' } == 2 && token.length < 300
-    val passwordMode = isPasswordJwt(idToken)
-    val body = if (passwordMode) '{' + "\"token\":\"" + idToken + "\"}" else '{' + "\"idToken\":\"" + idToken + "\"}" // manual JSON
+        fun isPasswordJwt(token: String): Boolean = token.count { it == '.' } == 2 && token.length < 300
+        val passwordMode = isPasswordJwt(idToken)
+        val body = if (passwordMode) {
+            '{' + "\"token\":\"" + idToken + "\"}"
+        } else {
+            '{' + "\"idToken\":\"" + idToken + "\"}"
+        } // manual JSON
         val req = Request.Builder()
             .url(endpoint("/v1/auth/revoke"))
             .post(body.toRequestBody("application/json".toMediaType()))

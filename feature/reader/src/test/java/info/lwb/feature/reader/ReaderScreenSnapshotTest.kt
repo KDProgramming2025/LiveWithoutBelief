@@ -8,7 +8,6 @@ import app.cash.paparazzi.Paparazzi
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
-import androidx.compose.runtime.Composable
 
 @Ignore(
     "Paparazzi snapshot failing with IllegalAccessError under current AGP/Kotlin versions; pending version alignment",

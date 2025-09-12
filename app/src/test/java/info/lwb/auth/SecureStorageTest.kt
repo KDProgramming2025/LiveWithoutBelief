@@ -1,7 +1,11 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
-import org.junit.Test
 import org.junit.Assert.*
+import org.junit.Test
 
 class SecureStorageTest {
     @Test

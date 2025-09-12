@@ -53,6 +53,13 @@ data class BookmarkFolder(
 )
 
 @Serializable
+data class Tag(
+    val id: String,
+    val name: String,
+    val createdAt: String,
+)
+
+@Serializable
 data class Annotation(
     val id: String,
     val articleId: String,

@@ -1,22 +1,19 @@
-Date: 2025-09-11
-Branch: feature/LWB-65-reader-ui (active)
+Date: 2025-09-12
+Branch: feature/LWB-73-bookmarks (active)
 
 Current State Summary:
-- Core Reader features (LWB-66..72) implemented & stable: parsing, pagination, settings, media (audio/YouTube), search (SearchHit + auto-scroll + active highlight), TOC navigation, light/dark previews.
-- Parser structural test and edge-case tests present (whitespace test partially relaxed pending stricter cleanup refinement).
-- CI mirror locally: all unit tests green (debug+release), dependency guard passes, quality task passes. Prior CI failure in data:repo ArticleRepositoryImplTest (release) is not reproducible locally now.
+- Bookmarks data layer: BookmarkRepositoryImpl now implements add/remove, createFolder (idempotent), moveBookmark, and searchBookmarked; DAO methods and mappings in place.
+- Tests: data:repo unit tests cover add/remove and new folder/move/search behaviors; all passing.
+- Feature UI: Bookmarks screen lists bookmarks, can add/remove, create folders, move bookmarks to a folder, and search bookmarked articles.
+- DI: App module provides use cases for bookmarks (get/add/remove/folders/create/move/search). Domain use cases added.
 
-Immediate Next Steps (post LWB-65 completion - optional refinements):
-1. Tighten whitespace paragraph test once parser normalization improved.
-2. Add nested heading & mixed media ordering tests.
-3. Enhance audio UI (dedicated pause icon asset) if design requires.
-
-Notes (2025-09-11):
-- Investigated CI failure (ArticleRepositoryImplTest.refreshArticles_syncsManifestItems under release). Re-ran targeted tests and full quality locally; all green. If CI re-fails, fetch test report artifact and compare env (JDK 17 vs 21, AGP, caching). No code changes required now.
+Immediate Next Steps:
+1. Integrate Bookmarks screen into app navigation.
+2. Preserve createdAt on move (add DAO getById or update query) — optional refinement.
+3. Add UI tests (compose) for folder creation, move, and search.
 
 Deferred / Future:
-- Multi-language content handling.
-- Annotation/bookmark discussion threads backend integration.
-- Performance tuning for very large documents (streaming/async parsing).
+- Folder filtering UX and displaying article titles in bookmark rows.
+- Server sync for bookmarks when backend is ready.
 
-Keep File Lean: remove completed items once verified after adding new tests.
+Keep File Lean: prune done items as they land in main.

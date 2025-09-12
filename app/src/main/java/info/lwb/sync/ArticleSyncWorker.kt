@@ -5,20 +5,20 @@
 package info.lwb.sync
 
 import android.content.Context
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import androidx.work.Constraints
-import androidx.work.NetworkType
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import info.lwb.core.domain.ArticleRepository
-import java.util.concurrent.TimeUnit
 import info.lwb.telemetry.Telemetry
+import java.util.concurrent.TimeUnit
 
 class ArticleSyncWorker(
     appContext: Context,
@@ -31,12 +31,12 @@ class ArticleSyncWorker(
     }
 
     override suspend fun doWork(): Result = try {
-    Telemetry.startTrace("sync_refresh").use { _ ->
-        val entryPoint = EntryPointAccessors.fromApplication(applicationContext, AppEntryPoint::class.java)
-        val repo = entryPoint.articleRepository()
-        repo.refreshArticles()
-    }
-    Result.success()
+        Telemetry.startTrace("sync_refresh").use { _ ->
+            val entryPoint = EntryPointAccessors.fromApplication(applicationContext, AppEntryPoint::class.java)
+            val repo = entryPoint.articleRepository()
+            repo.refreshArticles()
+        }
+        Result.success()
     } catch (e: Exception) {
         Result.retry()
     }

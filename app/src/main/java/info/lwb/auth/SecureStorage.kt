@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import android.content.Context
@@ -23,18 +27,28 @@ class EncryptedPrefsSecureStorage(context: Context) : SecureStorage {
         "auth.secure.prefs",
         masterKey,
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
     )
 
-    override fun putIdToken(token: String) { prefs.edit().putString("idToken", token).apply() }
+    override fun putIdToken(token: String) {
+        prefs.edit().putString("idToken", token).apply()
+    }
     override fun getIdToken(): String? = prefs.getString("idToken", null)
     override fun putTokenExpiry(epochSeconds: Long?) {
         prefs.edit().apply {
             if (epochSeconds == null) remove("idTokenExp") else putLong("idTokenExp", epochSeconds)
         }.apply()
     }
-    override fun getTokenExpiry(): Long? = if (prefs.contains("idTokenExp")) prefs.getLong("idTokenExp", -1L).takeIf { it > 0 } else null
-    override fun clear() { prefs.edit().clear().apply() }
+    override fun getTokenExpiry(): Long? = if (prefs.contains("idTokenExp")) {
+        prefs.getLong("idTokenExp", -1L).takeIf {
+            it > 0
+        }
+    } else {
+        null
+    }
+    override fun clear() {
+        prefs.edit().clear().apply()
+    }
     override fun putProfile(name: String?, email: String?, avatar: String?) {
         prefs.edit()
             .putString("name", name)
@@ -44,5 +58,4 @@ class EncryptedPrefsSecureStorage(context: Context) : SecureStorage {
     }
     override fun getProfile(): Triple<String?, String?, String?> =
         Triple(prefs.getString("name", null), prefs.getString("email", null), prefs.getString("avatar", null))
-
 }

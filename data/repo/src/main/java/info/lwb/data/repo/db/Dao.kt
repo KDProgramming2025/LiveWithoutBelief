@@ -58,10 +58,11 @@ interface ArticleDao {
 
     // Lightweight local search across title and plain text body (no FTS; uses LIKE)
     @Query(
-        "SELECT a.id AS id, a.title AS title, a.slug AS slug, a.version AS version, a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText " +
+        "SELECT a.id AS id, a.title AS title, a.slug AS slug, a.version AS version, " +
+            "a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText " +
             "FROM articles a JOIN article_contents c ON c.articleId = a.id " +
             "WHERE (c.plainText LIKE '%' || :q || '%' OR a.title LIKE '%' || :q || '%') " +
-            "ORDER BY a.updatedAt DESC LIMIT :limit OFFSET :offset"
+            "ORDER BY a.updatedAt DESC LIMIT :limit OFFSET :offset",
     )
     suspend fun searchArticlesLike(q: String, limit: Int, offset: Int): List<ArticleSearchRow>
 }
@@ -87,6 +88,14 @@ interface BookmarkDao {
 
     @Delete
     suspend fun deleteBookmark(bookmark: BookmarkEntity)
+
+    @Query(
+        "SELECT a.* " +
+            "FROM articles a JOIN bookmarks b ON b.articleId = a.id " +
+            "WHERE b.userId = :userId AND (a.title LIKE '%' || :q || '%') " +
+            "ORDER BY a.updatedAt DESC LIMIT :limit OFFSET :offset",
+    )
+    suspend fun searchBookmarkedArticles(userId: String, q: String, limit: Int, offset: Int): List<ArticleEntity>
 }
 
 @Dao
@@ -99,6 +108,9 @@ interface FolderDao {
 
     @Delete
     suspend fun delete(folder: BookmarkFolderEntity)
+
+    @Query("SELECT * FROM bookmark_folders WHERE userId = :userId AND name = :name LIMIT 1")
+    suspend fun findByName(userId: String, name: String): BookmarkFolderEntity?
 }
 
 @Dao

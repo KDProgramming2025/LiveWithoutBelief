@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.benchmark
 
 import androidx.benchmark.macro.ExperimentalBaselineProfilesApi
@@ -28,7 +32,7 @@ class StartupBenchmark {
         setupBlock = {
             // Press home to ensure cold start
             pressHome()
-        }
+        },
     ) {
         startActivityAndWait()
     }
@@ -42,7 +46,7 @@ class StartupBenchmark {
         setupBlock = {
             // Ensure app is in background for warm start
             pressHome()
-        }
+        },
     ) {
         startActivityAndWait()
     }

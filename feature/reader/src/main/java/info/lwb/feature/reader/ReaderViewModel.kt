@@ -1,10 +1,13 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import info.lwb.core.domain.ReadingProgressRepository
-import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
@@ -88,5 +92,7 @@ data class ReaderUiState(
     val fontScale: Double,
     val lineHeight: Double,
 ) {
-    companion object { val EMPTY = ReaderUiState("", emptyList(), 0, 1.0, 1.2) }
+    companion object {
+        val EMPTY = ReaderUiState("", emptyList(), 0, 1.0, 1.2)
+    }
 }

@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
+@file:Suppress("FunctionName")
+
 package info.lwb.feature.reader
 
 import androidx.compose.runtime.Composable

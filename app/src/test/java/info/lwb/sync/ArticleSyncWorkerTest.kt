@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.sync
 
@@ -7,10 +8,10 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.testing.WorkManagerTestInitHelper
-import java.util.concurrent.Executors
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.concurrent.Executors
 
 @RunWith(RobolectricTestRunner::class)
 class ArticleSyncWorkerTest {
