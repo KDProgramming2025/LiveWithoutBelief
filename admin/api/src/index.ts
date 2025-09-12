@@ -39,7 +39,17 @@ export function buildServer(): FastifyInstance {
   const server = Fastify({ logger: true });
   server.register(cors, { origin: true, credentials: true });
   server.register(cookie, { secret: process.env.ADMIN_PANEL_COOKIE_SECRET || process.env.PWD_JWT_SECRET || 'CHANGE_ME_DEV' });
-  server.register(multipart, { attachFieldsToBody: true, limits: { files: 3 } });
+  // Allow large uploads (DOCX + optional cover/icon) and more parts
+  server.register(multipart, {
+    attachFieldsToBody: true,
+    limits: {
+      files: 3,
+      parts: 20,
+      fields: 50,
+      // 256 MB per file to align with nginx client_max_body_size
+      fileSize: 256 * 1024 * 1024,
+    },
+  });
 
   // Paths and config
   const SECURE_ROOT = process.env.ADMIN_SECURE_ARTICLES_DIR || '/opt/lwb-admin-api/data/articles';
