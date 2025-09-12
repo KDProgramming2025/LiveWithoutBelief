@@ -10,8 +10,8 @@ import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
-import info.lwb.core.model.ThreadMessage
 import info.lwb.core.model.ReadingProgress
+import info.lwb.core.model.ThreadMessage
 import kotlinx.coroutines.flow.Flow
 
 interface ArticleRepository {
@@ -26,6 +26,9 @@ interface BookmarkRepository {
     fun getBookmarkFolders(): Flow<Result<List<BookmarkFolder>>>
     suspend fun addBookmark(articleId: String, folderId: String?): Result<Unit>
     suspend fun removeBookmark(bookmarkId: String): Result<Unit>
+    suspend fun createFolder(name: String): Result<String>
+    suspend fun moveBookmark(bookmarkId: String, folderId: String?): Result<Unit>
+    suspend fun searchBookmarked(query: String, limit: Int = 25, offset: Int = 0): List<Article>
 }
 
 interface AnnotationRepository {
@@ -38,4 +41,9 @@ interface AnnotationRepository {
 interface ReadingProgressRepository {
     fun observe(articleId: String): Flow<ReadingProgress?>
     suspend fun update(articleId: String, pageIndex: Int, totalPages: Int)
+}
+
+/** Lightweight user identity provider for repositories. Implemented in app layer via AuthFacade. */
+interface UserSession {
+    fun currentUserId(): String?
 }

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader
 
 import org.junit.Assert.assertEquals
@@ -12,12 +16,12 @@ class ContentParserEdgeCasesTest {
             <p>  First </p>   <p>   </p> <p>Second</p>
             <p>\t</p>
         """.trimIndent()
-    val rawParas = parseHtmlToBlocks(html).filterIsInstance<ContentBlock.Paragraph>()
-    val texts = rawParas.map { it.text }.filter { it.isNotBlank() }
-    println("DEBUG raw paragraphs=${rawParas.map { it.text }} filtered=$texts")
-    // For now ensure required non-empty paragraphs are present
-    assertTrue(texts.contains("First"))
-    assertTrue(texts.contains("Second"))
+        val rawParas = parseHtmlToBlocks(html).filterIsInstance<ContentBlock.Paragraph>()
+        val texts = rawParas.map { it.text }.filter { it.isNotBlank() }
+        println("DEBUG raw paragraphs=${rawParas.map { it.text }} filtered=$texts")
+        // For now ensure required non-empty paragraphs are present
+        assertTrue(texts.contains("First"))
+        assertTrue(texts.contains("Second"))
     }
 
     @Test

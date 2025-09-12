@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import android.app.Activity
@@ -5,17 +9,14 @@ import android.content.Context
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.GetTokenResult
-import com.google.firebase.auth.AuthResult
 import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.test.runTest
+import okhttp3.OkHttpClient
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Test
 import org.junit.Ignore
-import okhttp3.OkHttpClient
+import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FirebaseCredentialAuthFacadeTest {
@@ -35,7 +36,19 @@ class FirebaseCredentialAuthFacadeTest {
 
     @Before
     fun setUp() {
-    facade = FirebaseCredentialAuthFacade(firebaseAuth, context, storage, validator, signInClient, executor, tokenRefresher, signInExecutor, oneTap, http, authBaseUrl)
+        facade = FirebaseCredentialAuthFacade(
+            firebaseAuth,
+            context,
+            storage,
+            validator,
+            signInClient,
+            executor,
+            tokenRefresher,
+            signInExecutor,
+            oneTap,
+            http,
+            authBaseUrl,
+        )
     }
 
     @Test
@@ -46,10 +59,10 @@ class FirebaseCredentialAuthFacadeTest {
         every { signInClient.getLastSignedInAccount(any()) } returns acct
         mockFirebaseSignIn("uid1", "User", "user@example.com")
 
-    coEvery { oneTap.getIdToken(any()) } returns null
-    val result = facade.oneTapSignIn(mockk<Activity>(relaxed = true))
+        coEvery { oneTap.getIdToken(any()) } returns null
+        val result = facade.oneTapSignIn(mockk<Activity>(relaxed = true))
         assertTrue(result.isSuccess)
-    coVerify { signInExecutor.signIn("token123") }
+        coVerify { signInExecutor.signIn("token123") }
     }
 
     @Test
@@ -71,7 +84,7 @@ class FirebaseCredentialAuthFacadeTest {
         coEvery { executor.launch(any(), any()) } returns acct
         every { signInClient.buildSignInIntent(any()) } returns mockk(relaxed = true)
         mockFirebaseSignIn("uidInteractive", "InterUser", "inter@example.com")
-    val activity: Activity = mockk<androidx.activity.ComponentActivity>(relaxed = true)
+        val activity: Activity = mockk<androidx.activity.ComponentActivity>(relaxed = true)
         val result = facade.oneTapSignIn(activity)
         assertTrue(result.isSuccess)
         coVerify { signInExecutor.signIn("interactiveToken") }
@@ -82,14 +95,14 @@ class FirebaseCredentialAuthFacadeTest {
     fun oneTapSignIn_interactiveFallback() = runTest {
         every { signInClient.getLastSignedInAccount(any()) } returns null
         val acct: GoogleSignInAccount = mockk { every { idToken } returns "tokenXYZ" }
-    coEvery { executor.launch(any(), any()) } returns acct
+        coEvery { executor.launch(any(), any()) } returns acct
         every { signInClient.buildSignInIntent(any()) } returns mockk(relaxed = true)
         mockFirebaseSignIn("uid2", "User2", "u2@example.com")
 
-    val activity: Activity = TestComponentActivity() // provides ComponentActivity for cast
-    val result = facade.oneTapSignIn(activity)
+        val activity: Activity = TestComponentActivity() // provides ComponentActivity for cast
+        val result = facade.oneTapSignIn(activity)
         assertTrue(result.isSuccess)
-    coVerify { signInExecutor.signIn("tokenXYZ") }
+        coVerify { signInExecutor.signIn("tokenXYZ") }
     }
 
     private fun mockFirebaseSignIn(uid: String, name: String?, email: String?) {
@@ -99,7 +112,7 @@ class FirebaseCredentialAuthFacadeTest {
             every { this@mockk.email } returns email
             every { photoUrl } returns null
         }
-    coEvery { signInExecutor.signIn(any()) } returns firebaseUser
-    coEvery { tokenRefresher.refresh(firebaseUser, false) } returns "firebaseJwt"
+        coEvery { signInExecutor.signIn(any()) } returns firebaseUser
+        coEvery { tokenRefresher.refresh(firebaseUser, false) } returns "firebaseJwt"
     }
 }

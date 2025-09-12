@@ -84,7 +84,8 @@ data class ReadingProgressEntity(
     @PrimaryKey val articleId: String,
     val pageIndex: Int,
     val totalPages: Int,
-    val progress: Double, // 0.0 - 1.0
+    // Progress fraction in range [0.0, 1.0]
+    val progress: Double,
     val updatedAt: String,
 )
 

@@ -14,12 +14,14 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import info.lwb.core.domain.ArticleRepository
+import info.lwb.core.domain.BookmarkRepository
+import info.lwb.core.domain.ReadingProgressRepository
 import info.lwb.data.network.ArticleApi
 import info.lwb.data.repo.db.AppDatabase
 import info.lwb.data.repo.repositories.ArticleRepositoryImpl
-import javax.inject.Singleton
-import info.lwb.core.domain.ReadingProgressRepository
+import info.lwb.data.repo.repositories.BookmarkRepositoryImpl
 import info.lwb.data.repo.repositories.ReadingProgressRepositoryImpl
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -27,10 +29,19 @@ object DatabaseModule {
     private val MIGRATION_1_2 = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
-                "CREATE TABLE IF NOT EXISTS reading_progress (articleId TEXT NOT NULL PRIMARY KEY, pageIndex INTEGER NOT NULL, totalPages INTEGER NOT NULL, progress REAL NOT NULL, updatedAt TEXT NOT NULL)"
+                """
+                CREATE TABLE IF NOT EXISTS reading_progress (
+                    articleId TEXT NOT NULL PRIMARY KEY,
+                    pageIndex INTEGER NOT NULL,
+                    totalPages INTEGER NOT NULL,
+                    progress REAL NOT NULL,
+                    updatedAt TEXT NOT NULL
+                )
+                """.trimIndent(),
             )
         }
     }
+
     @Provides
     @Singleton
     fun provideDb(@ApplicationContext context: Context): AppDatabase =
@@ -60,4 +71,8 @@ object DatabaseModule {
     @Provides
     fun provideReadingProgressRepository(db: AppDatabase): ReadingProgressRepository =
         ReadingProgressRepositoryImpl(db.readingProgressDao())
+
+    @Provides
+    fun provideBookmarkRepository(db: AppDatabase, session: info.lwb.core.domain.UserSession): BookmarkRepository =
+        BookmarkRepositoryImpl(db.bookmarkDao(), db.folderDao(), session)
 }

@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
+@file:Suppress("FunctionName")
+
 package info.lwb.ui.designsystem
 
 import androidx.compose.foundation.background
@@ -13,6 +19,6 @@ fun ColorSwatch(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(64.dp)
-            .background(MaterialTheme.colorScheme.primary)
+            .background(MaterialTheme.colorScheme.primary),
     )
 }

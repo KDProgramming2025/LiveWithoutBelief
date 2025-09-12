@@ -9,6 +9,7 @@ import info.lwb.core.model.Annotation
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
+import info.lwb.core.model.BookmarkFolder
 import kotlinx.coroutines.flow.Flow
 
 class GetArticlesUseCase(private val articleRepository: ArticleRepository) {
@@ -36,6 +37,28 @@ class GetBookmarksUseCase(private val bookmarkRepository: BookmarkRepository) {
 class AddBookmarkUseCase(private val bookmarkRepository: BookmarkRepository) {
     suspend operator fun invoke(articleId: String, folderId: String? = null) =
         bookmarkRepository.addBookmark(articleId, folderId)
+}
+
+class RemoveBookmarkUseCase(private val bookmarkRepository: BookmarkRepository) {
+    suspend operator fun invoke(bookmarkId: String) = bookmarkRepository.removeBookmark(bookmarkId)
+}
+
+class GetBookmarkFoldersUseCase(private val bookmarkRepository: BookmarkRepository) {
+    operator fun invoke(): Flow<Result<List<BookmarkFolder>>> = bookmarkRepository.getBookmarkFolders()
+}
+
+class CreateFolderUseCase(private val bookmarkRepository: BookmarkRepository) {
+    suspend operator fun invoke(name: String) = bookmarkRepository.createFolder(name)
+}
+
+class MoveBookmarkUseCase(private val bookmarkRepository: BookmarkRepository) {
+    suspend operator fun invoke(bookmarkId: String, folderId: String?) =
+        bookmarkRepository.moveBookmark(bookmarkId, folderId)
+}
+
+class SearchBookmarkedUseCase(private val bookmarkRepository: BookmarkRepository) {
+    suspend operator fun invoke(query: String, limit: Int = 25, offset: Int = 0) =
+        bookmarkRepository.searchBookmarked(query, limit, offset)
 }
 
 class GetAnnotationsUseCase(private val annotationRepository: AnnotationRepository) {

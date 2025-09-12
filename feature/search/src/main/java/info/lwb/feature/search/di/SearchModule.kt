@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.feature.search.di
 
@@ -14,6 +15,5 @@ import info.lwb.core.domain.SearchArticlesUseCase
 @InstallIn(ViewModelComponent::class)
 object SearchModule {
     @Provides
-    fun provideSearchArticlesUseCase(repo: ArticleRepository): SearchArticlesUseCase =
-        SearchArticlesUseCase(repo)
+    fun provideSearchArticlesUseCase(repo: ArticleRepository): SearchArticlesUseCase = SearchArticlesUseCase(repo)
 }

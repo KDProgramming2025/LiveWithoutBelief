@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import android.app.Activity
@@ -21,7 +25,14 @@ class GoogleSignInInstrumentedTest {
             scenario.onActivity { act ->
                 val facade = TestAuthFacadeProvider.provide(act)
                 // Force interactive by clearing any cached account
-                try { GoogleSignIn.getClient(act, com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN).signOut() } catch (_: Exception) {}
+                try {
+                    GoogleSignIn.getClient(
+                        act,
+                        com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN,
+                    ).signOut()
+                } catch (
+                    _: Exception,
+                ) {}
                 val result = runCatching { kotlinx.coroutines.runBlocking { facade.oneTapSignIn(act as Activity) } }
                 // We just assert it didn't crash through unexpected exceptions (ApiException acceptable)
                 assertTrue(result.isSuccess || (result.exceptionOrNull()?.message?.contains("Sign-in failed") == true))

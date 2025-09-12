@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import android.content.Context
@@ -8,14 +12,14 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
 import info.lwb.BuildConfig
-import javax.inject.Qualifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
+import javax.inject.Qualifier
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -23,27 +27,35 @@ abstract class AuthBindingsModule {
     @Binds
     @Singleton
     abstract fun bindAuthFacade(impl: FirebaseCredentialAuthFacade): AuthFacade
+
     @Binds
     @Singleton
     abstract fun bindSecureStorage(impl: EncryptedPrefsSecureStorage): SecureStorage
+
     @Binds
     @Singleton
     abstract fun bindSessionValidator(impl: RemoteSessionValidator): SessionValidator
+
     @Binds
     @Singleton
     abstract fun bindTokenRefresher(impl: FirebaseTokenRefresher): TokenRefresher
+
     @Binds
     @Singleton
     abstract fun bindSignInExecutor(impl: FirebaseSignInExecutor): SignInExecutor
+
     @Binds
     @Singleton
     abstract fun bindOneTapProvider(impl: CredentialManagerOneTapProvider): OneTapCredentialProvider
+
     @Binds
     @Singleton
     abstract fun bindCredentialCall(impl: RealCredentialCall): CredentialCall
+
     @Binds
     @Singleton
     abstract fun bindRevocationStore(impl: PrefsRevocationStore): RevocationStore
+
     @Binds
     @Singleton
     abstract fun bindRecaptchaProvider(impl: GoogleRecaptchaTokenProvider): RecaptchaTokenProvider
@@ -89,7 +101,7 @@ object AuthProvisionModule {
     ): ValidationObserver {
         val sampledMetrics: ValidationObserver = SamplingValidationObserver(
             upstream = metrics,
-            samplePermille = BuildConfig.AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE
+            samplePermille = BuildConfig.AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE,
         )
         val exporter = SnapshotExportValidationObserver(metrics)
         return NoopValidationObserver
@@ -116,7 +128,8 @@ object AuthProvisionModule {
     fun assertServerClientId(): ServerClientIdGuard {
         val id = BuildConfig.GOOGLE_SERVER_CLIENT_ID
         require(id.isNotBlank() && id != "CHANGE_ME_SERVER_CLIENT_ID") {
-            "GOOGLE_SERVER_CLIENT_ID is unset or placeholder. Provide via env var or Gradle property GOOGLE_SERVER_CLIENT_ID."
+            "GOOGLE_SERVER_CLIENT_ID is unset or placeholder. " +
+                "Provide via env var or Gradle property GOOGLE_SERVER_CLIENT_ID."
         }
         return ServerClientIdGuard(id)
     }
@@ -125,7 +138,7 @@ object AuthProvisionModule {
     @Singleton
     fun provideTokenRefreshConfig(): TokenRefreshConfig = TokenRefreshConfig(
         refreshLeadTimeSeconds = info.lwb.BuildConfig.AUTH_REFRESH_LEAD_SECONDS,
-        pollIntervalSeconds = info.lwb.BuildConfig.AUTH_REFRESH_POLL_SECONDS
+        pollIntervalSeconds = info.lwb.BuildConfig.AUTH_REFRESH_POLL_SECONDS,
     )
 
     @Provides
@@ -133,9 +146,8 @@ object AuthProvisionModule {
     fun provideDynamicValidationRetryPolicy(): ValidationRetryPolicy = ValidationRetryPolicy(
         maxAttempts = info.lwb.BuildConfig.AUTH_VALIDATION_MAX_ATTEMPTS,
         baseDelayMs = info.lwb.BuildConfig.AUTH_VALIDATION_BASE_DELAY_MS,
-        backoffMultiplier = info.lwb.BuildConfig.AUTH_VALIDATION_BACKOFF_MULT
+        backoffMultiplier = info.lwb.BuildConfig.AUTH_VALIDATION_BACKOFF_MULT,
     )
-
 }
 
 @Qualifier
@@ -150,13 +162,16 @@ annotation class AuthClient
 value class ServerClientIdGuard(val value: String)
 
 interface CredentialCall {
-    suspend fun get(activity: android.app.Activity, request: androidx.credentials.GetCredentialRequest): androidx.credentials.GetCredentialResponse
+    suspend fun get(
+        activity: android.app.Activity,
+        request: androidx.credentials.GetCredentialRequest,
+    ): androidx.credentials.GetCredentialResponse
 }
 
 class RealCredentialCall @javax.inject.Inject constructor() : CredentialCall {
     override suspend fun get(
         activity: android.app.Activity,
-        request: androidx.credentials.GetCredentialRequest
+        request: androidx.credentials.GetCredentialRequest,
     ): androidx.credentials.GetCredentialResponse {
         val cm = androidx.credentials.CredentialManager.create(activity)
         return cm.getCredential(activity, request)
@@ -164,7 +179,7 @@ class RealCredentialCall @javax.inject.Inject constructor() : CredentialCall {
 }
 
 class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
-    private val call: CredentialCall
+    private val call: CredentialCall,
 ) : OneTapCredentialProvider {
     override suspend fun getIdToken(activity: android.app.Activity): String? = try {
         if (info.lwb.BuildConfig.DEBUG) {
@@ -183,12 +198,24 @@ class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
         }
         val credential = response.credential
         if (credential is androidx.credentials.CustomCredential &&
-            credential.type == com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+            credential.type ==
+            com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+                .TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
         ) {
-            val googleCred = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data)
-            if (info.lwb.BuildConfig.DEBUG) android.util.Log.d("AuthFlow", "CredentialManager:success hasToken=${googleCred.idToken.isNotEmpty()}")
+            val googleCred =
+                com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+                    .createFrom(credential.data)
+            if (info.lwb.BuildConfig.DEBUG) {
+                android.util.Log.d(
+                    "AuthFlow",
+                    "CredentialManager:success hasToken=" +
+                        "${googleCred.idToken.isNotEmpty()}",
+                )
+            }
             googleCred.idToken
-        } else null
+        } else {
+            null
+        }
     } catch (e: Exception) {
         if (info.lwb.BuildConfig.DEBUG) {
             runCatching { android.util.Log.w("AuthFlow", "CredentialManager:failure", e) }

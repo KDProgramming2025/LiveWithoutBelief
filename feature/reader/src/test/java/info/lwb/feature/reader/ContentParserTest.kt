@@ -1,6 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader
 
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -18,22 +21,30 @@ class ContentParserTest {
             <audio src="https://example.com/a.mp3"></audio>
             <iframe src="https://www.youtube.com/embed/abc12345"></iframe>
         """.trimIndent()
-    val blocks = parseHtmlToBlocks(html)
-    val headings = blocks.filterIsInstance<ContentBlock.Heading>()
-    val paras = blocks.filterIsInstance<ContentBlock.Paragraph>()
-    val imgs = blocks.filterIsInstance<ContentBlock.Image>()
-    val aud = blocks.filterIsInstance<ContentBlock.Audio>()
-    val yt = blocks.filterIsInstance<ContentBlock.YouTube>()
+        val blocks = parseHtmlToBlocks(html)
+        val headings = blocks.filterIsInstance<ContentBlock.Heading>()
+        val paras = blocks.filterIsInstance<ContentBlock.Paragraph>()
+        val imgs = blocks.filterIsInstance<ContentBlock.Image>()
+        val aud = blocks.filterIsInstance<ContentBlock.Audio>()
+        val yt = blocks.filterIsInstance<ContentBlock.YouTube>()
 
-    println("DEBUG parser counts -> h=${headings.size} p=${paras.size} img=${imgs.size} aud=${aud.size} yt=${yt.size} blocks=$blocks")
+        println(
+            "DEBUG parser counts -> " +
+                "h=${headings.size} " +
+                "p=${paras.size} " +
+                "img=${imgs.size} " +
+                "aud=${aud.size} " +
+                "yt=${yt.size} " +
+                "blocks=$blocks",
+        )
 
-    // Exact expectations for this controlled snippet
-    assertEquals(1, headings.size)
-    assertEquals("Title", headings.single().text)
-    assertEquals(2, paras.size)
-    assertEquals(1, imgs.size)
-    assertEquals(1, aud.size)
-    assertEquals(1, yt.size)
+        // Exact expectations for this controlled snippet
+        assertEquals(1, headings.size)
+        assertEquals("Title", headings.single().text)
+        assertEquals(2, paras.size)
+        assertEquals(1, imgs.size)
+        assertEquals(1, aud.size)
+        assertEquals(1, yt.size)
     }
 
     @Test

@@ -1,9 +1,13 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import android.app.Activity
-import org.junit.Test
-import org.junit.Assert.*
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.*
+import org.junit.Test
 
 /**
  * Basic sanity test: provider should return null (no crash) when run in a plain Activity
@@ -15,7 +19,7 @@ class CredentialManagerOneTapProviderTest {
         val fakeCall = object : CredentialCall {
             override suspend fun get(
                 activity: Activity,
-                request: androidx.credentials.GetCredentialRequest
+                request: androidx.credentials.GetCredentialRequest,
             ): androidx.credentials.GetCredentialResponse {
                 throw UnsupportedOperationException("fake")
             }

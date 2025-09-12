@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.testfixtures
 
 import info.lwb.core.model.*
@@ -10,18 +14,21 @@ object Builders {
         articleId = articleId,
         htmlBody = "<p>Hello</p>",
         plainText = "Hello",
-        textHash = "deadbeef"
+        textHash = "deadbeef",
     )
 
-    fun asset(articleId: String = "a1", type: String = "image", uri: String = "https://example.com/img.jpg"): ArticleAsset =
-        ArticleAsset(
-            id = "as1",
-            articleId = articleId,
-            type = type,
-            uri = uri,
-            checksum = "abc123",
-            width = 100,
-            height = 100,
-            sizeBytes = 2048
-        )
+    fun asset(
+        articleId: String = "a1",
+        type: String = "image",
+        uri: String = "https://example.com/img.jpg",
+    ): ArticleAsset = ArticleAsset(
+        id = "as1",
+        articleId = articleId,
+        type = type,
+        uri = uri,
+        checksum = "abc123",
+        width = 100,
+        height = 100,
+        sizeBytes = 2048,
+    )
 }

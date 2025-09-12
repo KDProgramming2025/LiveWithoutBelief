@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import kotlinx.coroutines.CoroutineScope
@@ -5,7 +9,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -43,5 +46,8 @@ class AutoTokenRefresher(
         }
     }
 
-    fun stop() { job?.cancel(); job = null }
+    fun stop() {
+        job?.cancel()
+        job = null
+    }
 }

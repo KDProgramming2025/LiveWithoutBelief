@@ -1,6 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
-import info.lwb.auth.AuthBaseUrl
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
@@ -26,7 +29,7 @@ class RemoteSessionValidatorTest {
         server.start()
         client = OkHttpClient.Builder().build()
         val base = server.url("").toString().trimEnd('/')
-    validator = RemoteSessionValidator(client, base, ValidationRetryPolicy())
+        validator = RemoteSessionValidator(client, base, ValidationRetryPolicy())
     }
 
     @Test
@@ -83,7 +86,6 @@ class RemoteSessionValidatorTest {
         assertTrue(res.error is ValidationError.Server)
     }
 
-
     @Test
     fun revoke_doesNotThrow() = runTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
@@ -94,7 +96,7 @@ class RemoteSessionValidatorTest {
 
     @Test
     fun validateDetailed_retriesOnServerErrorAndSucceeds() = runTest {
-    server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
+        server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
@@ -105,7 +107,13 @@ class RemoteSessionValidatorTest {
     fun revoke_localStoreShortCircuitsValidation() = runTest {
         // create validator with explicit revocation store
         val revocationStore = InMemoryRevocationStore()
-        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), NoopValidationObserver, revocationStore)
+        validator = RemoteSessionValidator(
+            client,
+            server.url("").toString().trimEnd('/'),
+            ValidationRetryPolicy(),
+            NoopValidationObserver,
+            revocationStore,
+        )
         revocationStore.markRevoked("badToken")
         val res = validator.validateDetailed("badToken")
         assertFalse(res.isValid)
@@ -119,15 +127,27 @@ class RemoteSessionValidatorTest {
             val attempts = mutableListOf<Pair<Int, Int>>()
             val results = mutableListOf<ValidationResult>()
             val retryDelays = mutableListOf<Long>()
-            override fun onAttempt(attempt: Int, max: Int) { attempts += attempt to max }
-            override fun onResult(result: ValidationResult) { results += result }
-            override fun onRetry(delayMs: Long) { retryDelays += delayMs }
+            override fun onAttempt(attempt: Int, max: Int) {
+                attempts += attempt to max
+            }
+            override fun onResult(result: ValidationResult) {
+                results += result
+            }
+            override fun onRetry(delayMs: Long) {
+                retryDelays += delayMs
+            }
         }
         val obs = CapturingObserver()
         // First a retryable 503 with header then success
         server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
-        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), obs, InMemoryRevocationStore())
+        validator = RemoteSessionValidator(
+            client,
+            server.url("").toString().trimEnd('/'),
+            ValidationRetryPolicy(),
+            obs,
+            InMemoryRevocationStore(),
+        )
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
         assertEquals(2, server.requestCount)
@@ -143,17 +163,32 @@ class RemoteSessionValidatorTest {
 
     @Test
     fun compositeObserver_fansOutEvents() = runTest {
-        class CObs: ValidationObserver {
-            var attempts = 0; var results = 0; var retries = 0
-            override fun onAttempt(attempt: Int, max: Int) { attempts++ }
-            override fun onResult(result: ValidationResult) { results++ }
-            override fun onRetry(delayMs: Long) { retries++ }
+        class CObs : ValidationObserver {
+            var attempts = 0
+            var results = 0
+            var retries = 0
+            override fun onAttempt(attempt: Int, max: Int) {
+                attempts++
+            }
+            override fun onResult(result: ValidationResult) {
+                results++
+            }
+            override fun onRetry(delayMs: Long) {
+                retries++
+            }
         }
-        val a = CObs(); val b = CObs()
+        val a = CObs()
+        val b = CObs()
         val composite = a.and(b)
         // Trigger a single request (200 success, no retry)
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
-        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), composite, InMemoryRevocationStore())
+        validator = RemoteSessionValidator(
+            client,
+            server.url("").toString().trimEnd('/'),
+            ValidationRetryPolicy(),
+            composite,
+            InMemoryRevocationStore(),
+        )
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
         assertEquals(1, a.attempts)
@@ -170,31 +205,52 @@ class RemoteSessionValidatorTest {
         // enqueue failure then success to produce retry + success
         server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
-        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), composite, InMemoryRevocationStore())
+        validator = RemoteSessionValidator(
+            client,
+            server.url("").toString().trimEnd('/'),
+            ValidationRetryPolicy(),
+            composite,
+            InMemoryRevocationStore(),
+        )
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
         val snap = metrics.snapshot()
-    assertTrue((snap["attempts"] ?: 0) >= 1)
-    assertEquals(1, snap["success"])
-    assertTrue((snap["fail"] ?: 0) >= 0)
-    assertTrue((snap["retries"] ?: 0) >= 0)
+        assertTrue((snap["attempts"] ?: 0) >= 1)
+        assertEquals(1, snap["success"])
+        assertTrue((snap["fail"] ?: 0) >= 0)
+        assertTrue((snap["retries"] ?: 0) >= 0)
     }
 
     @Test
     fun compositeObserver_swallowsDelegateExceptions() = runTest {
-        class BadObserver: ValidationObserver {
-            override fun onAttempt(attempt: Int, max: Int) { throw RuntimeException("boom") }
-            override fun onResult(result: ValidationResult) { throw RuntimeException("boom2") }
-            override fun onRetry(delayMs: Long) { throw RuntimeException("boom3") }
+        class BadObserver : ValidationObserver {
+            override fun onAttempt(attempt: Int, max: Int) {
+                throw RuntimeException("boom")
+            }
+            override fun onResult(result: ValidationResult) {
+                throw RuntimeException("boom2")
+            }
+            override fun onRetry(delayMs: Long) {
+                throw RuntimeException("boom3")
+            }
         }
-        val good = object: ValidationObserver {
-            var attempts=0; override fun onAttempt(attempt: Int, max: Int) { attempts++ }
+        val good = object : ValidationObserver {
+            var attempts = 0
+            override fun onAttempt(attempt: Int, max: Int) {
+                attempts++
+            }
             override fun onResult(result: ValidationResult) { }
             override fun onRetry(delayMs: Long) { }
         }
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
         val composite = good.and(BadObserver())
-        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), composite, InMemoryRevocationStore())
+        validator = RemoteSessionValidator(
+            client,
+            server.url("").toString().trimEnd('/'),
+            ValidationRetryPolicy(),
+            composite,
+            InMemoryRevocationStore(),
+        )
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
         assertEquals(1, good.attempts) // ensured good observer still ran
@@ -205,7 +261,13 @@ class RemoteSessionValidatorTest {
         val metrics = MetricsValidationObserver()
         val sampled = SamplingValidationObserver(metrics, 1000, java.util.Random(123))
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
-        validator = RemoteSessionValidator(client, server.url("").toString().trimEnd('/'), ValidationRetryPolicy(), sampled, InMemoryRevocationStore())
+        validator = RemoteSessionValidator(
+            client,
+            server.url("").toString().trimEnd('/'),
+            ValidationRetryPolicy(),
+            sampled,
+            InMemoryRevocationStore(),
+        )
         validator.validateDetailed("token")
         val snap = metrics.snapshot()
         assertTrue((snap["attempts"] ?: 0) >= 1)

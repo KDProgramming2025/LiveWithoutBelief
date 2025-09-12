@@ -1,7 +1,12 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
-@Suppress("ClassName")
-private object _JvmB64 { val decoder = java.util.Base64.getUrlDecoder() }
+private object JvmB64 {
+    val decoder = java.util.Base64.getUrlDecoder()
+}
 
 /** Lightweight JWT helper (no signature validation) to extract numeric exp claim (epoch seconds). */
 object JwtUtils {
@@ -14,7 +19,7 @@ object JwtUtils {
             val payloadB64 = parts[1]
             val rem = payloadB64.length % 4
             val padded = if (rem == 0) payloadB64 else payloadB64 + "=".repeat(4 - rem)
-            val decoded = _JvmB64.decoder.decode(padded)
+            val decoded = JvmB64.decoder.decode(padded)
             val jsonStr = String(decoded, Charsets.UTF_8)
             // Very small manual parse for "exp":<number>
             val keyIdx = jsonStr.indexOf("\"exp\"")

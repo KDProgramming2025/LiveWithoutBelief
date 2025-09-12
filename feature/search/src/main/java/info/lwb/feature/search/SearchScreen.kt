@@ -1,6 +1,9 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
+@file:Suppress("FunctionName")
+
 package info.lwb.feature.search
 
 import androidx.compose.foundation.layout.*
@@ -27,9 +30,12 @@ fun SearchScreen(query: String, results: List<Article>, onQueryChange: (String) 
         var tf by remember { mutableStateOf(TextFieldValue(query)) }
         OutlinedTextField(
             value = tf,
-            onValueChange = { tf = it; onQueryChange(it.text) },
+            onValueChange = {
+                tf = it
+                onQueryChange(it.text)
+            },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Search articles") }
+            label = { Text("Search articles") },
         )
         Spacer(Modifier.height(12.dp))
         if (results.isEmpty() && query.isNotBlank()) {

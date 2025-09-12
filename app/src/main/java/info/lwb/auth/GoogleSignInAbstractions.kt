@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import android.app.Activity
@@ -31,10 +35,14 @@ class DefaultGoogleSignInClientFacade : GoogleSignInClientFacade {
             .requestIdToken(BuildConfig.GOOGLE_SERVER_CLIENT_ID)
             .requestEmail()
             .build()
-        if (BuildConfig.DEBUG) android.util.Log.d(
-            "AuthFlow",
-            "GoogleSignInOptions using serverId=${BuildConfig.GOOGLE_SERVER_CLIENT_ID.take(18)}… androidId=${BuildConfig.GOOGLE_ANDROID_CLIENT_ID.take(18)}…"
-        )
+        if (BuildConfig.DEBUG) {
+            android.util.Log.d(
+                "AuthFlow",
+                "GoogleSignInOptions using serverId=${BuildConfig.GOOGLE_SERVER_CLIENT_ID.take(
+                    18,
+                )}… androidId=${BuildConfig.GOOGLE_ANDROID_CLIENT_ID.take(18)}…",
+            )
+        }
         return GoogleSignIn.getClient(activity, gso).signInIntent
     }
 }
@@ -45,20 +53,21 @@ interface GoogleSignInIntentExecutor {
 }
 
 class ActivityResultGoogleSignInExecutor : GoogleSignInIntentExecutor {
-    override suspend fun launch(
-        activity: ComponentActivity,
-        intentProvider: () -> Intent,
-    ): GoogleSignInAccount = suspendCancellableCoroutine { cont ->
-        val key = "google-sign-in-${System.nanoTime()}"
-        val launcher = activity.activityResultRegistry.register(key, ActivityResultContracts.StartActivityForResult()) { result ->
-            try {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                val acc = task.getResult(ApiException::class.java)
-                cont.resume(acc)
-            } catch (e: Exception) {
-                cont.resumeWith(Result.failure(RuntimeException("Sign-in failed", e)))
+    override suspend fun launch(activity: ComponentActivity, intentProvider: () -> Intent): GoogleSignInAccount =
+        suspendCancellableCoroutine { cont ->
+            val key = "google-sign-in-${System.nanoTime()}"
+            val launcher = activity.activityResultRegistry.register(
+                key,
+                ActivityResultContracts.StartActivityForResult(),
+            ) { result ->
+                try {
+                    val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    val acc = task.getResult(ApiException::class.java)
+                    cont.resume(acc)
+                } catch (e: Exception) {
+                    cont.resumeWith(Result.failure(RuntimeException("Sign-in failed", e)))
+                }
             }
+            launcher.launch(intentProvider())
         }
-        launcher.launch(intentProvider())
-    }
 }

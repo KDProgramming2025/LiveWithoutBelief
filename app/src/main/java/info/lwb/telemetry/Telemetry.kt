@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.telemetry
 
@@ -13,14 +14,16 @@ import com.google.firebase.perf.metrics.Trace
 /** Minimal telemetry facade to keep SDKs behind a tiny API. */
 object Telemetry {
     @Volatile private var analytics: FirebaseAnalytics? = null
+
     @Volatile private var crashlytics: FirebaseCrashlytics? = null
+
     @Volatile private var perf: FirebasePerformance? = null
 
     fun init(app: Application) {
         // Best-effort init; safe to call multiple times.
         runCatching { analytics = FirebaseAnalytics.getInstance(app) }
         runCatching { crashlytics = FirebaseCrashlytics.getInstance() }
-    runCatching { perf = FirebasePerformance.getInstance() }
+        runCatching { perf = FirebasePerformance.getInstance() }
     }
 
     fun logEvent(name: String, params: Map<String, Any?> = emptyMap()) {

@@ -11,11 +11,12 @@ plugins {
 }
 
 // Apply Google Services plugin only if a google-services.json is present (CI-safe)
-val hasGoogleServicesJson = listOf(
-    file("google-services.json"),
-    file("src/google-services.json"),
-    file("src/debug/google-services.json"),
-).any { it.exists() }
+val hasGoogleServicesJson =
+    listOf(
+        file("google-services.json"),
+        file("src/google-services.json"),
+        file("src/debug/google-services.json"),
+    ).any { it.exists() }
 if (hasGoogleServicesJson) {
     apply(plugin = "com.google.gms.google-services")
     println("[google-services] google-services.json found; applying plugin")
@@ -35,24 +36,27 @@ android {
         val gitTag = System.getenv("GIT_TAG") ?: (project.findProperty("GIT_TAG") as String?)
         val parsed = gitTag?.removePrefix("v")
         val verName = parsed ?: "0.1.0"
-        val verCode = verName.split('.').let { parts ->
-            val major = parts.getOrNull(0)?.toIntOrNull() ?: 0
-            val minor = parts.getOrNull(1)?.toIntOrNull() ?: 1
-            val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
-            // semantic version to code: MMMmmpp (e.g., 0.1.0 -> 001010)
-            (major * 10000) + (minor * 100) + patch
-        }
+        val verCode =
+            verName.split('.').let { parts ->
+                val major = parts.getOrNull(0)?.toIntOrNull() ?: 0
+                val minor = parts.getOrNull(1)?.toIntOrNull() ?: 1
+                val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+                // semantic version to code: MMMmmpp (e.g., 0.1.0 -> 001010)
+                (major * 10000) + (minor * 100) + patch
+            }
         versionCode = verCode
         versionName = verName
-    testInstrumentationRunner = "info.lwb.HiltTestRunner"
+        testInstrumentationRunner = "info.lwb.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
         // Resolve Google client ids (web/server & android). Prefer explicit env/gradle; else parse google-services.json if placeholders.
-        var serverId = System.getenv("GOOGLE_SERVER_CLIENT_ID")
-            ?: (project.findProperty("GOOGLE_SERVER_CLIENT_ID") as String?)
-            ?: "CHANGE_ME_SERVER_CLIENT_ID"
-        var androidClientId = System.getenv("GOOGLE_ANDROID_CLIENT_ID")
-            ?: (project.findProperty("GOOGLE_ANDROID_CLIENT_ID") as String?)
-            ?: "CHANGE_ME_ANDROID_CLIENT_ID"
+        var serverId =
+            System.getenv("GOOGLE_SERVER_CLIENT_ID")
+                ?: (project.findProperty("GOOGLE_SERVER_CLIENT_ID") as String?)
+                ?: "CHANGE_ME_SERVER_CLIENT_ID"
+        var androidClientId =
+            System.getenv("GOOGLE_ANDROID_CLIENT_ID")
+                ?: (project.findProperty("GOOGLE_ANDROID_CLIENT_ID") as String?)
+                ?: "CHANGE_ME_ANDROID_CLIENT_ID"
         try {
             val gs = file("google-services.json")
             if (gs.exists()) {
@@ -64,7 +68,7 @@ android {
                 if (androidClientId == "CHANGE_ME_ANDROID_CLIENT_ID") androidMatch?.groupValues?.get(1)?.let { androidClientId = it }
             }
         } catch (e: Exception) {
-            if (project.hasProperty("org.gradle.logging.stacktrace") ) {
+            if (project.hasProperty("org.gradle.logging.stacktrace")) {
                 println("[auth-config] Warning: failed to parse google-services.json: ${e.message}")
             }
         }
@@ -72,19 +76,22 @@ android {
         if (androidClientId.startsWith("CHANGE_ME") && !serverId.startsWith("CHANGE_ME")) androidClientId = serverId
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"' + serverId + '"')
         buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", '"' + androidClientId + '"')
-        val emailLinkContinue = System.getenv("EMAIL_LINK_CONTINUE_URL")
-            ?: (project.findProperty("EMAIL_LINK_CONTINUE_URL") as String?)
-            ?: "https://live-without-belief-app.firebaseapp.com/emailLink"
+        val emailLinkContinue =
+            System.getenv("EMAIL_LINK_CONTINUE_URL")
+                ?: (project.findProperty("EMAIL_LINK_CONTINUE_URL") as String?)
+                ?: "https://live-without-belief-app.firebaseapp.com/emailLink"
         buildConfigField("String", "EMAIL_LINK_CONTINUE_URL", '"' + emailLinkContinue + '"')
-        val authBase = System.getenv("AUTH_BASE_URL")
-            ?: (project.findProperty("AUTH_BASE_URL") as String?)
-            ?: "https://aparat.feezor.net/lwb-api"
+        val authBase =
+            System.getenv("AUTH_BASE_URL")
+                ?: (project.findProperty("AUTH_BASE_URL") as String?)
+                ?: "https://aparat.feezor.net/lwb-api"
         buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
-        var recaptchaSiteKey = System.getenv("RECAPTCHA_SITE_KEY")
-            ?: System.getenv("RECAPTCHA_KEY")
-            ?: (project.findProperty("RECAPTCHA_SITE_KEY") as String?)
-            ?: (project.findProperty("RECAPTCHA_KEY") as String?)
-            ?: "CHANGE_ME_RECAPTCHA_SITE_KEY"
+        var recaptchaSiteKey =
+            System.getenv("RECAPTCHA_SITE_KEY")
+                ?: System.getenv("RECAPTCHA_KEY")
+                ?: (project.findProperty("RECAPTCHA_SITE_KEY") as String?)
+                ?: (project.findProperty("RECAPTCHA_KEY") as String?)
+                ?: "CHANGE_ME_RECAPTCHA_SITE_KEY"
         // Fallback: parse root .env if placeholder still present (dev convenience only)
         if (recaptchaSiteKey.startsWith("CHANGE_ME")) {
             val envFile = rootProject.file(".env")
@@ -98,27 +105,45 @@ android {
             }
         }
         if (recaptchaSiteKey.startsWith("CHANGE_ME")) {
-            println("[recaptcha-config] WARNING: Using placeholder RECAPTCHA site key. reCAPTCHA will be disabled (tokens null). Set RECAPTCHA_KEY in env or .env.")
+            println(
+                "[recaptcha-config] WARNING: Using placeholder RECAPTCHA site key. " +
+                    "reCAPTCHA will be disabled (tokens null). Set RECAPTCHA_KEY in env or .env.",
+            )
         } else {
-            println("[recaptcha-config] Using RECAPTCHA site key prefix=" + recaptchaSiteKey.take(8) + "…")
+            println(
+                "[recaptcha-config] Using RECAPTCHA site key prefix=" +
+                    recaptchaSiteKey.take(8) + "…",
+            )
         }
         buildConfigField("String", "RECAPTCHA_SITE_KEY", '"' + recaptchaSiteKey + '"')
-    // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)
-    fun intCfg(key: String, def: Int) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toIntOrNull() ?: def
-    fun longCfg(key: String, def: Long) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toLongOrNull() ?: def
-    fun doubleCfg(key: String, def: Double) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toDoubleOrNull() ?: def
-    val maxAttempts = intCfg("AUTH_VALIDATION_MAX_ATTEMPTS", 3)
-    val baseDelay = longCfg("AUTH_VALIDATION_BASE_DELAY_MS", 50)
-    val backoffMult = doubleCfg("AUTH_VALIDATION_BACKOFF_MULT", 2.0)
-    val refreshLeadSec = longCfg("AUTH_REFRESH_LEAD_SECONDS", 300)
-    val refreshPollSec = longCfg("AUTH_REFRESH_POLL_SECONDS", 30)
-    val metricsSamplePermille = intCfg("AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE", 1000)
-    buildConfigField("int", "AUTH_VALIDATION_MAX_ATTEMPTS", maxAttempts.toString())
-    buildConfigField("long", "AUTH_VALIDATION_BASE_DELAY_MS", baseDelay.toString() + 'L')
-    buildConfigField("double", "AUTH_VALIDATION_BACKOFF_MULT", backoffMult.toString())
-    buildConfigField("long", "AUTH_REFRESH_LEAD_SECONDS", refreshLeadSec.toString() + 'L')
-    buildConfigField("long", "AUTH_REFRESH_POLL_SECONDS", refreshPollSec.toString() + 'L')
-    buildConfigField("int", "AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE", metricsSamplePermille.toString())
+
+        // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)
+        fun intCfg(
+            key: String,
+            def: Int,
+        ) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toIntOrNull() ?: def
+
+        fun longCfg(
+            key: String,
+            def: Long,
+        ) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toLongOrNull() ?: def
+
+        fun doubleCfg(
+            key: String,
+            def: Double,
+        ) = (System.getenv(key) ?: (project.findProperty(key) as String?))?.toDoubleOrNull() ?: def
+        val maxAttempts = intCfg("AUTH_VALIDATION_MAX_ATTEMPTS", 3)
+        val baseDelay = longCfg("AUTH_VALIDATION_BASE_DELAY_MS", 50)
+        val backoffMult = doubleCfg("AUTH_VALIDATION_BACKOFF_MULT", 2.0)
+        val refreshLeadSec = longCfg("AUTH_REFRESH_LEAD_SECONDS", 300)
+        val refreshPollSec = longCfg("AUTH_REFRESH_POLL_SECONDS", 30)
+        val metricsSamplePermille = intCfg("AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE", 1000)
+        buildConfigField("int", "AUTH_VALIDATION_MAX_ATTEMPTS", maxAttempts.toString())
+        buildConfigField("long", "AUTH_VALIDATION_BASE_DELAY_MS", baseDelay.toString() + 'L')
+        buildConfigField("double", "AUTH_VALIDATION_BACKOFF_MULT", backoffMult.toString())
+        buildConfigField("long", "AUTH_REFRESH_LEAD_SECONDS", refreshLeadSec.toString() + 'L')
+        buildConfigField("long", "AUTH_REFRESH_POLL_SECONDS", refreshPollSec.toString() + 'L')
+        buildConfigField("int", "AUTH_VALIDATION_METRICS_SAMPLE_PERMILLE", metricsSamplePermille.toString())
     }
 
     buildFeatures {
@@ -165,8 +190,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    // Required for recaptcha beta library (core library desugaring)
-    isCoreLibraryDesugaringEnabled = true
+        // Required for recaptcha beta library (core library desugaring)
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"

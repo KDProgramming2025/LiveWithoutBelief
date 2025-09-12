@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader
 
 sealed interface ContentBlock {
@@ -9,15 +13,29 @@ sealed interface ContentBlock {
 }
 
 private val headingRegex = Regex("<h([1-6])[^>]*>(.*?)</h\\1>", RegexOption.IGNORE_CASE)
-private val imageRegex = Regex("<img[^>]*src=\"(.*?)\"[^>]*?(?:alt=\"(.*?)\")?[^>]*>", RegexOption.IGNORE_CASE)
-private val audioRegex = Regex("<audio[^>]*src=\"(.*?)\"[^>]*>(?:.*?)</audio>", RegexOption.IGNORE_CASE)
-private val youtubeRegex = Regex("<iframe[^>]*src=\"https?://www.youtube.com/embed/([a-zA-Z0-9_-]{6,})\"[^>]*></iframe>", RegexOption.IGNORE_CASE)
+private val imageRegex = Regex(
+    "<img[^>]*src=\"(.*?)\"[^>]*?(?:alt=\"(.*?)\")?[^>]*>",
+    RegexOption.IGNORE_CASE,
+)
+private val audioRegex = Regex(
+    "<audio[^>]*src=\"(.*?)\"[^>]*>(?:.*?)</audio>",
+    RegexOption.IGNORE_CASE,
+)
+private val youtubeRegex = Regex(
+    "<iframe[^>]*src=\"https?://www.youtube.com/embed/" +
+        "([a-zA-Z0-9_-]{6,})\"[^>]*></iframe>",
+    RegexOption.IGNORE_CASE,
+)
 
 fun parseHtmlToBlocks(html: String): List<ContentBlock> {
     if (html.isBlank()) return emptyList()
     val blocks = mutableListOf<ContentBlock>()
     // Sequential scan: find earliest next tag among supported types; consume text between tags as paragraphs.
-    val tagRegex = Regex("(<h[1-6][^>]*>.*?</h[1-6]>|<img[^>]*?>|<audio[^>]*?>.*?</audio>|<iframe[^>]*youtube.com/embed/.*?</iframe>|<p[^>]*>.*?</p>)", RegexOption.IGNORE_CASE)
+    val tagRegex = Regex(
+        "(<h[1-6][^>]*>.*?</h[1-6]>|<img[^>]*?>|<audio[^>]*?>.*?</audio>|" +
+            "<iframe[^>]*youtube.com/embed/.*?</iframe>|<p[^>]*>.*?</p>)",
+        RegexOption.IGNORE_CASE,
+    )
     var lastIndex = 0
     tagRegex.findAll(html).forEach { m ->
         if (m.range.first > lastIndex) {
@@ -28,7 +46,12 @@ fun parseHtmlToBlocks(html: String): List<ContentBlock> {
         when {
             tag.startsWith("<h", ignoreCase = true) -> {
                 val hm = headingRegex.find(tag)
-                if (hm != null) blocks += ContentBlock.Heading(hm.groupValues[1].toInt(), stripTags(hm.groupValues[2]).trim())
+                if (hm != null) {
+                    blocks += ContentBlock.Heading(
+                        hm.groupValues[1].toInt(),
+                        stripTags(hm.groupValues[2]).trim(),
+                    )
+                }
             }
             tag.startsWith("<img", ignoreCase = true) -> {
                 val im = imageRegex.find(tag)
