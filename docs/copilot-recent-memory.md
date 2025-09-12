@@ -8,11 +8,12 @@ Session recap (LWB Admin UI/API)
 
 Relevant paths/state
 - Systemd: lwb-admin-api.service (Node 20); healthy and listening on 127.0.0.1:5050.
-- Nginx: Admin UI at https://aparat.feezor.net/LWB/Admin; API proxied at /LWB/Admin/api.
+- Nginx: Admin UI at https://aparat.feezor.net/LWB/Admin; API proxied at /LWB/Admin/api; Articles served at https://aparat.feezor.net/LWB/Articles/<slug> via root /var/www.
 - Storage: secure /opt/lwb-admin-api/data; public /var/www/LWB/Articles.
 
 Next steps (small)
-- Optional: UI smoke-test login in browser; try DOCX upload to confirm converted content lands under /var/www/LWB/Articles and meta updates.
+- UI: Login and hit Articles tab; if list is empty, click a new Reindex action (or call POST /v1/admin/articles/reindex) to build metadata from existing public articles.
+- Confirm GET /LWB/Admin/api/v1/admin/articles returns items immediately after upload; we added atomic-write + cache and a filesystem bootstrap.
 - Future: Wire User Management endpoints to existing Postgres backend.
 
 Do not repeat

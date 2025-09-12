@@ -51,6 +51,14 @@ export function buildServer(): FastifyInstance {
     },
   });
 
+  // Disable caching for all API responses
+  server.addHook('onSend', async (_req, reply, payload) => {
+    reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    reply.header('Pragma', 'no-cache');
+    reply.header('Expires', '0');
+    return payload as any;
+  });
+
   // Paths and config
   const SECURE_ROOT = process.env.ADMIN_SECURE_ARTICLES_DIR || '/opt/lwb-admin-api/data/articles';
   const PUBLIC_ROOT = process.env.ADMIN_PUBLIC_ARTICLES_DIR || '/var/www/LWB/Articles';

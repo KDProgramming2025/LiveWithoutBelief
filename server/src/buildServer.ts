@@ -39,6 +39,14 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   app.register(cors, { origin: true });
   app.register(multipart, { attachFieldsToBody: true, limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
 
+  // Disable caching for all API responses
+  app.addHook('onSend', async (_req, reply, payload) => {
+    reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    reply.header('Pragma', 'no-cache');
+    reply.header('Expires', '0');
+    return payload as any;
+  });
+
   // Override Fastify default JSON parser to capture raw body & diagnose production failures.
   try { app.removeContentTypeParser('application/json'); } catch (_) { /* ignore */ }
   app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done: (err: Error | null, body: unknown) => void) => {

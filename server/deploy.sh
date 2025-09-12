@@ -140,6 +140,10 @@ location ^~ /LWB/Admin/api/ {
 		# Buffering tweaks: allow streaming to upstream
 		proxy_request_buffering off;
 		proxy_buffering off;
+		# Enforce no-cache on proxied API responses
+		add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+		add_header Pragma "no-cache" always;
+		add_header Expires "0" always;
 		proxy_pass http://127.0.0.1:5050/;
 }
 
