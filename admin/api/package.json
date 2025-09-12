@@ -1,0 +1,23 @@
+{
+  "name": "lwb-admin-api",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+  "fastify": "^5.0.0",
+  "@fastify/cors": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "tsup": "^8.0.1",
+    "tsx": "^4.7.0",
+  "typescript": "^5.4.0",
+  "vitest": "^1.6.0"
+  }
+}
