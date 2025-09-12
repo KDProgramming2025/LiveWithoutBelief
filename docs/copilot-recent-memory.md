@@ -1,19 +1,18 @@
 Date: 2025-09-12
-Branch: feature/LWB-73-bookmarks (active)
+Branch: feature/LWB-80-annotations-discussions (active)
 
 Current State Summary:
-- Bookmarks data layer: BookmarkRepositoryImpl now implements add/remove, createFolder (idempotent), moveBookmark, and searchBookmarked; DAO methods and mappings in place.
-- Tests: data:repo unit tests cover add/remove and new folder/move/search behaviors; all passing.
-- Feature UI: Bookmarks screen lists bookmarks, can add/remove, create folders, move bookmarks to a folder, and search bookmarked articles.
-- DI: App module provides use cases for bookmarks (get/add/remove/folders/create/move/search). Domain use cases added.
+- Implemented annotations/discussions end-to-end: AnnotationRepositoryImpl, domain use cases (Get/AddThreadMessage), DiscussionThreadSheet UI with Hilt VM, and ReaderScreen integration to create annotation and open thread.
+- Fixed Spotless (max line length) and Compose lint (collectAsState) issues; full clean build now passes locally with lint/detekt/spotless.
+- Opened PR #22; CI just started.
 
 Immediate Next Steps:
-1. Integrate Bookmarks screen into app navigation.
-2. Preserve createdAt on move (add DAO getById or update query) — optional refinement.
-3. Add UI tests (compose) for folder creation, move, and search.
+1. Monitor PR #22 CI to green and address any failures.
+2. Add minimal unit tests: repo happy path for add/get, VM send() triggers use case. Snapshot for DiscussionThreadSheet optional.
+3. After merge, local git cleanup and start next Jira item.
 
 Deferred / Future:
-- Folder filtering UX and displaying article titles in bookmark rows.
-- Server sync for bookmarks when backend is ready.
+- Improve message type detection and support attachments picker.
+- Per-user private threads UI affordances and empty states.
 
-Keep File Lean: prune done items as they land in main.
+Keep File Lean: prune after PR merges to main.
