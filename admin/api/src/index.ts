@@ -63,10 +63,27 @@ export function buildServer(): FastifyInstance {
   try { ensureDirSync(PUBLIC_ROOT); } catch (e) { server.log.warn({ err: e }, `Cannot ensure PUBLIC_ROOT at boot: ${PUBLIC_ROOT}`); }
   try { ensureDirSync(path.dirname(META_FILE)); } catch (e) { server.log.warn({ err: e }, `Cannot ensure META dir at boot: ${path.dirname(META_FILE)}`); }
 
+  // Metadata cache to avoid transient empty reads on partial writes
+  let metaCache: ArticleMeta[] = [];
   async function readMeta(): Promise<ArticleMeta[]> {
-    try { const txt = await fs.readFile(META_FILE, 'utf8'); return JSON.parse(txt) as ArticleMeta[]; } catch { return []; }
+    try {
+      const txt = await fs.readFile(META_FILE, 'utf8');
+      const parsed = JSON.parse(txt) as ArticleMeta[];
+      metaCache = parsed;
+      return parsed;
+    } catch (e) {
+      // Fallback to last good cache if JSON parse fails or file missing
+      return metaCache;
+    }
   }
-  async function writeMeta(items: ArticleMeta[]) { await fs.writeFile(META_FILE, JSON.stringify(items, null, 2), 'utf8'); }
+  async function writeMeta(items: ArticleMeta[]) {
+    const tmp = META_FILE + '.tmp';
+    const data = JSON.stringify(items, null, 2);
+    await fs.writeFile(tmp, data, 'utf8');
+    // Atomic replace so readers never see partial JSON
+    await fs.rename(tmp, META_FILE);
+    metaCache = items;
+  }
   async function getNextOrder(items: ArticleMeta[]) { return items.length ? Math.max(...items.map(i => i.order)) + 1 : 1; }
 
   // Robustly read a multipart part into a Buffer, supporting different shapes

@@ -148,6 +148,15 @@ location ^~ /LWB/Admin/ {
 		try_files $uri $uri/ /LWB/Admin/index.html;
 		add_header Cache-Control "public, max-age=60";
 }
+
+# Serve public articles as static content under /LWB/Articles/<slug>
+location ^~ /LWB/Articles/ {
+		alias /var/www/LWB/Articles/;
+		index index.html;
+		# Resolve to file, directory, or directory index.html
+		try_files $request_filename $request_filename/ $request_filename/index.html =404;
+		add_header Cache-Control "public, max-age=60";
+}
 NGINX
 
 log "Ensuring nginx server block includes the snippet"
