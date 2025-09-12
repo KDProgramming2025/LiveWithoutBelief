@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5050';
+// Prefer same-origin base when hosted under /LWB/Admin; fallback to localhost for dev
+const API = import.meta.env.VITE_API_URL ?? `${location.origin}`;
 export default function App() {
     const [queue, setQueue] = useState(null);
     const [users, setUsers] = useState([]);
