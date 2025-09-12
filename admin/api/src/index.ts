@@ -65,6 +65,39 @@ export function buildServer(): FastifyInstance {
 
   // Metadata cache to avoid transient empty reads on partial writes
   let metaCache: ArticleMeta[] = [];
+  let metaInitialized = false;
+  async function scanAndBuildMeta(): Promise<ArticleMeta[]> {
+    const items: ArticleMeta[] = [];
+    try {
+      const dirs = await fs.readdir(PUBLIC_ROOT, { withFileTypes: true });
+      for (const d of dirs) {
+        if (!d.isDirectory()) continue;
+        const slug = d.name;
+        const publicDir = path.join(PUBLIC_ROOT, slug);
+        const secureDir = path.join(SECURE_ROOT, slug);
+        const indexPath = path.join(publicDir, 'index.html');
+        let title = slug;
+        try {
+          const html = await fs.readFile(indexPath, 'utf8');
+          const m = html.match(/<title>([^<]*)<\/title>/i);
+          if (m) title = m[1];
+        } catch {}
+        const st = await fs.stat(publicDir).catch(() => null as any);
+        const createdAt = st?.mtime?.toISOString?.() || new Date().toISOString();
+        const updatedAt = createdAt;
+        const cover = fssync.existsSync(path.join(publicDir, 'cover.jpg')) ? 'cover.jpg'
+          : fssync.existsSync(path.join(publicDir, 'cover.png')) ? 'cover.png'
+          : undefined;
+        const icon = fssync.existsSync(path.join(publicDir, 'icon.jpg')) ? 'icon.jpg'
+          : fssync.existsSync(path.join(publicDir, 'icon.png')) ? 'icon.png'
+          : undefined;
+        items.push({ id: slug, title, createdAt, updatedAt, order: items.length + 1, filename: `${slug}.docx`, securePath: secureDir, publicPath: publicDir, cover, icon });
+      }
+    } catch (e) {
+      server.log.warn({ err: e }, 'scanAndBuildMeta failed');
+    }
+    return items;
+  }
   async function readMeta(): Promise<ArticleMeta[]> {
     try {
       const txt = await fs.readFile(META_FILE, 'utf8');
@@ -72,6 +105,17 @@ export function buildServer(): FastifyInstance {
       metaCache = parsed;
       return parsed;
     } catch (e) {
+      // On first failure and not initialized, try to scan and initialize metadata from the filesystem
+      if (!metaInitialized) {
+        const scanned = await scanAndBuildMeta();
+        if (scanned.length) {
+          try { await writeMeta(scanned); } catch {}
+          metaInitialized = true;
+          metaCache = scanned;
+          return scanned;
+        }
+        metaInitialized = true;
+      }
       // Fallback to last good cache if JSON parse fails or file missing
       return metaCache;
     }
@@ -331,6 +375,13 @@ export function buildServer(): FastifyInstance {
   });
 
   // Users: placeholders — will integrate with Postgres once confirmed schema
+  // Maintenance: Reindex metadata from PUBLIC_ROOT/SECURE_ROOT if articles.json is missing or corrupted
+  server.post('/v1/admin/articles/reindex', async (req, reply) => {
+    if (!requireAdmin(req, reply)) return;
+    const items = await scanAndBuildMeta();
+    await writeMeta(items);
+    return { ok: true, count: items.length };
+  });
   server.get('/v1/admin/users/summary', async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
     // TODO: replace with DB query (users count)
