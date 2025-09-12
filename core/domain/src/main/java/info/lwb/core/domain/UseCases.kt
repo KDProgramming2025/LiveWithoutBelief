@@ -10,6 +10,7 @@ import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
+import info.lwb.core.model.ThreadMessage
 import kotlinx.coroutines.flow.Flow
 
 class GetArticlesUseCase(private val articleRepository: ArticleRepository) {
@@ -69,4 +70,14 @@ class GetAnnotationsUseCase(private val annotationRepository: AnnotationReposito
 class AddAnnotationUseCase(private val annotationRepository: AnnotationRepository) {
     suspend operator fun invoke(articleId: String, startOffset: Int, endOffset: Int, anchorHash: String) =
         annotationRepository.addAnnotation(articleId, startOffset, endOffset, anchorHash)
+}
+
+class GetThreadMessagesUseCase(private val annotationRepository: AnnotationRepository) {
+    operator fun invoke(annotationId: String): Flow<Result<List<ThreadMessage>>> =
+        annotationRepository.getThreadMessages(annotationId)
+}
+
+class AddThreadMessageUseCase(private val annotationRepository: AnnotationRepository) {
+    suspend operator fun invoke(annotationId: String, type: String, contentRef: String) =
+        annotationRepository.addThreadMessage(annotationId, type, contentRef)
 }

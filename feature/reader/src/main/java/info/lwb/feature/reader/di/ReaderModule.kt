@@ -8,6 +8,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ViewModelComponent
+import info.lwb.core.domain.AddAnnotationUseCase
+import info.lwb.core.domain.AnnotationRepository
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.domain.GetArticleContentUseCase
 import info.lwb.core.domain.GetArticlesUseCase
@@ -30,5 +32,10 @@ object ReaderModule {
     @Provides
     fun provideRefreshArticlesUseCase(articleRepository: ArticleRepository): RefreshArticlesUseCase {
         return RefreshArticlesUseCase(articleRepository)
+    }
+
+    @Provides
+    fun provideAddAnnotationUseCase(annotationRepository: AnnotationRepository): AddAnnotationUseCase {
+        return AddAnnotationUseCase(annotationRepository)
     }
 }
