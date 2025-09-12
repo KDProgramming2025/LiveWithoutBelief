@@ -1,3 +1,41 @@
+# Live Without Belief (LWB)
+
+An open-source Android app exploring scientific analysis of religious texts and offering secular guidance.
+
+## Features
+- Reader UI with media, in-article search, pagination, themes
+- Google Sign-In (one-tap)
+- Bookmarks and search
+- Private annotations and discussion threads (text/image)
+
+## Tech stack
+- Kotlin, Jetpack Compose, Hilt, Room, Coroutines/Flow
+- Multi-module Clean Architecture
+- Spotless, Detekt, Lint, GitHub Actions CI
+
+## Getting started
+1. Requirements: Android Studio (Koala+), JDK 17, Android SDK 26+
+2. Build on Windows PowerShell:
+   ```powershell
+   ./gradlew.bat build
+   ```
+3. Run the app from Android Studio (select app configuration).
+
+## Project structure (high level)
+- `app/`: app shell, auth, navigation
+- `core/`: common, domain, model
+- `data/`: repo/db/network
+- `feature/`: reader, bookmarks, annotations, search
+- `ui/`: design system
+- `server/`: backend (Node/TS) skeleton
+
+## Contributing
+See CONTRIBUTING.md.
+
+## Documentation
+- ADRs: `docs/adr/`
+- API (OpenAPI): `docs/api/openapi.yaml`
+
 ## Releases and versions (in plain English)
 
 - When we merge to `main`, a bot (release-please) prepares a "Release PR" with a changelog and a version like `v0.2.0`.
