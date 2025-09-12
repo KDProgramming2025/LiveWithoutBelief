@@ -57,6 +57,11 @@ ensure_dir "$API_DST_DIR/data/articles"
 run chown -R www-data:www-data "$API_DST_DIR/data"
 run chmod -R 775 "$API_DST_DIR/data"
 
+# Ensure public articles root exists and is writable (for converted content)
+ensure_dir "/var/www/LWB/Articles"
+run chown -R www-data:www-data "/var/www/LWB/Articles"
+run chmod -R 775 "/var/www/LWB/Articles"
+
 # Systemd unit for Admin API
 log "Writing systemd unit /etc/systemd/system/$ADMIN_API_SERVICE"
 cat > "/etc/systemd/system/$ADMIN_API_SERVICE" <<SYSTEMD
