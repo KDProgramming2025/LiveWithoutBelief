@@ -1,1 +1,189 @@
-﻿#!/usr/bin/env bash\nset -euo pipefail\n\n# LWB Admin Deploy Script (server-side)\n# - Builds Admin API and Admin Web on the server using isolated Node toolchain\n# - Syncs artifacts to runtime locations\n# - Manages systemd service for Admin API\n# - Configures nginx locations for /LWB/Admin and /LWB/Admin/api\n# - Performs health checks\n\nNODE_HOME="/opt/lwb-node/current"\nexport PATH="${NODE_HOME}/bin:${PATH}"\nNODE_BIN="${NODE_HOME}/bin/node"\nNPM_BIN="${NODE_HOME}/bin/npm"\n\nREPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"\nAPI_DIR="$REPO_ROOT/admin/api"\nWEB_DIR="$REPO_ROOT/admin/web"\n\nAPI_DST_DIR="/opt/lwb-admin-api"\nWEB_DST_DIR="/var/www/LWB/Admin"\nSERVER_ENV="/etc/lwb-server.env"\nNGINX_SNIPPET="/etc/nginx/snippets/lwb-admin-location.conf"\nDOMAIN_CONF_DIR="/etc/nginx/sites-available"\n\nADMIN_API_SERVICE="lwb-admin-api.service"\n\nlog() { printf "[DEPLOY] %s\n" "$*"; }\nrun() { log "+ $*"; "$@"; }\n\nensure_dir() { mkdir -p "$1"; }\n\n# Optional: DEPLOY_BRANCH environment variable to switch branches\nif [[ -n "${DEPLOY_BRANCH:-}" ]]; then\n	log "Switching to branch: $DEPLOY_BRANCH"\n	run git -C "$REPO_ROOT" fetch --all --prune\n	run git -C "$REPO_ROOT" checkout "$DEPLOY_BRANCH"\n	run git -C "$REPO_ROOT" pull --ff-only\nelse\n	log "Pulling latest on current branch"\n	run git -C "$REPO_ROOT" fetch --all --prune\n	run git -C "$REPO_ROOT" pull --ff-only || true\nfi\n\n# Build Admin API\nlog "Building Admin API"\nrun "$NPM_BIN" --prefix "$API_DIR" ci\nrun "$NPM_BIN" --prefix "$API_DIR" run build\n\n# Deploy Admin API bundle\nlog "Syncing Admin API runtime to $API_DST_DIR"\nensure_dir "$API_DST_DIR"\n# Sync only built JS files and maps to avoid wiping runtime data\nrun rsync -a --delete --include '*/' --include '*.js' --include '*.js.map' --exclude '*' "$API_DIR/dist/" "$API_DST_DIR/"\n\n# Ensure writable data directory for runtime (owned by service user)\nensure_dir "$API_DST_DIR/data/articles"\nrun chown -R www-data:www-data "$API_DST_DIR/data"\nrun chmod -R 775 "$API_DST_DIR/data"\n\n# Ensure public articles root exists and is writable (for converted content)\nensure_dir "/var/www/LWB/Articles"\nrun chown -R www-data:www-data "/var/www/LWB/Articles"\nrun chmod -R 775 "/var/www/LWB/Articles"\n\n# Systemd unit for Admin API\nlog "Writing systemd unit /etc/systemd/system/$ADMIN_API_SERVICE"\ncat > "/etc/systemd/system/$ADMIN_API_SERVICE" <<SYSTEMD\n[Unit]\nDescription=LWB Admin API\nAfter=network.target\nWants=network-online.target\n\n[Service]\nEnvironmentFile=$SERVER_ENV\nEnvironment=ADMIN_API_PORT=5050\nEnvironment=ADMIN_API_HOST=127.0.0.1\nWorkingDirectory=$API_DST_DIR\nExecStart=$NODE_BIN $API_DST_DIR/server.js\nType=simple\nRestart=always\nRestartSec=3\nUser=www-data\nGroup=www-data\nStandardOutput=journal\nStandardError=inherit\n\n[Install]\nWantedBy=multi-user.target\nSYSTEMD\n\nrun systemctl daemon-reload\nrun systemctl enable "$ADMIN_API_SERVICE" || true\nrun systemctl restart "$ADMIN_API_SERVICE"\n\n# Wait for 5050\nlog "Waiting for Admin API on 127.0.0.1:5050"\nfor i in $(seq 1 40); do\n	if ss -tulpn 2>/dev/null | grep -q ":5050"; then break; fi\n	if netstat -tulpn 2>/dev/null | grep -q ":5050"; then break; fi\n	sleep 0.5\ndone\n\n# Probe API\nlog "Probing Admin API session endpoint"\nset +e\nAPI_PROBE=$(curl -sS -m 5 http://127.0.0.1:5050/v1/admin/session || true)\nset -e\nlog "API /v1/admin/session: ${API_PROBE:-<no response>}"\n\n# Build Admin Web\nlog "Building Admin Web"\nrun "$NPM_BIN" --prefix "$WEB_DIR" ci\nrun "$NPM_BIN" --prefix "$WEB_DIR" run build\n\nlog "Syncing Admin Web to $WEB_DST_DIR"\nensure_dir "$WEB_DST_DIR"\nrun rsync -a --delete "$WEB_DIR/dist/" "$WEB_DST_DIR/"\nrun find "$WEB_DST_DIR" -type d -exec chmod 755 {} +\nrun find "$WEB_DST_DIR" -type f -exec chmod 644 {} +\n\n# Nginx snippet for Admin\nlog "Writing nginx snippet at $NGINX_SNIPPET"\ncat > "$NGINX_SNIPPET" <<'NGINX'\nlocation = /LWB/Admin {\n		return 301 /LWB/Admin/;\n}\n\nlocation ^~ /LWB/Admin/api/ {\n		# Increase limits/timeouts for large uploads\n		client_max_body_size 256m;\n		proxy_http_version 1.1;\n		proxy_set_header Host $host;\n		proxy_set_header X-Real-IP $remote_addr;\n		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n		proxy_set_header X-Forwarded-Proto $scheme;\n		# Timeouts to avoid HTTP2 ping failures during long uploads\n		proxy_read_timeout 300s;\n		proxy_send_timeout 300s;\n		send_timeout 300s;\n		# Buffering tweaks: allow streaming to upstream\n		proxy_request_buffering off;\n		proxy_buffering off;\n		# Enforce no-cache on proxied API responses\n		add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;\n		add_header Pragma "no-cache" always;\n		add_header Expires "0" always;\n		proxy_pass http://127.0.0.1:5050/;\n}\n\nlocation ^~ /LWB/Admin/ {\n		alias /var/www/LWB/Admin/;\n		try_files $uri $uri/ /LWB/Admin/index.html;\n		add_header Cache-Control "public, max-age=60";\n}\n\n# Serve public articles as static content under /LWB/Articles/<slug>\nlocation ^~ /LWB/Articles/ {\n		# Use root so /LWB/Articles/... maps to /var/www/LWB/Articles/...\n		root /var/www;\n		index index.html;\n		try_files $uri $uri/ =404;\n		add_header Cache-Control "public, max-age=60";\n}\nNGINX\n\nlog "Ensuring nginx server block includes the snippet"\nmapfile -t SERVER_BLOCKS < <(grep -Rl "server_name[[:space:]]\+aparat.feezor.net;" "$DOMAIN_CONF_DIR" || true)\nfor sb in "${SERVER_BLOCKS[@]}"; do\n	if ! grep -q "snippets/lwb-admin-location.conf" "$sb"; then\n		sed -i "/server_name[[:space:]]\+aparat.feezor.net;/a \	include $NGINX_SNIPPET;" "$sb"\n		log "Inserted include into $sb"\n	else\n		log "Include already present in $sb"\n	fi\ndone\n\nlog "Testing and reloading nginx"\nrun nginx -t\nrun systemctl reload nginx\n\n# Proxy probe\nset +e\nPROXY_PROBE=$(curl -sS -m 8 https://aparat.feezor.net/LWB/Admin/api/v1/admin/session || true)\nset -e\nlog "Proxy /LWB/Admin/api/v1/admin/session: ${PROXY_PROBE:-<no response>}"\n\nlog "Deploy complete"\n
+#!/usr/bin/env bash
+set -euo pipefail
+
+# LWB Admin Deploy Script (server-side)
+# - Builds Admin API and Admin Web on the server using isolated Node toolchain
+# - Syncs artifacts to runtime locations
+# - Manages systemd service for Admin API
+# - Configures nginx locations for /LWB/Admin and /LWB/Admin/api
+# - Performs health checks
+
+NODE_HOME="/opt/lwb-node/current"
+export PATH="${NODE_HOME}/bin:${PATH}"
+NODE_BIN="${NODE_HOME}/bin/node"
+NPM_BIN="${NODE_HOME}/bin/npm"
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+API_DIR="$REPO_ROOT/admin/api"
+WEB_DIR="$REPO_ROOT/admin/web"
+
+API_DST_DIR="/opt/lwb-admin-api"
+WEB_DST_DIR="/var/www/LWB/Admin"
+SERVER_ENV="/etc/lwb-server.env"
+NGINX_SNIPPET="/etc/nginx/snippets/lwb-admin-location.conf"
+DOMAIN_CONF_DIR="/etc/nginx/sites-available"
+
+ADMIN_API_SERVICE="lwb-admin-api.service"
+
+log() { printf "[DEPLOY] %s
+" "$*"; }
+run() { log "+ $*"; "$@"; }
+
+ensure_dir() { mkdir -p "$1"; }
+
+# Optional: DEPLOY_BRANCH environment variable to switch branches
+if [[ -n "${DEPLOY_BRANCH:-}" ]]; then
+	log "Switching to branch: $DEPLOY_BRANCH"
+	run git -C "$REPO_ROOT" fetch --all --prune
+	run git -C "$REPO_ROOT" checkout "$DEPLOY_BRANCH"
+	run git -C "$REPO_ROOT" pull --ff-only
+else
+	log "Pulling latest on current branch"
+	run git -C "$REPO_ROOT" fetch --all --prune
+	run git -C "$REPO_ROOT" pull --ff-only || true
+fi
+
+# Build Admin API
+log "Building Admin API"
+run "$NPM_BIN" --prefix "$API_DIR" ci
+run "$NPM_BIN" --prefix "$API_DIR" run build
+
+# Deploy Admin API bundle
+log "Syncing Admin API runtime to $API_DST_DIR"
+ensure_dir "$API_DST_DIR"
+# Sync only built JS files and maps to avoid wiping runtime data
+run rsync -a --delete --include '*/' --include '*.js' --include '*.js.map' --exclude '*' "$API_DIR/dist/" "$API_DST_DIR/"
+
+# Ensure writable data directory for runtime (owned by service user)
+ensure_dir "$API_DST_DIR/data/articles"
+run chown -R www-data:www-data "$API_DST_DIR/data"
+run chmod -R 775 "$API_DST_DIR/data"
+
+# Ensure public articles root exists and is writable (for converted content)
+ensure_dir "/var/www/LWB/Articles"
+run chown -R www-data:www-data "/var/www/LWB/Articles"
+run chmod -R 775 "/var/www/LWB/Articles"
+
+# Systemd unit for Admin API
+log "Writing systemd unit /etc/systemd/system/$ADMIN_API_SERVICE"
+cat > "/etc/systemd/system/$ADMIN_API_SERVICE" <<SYSTEMD
+[Unit]
+Description=LWB Admin API
+After=network.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=$SERVER_ENV
+Environment=ADMIN_API_PORT=5050
+Environment=ADMIN_API_HOST=127.0.0.1
+WorkingDirectory=$API_DST_DIR
+ExecStart=$NODE_BIN $API_DST_DIR/server.js
+Type=simple
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+StandardOutput=journal
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
+SYSTEMD
+
+run systemctl daemon-reload
+run systemctl enable "$ADMIN_API_SERVICE" || true
+run systemctl restart "$ADMIN_API_SERVICE"
+
+# Wait for 5050
+log "Waiting for Admin API on 127.0.0.1:5050"
+for i in $(seq 1 40); do
+	if ss -tulpn 2>/dev/null | grep -q ":5050"; then break; fi
+	if netstat -tulpn 2>/dev/null | grep -q ":5050"; then break; fi
+	sleep 0.5
+done
+
+# Probe API
+log "Probing Admin API session endpoint"
+set +e
+API_PROBE=$(curl -sS -m 5 http://127.0.0.1:5050/v1/admin/session || true)
+set -e
+log "API /v1/admin/session: ${API_PROBE:-<no response>}"
+
+# Build Admin Web
+log "Building Admin Web"
+run "$NPM_BIN" --prefix "$WEB_DIR" ci
+run "$NPM_BIN" --prefix "$WEB_DIR" run build
+
+log "Syncing Admin Web to $WEB_DST_DIR"
+ensure_dir "$WEB_DST_DIR"
+run rsync -a --delete "$WEB_DIR/dist/" "$WEB_DST_DIR/"
+run find "$WEB_DST_DIR" -type d -exec chmod 755 {} +
+run find "$WEB_DST_DIR" -type f -exec chmod 644 {} +
+
+# Nginx snippet for Admin
+log "Writing nginx snippet at $NGINX_SNIPPET"
+cat > "$NGINX_SNIPPET" <<'NGINX'
+location = /LWB/Admin {
+		return 301 /LWB/Admin/;
+}
+
+location ^~ /LWB/Admin/api/ {
+		# Increase limits/timeouts for large uploads
+		client_max_body_size 256m;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		# Timeouts to avoid HTTP2 ping failures during long uploads
+		proxy_read_timeout 300s;
+		proxy_send_timeout 300s;
+		send_timeout 300s;
+		# Buffering tweaks: allow streaming to upstream
+		proxy_request_buffering off;
+		proxy_buffering off;
+		# Enforce no-cache on proxied API responses
+		add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+		add_header Pragma "no-cache" always;
+		add_header Expires "0" always;
+		proxy_pass http://127.0.0.1:5050/;
+}
+
+location ^~ /LWB/Admin/ {
+		alias /var/www/LWB/Admin/;
+		try_files $uri $uri/ /LWB/Admin/index.html;
+		add_header Cache-Control "public, max-age=60";
+}
+
+# Serve public articles as static content under /LWB/Articles/<slug>
+location ^~ /LWB/Articles/ {
+		# Use root so /LWB/Articles/... maps to /var/www/LWB/Articles/...
+		root /var/www;
+		index index.html;
+		try_files $uri $uri/ =404;
+		add_header Cache-Control "public, max-age=60";
+}
+NGINX
+
+log "Ensuring nginx server block includes the snippet"
+mapfile -t SERVER_BLOCKS < <(grep -Rl "server_name[[:space:]]\+aparat.feezor.net;" "$DOMAIN_CONF_DIR" || true)
+for sb in "${SERVER_BLOCKS[@]}"; do
+	if ! grep -q "snippets/lwb-admin-location.conf" "$sb"; then
+		sed -i "/server_name[[:space:]]\+aparat.feezor.net;/a \	include $NGINX_SNIPPET;" "$sb"
+		log "Inserted include into $sb"
+	else
+		log "Include already present in $sb"
+	fi
+done
+
+log "Testing and reloading nginx"
+run nginx -t
+run systemctl reload nginx
+
+# Proxy probe
+set +e
+PROXY_PROBE=$(curl -sS -m 8 https://aparat.feezor.net/LWB/Admin/api/v1/admin/session || true)
+set -e
+log "Proxy /LWB/Admin/api/v1/admin/session: ${PROXY_PROBE:-<no response>}"
+
+log "Deploy complete"
