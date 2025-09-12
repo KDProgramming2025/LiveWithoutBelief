@@ -30,12 +30,3 @@ export function buildServer(): FastifyInstance {
 
   return server;
 }
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const server = buildServer();
-  const port = Number(process.env.PORT ?? 5050);
-  server.listen({ port, host: '0.0.0.0' }).catch((err) => {
-    server.log.error(err);
-    process.exit(1);
-  });
-}

@@ -11,8 +11,8 @@ type QueueResponse = {
 
 type UserSupport = { id: string; email: string; issues: number }
 
-// Prefer same-origin base when hosted under /LWB/Admin; fallback to localhost for dev
-const API = import.meta.env.VITE_API_URL ?? `${location.origin}`
+// Prefer same-origin proxied API when hosted under /LWB/Admin; fallback to localhost for dev
+const API = import.meta.env.VITE_API_URL ?? `${location.origin}/LWB/Admin/api`
 
 export default function App() {
   const [queue, setQueue] = useState<QueueResponse | null>(null)
@@ -20,11 +20,20 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const fetchJson = async (url: string) => {
+      const res = await fetch(url)
+      const ct = res.headers.get('content-type') || ''
+      if (!ct.includes('application/json')) {
+        const text = await res.text().catch(() => '')
+        throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 120)}`)
+      }
+      return res.json()
+    }
     Promise.all([
-      fetch(`${API}/v1/admin/ingestion/queue`).then(r => r.json()),
-      fetch(`${API}/v1/admin/support/users`).then(r => r.json())
+      fetchJson(`${API}/v1/admin/ingestion/queue`),
+      fetchJson(`${API}/v1/admin/support/users`)
     ])
-      .then(([q, u]) => { setQueue(q); setUsers(u) })
+      .then(([q, u]) => { setQueue(q as QueueResponse); setUsers(u as UserSupport[]) })
       .catch(e => setError(String(e)))
   }, [])
 

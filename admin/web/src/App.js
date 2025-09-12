@@ -1,15 +1,24 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
-// Prefer same-origin base when hosted under /LWB/Admin; fallback to localhost for dev
-const API = import.meta.env.VITE_API_URL ?? `${location.origin}`;
+// Prefer same-origin proxied API when hosted under /LWB/Admin; fallback to localhost for dev
+const API = import.meta.env.VITE_API_URL ?? `${location.origin}/LWB/Admin/api`;
 export default function App() {
     const [queue, setQueue] = useState(null);
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
     useEffect(() => {
+        const fetchJson = async (url) => {
+            const res = await fetch(url);
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                const text = await res.text().catch(() => '');
+                throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 120)}`);
+            }
+            return res.json();
+        };
         Promise.all([
-            fetch(`${API}/v1/admin/ingestion/queue`).then(r => r.json()),
-            fetch(`${API}/v1/admin/support/users`).then(r => r.json())
+            fetchJson(`${API}/v1/admin/ingestion/queue`),
+            fetchJson(`${API}/v1/admin/support/users`)
         ])
             .then(([q, u]) => { setQueue(q); setUsers(u); })
             .catch(e => setError(String(e)));
