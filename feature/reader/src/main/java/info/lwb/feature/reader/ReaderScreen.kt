@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,9 +40,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
+import dagger.hilt.android.lifecycle.HiltViewModel
+import info.lwb.core.domain.AddAnnotationUseCase
+import info.lwb.feature.annotations.DiscussionThreadSheet
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // Data holder for reader settings provided by caller (ViewModel layer wires flows & mutations)
 data class ReaderSettingsState(
@@ -174,11 +182,13 @@ fun ReaderScreen(
                             }
                         }
                     }
+                    var openAnnotationFor by remember { mutableStateOf<String?>(null) }
+                    val deps = hiltViewModel<ReaderDeps>()
                     LazyColumn(contentModifier, state = listState) {
                         items(pageBlocks.size) { idx ->
                             val b = pageBlocks[idx]
                             when (b) {
-                                is ContentBlock.Paragraph ->
+                                is ContentBlock.Paragraph -> Column(Modifier.fillMaxWidth()) {
                                     ParagraphBlock(
                                         text = b.text,
                                         query = searchQuery,
@@ -188,6 +198,26 @@ fun ReaderScreen(
                                             ?.takeIf { it.pageIndex == currentPageIndex && it.blockIndex == idx }
                                             ?.range,
                                     )
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        IconButton(onClick = {
+                                            // Annotate whole paragraph for MVP
+                                            val articleId = articleTitle
+                                            val range = 0 to b.text.length
+                                            // Fire and open sheet after id returned
+                                            deps.scope.launch {
+                                                val res = deps.addAnnotation(
+                                                    articleId,
+                                                    range.first,
+                                                    range.second,
+                                                    b.text.hashCode().toString(),
+                                                )
+                                                if (res is info.lwb.core.common.Result.Success) {
+                                                    openAnnotationFor = res.data
+                                                }
+                                            }
+                                        }) { Icon(Icons.Filled.Edit, contentDescription = "Annotate") }
+                                    }
+                                }
                                 is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
                                 is ContentBlock.Image -> AsyncImage(
                                     model = b.url,
@@ -202,6 +232,11 @@ fun ReaderScreen(
                             Spacer(Modifier.height(12.dp))
                         }
                     }
+                    if (openAnnotationFor != null) {
+                        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { openAnnotationFor = null }) {
+                            DiscussionThreadSheet(annotationId = openAnnotationFor!!)
+                        }
+                    }
                 }
             } else {
                 val listState = rememberLazyListState()
@@ -209,11 +244,13 @@ fun ReaderScreen(
                     val hit = searchHits.getOrNull(currentSearchIndex)
                     if (hit != null) listState.animateScrollToItem(hit.blockIndex)
                 }
+                var openAnnotationFor by remember { mutableStateOf<String?>(null) }
+                val deps = hiltViewModel<ReaderDeps>()
                 LazyColumn(Modifier.fillMaxSize(), state = listState) {
                     items(blocks.size) { idx ->
                         val b = blocks[idx]
                         when (b) {
-                            is ContentBlock.Paragraph ->
+                            is ContentBlock.Paragraph -> Column(Modifier.fillMaxWidth()) {
                                 ParagraphBlock(
                                     text = b.text,
                                     query = searchQuery,
@@ -223,6 +260,24 @@ fun ReaderScreen(
                                         ?.takeIf { it.blockIndex == idx }
                                         ?.range,
                                 )
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                    IconButton(onClick = {
+                                        val articleId = articleTitle
+                                        val range = 0 to b.text.length
+                                        deps.scope.launch {
+                                            val res = deps.addAnnotation(
+                                                articleId,
+                                                range.first,
+                                                range.second,
+                                                b.text.hashCode().toString(),
+                                            )
+                                            if (res is info.lwb.core.common.Result.Success) {
+                                                openAnnotationFor = res.data
+                                            }
+                                        }
+                                    }) { Icon(Icons.Filled.Edit, contentDescription = "Annotate") }
+                                }
+                            }
                             is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
                             is ContentBlock.Image -> AsyncImage(
                                 model = b.url,
@@ -237,9 +292,24 @@ fun ReaderScreen(
                         Spacer(Modifier.height(12.dp))
                     }
                 }
+                if (openAnnotationFor != null) {
+                    androidx.compose.material3.ModalBottomSheet(onDismissRequest = { openAnnotationFor = null }) {
+                        DiscussionThreadSheet(annotationId = openAnnotationFor!!)
+                    }
+                }
             }
         }
     }
+}
+
+// Internal small helper to access use cases without refactoring the entire screen into a VM here.
+@HiltViewModel
+internal class ReaderDeps @Inject constructor(
+    private val addAnnotationUseCase: AddAnnotationUseCase,
+) : androidx.lifecycle.ViewModel() {
+    val scope get() = viewModelScope
+    suspend fun addAnnotation(articleId: String, start: Int, end: Int, hash: String) =
+        addAnnotationUseCase(articleId, start, end, hash)
 }
 
 @Composable

@@ -22,6 +22,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
+    implementation(project(":core:domain"))
     implementation(project(":data:repo"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -29,5 +30,6 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
     kapt(libs.hilt.android.compiler)
 }
