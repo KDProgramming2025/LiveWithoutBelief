@@ -14,6 +14,7 @@ google-services.json
 server/node_modules/
 server/dist/
 server_commands.sh
+docs/admin-panel-features.md
 
 # Ignore build folders in all modules
 **/build/

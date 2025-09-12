@@ -7,7 +7,7 @@ export default defineConfig({
   clean: true,
   target: 'node18',
   dts: false,
-  noExternal: ['fastify', '@fastify/cors'],
+  noExternal: ['fastify', '@fastify/cors', '@fastify/multipart', '@fastify/cookie', 'jsonwebtoken', 'sanitize-html', 'mammoth'],
   platform: 'node',
   minify: false,
 });
