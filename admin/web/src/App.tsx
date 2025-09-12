@@ -8,9 +8,9 @@ const API = import.meta.env.VITE_API_URL ?? `${location.origin}/LWB/Admin/api`
 
 function useJson() {
   return useMemo(() => ({
-    async get<T>(url: string): Promise<T> { const r = await fetch(url, { credentials: 'include' }); if (!r.ok) throw new Error(`${r.status}`); return r.json() },
-    async post<T>(url: string, body?: any): Promise<T> { const r = await fetch(url, { method: 'POST', headers: body instanceof FormData ? undefined : { 'Content-Type': 'application/json' }, body: body instanceof FormData ? body : JSON.stringify(body ?? {}), credentials: 'include' }); if (!r.ok) throw new Error(`${r.status}`); return r.json() },
-    async del<T>(url: string): Promise<T> { const r = await fetch(url, { method: 'DELETE', credentials: 'include' }); if (!r.ok) throw new Error(`${r.status}`); return r.json() },
+  async get<T>(url: string): Promise<T> { const r = await fetch(url, { credentials: 'include', cache: 'no-store' }); if (!r.ok) throw new Error(`${r.status}`); return r.json() },
+  async post<T>(url: string, body?: any): Promise<T> { const r = await fetch(url, { method: 'POST', headers: body instanceof FormData ? undefined : { 'Content-Type': 'application/json' }, body: body instanceof FormData ? body : JSON.stringify(body ?? {}), credentials: 'include', cache: 'no-store' }); if (!r.ok) throw new Error(`${r.status}`); return r.json() },
+  async del<T>(url: string): Promise<T> { const r = await fetch(url, { method: 'DELETE', credentials: 'include', cache: 'no-store' }); if (!r.ok) throw new Error(`${r.status}`); return r.json() },
   }), [])
 }
 

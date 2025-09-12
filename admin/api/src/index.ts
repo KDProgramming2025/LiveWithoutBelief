@@ -56,6 +56,7 @@ export function buildServer(): FastifyInstance {
     reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     reply.header('Pragma', 'no-cache');
     reply.header('Expires', '0');
+    reply.header('X-Response-Ts', new Date().toISOString());
     return payload as any;
   });
 
