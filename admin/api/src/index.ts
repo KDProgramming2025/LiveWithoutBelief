@@ -130,7 +130,9 @@ export function buildServer(): FastifyInstance {
     }
   }
   async function writeMeta(items: ArticleMeta[]) {
-    const tmp = META_FILE + '.tmp';
+  // Ensure metadata directory exists at write-time (deploy rsyncs might remove it)
+  try { await fs.mkdir(path.dirname(META_FILE), { recursive: true }); } catch {}
+  const tmp = META_FILE + '.tmp';
     const data = JSON.stringify(items, null, 2);
     await fs.writeFile(tmp, data, 'utf8');
     // Atomic replace so readers never see partial JSON

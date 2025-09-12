@@ -50,7 +50,8 @@ run "$NPM_BIN" --prefix "$API_DIR" run build
 # Deploy Admin API bundle
 log "Syncing Admin API runtime to $API_DST_DIR"
 ensure_dir "$API_DST_DIR"
-run rsync -a --delete "$API_DIR/dist/" "$API_DST_DIR/"
+# Sync only built JS files and maps to avoid wiping runtime data
+run rsync -a --delete --include '*/' --include '*.js' --include '*.js.map' --exclude '*' "$API_DIR/dist/" "$API_DST_DIR/"
 
 # Ensure writable data directory for runtime (owned by service user)
 ensure_dir "$API_DST_DIR/data/articles"
