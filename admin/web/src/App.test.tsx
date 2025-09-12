@@ -24,8 +24,8 @@ vi.stubGlobal('fetch', (url: string, init?: any) => {
   return Promise.resolve({ ok: true, json: async () => ({}) }) as any
 })
 
-it('renders Admin UI with Articles and Users sections', async () => {
+it('renders Admin UI with Articles section and User Management tab', async () => {
   render(<App />)
   await waitFor(() => expect(screen.getByText(/Articles/i)).toBeInTheDocument())
-  expect(screen.getByText(/Users/i)).toBeInTheDocument()
+  expect(screen.getByText(/User Management/i)).toBeInTheDocument()
 })
