@@ -151,9 +151,9 @@ location ^~ /LWB/Admin/ {
 
 # Serve public articles as static content under /LWB/Articles/<slug>
 location ^~ /LWB/Articles/ {
-		alias /var/www/LWB/Articles/;
+		# Use root so /LWB/Articles/... maps to /var/www/LWB/Articles/...
+		root /var/www;
 		index index.html;
-		# Resolve to file or directory; 'index' will serve index.html for directories
 		try_files $uri $uri/ =404;
 		add_header Cache-Control "public, max-age=60";
 }
