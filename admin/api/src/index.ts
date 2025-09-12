@@ -241,8 +241,14 @@ export function buildServer(): FastifyInstance {
     if (idx < 0) return reply.code(404).send({ error: 'not_found' });
     const art = items[idx];
     const body = (req as FastifyRequest & { body?: any }).body || {};
-    if (typeof body.title === 'string' && body.title.trim()) {
-      art.title = body.title.trim().slice(0, 200);
+    // Accept title as plain string or as { value: string }
+    let newTitle: string | undefined;
+    if (typeof body.title === 'string') newTitle = body.title;
+    else if (body.title && typeof body.title === 'object' && typeof body.title.value !== 'undefined') {
+      newTitle = String(body.title.value);
+    }
+    if (newTitle && newTitle.trim()) {
+      art.title = newTitle.trim().slice(0, 200);
     }
     // Files: cover, icon
     for (const field of ['cover','icon'] as const) {
