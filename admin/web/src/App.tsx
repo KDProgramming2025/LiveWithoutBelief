@@ -45,6 +45,7 @@ export default function App() {
   // Article state
   const [articles, setArticles] = useState<Article[]>([])
   const [uploadBusy, setUploadBusy] = useState(false)
+  const [uploadPct, setUploadPct] = useState<number>(0)
   const [title, setTitle] = useState('')
   const [docx, setDocx] = useState<File | null>(null)
   const [cover, setCover] = useState<File | null>(null)
@@ -86,8 +87,23 @@ export default function App() {
       fd.set('docx', docx)
       if (cover) fd.set('cover', cover)
       if (icon) fd.set('icon', icon)
-      await api.post(`${API}/v1/admin/articles/upload`, fd)
+      // Use XHR to get upload progress
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', `${API}/v1/admin/articles/upload`)
+        xhr.withCredentials = true
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) setUploadPct(Math.round((evt.loaded/evt.total)*100))
+        }
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) return resolve()
+          return reject(new Error(String(xhr.status)))
+        }
+        xhr.onerror = () => reject(new Error('network'))
+        xhr.send(fd)
+      })
       setTitle(''); setDocx(null); setCover(null); setIcon(null)
+      setUploadPct(0)
       const data = await api.get<{ items: Article[] }>(`${API}/v1/admin/articles`); setArticles(data.items)
     } finally { setUploadBusy(false) }
   }
@@ -123,6 +139,14 @@ export default function App() {
                 <label>Cover<br/><input type="file" accept="image/*" onChange={e => setCover(e.target.files?.[0] ?? null)} /></label>
                 <label>Icon<br/><input type="file" accept="image/*" onChange={e => setIcon(e.target.files?.[0] ?? null)} /></label>
               </div>
+              {uploadBusy && (
+                <div style={{ display:'grid', gap:6 }}>
+                  <div style={{ height:8, background:'#eee', borderRadius:4, overflow:'hidden' }}>
+                    <div style={{ width:`${uploadPct}%`, height:'100%', background:'#3b82f6', transition:'width .2s' }} />
+                  </div>
+                  <small>{uploadPct}%</small>
+                </div>
+              )}
               <div><button type="submit" disabled={uploadBusy}>Upload</button></div>
             </form>
 

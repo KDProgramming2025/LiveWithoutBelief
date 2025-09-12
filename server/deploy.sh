@@ -52,6 +52,11 @@ log "Syncing Admin API runtime to $API_DST_DIR"
 ensure_dir "$API_DST_DIR"
 run rsync -a --delete "$API_DIR/dist/" "$API_DST_DIR/"
 
+# Ensure writable data directory for runtime (owned by service user)
+ensure_dir "$API_DST_DIR/data/articles"
+run chown -R www-data:www-data "$API_DST_DIR/data"
+run chmod -R 775 "$API_DST_DIR/data"
+
 # Systemd unit for Admin API
 log "Writing systemd unit /etc/systemd/system/$ADMIN_API_SERVICE"
 cat > "/etc/systemd/system/$ADMIN_API_SERVICE" <<SYSTEMD

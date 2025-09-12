@@ -237,7 +237,7 @@ export function buildServer(): FastifyInstance {
                 iconBuf = buf; iconOrig = f.filename;
               }
             } finally {
-              try { await fs.unlink(f.filepath); } catch {}
+              try { await fs.unlink(f.filepath); } catch (e) { req.log.warn({ err: e, file: f.filepath }, 'cleanup tmp file failed'); }
             }
           }
         }
