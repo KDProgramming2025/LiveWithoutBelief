@@ -109,7 +109,12 @@ export default function App() {
   }
 
   const searchUsers = async (e: React.FormEvent) => { e.preventDefault(); const res = await api.get<{ query: string; users: UserListItem[] }>(`${API}/v1/admin/users/search?q=${encodeURIComponent(query)}`); setUsers(res.users) }
-  const removeUser = async (id: string) => { await api.del(`${API}/v1/admin/users/${id}`); await searchUsers(new Event('submit') as any) }
+  const removeUser = async (id: string) => {
+    await api.del(`${API}/v1/admin/users/${id}`)
+    // refresh total and current search results
+    try { const sum = await api.get<UsersSummary>(`${API}/v1/admin/users/summary`); setUsersTotal(sum.total) } catch {}
+    await searchUsers(new Event('submit') as any)
+  }
 
   if (auth === 'unknown') return <div style={{ padding: 16 }}>Loading…</div>
   if (auth === 'no') return <Login onDone={() => setAuth('yes')} />
