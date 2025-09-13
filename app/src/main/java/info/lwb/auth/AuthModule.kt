@@ -119,9 +119,10 @@ object AuthProvisionModule {
     fun provideAutoTokenRefresher(
         storage: SecureStorage,
         authFacade: AuthFacade,
+        sessionValidator: SessionValidator,
         appScope: CoroutineScope,
         refreshConfig: TokenRefreshConfig,
-    ): AutoTokenRefresher = AutoTokenRefresher(storage, authFacade, appScope, refreshConfig).apply { start() }
+    ): AutoTokenRefresher = AutoTokenRefresher(storage, authFacade, sessionValidator, appScope, refreshConfig).apply { start() }
 
     @Provides
     @Singleton

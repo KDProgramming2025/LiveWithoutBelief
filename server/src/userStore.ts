@@ -7,6 +7,8 @@ export interface UserSummary { id: string; username: string; createdAt: string; 
 export interface UserStore {
   create(username: string, passwordHash: string): Promise<UserRecord | null> | UserRecord | null;
   findByUsername(username: string): Promise<UserRecord | undefined> | UserRecord | undefined;
+  // Upsert a user by username with provided passwordHash; returns the record whether created or existing
+  upsert(username: string, passwordHash: string): Promise<UserRecord> | UserRecord;
   count(): Promise<number> | number;
   search(q: string, limit: number, offset: number): Promise<UserSummary[]> | UserSummary[];
   updateLastLogin(userId: string): Promise<void> | void;
@@ -18,6 +20,14 @@ export class InMemoryUserStore implements UserStore {
   create(username: string, passwordHash: string): UserRecord | null {
     const key = username.toLowerCase();
     if (this.byUsername.has(key)) return null;
+    const rec: UserRecord = { id: crypto.randomBytes(12).toString('hex'), username: key, passwordHash, createdAt: new Date().toISOString(), lastLogin: undefined, deletedAt: null };
+    this.byUsername.set(key, rec);
+    return rec;
+  }
+  upsert(username: string, passwordHash: string): UserRecord {
+    const key = username.toLowerCase();
+    const existing = this.byUsername.get(key);
+    if (existing) return existing;
     const rec: UserRecord = { id: crypto.randomBytes(12).toString('hex'), username: key, passwordHash, createdAt: new Date().toISOString(), lastLogin: undefined, deletedAt: null };
     this.byUsername.set(key, rec);
     return rec;
@@ -104,6 +114,18 @@ export class PostgresUserStore implements UserStore {
     const res = await this.withClient(c => c.query('SELECT id, username, password_hash, created_at, last_login, deleted_at FROM users WHERE username=$1', [uname]));
     const row = res.rows[0];
     if (!row) return undefined;
+    return { id: row.id, username: row.username, passwordHash: row.password_hash, createdAt: row.created_at.toISOString?.() || row.created_at, lastLogin: row.last_login?.toISOString?.() || row.last_login, deletedAt: row.deleted_at?.toISOString?.() || row.deleted_at };
+  }
+
+  async upsert(username: string, passwordHash: string): Promise<UserRecord> {
+    await this.ensureSchema();
+    const uname = username.toLowerCase();
+    // Try insert, if conflict, return existing
+    const res = await this.withClient(c => c.query(
+      'INSERT INTO users (id, username, password_hash) VALUES ($1,$2,$3) ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id, username, password_hash, created_at, last_login, deleted_at',
+      [crypto.randomBytes(12).toString('hex'), uname, passwordHash]
+    ));
+    const row = res.rows[0];
     return { id: row.id, username: row.username, passwordHash: row.password_hash, createdAt: row.created_at.toISOString?.() || row.created_at, lastLogin: row.last_login?.toISOString?.() || row.last_login, deletedAt: row.deleted_at?.toISOString?.() || row.deleted_at };
   }
 

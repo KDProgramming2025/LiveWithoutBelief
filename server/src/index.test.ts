@@ -66,6 +66,22 @@ describe('auth validate', () => {
   });
 });
 
+describe('google validate creates user and disables password login', () => {
+  test('validate then password login is blocked', async () => {
+    // First validate a Google token which should create (or update) a local user with username=email
+    const v = await app.inject({ method: 'POST', url: '/v1/auth/validate', payload: { idToken: 'good-token' } });
+    expect([200, 401]).toContain(v.statusCode);
+    if (v.statusCode !== 200) return; // if revoked test ran before, skip
+    const email = 'u@example.com';
+    // Try password login with that email as username should be disabled/blocked
+    const login = await app.inject({ method: 'POST', url: '/v1/auth/login', payload: { username: email, password: 'does-not-matter' } });
+    // Expect forbidden with specific error
+    expect(login.statusCode).toBe(403);
+    const body = login.json();
+    expect(body.error).toBe('password_login_disabled');
+  });
+});
+
 describe('auth revoke', () => {
   test('revoke then validate gets revoked', async () => {
     const revokeRes = await app.inject({ method: 'POST', url: '/v1/auth/revoke', payload: { idToken: 'good-token' } });
