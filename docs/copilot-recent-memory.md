@@ -65,3 +65,16 @@ Follow-up: Robust Google linkage + deploy
 - Server (/v1/auth/validate): Now derives username from email if present, otherwise uses `google:sub`; always upserts a user with sentinel password "GOOGLE_ONLY" and updates last_login on every validate; added logs for linkage and last_login.
 - Deployed to VPS via server_commands.sh and confirmed service health behind nginx. Bypass remains enabled via GOOGLE_CERTS_BYPASS=1 due to region blocking Google cert fetch; audience still checked against GOOGLE_CLIENT_ID.
 - Next verification: Use Android to sign in with Google; in Admin Users, confirm creation (email or google:sub) and last_login updates; delete the user then re-sign-in to confirm re-creation.
+
+Diagnostics just ran (server + DB)
+- Env on VPS confirms GOOGLE_CERTS_BYPASS=1 and correct DATABASE_URL; health at /health returns {"status":"ok"} locally and via nginx.
+- Journals show earlier 403s for Google certs (pre-bypass) and one /v1/auth/validate 200 before the latest restart; after the most recent restart there have been no /v1/auth/validate requests yet.
+- Postgres users table schema: id, username, password_hash, created_at, last_login, deleted_at. There is no email column (expected: we store email in username when available, else google:sub).
+- Current DB rows: COUNT(*) = 1 (only username "mammad"), last_login updated. No usernames matching email or google:sub patterns yet, so the Google user has not been inserted in production.
+
+Action required to proceed
+- Trigger a fresh Google Sign-In from the Android app (or any client) to hit /v1/auth/validate. With bypass enabled, the server should upsert the user (username = email if present, else google:sub) and update last_login.
+- After sign-in, check Admin > Users (search your email or "google:") and we can re-run the diagnostics to verify the new row and last_login value.
+
+Client-side visibility improvement
+- Added debug logs in RemoteSessionValidator to print the exact /v1/auth/validate URL, payload length, and HTTP response code. Check Logcat tag "AuthValidate" during sign-in to confirm the request reaches https://aparat.feezor.net/lwb-api.

@@ -113,7 +113,6 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     const parse = bodySchema.safeParse((req as FastifyRequest).body);
     if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
     const { idToken } = parse.data;
-    if (await revocations.isRevoked(idToken)) return reply.code(401).send({ error: 'revoked' });
     try {
       let payload: TokenPayload | undefined;
       if (opts.googleBypass) {
@@ -187,8 +186,14 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     ]);
     const parsed = bodySchema.safeParse((req as FastifyRequest).body);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_body' });
-    const tokenValue = 'idToken' in parsed.data ? parsed.data.idToken : parsed.data.token;
-    await revocations.revoke(tokenValue);
+    // Only revoke our own password JWTs. Google ID tokens are short-lived and should not be locally blacklisted.
+    if ('token' in parsed.data) {
+      const tokenValue = parsed.data.token;
+      await revocations.revoke(tokenValue);
+      app.log.info({ event: 'revoke_pwd' }, 'password token revoked');
+    } else {
+      app.log.info({ event: 'revoke_google_ignored' }, 'ignored revoke for Google ID token');
+    }
     return { revoked: true };
   });
 
