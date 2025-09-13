@@ -3,33 +3,36 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import jwt from 'jsonwebtoken';
-// Local minimal user store proxy: call public server API if configured; fallback to 0/[]
+// Direct Postgres user access (same schema as main server). Falls back to empty if DATABASE_URL missing.
 type UserSummary = { id: string; username: string; createdAt: string };
-function buildUserProxy() {
-  const base = process.env.LWB_SERVER_API_BASE || process.env.AUTH_BASE_URL || '';
-  const fetchJson = async (url: string) => {
-    const r = await fetch(url, { headers: { 'Cache-Control': 'no-store' } as any } as any);
-    if (!r.ok) throw new Error(String(r.status));
-    return r.json();
-  };
+function buildUserStore() {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    return {
+      async count() { return 0; },
+      async search(_q: string, _limit: number, _offset: number): Promise<UserSummary[]> { return []; },
+    };
+  }
+  // Lazy import to keep startup fast
+  const { Pool } = require('pg') as typeof import('pg');
+  const pool = new Pool({ connectionString: url, ssl: /localhost|127.0.0.1/.test(url) ? false : { rejectUnauthorized: false } });
+  async function query<T = any>(text: string, params?: any[]): Promise<{ rows: T[] }> {
+    const client = await pool.connect();
+    try { const res = await client.query(text, params); return { rows: res.rows as T[] }; } finally { client.release(); }
+  }
   return {
     async count(): Promise<number> {
-      if (!base) return 0;
-      try {
-        const j = await fetchJson(base.replace(/\/$/, '') + '/v1/admin/users/count');
-        return Number(j.total || 0);
-      } catch { return 0; }
+      const r = await query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM users');
+      return Number(r.rows[0]?.cnt || 0);
     },
     async search(q: string, limit: number, offset: number): Promise<UserSummary[]> {
-      if (!base) return [];
-      try {
-        const u = new URL(base.replace(/\/$/, '') + '/v1/admin/users/search');
-        u.searchParams.set('q', q);
-        u.searchParams.set('limit', String(limit));
-        u.searchParams.set('offset', String(offset));
-        const j = await fetchJson(u.toString());
-        return Array.isArray(j.users) ? j.users : [];
-      } catch { return []; }
+      const needle = q.trim() ? `%${q.trim().toLowerCase()}%` : null;
+      const sql = needle ? 'SELECT id, username, created_at FROM users WHERE username ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3'
+        : 'SELECT id, username, created_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2';
+      const args = needle ? [needle, Math.max(1, Math.min(200, limit | 0)), Math.max(0, offset | 0)]
+        : [Math.max(1, Math.min(200, limit | 0)), Math.max(0, offset | 0)];
+      const r = await query(sql, args as any);
+      return r.rows.map((row: any) => ({ id: row.id, username: row.username, createdAt: row.created_at?.toISOString?.() || row.created_at }));
     },
   };
 }
@@ -97,7 +100,7 @@ export function buildServer(): FastifyInstance {
   const ADMIN_USER = process.env.ADMIN_PANEL_USERNAME || '';
   const ADMIN_PASS = process.env.ADMIN_PANEL_PASSWORD || '';
   const JWT_SECRET = process.env.ADMIN_PANEL_JWT_SECRET || process.env.PWD_JWT_SECRET || 'CHANGE_ME_DEV';
-  const users = buildUserProxy();
+  const users = buildUserStore();
   // Best-effort ensure; don't crash if lacking permissions at boot
   try { ensureDirSync(SECURE_ROOT); } catch (e) { server.log.warn({ err: e }, `Cannot ensure SECURE_ROOT at boot: ${SECURE_ROOT}`); }
   try { ensureDirSync(PUBLIC_ROOT); } catch (e) { server.log.warn({ err: e }, `Cannot ensure PUBLIC_ROOT at boot: ${PUBLIC_ROOT}`); }

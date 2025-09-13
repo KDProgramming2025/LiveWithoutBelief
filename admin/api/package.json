@@ -16,7 +16,8 @@
   "@fastify/multipart": "^9.0.0",
   "jsonwebtoken": "^9.0.2",
   "sanitize-html": "^2.13.0",
-  "mammoth": "^1.6.0"
+  "mammoth": "^1.6.0",
+  "pg": "^8.11.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.20",
