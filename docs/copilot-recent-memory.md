@@ -16,11 +16,20 @@ Client app updates
 - Fixed Android ALTCHA solver: use prefix match for challenge (per altcha-lib) instead of full-hash equality.
 - Added AltchaSolver unit tests. Registration should no longer fail with altcha_failed due to solver mismatch.
 
+Recent ops (Users panel → Postgres direct)
+- Found DATABASE_URL missing in /etc/lwb-server.env; restored from backup and restarted lwb-admin-api.
+- Bundled pg into admin/api build (tsup noExternal includes 'pg') to avoid missing runtime deps.
+- Hard-reset server repo to remote branch, rebuilt, and redeployed Admin Web/API via server/deploy.sh.
+- Verified via local and nginx-proxied probes: /v1/admin/users/summary now returns total=7; /v1/admin/users/search returns newest users.
+
+New changes (Users: last-login + remove)
+- Server API: Added last_login and deleted_at columns (auto-migration in userStore). Update last_login on successful password login, block deleted users.
+- Admin API: Users count/search now filter deleted users and include lastLogin. Implemented DELETE /v1/admin/users/:id as soft-delete (sets deleted_at).
+- Admin Web: Already renders lastLogin and wired Remove button; should now work end-to-end.
+
 Next steps (small)
-- UI: Login and hit Articles tab; if list is empty, click a new Reindex action (or call POST /v1/admin/articles/reindex) to build metadata from existing public articles.
-- Confirm GET /LWB/Admin/api/v1/admin/articles returns items immediately after upload; we added atomic-write + cache and a filesystem bootstrap.
-- Future: Wire User Management endpoints to existing Postgres backend.
- - Verify password registration end-to-end on device; if still failing, check server ALTCHA_HMAC_KEY and ensure AUTH_BASE_URL points to the correct host.
+- In Admin UI, refresh Users tab; confirm total and search work (pagination optional follow-up).
+- Keep server_commands.sh ephemeral and empty after use.
 
 Do not repeat
 - Re-creating/repairing dirs or credentials unless they change.

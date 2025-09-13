@@ -178,10 +178,13 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   app.log.info({ event: 'pwd_login_attempt', username }, 'password login attempt');
   const user = await users.findByUsername(username);
   if (!user) { app.log.warn({ event: 'pwd_login_invalid_user', username }, 'invalid username'); return reply.code(401).send({ error: 'invalid_credentials' }); }
+  if ((user as any).deletedAt) { app.log.warn({ event: 'pwd_login_deleted_user', username }, 'deleted user login attempt'); return reply.code(403).send({ error: 'account_deleted' }); }
     const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) { app.log.warn({ event: 'pwd_login_bad_password', username }, 'bad password'); return reply.code(401).send({ error: 'invalid_credentials' }); }
     const token = jwt.sign({ sub: user.id, username: user.username, typ: 'pwd' }, jwtSecret, { expiresIn: '1h' });
   app.log.info({ event: 'pwd_login_success', username }, 'password login success');
+  // record last login timestamp
+  try { await users.updateLastLogin(user.id); } catch {}
     return { token, user: { id: user.id, username: user.username } };
   });
 

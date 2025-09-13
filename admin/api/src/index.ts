@@ -4,7 +4,7 @@ import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import jwt from 'jsonwebtoken';
 // Direct Postgres user access (same schema as main server). Falls back to empty if DATABASE_URL missing.
-type UserSummary = { id: string; username: string; createdAt: string };
+type UserSummary = { id: string; username: string; createdAt: string; lastLogin?: string };
 function buildUserStore() {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -22,17 +22,21 @@ function buildUserStore() {
   }
   return {
     async count(): Promise<number> {
-      const r = await query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM users');
+      const r = await query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM users WHERE deleted_at IS NULL');
       return Number(r.rows[0]?.cnt || 0);
     },
     async search(q: string, limit: number, offset: number): Promise<UserSummary[]> {
       const needle = q.trim() ? `%${q.trim().toLowerCase()}%` : null;
-      const sql = needle ? 'SELECT id, username, created_at FROM users WHERE username ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3'
-        : 'SELECT id, username, created_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2';
+      const sql = needle ? 'SELECT id, username, created_at, last_login FROM users WHERE deleted_at IS NULL AND username ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3'
+        : 'SELECT id, username, created_at, last_login FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2';
       const args = needle ? [needle, Math.max(1, Math.min(200, limit | 0)), Math.max(0, offset | 0)]
         : [Math.max(1, Math.min(200, limit | 0)), Math.max(0, offset | 0)];
       const r = await query(sql, args as any);
-      return r.rows.map((row: any) => ({ id: row.id, username: row.username, createdAt: row.created_at?.toISOString?.() || row.created_at }));
+      return r.rows.map((row: any) => ({ id: row.id, username: row.username, createdAt: row.created_at?.toISOString?.() || row.created_at, lastLogin: row.last_login?.toISOString?.() || row.last_login }));
+    },
+    async softDelete(id: string): Promise<{ deleted: boolean }> {
+      const r = await query('UPDATE users SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL', [id]);
+      return { deleted: (r as any).rowCount > 0 };
     },
   };
 }
@@ -459,8 +463,14 @@ export function buildServer(): FastifyInstance {
   server.delete('/v1/admin/users/:id', async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
     const id = (req.params as { id: string }).id;
-    // TODO: replace with DB deletion or deactivation
-    return { ok: false, error: 'not_implemented', id };
+    try {
+      const res = await (users as any).softDelete?.(id);
+      if (!res || !res.deleted) return reply.code(404).send({ ok: false, error: 'not_found' });
+      return { ok: true };
+    } catch (e) {
+      server.log.error({ err: e, id }, 'users.delete failed');
+      return reply.code(500).send({ ok: false, error: 'server_error' });
+    }
   });
 
   return server;
