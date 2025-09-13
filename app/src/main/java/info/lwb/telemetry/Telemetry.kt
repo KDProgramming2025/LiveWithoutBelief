@@ -7,23 +7,29 @@ package info.lwb.telemetry
 import android.app.Application
 import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.google.firebase.perf.FirebasePerformance
-import com.google.firebase.perf.metrics.Trace
 
 /** Minimal telemetry facade to keep SDKs behind a tiny API. */
 object Telemetry {
     @Volatile private var analytics: FirebaseAnalytics? = null
-
-    @Volatile private var crashlytics: FirebaseCrashlytics? = null
-
-    @Volatile private var perf: FirebasePerformance? = null
+    // Crashlytics/Performance are optional; access via reflection to avoid hard deps
+    @Volatile private var crashlytics: Any? = null
+    @Volatile private var perf: Any? = null
 
     fun init(app: Application) {
         // Best-effort init; safe to call multiple times.
         runCatching { analytics = FirebaseAnalytics.getInstance(app) }
-        runCatching { crashlytics = FirebaseCrashlytics.getInstance() }
-        runCatching { perf = FirebasePerformance.getInstance() }
+        // Optional Crashlytics
+        crashlytics = runCatching {
+            val cls = Class.forName("com.google.firebase.crashlytics.FirebaseCrashlytics")
+            val getInstance = cls.getMethod("getInstance")
+            getInstance.invoke(null)
+        }.getOrNull()
+        // Optional Performance
+        perf = runCatching {
+            val cls = Class.forName("com.google.firebase.perf.FirebasePerformance")
+            val getInstance = cls.getMethod("getInstance")
+            getInstance.invoke(null)
+        }.getOrNull()
     }
 
     fun logEvent(name: String, params: Map<String, Any?> = emptyMap()) {
@@ -44,19 +50,34 @@ object Telemetry {
     }
 
     fun recordCaught(t: Throwable) {
-        crashlytics?.recordException(t)
+        val c = crashlytics ?: return
+        runCatching {
+            val cls = c.javaClass
+            val m = cls.getMethod("recordException", Throwable::class.java)
+            m.invoke(c, t)
+        }
     }
 
     fun startTrace(name: String): CloseableTrace? {
         val p = perf ?: return null
-        val trace = runCatching { p.newTrace(name.take(32)) }.getOrNull() ?: return null
-        trace.start()
+        val trace = runCatching {
+            val cls = p.javaClass
+            val m = cls.getMethod("newTrace", String::class.java)
+            m.invoke(p, name.take(32))
+        }.getOrNull() ?: return null
+        runCatching {
+            val m = trace.javaClass.getMethod("start")
+            m.invoke(trace)
+        }
         return CloseableTrace(trace)
     }
 }
 
-class CloseableTrace(private val trace: Trace) : AutoCloseable {
+class CloseableTrace(private val trace: Any) : AutoCloseable {
     override fun close() {
-        runCatching { trace.stop() }
+        runCatching {
+            val m = trace.javaClass.getMethod("stop")
+            m.invoke(trace)
+        }
     }
 }

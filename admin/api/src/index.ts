@@ -3,6 +3,36 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import jwt from 'jsonwebtoken';
+// Local minimal user store proxy: call public server API if configured; fallback to 0/[]
+type UserSummary = { id: string; username: string; createdAt: string };
+function buildUserProxy() {
+  const base = process.env.LWB_SERVER_API_BASE || process.env.AUTH_BASE_URL || '';
+  const fetchJson = async (url: string) => {
+    const r = await fetch(url, { headers: { 'Cache-Control': 'no-store' } as any } as any);
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  };
+  return {
+    async count(): Promise<number> {
+      if (!base) return 0;
+      try {
+        const j = await fetchJson(base.replace(/\/$/, '') + '/v1/admin/users/count');
+        return Number(j.total || 0);
+      } catch { return 0; }
+    },
+    async search(q: string, limit: number, offset: number): Promise<UserSummary[]> {
+      if (!base) return [];
+      try {
+        const u = new URL(base.replace(/\/$/, '') + '/v1/admin/users/search');
+        u.searchParams.set('q', q);
+        u.searchParams.set('limit', String(limit));
+        u.searchParams.set('offset', String(offset));
+        const j = await fetchJson(u.toString());
+        return Array.isArray(j.users) ? j.users : [];
+      } catch { return []; }
+    },
+  };
+}
 import path from 'path';
 import fs from 'fs/promises';
 import fssync from 'fs';
@@ -67,6 +97,7 @@ export function buildServer(): FastifyInstance {
   const ADMIN_USER = process.env.ADMIN_PANEL_USERNAME || '';
   const ADMIN_PASS = process.env.ADMIN_PANEL_PASSWORD || '';
   const JWT_SECRET = process.env.ADMIN_PANEL_JWT_SECRET || process.env.PWD_JWT_SECRET || 'CHANGE_ME_DEV';
+  const users = buildUserProxy();
   // Best-effort ensure; don't crash if lacking permissions at boot
   try { ensureDirSync(SECURE_ROOT); } catch (e) { server.log.warn({ err: e }, `Cannot ensure SECURE_ROOT at boot: ${SECURE_ROOT}`); }
   try { ensureDirSync(PUBLIC_ROOT); } catch (e) { server.log.warn({ err: e }, `Cannot ensure PUBLIC_ROOT at boot: ${PUBLIC_ROOT}`); }
@@ -401,14 +432,26 @@ export function buildServer(): FastifyInstance {
   });
   server.get('/v1/admin/users/summary', async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
-    // TODO: replace with DB query (users count)
-    return { total: 0 };
+    try {
+  const total = await users.count();
+      return { total };
+    } catch (e) {
+      server.log.error({ err: e }, 'users.summary failed');
+      return reply.code(500).send({ error: 'server_error' });
+    }
   });
   server.get('/v1/admin/users/search', async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
-    const q = (req.query as { q?: string }).q || '';
-    // TODO: replace with DB query to fetch username, createdAt, bookmarksCount, discussionsCount, lastLogin
-    return { query: q, users: [] };
+    const q = (req.query as { q?: string; limit?: string; offset?: string }).q || '';
+    const limit = Math.max(1, Math.min(100, Number((req.query as any).limit) || 20));
+    const offset = Math.max(0, Number((req.query as any).offset) || 0);
+    try {
+  const found = await users.search(q, limit, offset);
+      return { query: q, users: found };
+    } catch (e) {
+      server.log.error({ err: e }, 'users.search failed');
+      return reply.code(500).send({ error: 'server_error' });
+    }
   });
   server.delete('/v1/admin/users/:id', async (req, reply) => {
     if (!requireAdmin(req, reply)) return;

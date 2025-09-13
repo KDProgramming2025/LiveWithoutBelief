@@ -3,9 +3,12 @@ import { Pool, PoolClient } from 'pg';
 import type { ConnectionOptions as TlsConnectionOptions } from 'tls';
 
 export interface UserRecord { id: string; username: string; passwordHash: string; createdAt: string; }
+export interface UserSummary { id: string; username: string; createdAt: string; }
 export interface UserStore {
   create(username: string, passwordHash: string): Promise<UserRecord | null> | UserRecord | null;
   findByUsername(username: string): Promise<UserRecord | undefined> | UserRecord | undefined;
+  count(): Promise<number> | number;
+  search(q: string, limit: number, offset: number): Promise<UserSummary[]> | UserSummary[];
 }
 
 // In-memory implementation (used for tests / fallback)
@@ -19,6 +22,14 @@ export class InMemoryUserStore implements UserStore {
     return rec;
   }
   findByUsername(username: string): UserRecord | undefined { return this.byUsername.get(username.toLowerCase()); }
+  count(): number { return this.byUsername.size; }
+  search(q: string, limit: number, offset: number): UserSummary[] {
+    const needle = q.trim().toLowerCase();
+    const all = Array.from(this.byUsername.values())
+      .filter(u => !needle || u.username.includes(needle))
+      .sort((a,b) => (a.createdAt < b.createdAt ? 1 : -1));
+    return all.slice(offset, offset + limit).map(u => ({ id: u.id, username: u.username, createdAt: u.createdAt }));
+  }
 }
 
 // Postgres implementation
@@ -87,6 +98,22 @@ export class PostgresUserStore implements UserStore {
     const row = res.rows[0];
     if (!row) return undefined;
     return { id: row.id, username: row.username, passwordHash: row.password_hash, createdAt: row.created_at.toISOString?.() || row.created_at };
+  }
+
+  async count(): Promise<number> {
+    await this.ensureSchema();
+    const res = await this.withClient(c => c.query('SELECT COUNT(*)::int AS cnt FROM users'));
+    return Number(res.rows[0]?.cnt || 0);
+  }
+
+  async search(q: string, limit: number, offset: number): Promise<UserSummary[]> {
+    await this.ensureSchema();
+    const needle = `%${q.trim().toLowerCase()}%`;
+    const res = await this.withClient(c => c.query(
+      'SELECT id, username, created_at FROM users WHERE $1 = $$%%$$ OR username ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+      [needle, Math.max(1, Math.min(200, limit | 0)), Math.max(0, offset | 0)]
+    ));
+    return res.rows.map(r => ({ id: r.id, username: r.username, createdAt: r.created_at.toISOString?.() || r.created_at }));
   }
 }
 
