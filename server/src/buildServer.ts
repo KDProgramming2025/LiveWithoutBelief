@@ -28,6 +28,7 @@ export class InMemoryRevocationStore implements RevocationStore {
 
 export interface BuildServerOptions {
   googleClientId: string;
+  googleBypass?: boolean; // DEV ONLY: allow bypassing online verification if Google is blocked
   revocations?: RevocationStore;
   jwtSecret?: string; // for password tokens
   altchaBypass?: boolean; // allow skipping ALTCHA verification (tests/dev only)
@@ -114,8 +115,32 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     const { idToken } = parse.data;
     if (await revocations.isRevoked(idToken)) return reply.code(401).send({ error: 'revoked' });
     try {
-      const ticket = await oauthClient.verifyIdToken({ idToken, audience: opts.googleClientId });
-      const payload: TokenPayload | undefined = ticket.getPayload();
+      let payload: TokenPayload | undefined;
+      if (opts.googleBypass) {
+        // DEV ONLY: decode without verifying signature (use only when Google endpoints are blocked)
+        try {
+          const parts = idToken.split('.');
+          if (parts.length >= 2) {
+            const json = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+            const parsed = JSON.parse(json);
+            // basic audience check to reduce risk when bypassing
+            if (parsed && typeof parsed === 'object' && parsed.aud === opts.googleClientId) {
+              payload = parsed as unknown as TokenPayload;
+            } else {
+              (req as FastifyRequest).log?.warn({ event: 'google_bypass_aud_mismatch', aud: (parsed as any)?.aud }, 'ID token aud does not match configured client id');
+              return reply.code(401).send({ error: 'invalid_token' });
+            }
+          } else {
+            return reply.code(401).send({ error: 'invalid_token' });
+          }
+        } catch (e) {
+          (req as FastifyRequest).log?.warn({ err: e }, 'google bypass decode failed');
+          return reply.code(401).send({ error: 'invalid_token' });
+        }
+      } else {
+        const ticket = await oauthClient.verifyIdToken({ idToken, audience: opts.googleClientId });
+        payload = ticket.getPayload() || undefined;
+      }
       if (!payload) return reply.code(401).send({ error: 'invalid_token' });
       // Link Google user to local user by full email as username; create if missing with disabled password hash.
       try {

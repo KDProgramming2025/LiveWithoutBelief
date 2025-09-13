@@ -19,7 +19,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'CHANGE_ME';
 const PORT = Number(process.env.PORT || process.env.SERVER_API_PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
 
-const app = buildServer({ googleClientId: GOOGLE_CLIENT_ID });
+const GOOGLE_BYPASS = process.env.GOOGLE_CERTS_BYPASS === '1';
+const app = buildServer({ googleClientId: GOOGLE_CLIENT_ID, googleBypass: GOOGLE_BYPASS });
 
 app.listen({ port: PORT, host: HOST }).then(() => {
   app.log.info({ port: PORT }, 'server started');
