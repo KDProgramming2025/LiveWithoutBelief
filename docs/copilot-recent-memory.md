@@ -27,6 +27,11 @@ New changes (Users: last-login + remove)
 - Admin API: Users count/search now filter deleted users and include lastLogin. Implemented DELETE /v1/admin/users/:id as soft-delete (sets deleted_at).
 - Admin Web: Already renders lastLogin and wired Remove button; should now work end-to-end.
 
+Operational guardrails (server_commands.sh)
+- Purpose: Ephemeral scratchpad for commands to run on the VPS. Never persist commands.
+- Usage flow: write commands → scp to lwb-server:/tmp/server_commands.sh → ssh to run → immediately empty the file and commit the empty version.
+- Enforcements: Added CI workflow .github/workflows/guard-server-commands.yml and local pre-commit hook scripts/githooks/pre-commit to fail when non-comment lines exist.
+
 Next steps (small)
 - In Admin UI, refresh Users tab; confirm total and search work (pagination optional follow-up).
 - Keep server_commands.sh ephemeral and empty after use.
