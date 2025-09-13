@@ -110,6 +110,7 @@ export default function App() {
 
   const searchUsers = async (e: React.FormEvent) => { e.preventDefault(); const res = await api.get<{ query: string; users: UserListItem[] }>(`${API}/v1/admin/users/search?q=${encodeURIComponent(query)}`); setUsers(res.users) }
   const removeUser = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this user? This action cannot be undone.')) return;
     try {
       await api.del(`${API}/v1/admin/users/${id}`)
     } catch (err: any) {

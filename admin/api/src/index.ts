@@ -38,9 +38,12 @@ function buildUserStore() {
     }
     return initPromise;
   }
-  async function query<T = any>(text: string, params?: any[]): Promise<{ rows: T[] }> {
+  async function query<T = any>(text: string, params?: any[]): Promise<{ rows: T[]; rowCount: number }> {
     const client = await pool.connect();
-    try { const res = await client.query(text, params); return { rows: res.rows as T[] }; } finally { client.release(); }
+    try {
+      const res = await client.query(text, params);
+      return { rows: res.rows as T[], rowCount: (res as any)?.rowCount ?? 0 };
+    } finally { client.release(); }
   }
   return {
     async count(): Promise<number> {
@@ -58,10 +61,16 @@ function buildUserStore() {
       const r = await query(sql, args as any);
       return r.rows.map((row: any) => ({ id: row.id, username: row.username, createdAt: row.created_at?.toISOString?.() || row.created_at, lastLogin: row.last_login?.toISOString?.() || row.last_login }));
     },
-    async softDelete(id: string): Promise<{ deleted: boolean }> {
+    async softDelete(id: string): Promise<{ deleted: boolean; alreadyDeleted?: boolean; notFound?: boolean }> {
       await ensureSchema();
       const r = await query('UPDATE users SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL', [id]);
-      return { deleted: (r as any).rowCount > 0 };
+      if (r.rowCount > 0) return { deleted: true };
+      // No row updated — check if the user exists but is already deleted
+      const exists = await query<{ exists: boolean }>('SELECT 1 as exists FROM users WHERE id = $1 LIMIT 1', [id]);
+      if (exists.rows && exists.rows.length > 0) {
+        return { deleted: false, alreadyDeleted: true };
+      }
+      return { deleted: false, notFound: true };
     },
   };
 }
@@ -490,7 +499,10 @@ export function buildServer(): FastifyInstance {
     const id = (req.params as { id: string }).id;
     try {
       const res = await (users as any).softDelete?.(id);
-      if (!res || !res.deleted) return reply.code(404).send({ ok: false, error: 'not_found' });
+      if (!res) return reply.code(500).send({ ok: false, error: 'server_error' });
+      if (res.deleted) return { ok: true };
+      if (res.alreadyDeleted) return { ok: true, alreadyDeleted: true };
+      if (res.notFound) return reply.code(404).send({ ok: false, error: 'not_found' });
       return { ok: true };
     } catch (e) {
       server.log.error({ err: e, id }, 'users.delete failed');
