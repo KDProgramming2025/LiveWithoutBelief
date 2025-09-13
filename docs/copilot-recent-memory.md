@@ -29,8 +29,8 @@ Production fix (server_error on Users endpoints)
 
 New changes (Users: last-login + remove)
 - Server API: Added last_login and deleted_at columns (auto-migration in userStore). Update last_login on successful password login, block deleted users.
-- Admin API: Users count/search now filter deleted users and include lastLogin. Implemented DELETE /v1/admin/users/:id as soft-delete (sets deleted_at).
-- Admin Web: Already renders lastLogin and wired Remove button; should now work end-to-end.
+- Admin API: Users count/search now filter deleted users and include lastLogin. DELETE /v1/admin/users/:id is soft-delete and now idempotent: returns 200 {ok:true} even if already deleted; only 404 when user id does not exist.
+- Admin Web: Renders lastLogin; Remove button now shows a confirmation modal before deletion and gracefully refreshes totals/search.
 
 Operational guardrails (server_commands.sh)
 - Purpose: Ephemeral scratchpad for commands to run on the VPS. Never persist commands.

@@ -117,6 +117,23 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       const ticket = await oauthClient.verifyIdToken({ idToken, audience: opts.googleClientId });
       const payload: TokenPayload | undefined = ticket.getPayload();
       if (!payload) return reply.code(401).send({ error: 'invalid_token' });
+      // Optional: map Google sub/email to a local user and block if soft-deleted
+      // Strategy: look up by username derived from email local-part; if not found, allow validate without DB coupling.
+      try {
+        const email = payload.email;
+        if (email) {
+          const uname = String(email).split('@')[0].toLowerCase();
+          const u = await users.findByUsername(uname);
+          if (u && (u as any).deletedAt) {
+            return reply.code(403).send({ error: 'account_deleted' });
+          }
+          // Record last_login when an existing user validates via Google
+          if (u) { try { await users.updateLastLogin(u.id); } catch {}
+          }
+        }
+      } catch (e) {
+        req.log?.warn({ err: e }, 'google validate user linkage failed');
+      }
       return {
         sub: payload.sub,
         email: payload.email,

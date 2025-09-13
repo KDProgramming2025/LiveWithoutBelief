@@ -1,4 +1,18 @@
-import 'dotenv/config';
+// Load env from /etc/lwb-server.env if present, then fallback to project .env
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+try {
+  if (fs.existsSync('/etc/lwb-server.env')) {
+    dotenv.config({ path: '/etc/lwb-server.env' });
+  }
+} catch {}
+try {
+  const localEnv = path.join(process.cwd(), '.env');
+  if (fs.existsSync(localEnv)) {
+    dotenv.config({ path: localEnv });
+  }
+} catch {}
 import { buildServer } from './buildServer.js';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'CHANGE_ME';
