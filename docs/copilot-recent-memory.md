@@ -22,6 +22,11 @@ Recent ops (Users panel → Postgres direct)
 - Hard-reset server repo to remote branch, rebuilt, and redeployed Admin Web/API via server/deploy.sh.
 - Verified via local and nginx-proxied probes: /v1/admin/users/summary now returns total=7; /v1/admin/users/search returns newest users.
 
+Production fix (server_error on Users endpoints)
+- Root cause: Admin API queried columns last_login/deleted_at that didn’t exist yet on the production DB.
+- Fix: Added safe startup migration in admin/api buildUserStore: ensureSchema() creates users table if missing and adds last_login, deleted_at via ALTER TABLE IF NOT EXISTS; all user queries call ensureSchema().
+- Deployed and verified on server: node+pg check OK, Users summary/search return data (total=7), delete endpoint works.
+
 New changes (Users: last-login + remove)
 - Server API: Added last_login and deleted_at columns (auto-migration in userStore). Update last_login on successful password login, block deleted users.
 - Admin API: Users count/search now filter deleted users and include lastLogin. Implemented DELETE /v1/admin/users/:id as soft-delete (sets deleted_at).
