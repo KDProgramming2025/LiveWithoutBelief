@@ -31,6 +31,8 @@ function buildUserStore() {
           );`);
           await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ');
           await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ');
+          // Purge any legacy soft-deleted users to enforce hard-delete semantics
+          try { await client.query('DELETE FROM users WHERE deleted_at IS NOT NULL'); } catch {}
         } finally {
           client.release();
         }
@@ -48,28 +50,23 @@ function buildUserStore() {
   return {
     async count(): Promise<number> {
       await ensureSchema();
-      const r = await query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM users WHERE deleted_at IS NULL');
+      const r = await query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM users');
       return Number(r.rows[0]?.cnt || 0);
     },
     async search(q: string, limit: number, offset: number): Promise<UserSummary[]> {
       await ensureSchema();
       const needle = q.trim() ? `%${q.trim().toLowerCase()}%` : null;
-      const sql = needle ? 'SELECT id, username, created_at, last_login FROM users WHERE deleted_at IS NULL AND username ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3'
-        : 'SELECT id, username, created_at, last_login FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2';
+      const sql = needle ? 'SELECT id, username, created_at, last_login FROM users WHERE username ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3'
+        : 'SELECT id, username, created_at, last_login FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2';
       const args = needle ? [needle, Math.max(1, Math.min(200, limit | 0)), Math.max(0, offset | 0)]
         : [Math.max(1, Math.min(200, limit | 0)), Math.max(0, offset | 0)];
       const r = await query(sql, args as any);
       return r.rows.map((row: any) => ({ id: row.id, username: row.username, createdAt: row.created_at?.toISOString?.() || row.created_at, lastLogin: row.last_login?.toISOString?.() || row.last_login }));
     },
-    async softDelete(id: string): Promise<{ deleted: boolean; alreadyDeleted?: boolean; notFound?: boolean }> {
+    async softDelete(id: string): Promise<{ deleted: boolean; notFound?: boolean }> {
       await ensureSchema();
-      const r = await query('UPDATE users SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL', [id]);
+      const r = await query('DELETE FROM users WHERE id = $1', [id]);
       if (r.rowCount > 0) return { deleted: true };
-      // No row updated — check if the user exists but is already deleted
-      const exists = await query<{ exists: boolean }>('SELECT 1 as exists FROM users WHERE id = $1 LIMIT 1', [id]);
-      if (exists.rows && exists.rows.length > 0) {
-        return { deleted: false, alreadyDeleted: true };
-      }
       return { deleted: false, notFound: true };
     },
   };
@@ -501,7 +498,6 @@ export function buildServer(): FastifyInstance {
       const res = await (users as any).softDelete?.(id);
       if (!res) return reply.code(500).send({ ok: false, error: 'server_error' });
       if (res.deleted) return { ok: true };
-      if (res.alreadyDeleted) return { ok: true, alreadyDeleted: true };
       if (res.notFound) return reply.code(404).send({ ok: false, error: 'not_found' });
       return { ok: true };
     } catch (e) {
