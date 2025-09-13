@@ -20,7 +20,12 @@ const PORT = Number(process.env.PORT || process.env.SERVER_API_PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
 
 const GOOGLE_BYPASS = process.env.GOOGLE_CERTS_BYPASS === '1';
-const app = buildServer({ googleClientId: GOOGLE_CLIENT_ID, googleBypass: GOOGLE_BYPASS });
+// Optional list of additional accepted audiences in bypass mode (comma-separated), e.g., Android client ID(s)
+const GOOGLE_ALLOWED_AUDIENCES = (process.env.GOOGLE_ALLOWED_AUDIENCES || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+const app = buildServer({ googleClientId: GOOGLE_CLIENT_ID, googleBypass: GOOGLE_BYPASS, allowedAudiences: GOOGLE_ALLOWED_AUDIENCES });
 
 app.listen({ port: PORT, host: HOST }).then(() => {
   app.log.info({ port: PORT }, 'server started');

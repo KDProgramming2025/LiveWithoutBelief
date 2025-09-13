@@ -29,6 +29,7 @@ export class InMemoryRevocationStore implements RevocationStore {
 export interface BuildServerOptions {
   googleClientId: string;
   googleBypass?: boolean; // DEV ONLY: allow bypassing online verification if Google is blocked
+  allowedAudiences?: string[]; // optional: additional accepted audiences for bypass mode (e.g., Android client ID)
   revocations?: RevocationStore;
   jwtSecret?: string; // for password tokens
   altchaBypass?: boolean; // allow skipping ALTCHA verification (tests/dev only)
@@ -51,7 +52,8 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 
   // Override Fastify default JSON parser to capture raw body & diagnose production failures.
   try { app.removeContentTypeParser('application/json'); } catch (_) { /* ignore */ }
-  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done: (err: Error | null, body: unknown) => void) => {
+  // Accept application/json with optional charset (e.g., application/json; charset=utf-8)
+  app.addContentTypeParser(/^application\/json($|;)/, { parseAs: 'string' }, (req, body, done: (err: Error | null, body: unknown) => void) => {
     const text = body as string;
     (req as FastifyRequest & { rawBody?: string }).rawBody = text;
     try {
@@ -114,8 +116,9 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
     const { idToken } = parse.data;
     try {
+      app.log.info({ event: 'validate_start', googleBypass: !!opts.googleBypass }, 'auth validate start');
       let payload: TokenPayload | undefined;
-      if (opts.googleBypass) {
+  if (opts.googleBypass) {
         // DEV ONLY: decode without verifying signature (use only when Google endpoints are blocked)
         try {
           const parts = idToken.split('.');
@@ -123,31 +126,46 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
             const json = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
             const parsed = JSON.parse(json);
             // basic audience check to reduce risk when bypassing
-            if (parsed && typeof parsed === 'object' && parsed.aud === opts.googleClientId) {
-              payload = parsed as unknown as TokenPayload;
+            if (parsed && typeof parsed === 'object') {
+              const aud: unknown = (parsed as any).aud;
+              const azp: unknown = (parsed as any).azp;
+              const allowed = new Set<string>([opts.googleClientId, ...(opts.allowedAudiences ?? [])]);
+              const audMatches = (typeof aud === 'string' && allowed.has(aud)) || (Array.isArray(aud) && aud.some(a => allowed.has(a)));
+              const azpMatches = typeof azp === 'string' && allowed.has(azp);
+              if (audMatches || azpMatches) {
+                if (!audMatches && azpMatches) {
+                  app.log.info({ event: 'google_bypass_accepted_via_azp', azp }, 'Accepted Google token via azp match');
+                }
+                if (audMatches) {
+                  app.log.info({ event: 'google_bypass_accepted_via_aud', aud }, 'Accepted Google token via aud match');
+                }
+                payload = parsed as unknown as TokenPayload;
+              } else {
+                app.log.warn({ event: 'google_bypass_aud_mismatch', aud, azp, expectedAllowed: Array.from(allowed) }, 'ID token audience/azp do not match allowed audiences');
+                return reply.code(401).send({ error: 'invalid_token' });
+              }
             } else {
-              (req as FastifyRequest).log?.warn({ event: 'google_bypass_aud_mismatch', aud: (parsed as any)?.aud }, 'ID token aud does not match configured client id');
+              app.log.warn({ event: 'google_bypass_invalid_payload' }, 'parsed token payload was not an object');
               return reply.code(401).send({ error: 'invalid_token' });
             }
           } else {
+            app.log.warn({ event: 'google_bypass_invalid_parts' }, 'ID token did not contain 2 parts');
             return reply.code(401).send({ error: 'invalid_token' });
           }
         } catch (e) {
-          (req as FastifyRequest).log?.warn({ err: e }, 'google bypass decode failed');
+          app.log.warn({ event: 'google_bypass_decode_failed', err: e }, 'google bypass decode failed');
           return reply.code(401).send({ error: 'invalid_token' });
         }
       } else {
         const ticket = await oauthClient.verifyIdToken({ idToken, audience: opts.googleClientId });
         payload = ticket.getPayload() || undefined;
       }
-      if (!payload) return reply.code(401).send({ error: 'invalid_token' });
+      if (!payload) { app.log.warn({ event: 'validate_no_payload' }, 'no token payload'); return reply.code(401).send({ error: 'invalid_token' }); }
       // Derive a stable username: prefer email; else fallback to google:sub
       try {
         const sub = payload.sub;
         const email = payload.email && String(payload.email).trim().length ? String(payload.email) : undefined;
-        if (!sub && !email) {
-          return reply.code(401).send({ error: 'invalid_token' });
-        }
+        if (!sub && !email) { app.log.warn({ event: 'google_validate_no_identity' }, 'google token missing sub/email'); return reply.code(401).send({ error: 'invalid_token' }); }
         const uname = (email ? email.toLowerCase() : `google:${sub}`);
         const existing = await users.findByUsername(uname);
         if (existing && (existing as any).deletedAt) {
@@ -162,7 +180,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
         }
         app.log.info({ event: 'google_validate_link', username: uname, action: existing ? 'existing' : 'created' }, 'google user linked');
       } catch (e) {
-        req.log?.warn({ err: e }, 'google validate user linkage failed');
+        app.log.warn({ event: 'google_validate_linkage_failed', err: e }, 'google validate user linkage failed');
       }
       return {
         sub: payload.sub,
@@ -173,7 +191,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
         exp: payload.exp,
       };
     } catch (e) {
-      (req as FastifyRequest).log?.warn({ err: e }, 'token verification failed');
+      app.log.warn({ event: 'validate_exception', err: e }, 'token verification failed');
       return reply.code(401).send({ error: 'invalid_token' });
     }
   });
