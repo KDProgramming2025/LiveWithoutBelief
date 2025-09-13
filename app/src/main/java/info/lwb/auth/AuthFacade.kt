@@ -298,6 +298,7 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
                 }
                 val msg = when (serverErr) {
                     "recaptcha_failed" -> "reCAPTCHA verification failed. Please retry."
+                    "altcha_failed" -> "Anti-bot verification failed. Please try again."
                     "username_exists" -> "Username already taken"
                     "invalid_credentials" -> "Invalid username or password"
                     "invalid_body" -> "Invalid input"
@@ -354,7 +355,15 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
             val json = Json { ignoreUnknownKeys = true }
             val ch = json.decodeFromString<AltchaChallenge>(body)
             val max = (ch.maxnumber ?: 100_000L).coerceAtMost(1_000_000L)
-            val number = withContext(Dispatchers.Default) { solveAltcha(ch.algorithm, ch.challenge, ch.salt, max) }
+            // Server expects prefix match (altcha-lib verifySolution)
+            val number = withContext(Dispatchers.Default) {
+                solveAltcha(
+                    algorithm = ch.algorithm,
+                    challengePrefix = ch.challenge,
+                    salt = ch.salt,
+                    max = max,
+                )
+            }
             if (BuildConfig.DEBUG) {
                 runCatching {
                     android.util.Log.d(
@@ -369,28 +378,6 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         }
     }
 
-    private fun solveAltcha(algorithm: String, challengeHex: String, salt: String, max: Long): Long {
-        val algo = when (algorithm.uppercase()) {
-            "SHA-1" -> "SHA-1"
-            "SHA-512" -> "SHA-512"
-            else -> "SHA-256"
-        }
-        val md = MessageDigest.getInstance(algo)
-        for (n in 0L..max) {
-            md.reset()
-            md.update((salt + n.toString()).toByteArray(Charsets.UTF_8))
-            val h = md.digest().toHexLower()
-            if (h == challengeHex) return n
-        }
-        error("ALTCHA solution not found up to max=$max")
-    }
-
-    private fun ByteArray.toHexLower(): String = joinToString(separator = "") { b ->
-        val i = b.toInt() and 0xFF
-        val hi = "0123456789abcdef"[i ushr 4]
-        val lo = "0123456789abcdef"[i and 0x0F]
-        "$hi$lo"
-    }
 
     override suspend fun register(username: String, password: String, recaptchaToken: String?): Result<AuthUser> =
         passwordAuthRequest("/v1/auth/register", username, password, recaptchaToken).map { (token, user) ->
