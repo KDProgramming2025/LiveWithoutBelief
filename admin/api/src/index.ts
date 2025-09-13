@@ -16,16 +16,40 @@ function buildUserStore() {
   // Lazy import to keep startup fast
   const { Pool } = require('pg') as typeof import('pg');
   const pool = new Pool({ connectionString: url, ssl: /localhost|127.0.0.1/.test(url) ? false : { rejectUnauthorized: false } });
+  // ensure users table exists and has the expected columns (id, username, password_hash, created_at, last_login, deleted_at)
+  let initPromise: Promise<void> | null = null;
+  async function ensureSchema() {
+    if (!initPromise) {
+      initPromise = (async () => {
+        const client = await pool.connect();
+        try {
+          await client.query(`CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+          );`);
+          await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ');
+          await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ');
+        } finally {
+          client.release();
+        }
+      })();
+    }
+    return initPromise;
+  }
   async function query<T = any>(text: string, params?: any[]): Promise<{ rows: T[] }> {
     const client = await pool.connect();
     try { const res = await client.query(text, params); return { rows: res.rows as T[] }; } finally { client.release(); }
   }
   return {
     async count(): Promise<number> {
+      await ensureSchema();
       const r = await query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM users WHERE deleted_at IS NULL');
       return Number(r.rows[0]?.cnt || 0);
     },
     async search(q: string, limit: number, offset: number): Promise<UserSummary[]> {
+      await ensureSchema();
       const needle = q.trim() ? `%${q.trim().toLowerCase()}%` : null;
       const sql = needle ? 'SELECT id, username, created_at, last_login FROM users WHERE deleted_at IS NULL AND username ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3'
         : 'SELECT id, username, created_at, last_login FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2';
@@ -35,6 +59,7 @@ function buildUserStore() {
       return r.rows.map((row: any) => ({ id: row.id, username: row.username, createdAt: row.created_at?.toISOString?.() || row.created_at, lastLogin: row.last_login?.toISOString?.() || row.last_login }));
     },
     async softDelete(id: string): Promise<{ deleted: boolean }> {
+      await ensureSchema();
       const r = await query('UPDATE users SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL', [id]);
       return { deleted: (r as any).rowCount > 0 };
     },
