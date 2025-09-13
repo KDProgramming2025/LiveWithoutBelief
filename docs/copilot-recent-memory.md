@@ -60,3 +60,8 @@ Today: auth persistence + server deploy helper
 - Android: AutoTokenRefresher now validates any stored token once on app start via SessionValidator. This preserves login across restarts and triggers server-side last_login updates when the app starts.
 - DI: Wired SessionValidator into AutoTokenRefresher provider.
 - Server: Added scripts/deploy-main-server.sh for main API; populated server_commands.sh with one-shot commands to build, install a lwb-server systemd unit (port 4433), and add nginx /lwb-api/ proxy include if missing. Remember to empty server_commands.sh after executing.
+
+Follow-up: Robust Google linkage + deploy
+- Server (/v1/auth/validate): Now derives username from email if present, otherwise uses `google:sub`; always upserts a user with sentinel password "GOOGLE_ONLY" and updates last_login on every validate; added logs for linkage and last_login.
+- Deployed to VPS via server_commands.sh and confirmed service health behind nginx. Bypass remains enabled via GOOGLE_CERTS_BYPASS=1 due to region blocking Google cert fetch; audience still checked against GOOGLE_CLIENT_ID.
+- Next verification: Use Android to sign in with Google; in Admin Users, confirm creation (email or google:sub) and last_login updates; delete the user then re-sign-in to confirm re-creation.
