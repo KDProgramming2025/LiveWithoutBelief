@@ -233,17 +233,12 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         recaptchaToken: String?,
     ): Result<Pair<String, AuthUser>> = runCatching {
         val base = authBaseUrl.trimEnd('/')
-        val altchaTokenOrNull = if (
-            path.endsWith("/register") &&
-            (recaptchaToken == null || recaptchaToken.isBlank())
-        ) {
-            // No reCAPTCHA token (blocked region or disabled). Fetch and solve ALTCHA.
-            if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "altcha:fetch+solve starting") }
+        // Server requires ALTCHA for registration; do not send reCAPTCHA token as altcha.
+        val altchaForRegister: String? = if (path.endsWith("/register")) {
+            if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "altcha:fetch+solve starting (register)") }
             fetchAndSolveAltcha(base)
-        } else {
-            recaptchaToken
-        }
-        val payload = PasswordAuthRequest(username = username, password = password, altcha = altchaTokenOrNull)
+        } else null
+        val payload = PasswordAuthRequest(username = username, password = password, altcha = altchaForRegister)
         val json = Json.encodeToString(payload)
         if (BuildConfig.DEBUG) {
             runCatching {
