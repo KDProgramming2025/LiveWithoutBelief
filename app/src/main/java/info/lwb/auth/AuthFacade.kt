@@ -147,22 +147,24 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
                 android.util.Log.d("AuthFlow", "haveIdToken length=${idToken.length}")
             }
         }
+        // First, validate and store the Google ID token for our backend (this drives user creation and last_login).
+        secureStorage.putIdToken(idToken)
+        // Cache token expiry for future refresh heuristics
+        val exp = JwtUtils.extractExpiryEpochSeconds(idToken)
+        val storeExp = when {
+            exp == null -> (System.currentTimeMillis() / 1000L) + (50 * 60)
+            else -> exp - 5 * 60
+        }
+        secureStorage.putTokenExpiry(storeExp)
+        sessionValidator.validate(idToken)
+
+        // Sign into Firebase for local identity/session if present, but do not overwrite server token.
         val user = signInExecutor.signIn(idToken)
         val authUser = AuthUser(user.uid, user.displayName, user.email, user.photoUrl?.toString())
         secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
+        // Optionally refresh a Firebase token for Firebase-internal use, but avoid storing it as the server token
         runCatching { tokenRefresher.refresh(user, false) }.onFailure {
             if (BuildConfig.DEBUG) android.util.Log.w("AuthFlow", "tokenRefreshFailed", it)
-        }.getOrNull()?.let { token ->
-            if (BuildConfig.DEBUG) {
-                runCatching {
-                    android.util.Log.d(
-                        "AuthFlow",
-                        "refreshedIdToken length=${token.length}",
-                    )
-                }
-            }
-            secureStorage.putIdToken(token)
-            sessionValidator.validate(token)
         }
         if (BuildConfig.DEBUG) {
             runCatching {
@@ -195,8 +197,14 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         throw (rb ?: e)
     }
 
-    override fun currentUser(): AuthUser? = firebaseAuth.currentUser?.let { u ->
-        AuthUser(u.uid, u.displayName, u.email, u.photoUrl?.toString())
+    override fun currentUser(): AuthUser? {
+        val fb = firebaseAuth.currentUser
+        if (fb != null) return AuthUser(fb.uid, fb.displayName, fb.email, fb.photoUrl?.toString())
+        // Fallback to stored token/profile (for password login or when Firebase user is absent)
+        val token = secureStorage.getIdToken() ?: return null
+        val sub = JwtUtils.extractSubject(token) ?: return null
+        val (name, email, avatar) = secureStorage.getProfile()
+        return AuthUser(sub, name, email, avatar)
     }
 
     override suspend fun signOut() {
@@ -377,6 +385,9 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     override suspend fun register(username: String, password: String, recaptchaToken: String?): Result<AuthUser> =
         passwordAuthRequest("/v1/auth/register", username, password, recaptchaToken).map { (token, user) ->
             secureStorage.putIdToken(token)
+            // Cache exp for JWT to enable refresh heuristics and persistence
+            val exp = JwtUtils.extractExpiryEpochSeconds(token)
+            secureStorage.putTokenExpiry(exp?.let { it - 5 * 60 } ?: ((System.currentTimeMillis() / 1000L) + 50 * 60))
             secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
             sessionValidator.validate(token)
             user
@@ -385,6 +396,8 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     override suspend fun passwordLogin(username: String, password: String, recaptchaToken: String?): Result<AuthUser> =
         passwordAuthRequest("/v1/auth/login", username, password, recaptchaToken).map { (token, user) ->
             secureStorage.putIdToken(token)
+            val exp = JwtUtils.extractExpiryEpochSeconds(token)
+            secureStorage.putTokenExpiry(exp?.let { it - 5 * 60 } ?: ((System.currentTimeMillis() / 1000L) + 50 * 60))
             secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
             sessionValidator.validate(token)
             user

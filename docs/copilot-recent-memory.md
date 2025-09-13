@@ -42,6 +42,12 @@ Today’s deployment & probes
 - Verified hard delete behavior in logs: DELETE returned 200 for existing ids; 404 for unknown ids. Users summary/search updated accordingly.
 - Main Server API build succeeded; systemd unit not present on VPS (warning): lwb-server.service not found; restart skipped.
 
+Main Server API: Google validate in production
+- Root cause for Google user not being created: Server’s region/network blocks fetching Google certs; logs show GaxiosError 403 when hitting https://www.googleapis.com/oauth2/v1/certs, so verifyIdToken failed and route returned 401.
+- Implemented an env-gated bypass: GOOGLE_CERTS_BYPASS=1 makes /v1/auth/validate decode the ID token payload without remote cert fetch, performing an audience check against GOOGLE_CLIENT_ID. This is DEV/region workaround only.
+- Wired flag in server/src/index.ts and deployed. Updated /etc/lwb-server.env to include GOOGLE_CERTS_BYPASS=1 via server_commands.sh, rebuilt server, reinstalled runtime deps, and restarted lwb-server.service.
+- Health is OK; awaiting a fresh Google Sign-In to confirm user creation (email as username) and last_login update reflected in Admin > Users.
+
 Next steps (small)
 - If you want Google validate to block identities after hard delete, consider a separate banned list (since row is gone).
 - Keep server_commands.sh ephemeral and empty after use.

@@ -142,25 +142,26 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
         payload = ticket.getPayload() || undefined;
       }
       if (!payload) return reply.code(401).send({ error: 'invalid_token' });
-      // Link Google user to local user by full email as username; create if missing with disabled password hash.
+      // Derive a stable username: prefer email; else fallback to google:sub
       try {
-        const email = payload.email;
-        if (email) {
-          const uname = String(email).toLowerCase();
-          const u = await users.findByUsername(uname);
-          if (u && (u as any).deletedAt) {
-            return reply.code(403).send({ error: 'account_deleted' });
-          }
-          const sentinel = 'GOOGLE_ONLY';
-          if (!u) {
-            // Create a user with password login disabled
-            const created = await users.upsert(uname, sentinel);
-            try { await users.updateLastLogin(created.id); } catch {}
-          } else {
-            // Update last login for existing user
-            try { await users.updateLastLogin(u.id); } catch {}
-          }
+        const sub = payload.sub;
+        const email = payload.email && String(payload.email).trim().length ? String(payload.email) : undefined;
+        if (!sub && !email) {
+          return reply.code(401).send({ error: 'invalid_token' });
         }
+        const uname = (email ? email.toLowerCase() : `google:${sub}`);
+        const existing = await users.findByUsername(uname);
+        if (existing && (existing as any).deletedAt) {
+          // Safety if any legacy soft-deleted row still exists
+          app.log.warn({ event: 'google_validate_deleted', username: uname }, 'google user is deleted');
+          return reply.code(403).send({ error: 'account_deleted' });
+        }
+        const sentinel = 'GOOGLE_ONLY';
+        const rec = await users.upsert(uname, sentinel);
+        try { await users.updateLastLogin(rec.id); } catch (e) {
+          app.log.warn({ event: 'google_validate_last_login_update_failed', username: uname, err: e }, 'failed to update last_login');
+        }
+        app.log.info({ event: 'google_validate_link', username: uname, action: existing ? 'existing' : 'created' }, 'google user linked');
       } catch (e) {
         req.log?.warn({ err: e }, 'google validate user linkage failed');
       }
