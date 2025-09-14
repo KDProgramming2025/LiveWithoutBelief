@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useMemo, useState } from 'react';
-import { Avatar, Box, Button, Card, CardActions, CardContent, CircularProgress, Divider, Drawer, IconButton, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper, Grid, Chip, CardMedia } from '@mui/material';
+import { Avatar, Box, Button, Card, CardActions, CardContent, CircularProgress, Divider, Drawer, IconButton, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper, Grid, Chip, CardMedia, Snackbar, Alert } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import ArticleIcon from '@mui/icons-material/Description';
 import UsersIcon from '@mui/icons-material/People';
@@ -63,6 +63,11 @@ export default function App() {
     const [query, setQuery] = useState('');
     const [users, setUsers] = useState([]);
     const [didInitialUserLoad, setDidInitialUserLoad] = useState(false);
+    // Quick edit busy and toast
+    const [busyIds, setBusyIds] = useState({});
+    const setBusy = (id, v) => setBusyIds(prev => ({ ...prev, [id]: v }));
+    const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+    const showToast = (message, severity = 'success') => setToast({ open: true, message, severity });
     useEffect(() => {
         (async () => {
             try {
@@ -114,13 +119,33 @@ export default function App() {
         const file = await pickImage();
         if (!file)
             return;
-        await updateArticle(id, { cover: file });
+        setBusy(id, true);
+        try {
+            await updateArticle(id, { cover: file });
+            showToast('Cover updated', 'success');
+        }
+        catch (_a) {
+            showToast('Failed to update cover', 'error');
+        }
+        finally {
+            setBusy(id, false);
+        }
     };
     const changeIcon = async (id) => {
         const file = await pickImage();
         if (!file)
             return;
-        await updateArticle(id, { icon: file });
+        setBusy(id, true);
+        try {
+            await updateArticle(id, { icon: file });
+            showToast('Icon updated', 'success');
+        }
+        catch (_a) {
+            showToast('Failed to update icon', 'error');
+        }
+        finally {
+            setBusy(id, false);
+        }
     };
     const upload = async (e) => {
         e.preventDefault();
@@ -257,8 +282,11 @@ export default function App() {
                                     const created = a.createdAt ? new Date(a.createdAt) : null;
                                     const updated = a.updatedAt ? new Date(a.updatedAt) : null;
                                     const publicLink = typeof a.publicPath === 'string' ? a.publicPath.replace(/^.*\/LWB\//, '/LWB/') : null;
-                                    return (_jsx(Grid, { item: true, xs: 12, sm: 6, md: 4, lg: 3, children: _jsxs(Card, { sx: { height: '100%', display: 'flex', flexDirection: 'column' }, children: [a.cover ? (_jsx(CardMedia, { component: "img", src: a.cover, alt: "Cover", sx: { aspectRatio: '16/9', objectFit: 'cover' } })) : (_jsx(Box, { sx: { aspectRatio: '16/9', display: 'grid', placeItems: 'center', bgcolor: 'action.hover' }, children: _jsx(ArticleIcon, { sx: { fontSize: 48, color: 'text.secondary' } }) })), _jsx(CardContent, { sx: { flexGrow: 1 }, children: _jsxs(Stack, { spacing: 1, children: [_jsxs(Stack, { direction: "row", spacing: 1, alignItems: "center", minWidth: 0, children: [a.icon && _jsx(Avatar, { src: a.icon, variant: "rounded", sx: { width: 28, height: 28 } }), _jsx(Typography, { variant: "subtitle1", fontWeight: 700, noWrap: true, title: a.title || a.filename, children: a.title || a.filename })] }), _jsx(Typography, { variant: "body2", color: "text.secondary", noWrap: true, title: a.filename, children: a.filename }), _jsxs(Stack, { direction: "row", spacing: 1, useFlexGap: true, flexWrap: "wrap", children: [_jsx(Chip, { size: "small", label: `Order #${a.order}` }), created && _jsx(Chip, { size: "small", variant: "outlined", label: `Created ${created.toLocaleDateString()}` }), updated && _jsx(Chip, { size: "small", variant: "outlined", label: `Updated ${updated.toLocaleDateString()}` })] }), publicLink && _jsx(MuiLink, { href: publicLink, target: "_blank", rel: "noreferrer", underline: "hover", children: "Open public link" })] }) }), _jsx(CardActions, { sx: { justifyContent: 'space-between' }, children: _jsxs(Stack, { direction: "row", spacing: 1, children: [_jsx(Tooltip, { title: "Move up", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(a.id, 'up'), children: _jsx(ArrowUpwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Move down", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(a.id, 'down'), children: _jsx(ArrowDownwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Edit title", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => { const t = prompt('New title', a.title); if (t !== null)
-                                                                            edit(a.id, t); }, children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change cover", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeCover(a.id), children: _jsx(ImageIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change icon", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeIcon(a.id), children: _jsx(InsertPhotoIcon, { fontSize: "inherit" }) }) }) })] }) })] }) }, a.id));
+                                    const bust = a.updatedAt ? (a.updatedAt.includes('?') ? a.updatedAt : encodeURIComponent(a.updatedAt)) : String(a.order);
+                                    const coverSrc = a.cover ? `${a.cover}${a.cover.includes('?') ? '&' : '?'}v=${bust}` : null;
+                                    const iconSrc = a.icon ? `${a.icon}${a.icon.includes('?') ? '&' : '?'}v=${bust}` : undefined;
+                                    return (_jsx(Grid, { item: true, xs: 12, sm: 6, md: 4, lg: 3, children: _jsxs(Card, { sx: { height: '100%', display: 'flex', flexDirection: 'column' }, children: [_jsxs(Box, { sx: { position: 'relative' }, children: [coverSrc ? (_jsx(CardMedia, { component: "img", src: coverSrc, alt: "Cover", sx: { aspectRatio: '16/9', objectFit: 'cover' } })) : (_jsx(Box, { sx: { aspectRatio: '16/9', display: 'grid', placeItems: 'center', bgcolor: 'action.hover' }, children: _jsx(ArticleIcon, { sx: { fontSize: 48, color: 'text.secondary' } }) })), busyIds[a.id] && (_jsx(Box, { sx: { position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', bgcolor: 'rgba(0,0,0,0.25)' }, children: _jsx(CircularProgress, { size: 28 }) }))] }), _jsx(CardContent, { sx: { flexGrow: 1 }, children: _jsxs(Stack, { spacing: 1, children: [_jsxs(Stack, { direction: "row", spacing: 1, alignItems: "center", minWidth: 0, children: [iconSrc && _jsx(Avatar, { src: iconSrc, variant: "rounded", sx: { width: 28, height: 28 } }), _jsx(Typography, { variant: "subtitle1", fontWeight: 700, noWrap: true, title: a.title || a.filename, children: a.title || a.filename })] }), _jsx(Typography, { variant: "body2", color: "text.secondary", noWrap: true, title: a.filename, children: a.filename }), _jsxs(Stack, { direction: "row", spacing: 1, useFlexGap: true, flexWrap: "wrap", children: [_jsx(Chip, { size: "small", label: `Order #${a.order}` }), created && _jsx(Chip, { size: "small", variant: "outlined", label: `Created ${created.toLocaleDateString()}` }), updated && _jsx(Chip, { size: "small", variant: "outlined", label: `Updated ${updated.toLocaleDateString()}` })] }), publicLink && _jsx(MuiLink, { href: publicLink, target: "_blank", rel: "noreferrer", underline: "hover", children: "Open public link" })] }) }), _jsx(CardActions, { sx: { justifyContent: 'space-between' }, children: _jsxs(Stack, { direction: "row", spacing: 1, children: [_jsx(Tooltip, { title: "Move up", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(a.id, 'up'), children: _jsx(ArrowUpwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Move down", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(a.id, 'down'), children: _jsx(ArrowDownwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Edit title", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => { const t = prompt('New title', a.title); if (t !== null)
+                                                                            edit(a.id, t); }, children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change cover", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeCover(a.id), disabled: !!busyIds[a.id], children: _jsx(ImageIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change icon", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeIcon(a.id), disabled: !!busyIds[a.id], children: _jsx(InsertPhotoIcon, { fontSize: "inherit" }) }) }) })] }) }), _jsx(Snackbar, { open: toast.open, autoHideDuration: 2500, onClose: () => setToast(t => ({ ...t, open: false })), anchorOrigin: { vertical: 'bottom', horizontal: 'center' }, children: _jsx(Alert, { onClose: () => setToast(t => ({ ...t, open: false })), severity: toast.severity, sx: { width: '100%' }, children: toast.message }) })] }) }, a.id));
                                 }) })] })), tab === 'users' && (_jsxs(Stack, { spacing: 2, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Users" }), _jsxs(Typography, { color: "text.secondary", children: ["Total registered users: ", usersTotal] }), _jsxs(Stack, { component: "form", onSubmit: searchUsers, direction: { xs: 'column', sm: 'row' }, spacing: 1, alignItems: { sm: 'center' }, children: [_jsx(TextField, { value: query, onChange: e => setQuery(e.target.value), placeholder: "Search username", size: "small" }), _jsx(Button, { type: "submit", variant: "contained", startIcon: _jsx(SearchIcon, {}), children: "Search" }), _jsx(Typography, { variant: "caption", color: "text.secondary", children: "Tip: Leave empty and click Search to list latest users." })] }), _jsx(DataGrid, { autoHeight: true, disableRowSelectionOnClick: true, rows: users, getRowId: (r) => r.id, columns: [
                 { field: 'username', headerName: 'Username', flex: 1, minWidth: 180 },
                 { field: 'createdAt', headerName: 'Registered', minWidth: 160, valueGetter: (p) => (p == null ? void 0 : p.row) == null ? void 0 : p.row.createdAt, renderCell: (p) => {

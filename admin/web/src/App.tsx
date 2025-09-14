@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  AppBar, Avatar, Box, Button, Card, CardActions, CardContent, CircularProgress, Divider, Drawer, IconButton, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper, Grid, Chip, CardMedia
+  AppBar, Avatar, Box, Button, Card, CardActions, CardContent, CircularProgress, Divider, Drawer, IconButton, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper, Grid, Chip, CardMedia, Snackbar, Alert
 } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import ArticleIcon from '@mui/icons-material/Description'
@@ -73,6 +73,12 @@ export default function App() {
   const [docx, setDocx] = useState<File | null>(null)
   const [cover, setCover] = useState<File | null>(null)
   const [icon, setIcon] = useState<File | null>(null)
+  // Per-article busy state for quick edits (cover/icon/title)
+  const [busyIds, setBusyIds] = useState<Record<string, boolean>>({})
+  const setBusy = (id: string, v: boolean) => setBusyIds(prev => ({ ...prev, [id]: v }))
+  // Toast feedback
+  const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success'|'error' }>({ open: false, message: '', severity: 'success' })
+  const showToast = (message: string, severity: 'success'|'error' = 'success') => setToast({ open: true, message, severity })
 
   // Users state
   const [usersTotal, setUsersTotal] = useState<number>(0)
@@ -119,12 +125,28 @@ export default function App() {
 
   const changeCover = async (id: string) => {
     const file = await pickImage(); if (!file) return
-    await updateArticle(id, { cover: file })
+    setBusy(id, true)
+    try {
+      await updateArticle(id, { cover: file })
+      showToast('Cover updated', 'success')
+    } catch (e) {
+      showToast('Failed to update cover', 'error')
+    } finally {
+      setBusy(id, false)
+    }
   }
 
   const changeIcon = async (id: string) => {
     const file = await pickImage(); if (!file) return
-    await updateArticle(id, { icon: file })
+    setBusy(id, true)
+    try {
+      await updateArticle(id, { icon: file })
+      showToast('Icon updated', 'success')
+    } catch (e) {
+      showToast('Failed to update icon', 'error')
+    } finally {
+      setBusy(id, false)
+    }
   }
 
   const upload = async (e: React.FormEvent) => {
@@ -285,20 +307,30 @@ export default function App() {
                 const created = a.createdAt ? new Date(a.createdAt) : null
                 const updated = a.updatedAt ? new Date(a.updatedAt) : null
                 const publicLink = typeof a.publicPath === 'string' ? a.publicPath.replace(/^.*\/LWB\//, '/LWB/') : null
+                const bust = a.updatedAt ? (a.updatedAt.includes('?') ? a.updatedAt : encodeURIComponent(a.updatedAt)) : String(a.order)
+                const coverSrc = a.cover ? `${a.cover}${a.cover.includes('?') ? '&' : '?'}v=${bust}` : null
+                const iconSrc = a.icon ? `${a.icon}${a.icon.includes('?') ? '&' : '?'}v=${bust}` : undefined
                 return (
                   <Grid item xs={12} sm={6} md={4} lg={3} key={a.id}>
                     <Card sx={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                      {a.cover ? (
-                        <CardMedia component="img" src={a.cover} alt="Cover" sx={{ aspectRatio:'16/9', objectFit:'cover' }} />
-                      ) : (
-                        <Box sx={{ aspectRatio:'16/9', display:'grid', placeItems:'center', bgcolor:'action.hover' }}>
-                          <ArticleIcon sx={{ fontSize: 48, color:'text.secondary' }} />
-                        </Box>
-                      )}
+                      <Box sx={{ position:'relative' }}>
+                        {coverSrc ? (
+                          <CardMedia component="img" src={coverSrc} alt="Cover" sx={{ aspectRatio:'16/9', objectFit:'cover' }} />
+                        ) : (
+                          <Box sx={{ aspectRatio:'16/9', display:'grid', placeItems:'center', bgcolor:'action.hover' }}>
+                            <ArticleIcon sx={{ fontSize: 48, color:'text.secondary' }} />
+                          </Box>
+                        )}
+                        {busyIds[a.id] && (
+                          <Box sx={{ position:'absolute', inset:0, display:'grid', placeItems:'center', bgcolor:'rgba(0,0,0,0.25)' }}>
+                            <CircularProgress size={28} />
+                          </Box>
+                        )}
+                      </Box>
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Stack spacing={1}>
                           <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
-                            {a.icon && <Avatar src={a.icon} variant="rounded" sx={{ width: 28, height: 28 }} />}
+                            {iconSrc && <Avatar src={iconSrc} variant="rounded" sx={{ width: 28, height: 28 }} />}
                             <Typography variant="subtitle1" fontWeight={700} noWrap title={a.title || a.filename}>
                               {a.title || a.filename}
                             </Typography>
@@ -317,8 +349,8 @@ export default function App() {
                           <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>move(a.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>move(a.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Edit title"><span><IconButton size="small" onClick={()=>{ const t=prompt('New title', a.title); if (t!==null) edit(a.id, t) }}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                          <Tooltip title="Change cover"><span><IconButton size="small" onClick={()=>changeCover(a.id)}><ImageIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                          <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeIcon(a.id)}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Change cover"><span><IconButton size="small" onClick={()=>changeCover(a.id)} disabled={!!busyIds[a.id]}><ImageIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeIcon(a.id)} disabled={!!busyIds[a.id]}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
                         </Stack>
                       </CardActions>
                     </Card>
@@ -369,6 +401,9 @@ export default function App() {
             />
           </Stack>
         )}
+        <Snackbar open={toast.open} autoHideDuration={2500} onClose={() => setToast(t => ({ ...t, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+          <Alert onClose={() => setToast(t => ({ ...t, open: false }))} severity={toast.severity} sx={{ width: '100%' }}>{toast.message}</Alert>
+        </Snackbar>
       </Box>
     </Box>
   )
