@@ -79,15 +79,14 @@ TDD/Test Strategy
 Implemented dual-path authentication:
 
 1. Google Identity Services (silent-first, One Tap / fallback interactive) + Firebase credential sign-in.
-2. Username / Password with reCAPTCHA v3 (beta SDK) protection.
+2. Username / Password with ALTCHA challenge (self-hosted) on registration.
 
 Client abstractions:
 - `AuthFacade` – public interface consumed by UI.
 - `GoogleSignInClientFacade` & `GoogleSignInIntentExecutor` – decouple Google Play Services & Activity Result.
 - `SignInExecutor` – wraps Firebase credential sign-in (await logic isolated).
 - `TokenRefresher` – isolates token Task -> suspend bridging.
- - `RecaptchaTokenProvider` – modern Google reCAPTCHA enterprise client wrapper.
- - `CachingRecaptchaProvider` – short‑TTL cache (60s) to reduce token fetch latency.
+ - `AltchaTokenProvider` – WebView-based solver that retrieves an ALTCHA solution token.
  - `SessionValidator` – chooses validate endpoint (Google vs password JWT) heuristically.
 
 Password flow:
@@ -95,14 +94,14 @@ Password flow:
  - JWT (`typ: "pwd"`) signed with `PWD_JWT_SECRET`, 1h expiry (client refresh TBD).
  - Revocation store in-memory (future persistent store / Redis TODO).
 
-reCAPTCHA:
- - Client fetches token per action (`LOGIN`), short caches.
- - Server verifies via `https://www.google.com/recaptcha/api/siteverify` with configurable min score (`RECAPTCHA_MIN_SCORE`, default 0.1).
- - Missing / invalid / low-score produce `400 { error: "recaptcha_failed" }`.
+ALTCHA:
+ - Client presents a first-party challenge page (asset) to solve and obtains a signed token.
+ - Server exposes `GET /v1/altcha/challenge` and verifies the solution (HMAC, expiry).
+ - Missing/invalid solutions produce `400 { error: "altcha_failed" }`.
 
 Error/UI states:
  - Region blocked Google sign-in -> `AuthUiState.RegionBlocked` banner + password UI.
- - reCAPTCHA failure -> explicit error prompt; user can retry.
+ - ALTCHA failure -> explicit error prompt; user can retry.
 
 Security TODOs:
  - Rate limiting & incremental backoff on password failures.
@@ -126,20 +125,19 @@ Environment variables (systemd `EnvironmentFile=/etc/lwb-server.env`):
 ```
 GOOGLE_CLIENT_ID=...apps.googleusercontent.com
 PWD_JWT_SECRET=<32+ hex chars>
-RECAPTCHA_SECRET=<server secret key>
-RECAPTCHA_MIN_SCORE=0.3   # optional (0.1 default)
+ALTCHA_HMAC_KEY=<32+ hex chars>
+ALTCHA_EXPIRE_SECONDS=120
 PORT=4433
 ```
 
-Local dev: Put the same keys in `server/.env` (gitignored). The Android app consumes site key via `BuildConfig.RECAPTCHA_SITE_KEY` (set through Gradle property `RECAPTCHA_KEY` or env `RECAPTCHA_KEY`).
+Local dev: Put the same keys in `server/.env` (gitignored). The Android app uses a bundled asset `altcha-solver.html` and does not require Google keys for CAPTCHA.
 
 Deploy script: `server/deploy.sh` supports `--dry-run`, `--reload`, rollback on failed health.
 
-### Testing reCAPTCHA
-Unit tests (`index.test.ts`) mock `fetch` to exercise:
- - Success path (score 0.9)
- - Failure (`success:false`)
- - Low score (< threshold)
+### Testing ALTCHA
+Unit tests (server) validate:
+ - Challenge issuance (HMAC and expiry window)
+ - Verification success path and common failures (missing/invalid/expired)
 
 Manual QA checklist:
  - Register without token (expect 400).
@@ -150,10 +148,10 @@ Manual QA checklist:
 ### Threat considerations (initial)
 | Threat | Current Mitigation | Next Step |
 |--------|--------------------|-----------|
-| Credential stuffing | reCAPTCHA gating | Add IP+account rate limit |
+| Credential stuffing | ALTCHA gating | Add IP+account rate limit |
 | Token theft reuse | Revocation endpoint | Shorter expiry + refresh token rotation |
-| Replay of reCAPTCHA | Short TTL cache, server verifies score | Bind action names & possibly user fingerprint |
-| Brute force password | Min length + reCAPTCHA | Progressive delay/backoff + lockout policy |
+| Replay of ALTCHA | Signed challenge with expiry | Bind action names & possibly user fingerprint |
+| Brute force password | Min length + ALTCHA on register | Progressive delay/backoff + lockout policy |
 
 ### Quick Start (Backend)
 ```

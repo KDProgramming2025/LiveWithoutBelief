@@ -48,9 +48,9 @@ Logs:
 Security Notes:
   Avoid placing secrets inside deploy.sh. Use systemd EnvironmentFile for sensitive values.
 
-reCAPTCHA (registration only):
-  RECAPTCHA_SECRET       Server-side secret to verify registration tokens.
-  RECAPTCHA_DEV_ALLOW    If set to '1', bypasses reCAPTCHA (DEV ONLY). Never enable in production.
+ALTCHA (registration only):
+  ALTCHA_HMAC_KEY        Server-side key to sign/verify challenges (keep secret!).
+  ALTCHA_EXPIRE_SECONDS  Challenge validity window (e.g., 120 seconds).
 
 Limitations / Next Steps:
   - No migration framework integrated yet

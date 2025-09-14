@@ -28,12 +28,19 @@ class RemoteRegistrationApi @Inject constructor(
 ) : RegistrationApi {
 
     @Serializable private data class RegisterReq(val email: String)
-    @Serializable private data class ServerUser(val id: String, val username: String? = null)
+    @Serializable private data class ServerUser(
+        val id: String,
+        val username: String? = null,
+        // Server may include createdAt/lastLogin fields; we ignore them via parser config
+        val createdAt: String? = null,
+        val lastLogin: String? = null,
+    )
     @Serializable private data class RegisterRes(val user: ServerUser)
+    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun register(email: String): Pair<AuthUser, Boolean> = withContext(Dispatchers.IO) {
         val url = baseUrl.trimEnd('/') + "/v1/auth/register"
-        val payload = Json.encodeToString(RegisterReq.serializer(), RegisterReq(email))
+    val payload = json.encodeToString(RegisterReq.serializer(), RegisterReq(email))
         val req = okhttp3.Request.Builder()
             .url(url)
             .post(payload.toRequestBody("application/json".toMediaType()))
@@ -45,7 +52,7 @@ class RemoteRegistrationApi @Inject constructor(
                 error("register failed (${r.code}): ${body?.take(200) ?: "<no-body>"}")
             }
             val body = r.body?.string() ?: error("empty register body")
-            val parsed = Json.decodeFromString(RegisterRes.serializer(), body)
+            val parsed = json.decodeFromString(RegisterRes.serializer(), body)
             val created = r.code == 201
             // Map server user to app AuthUser; we keep email/displayName from Google elsewhere.
             AuthUser(uid = parsed.user.id, displayName = parsed.user.username, email = email, photoUrl = null) to created

@@ -47,13 +47,14 @@ class AutoTokenRefresherTest {
         }
         val authFacade: AuthFacade = mockk(relaxed = true)
         coEvery { authFacade.refreshIdToken(false) } returns Result.success("tok")
-        val refresher =
-            AutoTokenRefresher(
-                storage,
-                authFacade,
-                this,
-                TokenRefreshConfig(refreshLeadTimeSeconds = 5 * 60, pollIntervalSeconds = 1),
-            )
+        val validator: SessionValidator = mockk(relaxed = true)
+        val refresher = AutoTokenRefresher(
+            storage,
+            authFacade,
+            validator,
+            this,
+            TokenRefreshConfig(refreshLeadTimeSeconds = 5 * 60, pollIntervalSeconds = 1),
+        )
         refresher.start()
         // allow a couple poll iterations
         delay(1500)
@@ -70,13 +71,14 @@ class AutoTokenRefresherTest {
         }
         val authFacade: AuthFacade = mockk(relaxed = true)
         coEvery { authFacade.refreshIdToken(false) } returns Result.success("tok")
-        val refresher =
-            AutoTokenRefresher(
-                storage,
-                authFacade,
-                this,
-                TokenRefreshConfig(refreshLeadTimeSeconds = 5 * 60, pollIntervalSeconds = 1),
-            )
+        val validator: SessionValidator = mockk(relaxed = true)
+        val refresher = AutoTokenRefresher(
+            storage,
+            authFacade,
+            validator,
+            this,
+            TokenRefreshConfig(refreshLeadTimeSeconds = 5 * 60, pollIntervalSeconds = 1),
+        )
         refresher.start()
         delay(1200)
         coVerify(exactly = 0) { authFacade.refreshIdToken(false) }

@@ -86,36 +86,7 @@ android {
                 ?: (project.findProperty("AUTH_BASE_URL") as String?)
                 ?: "https://aparat.feezor.net/lwb-api"
         buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
-        var recaptchaSiteKey =
-            System.getenv("RECAPTCHA_SITE_KEY")
-                ?: System.getenv("RECAPTCHA_KEY")
-                ?: (project.findProperty("RECAPTCHA_SITE_KEY") as String?)
-                ?: (project.findProperty("RECAPTCHA_KEY") as String?)
-                ?: "CHANGE_ME_RECAPTCHA_SITE_KEY"
-        // Fallback: parse root .env if placeholder still present (dev convenience only)
-        if (recaptchaSiteKey.startsWith("CHANGE_ME")) {
-            val envFile = rootProject.file(".env")
-            if (envFile.exists()) {
-                envFile.readLines().forEach { line ->
-                    val trimmed = line.trim()
-                    if (!trimmed.startsWith('#') && trimmed.startsWith("RECAPTCHA_KEY=")) {
-                        recaptchaSiteKey = trimmed.substringAfter('=')
-                    }
-                }
-            }
-        }
-        if (recaptchaSiteKey.startsWith("CHANGE_ME")) {
-            println(
-                "[recaptcha-config] WARNING: Using placeholder RECAPTCHA site key. " +
-                    "reCAPTCHA will be disabled (tokens null). Set RECAPTCHA_KEY in env or .env.",
-            )
-        } else {
-            println(
-                "[recaptcha-config] Using RECAPTCHA site key prefix=" +
-                    recaptchaSiteKey.take(8) + "…",
-            )
-        }
-        buildConfigField("String", "RECAPTCHA_SITE_KEY", '"' + recaptchaSiteKey + '"')
+    // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
 
         // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)
         fun intCfg(
@@ -190,8 +161,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        // Required for recaptcha beta library (core library desugaring)
-        isCoreLibraryDesugaringEnabled = true
+    // Retain desugaring if other libs require it
+    isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -233,8 +204,7 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.google.identity)
     implementation(libs.okhttp)
-    // reCAPTCHA (modern API per documentation)
-    implementation("com.google.android.recaptcha:recaptcha:18.8.0-beta03")
+    // Using self-hosted ALTCHA via WebView asset
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.core.ktx)

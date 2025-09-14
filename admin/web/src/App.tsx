@@ -55,6 +55,7 @@ export default function App() {
   const [usersTotal, setUsersTotal] = useState<number>(0)
   const [query, setQuery] = useState('')
   const [users, setUsers] = useState<UserListItem[]>([])
+  const [didInitialUserLoad, setDidInitialUserLoad] = useState(false)
 
   useEffect(() => { (async () => {
     try { const s = await api.get<{ authenticated: boolean }>(`${API}/v1/admin/session`); setAuth(s.authenticated ? 'yes' : 'no') } catch { setAuth('no') }
@@ -109,6 +110,23 @@ export default function App() {
   }
 
   const searchUsers = async (e: React.FormEvent) => { e.preventDefault(); const res = await api.get<{ query: string; users: UserListItem[] }>(`${API}/v1/admin/users/search?q=${encodeURIComponent(query)}`); setUsers(res.users) }
+
+  // Auto-load latest users when switching to Users tab the first time
+  useEffect(() => {
+    if (auth !== 'yes') return
+    if (tab !== 'users') return
+    if (didInitialUserLoad) return
+    (async () => {
+      try {
+        const res = await api.get<{ query: string; users: UserListItem[] }>(`${API}/v1/admin/users/search?q=${encodeURIComponent(query)}`)
+        setUsers(res.users)
+      } catch {
+        // ignore
+      } finally {
+        setDidInitialUserLoad(true)
+      }
+    })()
+  }, [auth, tab, didInitialUserLoad, api, query])
   const removeUser = async (id: string) => {
     if (!confirm('Are you sure you want to remove this user? This action cannot be undone.')) return;
     try {
@@ -194,6 +212,7 @@ export default function App() {
               <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search username" style={{ padding: 8 }} />
               <button type="submit">Search</button>
             </form>
+            <small style={{ color:'#666' }}>Tip: leave the search empty and click Search to list the latest users. The newest users auto-load on first open.</small>
             <table cellPadding={6} style={{ marginTop: 12 }}>
               <thead><tr><th>Username</th><th>Registered</th><th>Bookmarks</th><th>Threads</th><th>Last login</th><th></th></tr></thead>
               <tbody>

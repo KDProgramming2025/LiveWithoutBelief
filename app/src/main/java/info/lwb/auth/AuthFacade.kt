@@ -26,6 +26,8 @@ interface AuthFacade {
     fun currentUser(): AuthUser?
     suspend fun signOut()
     suspend fun refreshIdToken(forceRefresh: Boolean = false): Result<String>
+    suspend fun register(username: String, password: String, altchaPayload: String?): Result<AuthUser>
+    suspend fun passwordLogin(username: String, password: String): Result<AuthUser>
 }
 
 /** Optional abstraction for One Tap / Credential Manager based Google ID token retrieval. */
@@ -71,6 +73,8 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     private val signInExecutor: SignInExecutor,
     private val oneTapProvider: OneTapCredentialProvider,
     private val registrationApi: RegistrationApi,
+    private val passwordApi: PasswordAuthApi,
+    private val altcha: AltchaTokenProvider,
 ) : AuthFacade {
     override suspend fun oneTapSignIn(activity: Activity): Result<AuthUser> = runCatching {
         if (BuildConfig.DEBUG) {
@@ -214,13 +218,25 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         secureStorage.putTokenExpiry(storeExp)
         token
     }
+
+    override suspend fun register(username: String, password: String, altchaPayload: String?): Result<AuthUser> = runCatching {
+        val token = altchaPayload ?: throw IllegalStateException("ALTCHA required")
+        val user = passwordApi.register(username, password, token)
+        secureStorage.putIdToken("pwd:${user.uid}")
+        secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
+        user
+    }
+
+    override suspend fun passwordLogin(username: String, password: String): Result<AuthUser> = runCatching {
+        val user = passwordApi.login(username, password)
+        secureStorage.putIdToken("pwd:${user.uid}")
+        secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
+        user
+    }
 }
 
 class RegionBlockedAuthException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
-class EmailLinkInitiatedException(
-    val email: String,
-    cause: Throwable? = null,
-) : RuntimeException("Email link sent to $email", cause)
+class EmailLinkInitiatedException(val email: String, cause: Throwable? = null) : RuntimeException("Email link sent to $email", cause)
 
 private fun Throwable.isRegionBlocked(): Boolean {
     var cur: Throwable? = this

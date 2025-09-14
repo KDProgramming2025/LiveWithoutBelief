@@ -60,6 +60,14 @@ abstract class AuthBindingsModule {
     @Singleton
     abstract fun bindRegistrationApi(impl: RemoteRegistrationApi): RegistrationApi
 
+    @Binds
+    @Singleton
+    abstract fun bindPasswordAuthApi(impl: RemotePasswordAuthApi): PasswordAuthApi
+
+    @Binds
+    @Singleton
+    abstract fun bindAltchaProvider(impl: WebViewAltchaProvider): AltchaTokenProvider
+
 }
 
 @Module

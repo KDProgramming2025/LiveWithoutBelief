@@ -81,12 +81,16 @@ private fun appRoot(authFacade: AuthFacade, maybeLink: String?) {
                 when (val s = state.value) {
                     is AuthUiState.SignedOut -> {
                         Button(onClick = { vm.signIn { activity } }) { Text("Google Sign In") }
+                        Spacer(Modifier.height(16.dp))
+                        PasswordAuthSection(onRegister = { u, p -> vm.passwordRegister({ activity }, u, p) }, onLogin = { u, p -> vm.passwordLogin(u, p) })
                     }
                     is AuthUiState.Loading -> Text("Loading...")
                     is AuthUiState.Error -> {
                         Text("Error: ${s.message}")
                         Spacer(Modifier.height(8.dp))
                         Button(onClick = { vm.signIn { activity } }) { Text("Google Sign In") }
+                        Spacer(Modifier.height(16.dp))
+                        PasswordAuthSection(onRegister = { u, p -> vm.passwordRegister({ activity }, u, p) }, onLogin = { u, p -> vm.passwordLogin(u, p) })
                     }
                     is AuthUiState.RegionBlocked -> {
                         RegionBlockedBanner(message = s.message)
@@ -138,6 +142,25 @@ private fun RegionBlockedBanner(message: String = "Google sign-in blocked here."
 }
 
 // Password auth UI removed.
+@Composable
+private fun PasswordAuthSection(
+    onRegister: (String, String) -> Unit,
+    onLogin: (String, String) -> Unit,
+) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    Text("Or use username & password:")
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username or email") })
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") })
+    Spacer(Modifier.height(8.dp))
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Button(onClick = { if (username.isNotBlank() && password.isNotBlank()) onRegister(username.trim(), password) }) { Text("Register") }
+        Spacer(Modifier.height(6.dp))
+        Button(onClick = { if (username.isNotBlank() && password.isNotBlank()) onLogin(username.trim(), password) }) { Text("Login") }
+    }
+}
 
 private object Destinations {
     const val READER = "reader"

@@ -95,6 +95,10 @@ class RemoteSessionValidator @Inject constructor(
     override suspend fun validate(idToken: String): Boolean = validateDetailed(idToken).isValid
 
     override suspend fun validateDetailed(idToken: String): ValidationResult = withContext(Dispatchers.IO) {
+        // Short-circuit: if locally marked revoked, avoid any network I/O and return Unauthorized.
+        if (revocationStore.isRevoked(idToken)) {
+            return@withContext ValidationResult(false, ValidationError.Unauthorized)
+        }
         val maxAttempts = retryPolicy.maxAttempts.coerceAtLeast(1)
         var attempt = 0 // zero-based attempt index
         var last: ValidationResult

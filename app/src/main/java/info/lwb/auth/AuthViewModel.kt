@@ -22,6 +22,7 @@ sealed interface AuthUiState {
 
 class AuthViewModel(
     private val facade: AuthFacade,
+    private val altcha: AltchaTokenProvider? = null,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : ViewModel() {
     private val _state = MutableStateFlow<AuthUiState>(
@@ -49,7 +50,30 @@ class AuthViewModel(
         }
     }
 
-    // Password flows removed.
+    fun passwordRegister(activityProvider: () -> android.app.Activity, username: String, password: String) {
+        if (_state.value is AuthUiState.Loading) return
+        _state.value = AuthUiState.Loading
+        viewModelScope.launch(mainDispatcher) {
+            val token = runCatching { altcha?.solve(activityProvider()) }.getOrNull()
+            if (token.isNullOrEmpty()) {
+                _state.value = AuthUiState.Error("ALTCHA failed; please try again")
+                return@launch
+            }
+            facade.register(username, password, token)
+                .onSuccess { _state.value = AuthUiState.SignedIn(it) }
+                .onFailure { _state.value = AuthUiState.Error(it.message ?: "Register failed") }
+        }
+    }
+
+    fun passwordLogin(username: String, password: String) {
+        if (_state.value is AuthUiState.Loading) return
+        _state.value = AuthUiState.Loading
+        viewModelScope.launch(mainDispatcher) {
+            facade.passwordLogin(username, password)
+                .onSuccess { _state.value = AuthUiState.SignedIn(it) }
+                .onFailure { _state.value = AuthUiState.Error(it.message ?: "Login failed") }
+        }
+    }
 
     fun signOut() {
         if (_state.value is AuthUiState.Loading) return

@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ALTCHA Solver</title>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
+    .root { display: flex; height: 100%; align-items: center; justify-content: center; }
+    .card { max-width: 480px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    button { padding: 10px 16px; }
+    .log { font-size: 12px; color: #555; margin-top: 8px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="root">
+    <div class="card">
+      <h3>ALTCHA</h3>
+      <p>Tap Solve to compute a challenge.</p>
+      <button id="solveBtn">Solve</button>
+      <div id="status" class="log"></div>
+    </div>
+  </div>
+  <script type="module">
+    const log = (m) => { const s = document.getElementById('status'); s.textContent = m; };
+    const post = (payload) => {
+      try { window.Android?.postSolution?.(payload); } catch {}
+    };
+    const base = new URLSearchParams(location.search).get('base');
+    const challengeUrl = (base || '').replace(/\/$/, '') + '/v1/altcha/challenge';
+    const btn = document.getElementById('solveBtn');
+    btn.addEventListener('click', async () => {
+      try {
+        log('Fetching challenge…');
+        const res = await fetch(challengeUrl, {cache:'no-store'});
+        const challenge = await res.json();
+        log('Solving…');
+        // Use altcha browser lib to solve in-page
+        const mod = await import('https://unpkg.com/altcha@1.4.0/dist/altcha.umd.js');
+        const solution = await mod.solveChallenge(challenge);
+        const payload = typeof solution === 'string' ? solution : btoa(unescape(encodeURIComponent(JSON.stringify(solution))));
+        log('Solved');
+        post(payload);
+      } catch (e) {
+        log('Failed: ' + (e?.message || e));
+      }
+    });
+  </script>
+</body>
+</html>

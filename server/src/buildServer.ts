@@ -8,6 +8,8 @@ import { registerAuthRoutes } from './auth/controller.js';
 import { AuthService } from './auth/service.js';
 import { InMemoryUserRepository, PgUserRepository } from './auth/repository.js';
 import crypto from 'crypto';
+import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 
 export interface ArticleManifestItem {
   id: string; title: string; slug: string; version: number; updatedAt: string; wordCount: number;
@@ -85,6 +87,49 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     allowedAudiences: opts.allowedAudiences,
   });
   registerAuthRoutes(app, authService);
+
+  // Password-based auth endpoints with ALTCHA
+  app.post('/v1/auth/pwd/register', async (req, reply) => {
+    const schema = z.object({
+      username: z.string().min(3).max(80),
+      password: z.string().min(8).max(128),
+      // ALTCHA payload submitted by client; Base64 JSON string
+      altcha: z.string().min(20),
+    });
+    const parse = schema.safeParse((req as FastifyRequest).body);
+    if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
+    const { username, password, altcha } = parse.data;
+    try {
+      // Verify ALTCHA payload
+      const verified = await verifySolution(altcha, ALTCHA_HMAC_KEY, true);
+      if (!verified) {
+        app.log.warn({ event: 'altcha_failed', username }, 'ALTCHA verification failed');
+        return reply.code(400).send({ error: 'altcha_failed' });
+      }
+      const hash = await bcrypt.hash(password, 10);
+      const user = await authService.registerWithPassword(username, hash);
+      return reply.code(200).send({ user });
+    } catch (e: any) {
+      if (e?.code === 'user_exists') return reply.code(409).send({ error: 'user_exists' });
+      app.log.error({ err: e }, 'pwd_register_failed');
+      return reply.code(500).send({ error: 'server_error' });
+    }
+  });
+
+  app.post('/v1/auth/pwd/login', async (req, reply) => {
+    const schema = z.object({ username: z.string().min(3).max(80), password: z.string().min(1) });
+    const parse = schema.safeParse((req as FastifyRequest).body);
+    if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
+    try {
+      const ok = await authService.verifyPassword(parse.data.username, parse.data.password);
+      if (!ok) return reply.code(401).send({ error: 'invalid_credentials' });
+      const user = await authService.ensureUser(parse.data.username);
+      return reply.code(200).send({ user });
+    } catch (e) {
+      app.log.error({ err: e }, 'pwd_login_failed');
+      return reply.code(500).send({ error: 'server_error' });
+    }
+  });
 
   // ALTCHA challenge endpoint for clients (Android WebView or in-app fetch)
   app.get('/v1/altcha/challenge', async (req, reply) => {
