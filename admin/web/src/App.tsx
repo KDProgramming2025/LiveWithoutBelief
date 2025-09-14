@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   AppBar, Box, Button, Card, CardContent, CircularProgress, Container, Divider, Drawer, FormControl, IconButton, InputLabel, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper
 } from '@mui/material'
-import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
+import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar } from '@mui/x-data-grid'
 import ArticleIcon from '@mui/icons-material/Description'
 import UsersIcon from '@mui/icons-material/People'
 import LogoutIcon from '@mui/icons-material/Logout'
@@ -196,7 +196,7 @@ export default function App() {
   if (auth === 'no') return <Login onDone={() => setAuth('yes')} />
 
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: '280px 1fr', minHeight: '100dvh' }}>
+  <Box sx={{ display: 'grid', gridTemplateColumns: '280px 1fr', minHeight: '100dvh', overflowX: 'hidden' }}>
       <Drawer variant="permanent" sx={{ width: 280, [`& .MuiDrawer-paper`]: { width: 280, boxSizing: 'border-box' } }}>
         <Toolbar><Typography variant="h6" fontWeight={700}>LWB Admin</Typography></Toolbar>
         <Divider />
@@ -219,7 +219,7 @@ export default function App() {
           <Button onClick={logout} color="error" startIcon={<LogoutIcon />}>Logout</Button>
         </Stack>
       </Drawer>
-      <Box component="main" sx={{ p: 3 }}>
+  <Box component="main" sx={{ p: 3, overflowX: 'hidden' }}>
         <Toolbar />
         {tab === 'articles' && (
           <Stack spacing={3}>
@@ -257,18 +257,18 @@ export default function App() {
             <DataGrid autoHeight disableRowSelectionOnClick rows={articles.slice().sort((a,b)=>a.order-b.order)} getRowId={(r: Article)=>r.id}
               columns={[
                 { field: 'order', headerName: 'Order', width: 90 },
-                { field: 'title', headerName: 'Title', flex: 1, minWidth: 200 },
-                { field: 'filename', headerName: 'Filename', minWidth: 180 },
-                { field: 'createdAt', headerName: 'Created', minWidth: 180, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
-                { field: 'updatedAt', headerName: 'Updated', minWidth: 180, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
-                { field: 'cover', headerName: 'Cover', minWidth: 160, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
-                { field: 'icon', headerName: 'Icon', minWidth: 140, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
-                { field: 'publicPath', headerName: 'Public path', minWidth: 220, valueGetter: (p: any) => {
+                { field: 'title', headerName: 'Title', flex: 1, minWidth: 220 },
+                { field: 'filename', headerName: 'Filename', minWidth: 160, flex: 0.6 },
+                { field: 'createdAt', headerName: 'Created', minWidth: 160, flex: 0.6, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
+                { field: 'updatedAt', headerName: 'Updated', minWidth: 160, flex: 0.6, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
+                { field: 'cover', headerName: 'Cover', minWidth: 120, flex: 0.4, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
+                { field: 'icon', headerName: 'Icon', minWidth: 110, flex: 0.35, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
+                { field: 'publicPath', headerName: 'Public path', minWidth: 200, flex: 0.7, valueGetter: (p: any) => {
                   const raw = p?.row?.publicPath as string | undefined
                   if (!raw || typeof raw !== 'string') return '-'
                   return raw.replace(/^.*\/LWB\//, '/LWB/')
                 } },
-                { field: 'actions', headerName: 'Actions', sortable: false, width: 240, renderCell: (p) => (
+                { field: 'actions', headerName: 'Actions', sortable: false, width: 220, renderCell: (p) => (
                   <Stack direction="row" spacing={1}>
                     <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>move(p.row.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
                     <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>move(p.row.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
@@ -277,7 +277,19 @@ export default function App() {
                 ) },
               ] as GridColDef[]}
               pageSizeOptions={[10,25,50]}
-              initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+              density="comfortable"
+              slots={{ toolbar: GridToolbar }}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 10, page: 0 } },
+                columns: {
+                  columnVisibilityModel: {
+                    // Hide less-critical link columns by default to prevent overall page scroll
+                    cover: false,
+                    icon: false,
+                    publicPath: false,
+                  }
+                }
+              }}
             />
           </Stack>
         )}
