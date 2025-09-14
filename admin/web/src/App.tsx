@@ -263,7 +263,11 @@ export default function App() {
                 { field: 'updatedAt', headerName: 'Updated', minWidth: 180, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
                 { field: 'cover', headerName: 'Cover', minWidth: 160, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
                 { field: 'icon', headerName: 'Icon', minWidth: 140, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
-                { field: 'publicPath', headerName: 'Public path', minWidth: 220, valueGetter: (p: any) => (p.row.publicPath as string).replace(/^.*\/LWB\//, '/LWB/') },
+                { field: 'publicPath', headerName: 'Public path', minWidth: 220, valueGetter: (p: any) => {
+                  const raw = p?.row?.publicPath as string | undefined
+                  if (!raw || typeof raw !== 'string') return '-'
+                  return raw.replace(/^.*\/LWB\//, '/LWB/')
+                } },
                 { field: 'actions', headerName: 'Actions', sortable: false, width: 240, renderCell: (p) => (
                   <Stack direction="row" spacing={1}>
                     <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>move(p.row.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
