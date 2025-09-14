@@ -312,8 +312,8 @@ export default function App() {
             <DataGrid autoHeight disableRowSelectionOnClick rows={users} getRowId={(r)=>r.id}
         columns={[
                 { field: 'username', headerName: 'Username', flex: 1, minWidth: 180 },
-                { field: 'createdAt', headerName: 'Registered', minWidth: 140, valueFormatter: (p: any) => {
-                  const v = p?.value as string | undefined
+                { field: 'createdAt', headerName: 'Registered', minWidth: 160, valueGetter: (p: any) => {
+                  const v = p?.row?.createdAt as string | undefined
                   if (!v) return '-'
                   const d = new Date(v)
                   return isNaN(d.getTime()) ? '-' : d.toLocaleDateString()

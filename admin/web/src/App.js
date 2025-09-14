@@ -235,8 +235,8 @@ export default function App() {
                                                                             edit(a.id, t); }, children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) })] }) })] }) }, a.id));
                                 }) })] })), tab === 'users' && (_jsxs(Stack, { spacing: 2, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Users" }), _jsxs(Typography, { color: "text.secondary", children: ["Total registered users: ", usersTotal] }), _jsxs(Stack, { component: "form", onSubmit: searchUsers, direction: { xs: 'column', sm: 'row' }, spacing: 1, alignItems: { sm: 'center' }, children: [_jsx(TextField, { value: query, onChange: e => setQuery(e.target.value), placeholder: "Search username", size: "small" }), _jsx(Button, { type: "submit", variant: "contained", startIcon: _jsx(SearchIcon, {}), children: "Search" }), _jsx(Typography, { variant: "caption", color: "text.secondary", children: "Tip: Leave empty and click Search to list latest users." })] }), _jsx(DataGrid, { autoHeight: true, disableRowSelectionOnClick: true, rows: users, getRowId: (r) => r.id, columns: [
                                     { field: 'username', headerName: 'Username', flex: 1, minWidth: 180 },
-                                    { field: 'createdAt', headerName: 'Registered', minWidth: 140, valueFormatter: (p) => {
-                                            const v = p?.value;
+                                    { field: 'createdAt', headerName: 'Registered', minWidth: 160, valueGetter: (p) => {
+                                            const v = p?.row?.createdAt;
                                             if (!v)
                                                 return '-';
                                             const d = new Date(v);
