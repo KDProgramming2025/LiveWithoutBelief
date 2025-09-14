@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  AppBar, Box, Button, Card, CardContent, CircularProgress, Container, Divider, Drawer, FormControl, IconButton, InputLabel, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper
+  AppBar, Avatar, Box, Button, Card, CardActions, CardContent, CircularProgress, Divider, Drawer, IconButton, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper, Grid, Chip, CardMedia
 } from '@mui/material'
-import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar } from '@mui/x-data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import ArticleIcon from '@mui/icons-material/Description'
 import UsersIcon from '@mui/icons-material/People'
 import LogoutIcon from '@mui/icons-material/Logout'
@@ -254,43 +254,50 @@ export default function App() {
               </CardContent>
             </Card>
 
-            <DataGrid autoHeight disableRowSelectionOnClick rows={articles.slice().sort((a,b)=>a.order-b.order)} getRowId={(r: Article)=>r.id}
-              columns={[
-                { field: 'order', headerName: 'Order', width: 90 },
-                { field: 'title', headerName: 'Title', flex: 1, minWidth: 220 },
-                { field: 'filename', headerName: 'Filename', minWidth: 160, flex: 0.6 },
-                { field: 'createdAt', headerName: 'Created', minWidth: 160, flex: 0.6, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
-                { field: 'updatedAt', headerName: 'Updated', minWidth: 160, flex: 0.6, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
-                { field: 'cover', headerName: 'Cover', minWidth: 120, flex: 0.4, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
-                { field: 'icon', headerName: 'Icon', minWidth: 110, flex: 0.35, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
-                { field: 'publicPath', headerName: 'Public path', minWidth: 200, flex: 0.7, valueGetter: (p: any) => {
-                  const raw = p?.row?.publicPath as string | undefined
-                  if (!raw || typeof raw !== 'string') return '-'
-                  return raw.replace(/^.*\/LWB\//, '/LWB/')
-                } },
-                { field: 'actions', headerName: 'Actions', sortable: false, width: 220, renderCell: (p) => (
-                  <Stack direction="row" spacing={1}>
-                    <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>move(p.row.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                    <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>move(p.row.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                    <Tooltip title="Edit title"><span><IconButton size="small" onClick={()=>{ const t=prompt('New title', p.row.title); if (t!==null) edit(p.row.id, t) }}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                  </Stack>
-                ) },
-              ] as GridColDef[]}
-              pageSizeOptions={[10,25,50]}
-              density="comfortable"
-              slots={{ toolbar: GridToolbar }}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 10, page: 0 } },
-                columns: {
-                  columnVisibilityModel: {
-                    // Hide less-critical link columns by default to prevent overall page scroll
-                    cover: false,
-                    icon: false,
-                    publicPath: false,
-                  }
-                }
-              }}
-            />
+            <Grid container spacing={2}>
+              {articles.slice().sort((a,b)=>a.order-b.order).map(a => {
+                const created = a.createdAt ? new Date(a.createdAt) : null
+                const updated = a.updatedAt ? new Date(a.updatedAt) : null
+                const publicLink = typeof a.publicPath === 'string' ? a.publicPath.replace(/^.*\/LWB\//, '/LWB/') : null
+                return (
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={a.id}>
+                    <Card sx={{ height:'100%', display:'flex', flexDirection:'column' }}>
+                      {a.cover ? (
+                        <CardMedia component="img" src={a.cover} alt="Cover" sx={{ aspectRatio:'16/9', objectFit:'cover' }} />
+                      ) : (
+                        <Box sx={{ aspectRatio:'16/9', display:'grid', placeItems:'center', bgcolor:'action.hover' }}>
+                          <ArticleIcon sx={{ fontSize: 48, color:'text.secondary' }} />
+                        </Box>
+                      )}
+                      <CardContent sx={{ flexGrow: 1 }}>
+                        <Stack spacing={1}>
+                          <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
+                            {a.icon && <Avatar src={a.icon} variant="rounded" sx={{ width: 28, height: 28 }} />}
+                            <Typography variant="subtitle1" fontWeight={700} noWrap title={a.title || a.filename}>
+                              {a.title || a.filename}
+                            </Typography>
+                          </Stack>
+                          <Typography variant="body2" color="text.secondary" noWrap title={a.filename}>{a.filename}</Typography>
+                          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                            <Chip size="small" label={`Order #${a.order}`} />
+                            {created && <Chip size="small" variant="outlined" label={`Created ${created.toLocaleDateString()}`} />}
+                            {updated && <Chip size="small" variant="outlined" label={`Updated ${updated.toLocaleDateString()}`} />}
+                          </Stack>
+                          {publicLink && <MuiLink href={publicLink} target="_blank" rel="noreferrer" underline="hover">Open public link</MuiLink>}
+                        </Stack>
+                      </CardContent>
+                      <CardActions sx={{ justifyContent:'space-between' }}>
+                        <Stack direction="row" spacing={1}>
+                          <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>move(a.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>move(a.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Edit title"><span><IconButton size="small" onClick={()=>{ const t=prompt('New title', a.title); if (t!==null) edit(a.id, t) }}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                        </Stack>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                )
+              })}
+            </Grid>
           </Stack>
         )}
         {tab === 'users' && (
