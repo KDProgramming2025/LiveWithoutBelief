@@ -113,7 +113,11 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   app.post('/v1/auth/validate', async (req, reply) => {
     const bodySchema = z.object({ idToken: z.string().min(10) });
     const parse = bodySchema.safeParse((req as FastifyRequest).body);
-    if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
+    if (!parse.success) {
+      app.log.warn({ event: 'auth_reject', reason: 'invalid_body', issues: parse.error.issues }, 'auth rejected: invalid body');
+      reply.header('X-Auth-Reason', 'invalid_body');
+      return reply.code(400).send({ error: 'invalid_body' });
+    }
     const { idToken } = parse.data;
     try {
       app.log.info({ event: 'validate_start', googleBypass: !!opts.googleBypass }, 'auth validate start');
@@ -142,35 +146,54 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
                 payload = parsed as unknown as TokenPayload;
               } else {
                 app.log.warn({ event: 'google_bypass_aud_mismatch', aud, azp, expectedAllowed: Array.from(allowed) }, 'ID token audience/azp do not match allowed audiences');
+                app.log.warn({ event: 'auth_reject', reason: 'aud_mismatch', aud, azp }, 'auth rejected: audience mismatch');
+                reply.header('X-Auth-Reason', 'aud_mismatch');
                 return reply.code(401).send({ error: 'invalid_token' });
               }
             } else {
               app.log.warn({ event: 'google_bypass_invalid_payload' }, 'parsed token payload was not an object');
+              app.log.warn({ event: 'auth_reject', reason: 'invalid_payload' }, 'auth rejected: invalid payload');
+              reply.header('X-Auth-Reason', 'invalid_payload');
               return reply.code(401).send({ error: 'invalid_token' });
             }
           } else {
             app.log.warn({ event: 'google_bypass_invalid_parts' }, 'ID token did not contain 2 parts');
+            app.log.warn({ event: 'auth_reject', reason: 'invalid_parts' }, 'auth rejected: invalid token parts');
+            reply.header('X-Auth-Reason', 'invalid_parts');
             return reply.code(401).send({ error: 'invalid_token' });
           }
         } catch (e) {
           app.log.warn({ event: 'google_bypass_decode_failed', err: e }, 'google bypass decode failed');
+          app.log.warn({ event: 'auth_reject', reason: 'decode_failed' }, 'auth rejected: decode failed');
+          reply.header('X-Auth-Reason', 'decode_failed');
           return reply.code(401).send({ error: 'invalid_token' });
         }
       } else {
         const ticket = await oauthClient.verifyIdToken({ idToken, audience: opts.googleClientId });
         payload = ticket.getPayload() || undefined;
       }
-      if (!payload) { app.log.warn({ event: 'validate_no_payload' }, 'no token payload'); return reply.code(401).send({ error: 'invalid_token' }); }
+      if (!payload) {
+        app.log.warn({ event: 'validate_no_payload' }, 'no token payload');
+        app.log.warn({ event: 'auth_reject', reason: 'no_payload' }, 'auth rejected: no payload');
+        reply.header('X-Auth-Reason', 'no_payload');
+        return reply.code(401).send({ error: 'invalid_token' });
+      }
       // Derive a stable username: prefer email; else fallback to google:sub
       try {
         const sub = payload.sub;
         const email = payload.email && String(payload.email).trim().length ? String(payload.email) : undefined;
-        if (!sub && !email) { app.log.warn({ event: 'google_validate_no_identity' }, 'google token missing sub/email'); return reply.code(401).send({ error: 'invalid_token' }); }
+        if (!sub && !email) {
+          app.log.warn({ event: 'google_validate_no_identity' }, 'google token missing sub/email');
+          app.log.warn({ event: 'auth_reject', reason: 'no_identity' }, 'auth rejected: no identity');
+          reply.header('X-Auth-Reason', 'no_identity');
+          return reply.code(401).send({ error: 'invalid_token' });
+        }
         const uname = (email ? email.toLowerCase() : `google:${sub}`);
         const existing = await users.findByUsername(uname);
         if (existing && (existing as any).deletedAt) {
           // Safety if any legacy soft-deleted row still exists
           app.log.warn({ event: 'google_validate_deleted', username: uname }, 'google user is deleted');
+          reply.header('X-Auth-Reason', 'account_deleted');
           return reply.code(403).send({ error: 'account_deleted' });
         }
         const sentinel = 'GOOGLE_ONLY';
@@ -192,6 +215,8 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       };
     } catch (e) {
       app.log.warn({ event: 'validate_exception', err: e }, 'token verification failed');
+      app.log.warn({ event: 'auth_reject', reason: 'exception' }, 'auth rejected: exception during validation');
+      reply.header('X-Auth-Reason', 'exception');
       return reply.code(401).send({ error: 'invalid_token' });
     }
   });
