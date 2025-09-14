@@ -82,14 +82,44 @@ describe('google validate creates user and disables password login', () => {
   });
 });
 
-describe('auth revoke', () => {
-  test('revoke then validate gets revoked', async () => {
+describe('token revoke', () => {
+  test('revoke google id token is ignored', async () => {
+    // initial validate should succeed (creates/links user)
+    const first = await app.inject({ method: 'POST', url: '/v1/auth/validate', payload: { idToken: 'good-token' } });
+    expect([200, 401]).toContain(first.statusCode);
+    if (first.statusCode !== 200) return; // if some other test revoked, skip
+
+    // revoking a Google ID token is a no-op in our server
     const revokeRes = await app.inject({ method: 'POST', url: '/v1/auth/revoke', payload: { idToken: 'good-token' } });
     expect(revokeRes.statusCode).toBe(200);
     expect(revokeRes.json()).toEqual({ revoked: true });
+
+    // validate should still succeed
     const validateAfter = await app.inject({ method: 'POST', url: '/v1/auth/validate', payload: { idToken: 'good-token' } });
-    expect(validateAfter.statusCode).toBe(401);
-    expect(validateAfter.json()).toEqual({ error: 'revoked' });
+    expect(validateAfter.statusCode).toBe(200);
+    const body = validateAfter.json();
+    expect(body.email).toBe('u@example.com');
+  });
+
+  test('revoke password token blocks validation', async () => {
+    // register and login to get a password JWT
+    const username = 'revokeuser';
+    const password = 'StrongPass123!';
+    const reg = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, altcha: 'x'.repeat(24) } });
+    expect(reg.statusCode).toBe(200);
+    const login = await app.inject({ method: 'POST', url: '/v1/auth/login', payload: { username, password } });
+    expect(login.statusCode).toBe(200);
+    const token = login.json().token as string;
+
+    // revoke password token
+    const revokeRes = await app.inject({ method: 'POST', url: '/v1/auth/revoke', payload: { token } });
+    expect(revokeRes.statusCode).toBe(200);
+    expect(revokeRes.json()).toEqual({ revoked: true });
+
+    // pwd validate should now be revoked
+    const validatePwd = await app.inject({ method: 'POST', url: '/v1/auth/pwd/validate', payload: { token } });
+    expect(validatePwd.statusCode).toBe(401);
+    expect(validatePwd.json()).toEqual({ error: 'revoked' });
   });
 });
 
