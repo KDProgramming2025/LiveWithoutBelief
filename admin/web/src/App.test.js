@@ -23,8 +23,9 @@ vi.stubGlobal('fetch', (url, init) => {
     }
     return Promise.resolve({ ok: true, json: async () => ({}) });
 });
-it('renders Admin UI with Articles section and User Management tab', async () => {
+it('renders Admin UI with Articles section and Users navigation', async () => {
     render(_jsx(App, {}));
-    await waitFor(() => expect(screen.getByText(/Articles/i)).toBeInTheDocument());
-    expect(screen.getByText(/User Management/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText(/Articles/i).length).toBeGreaterThan(0));
+    // Users appears in the nav item text
+    expect(screen.getByText(/Users/i)).toBeInTheDocument();
 });

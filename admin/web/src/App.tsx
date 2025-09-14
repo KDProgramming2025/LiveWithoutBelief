@@ -1,4 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
+import {
+  AppBar, Box, Button, Card, CardContent, CircularProgress, Container, Divider, Drawer, FormControl, IconButton, InputLabel, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper
+} from '@mui/material'
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
+import ArticleIcon from '@mui/icons-material/Description'
+import UsersIcon from '@mui/icons-material/People'
+import LogoutIcon from '@mui/icons-material/Logout'
+import DarkModeIcon from '@mui/icons-material/DarkMode'
+import LightModeIcon from '@mui/icons-material/LightMode'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
+import EditIcon from '@mui/icons-material/Edit'
+import SearchIcon from '@mui/icons-material/Search'
+import DeleteIcon from '@mui/icons-material/Delete'
+import { useColorMode } from './theme'
 
 type Article = { id: string; title: string; createdAt: string; updatedAt: string; order: number; filename: string; securePath: string; publicPath: string; cover?: string; icon?: string }
 type UsersSummary = { total: number }
@@ -25,15 +41,19 @@ function Login({ onDone }: { onDone: () => void }) {
     try { await api.post(`${API}/v1/admin/login`, { username, password }); onDone() } catch (e) { setErr('Invalid credentials') }
   }
   return (
-    <div style={{ display: 'grid', placeItems: 'center', minHeight: '100dvh', fontFamily: 'Inter, system-ui, Arial' }}>
-      <form onSubmit={submit} style={{ width: 340, padding: 24, border: '1px solid #ddd', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', background: '#fff' }}>
-        <h1 style={{ marginTop: 0 }}>LWB Admin</h1>
-        {err && <div style={{ color: 'crimson', marginBottom: 8 }}>{err}</div>}
-        <label>Username<input value={username} onChange={e => setUsername(e.target.value)} required style={{ width: '100%', margin: '6px 0 12px', padding: 8 }} /></label>
-        <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', margin: '6px 0 16px', padding: 8 }} /></label>
-        <button type="submit" style={{ width: '100%', padding: 10 }}>Login</button>
-      </form>
-    </div>
+    <Box sx={{ display: 'grid', placeItems: 'center', minHeight: '100dvh' }}>
+      <Card sx={{ width: 380 }}>
+        <CardContent>
+          <Stack component="form" onSubmit={submit} spacing={2}>
+            <Typography variant="h5" fontWeight={700}>LWB Admin</Typography>
+            {err && <Paper variant="outlined" sx={{ p:1.5, borderColor: 'error.main', color: 'error.main' }}>{err}</Paper>}
+            <TextField label="Username" value={username} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setUsername(e.target.value)} autoFocus required fullWidth />
+            <TextField label="Password" type="password" value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setPassword(e.target.value)} required fullWidth />
+            <Button type="submit" variant="contained" fullWidth>Login</Button>
+          </Stack>
+        </CardContent>
+      </Card>
+    </Box>
   )
 }
 
@@ -41,6 +61,7 @@ export default function App() {
   const api = useJson()
   const [auth, setAuth] = useState<'unknown'|'no'|'yes'>('unknown')
   const [tab, setTab] = useState<'articles'|'users'>('articles')
+  const { mode, toggle } = useColorMode()
 
   // Article state
   const [articles, setArticles] = useState<Article[]>([])
@@ -171,96 +192,117 @@ export default function App() {
     try { await searchUsers(new Event('submit') as any) } catch {}
   }
 
-  if (auth === 'unknown') return <div style={{ padding: 16 }}>Loading…</div>
+  if (auth === 'unknown') return <Box sx={{ p:3 }}><CircularProgress /></Box>
   if (auth === 'no') return <Login onDone={() => setAuth('yes')} />
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', minHeight: '100dvh', fontFamily: 'Inter, system-ui, Arial' }}>
-      <aside style={{ borderRight: '1px solid #eee', padding: 16 }}>
-        <h2 style={{ marginTop: 0 }}>LWB Admin</h2>
-        <nav style={{ display: 'grid', gap: 8 }}>
-          <button onClick={() => setTab('articles')} style={{ textAlign: 'left', padding: 8, background: tab==='articles'?'#f0f0f0':'transparent' }}>Article management</button>
-          <button onClick={() => setTab('users')} style={{ textAlign: 'left', padding: 8, background: tab==='users'?'#f0f0f0':'transparent' }}>User Management</button>
-          <button onClick={logout} style={{ textAlign: 'left', padding: 8, color: 'crimson' }}>Logout</button>
-        </nav>
-      </aside>
-      <main style={{ padding: 24 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: '280px 1fr', minHeight: '100dvh' }}>
+      <Drawer variant="permanent" sx={{ width: 280, [`& .MuiDrawer-paper`]: { width: 280, boxSizing: 'border-box' } }}>
+        <Toolbar><Typography variant="h6" fontWeight={700}>LWB Admin</Typography></Toolbar>
+        <Divider />
+        <List>
+          <ListItemButton selected={tab==='articles'} onClick={()=>setTab('articles')}>
+            <ListItemIcon><ArticleIcon /></ListItemIcon>
+            <ListItemText primary="Articles" secondary="Manage content" />
+          </ListItemButton>
+          <ListItemButton selected={tab==='users'} onClick={()=>setTab('users')}>
+            <ListItemIcon><UsersIcon /></ListItemIcon>
+            <ListItemText primary="Users" secondary="Manage accounts" />
+          </ListItemButton>
+        </List>
+        <Box sx={{ flexGrow: 1 }} />
+        <Divider />
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p:2 }}>
+          <Tooltip title={mode==='dark'?'Switch to light':'Switch to dark'}>
+            <IconButton onClick={toggle} color="inherit">{mode==='dark'?<LightModeIcon/>:<DarkModeIcon/>}</IconButton>
+          </Tooltip>
+          <Button onClick={logout} color="error" startIcon={<LogoutIcon />}>Logout</Button>
+        </Stack>
+      </Drawer>
+      <Box component="main" sx={{ p: 3 }}>
+        <Toolbar />
         {tab === 'articles' && (
-          <div>
-            <h2>Articles</h2>
-            <form onSubmit={upload} style={{ display: 'grid', gap: 8, maxWidth: 640, padding: 12, border: '1px solid #ddd', borderRadius: 8 }}>
-              <div>
-                <label>Title<br/><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Optional; defaults from docx" style={{ width: '100%', padding: 8 }} /></label>
-              </div>
-              <div>
-                <label>DOCX<br/><input type="file" accept=".docx" onChange={e => setDocx(e.target.files?.[0] ?? null)} required /></label>
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <label>Cover<br/><input type="file" accept="image/*" onChange={e => setCover(e.target.files?.[0] ?? null)} /></label>
-                <label>Icon<br/><input type="file" accept="image/*" onChange={e => setIcon(e.target.files?.[0] ?? null)} /></label>
-              </div>
-              {uploadBusy && (
-                <div style={{ display:'grid', gap:6 }}>
-                  <div style={{ height:8, background:'#eee', borderRadius:4, overflow:'hidden' }}>
-                    <div style={{ width:`${uploadPct}%`, height:'100%', background:'#3b82f6', transition:'width .2s' }} />
-                  </div>
-                  <small>{uploadPct}%</small>
-                </div>
-              )}
-              <div><button type="submit" disabled={uploadBusy}>Upload</button></div>
-            </form>
+          <Stack spacing={3}>
+            <Typography variant="h5" fontWeight={700}>Articles</Typography>
+            <Card>
+              <CardContent>
+                <Stack component="form" onSubmit={upload} spacing={2} sx={{ maxWidth: 720 }}>
+                  <TextField label="Title (optional)" value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setTitle(e.target.value)} placeholder="Defaults from docx" fullWidth />
+                  <Stack direction={{ xs:'column', sm:'row' }} spacing={2}>
+                    <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
+                      Select DOCX
+                      <input hidden type="file" accept=".docx" onChange={e=>setDocx(e.target.files?.[0] ?? null)} />
+                    </Button>
+                    <Typography sx={{ alignSelf:'center' }} color="text.secondary">{docx?.name ?? 'No file selected'}</Typography>
+                  </Stack>
+                  <Stack direction={{ xs:'column', sm:'row' }} spacing={2}>
+                    <Button variant="outlined" component="label">Cover<input hidden type="file" accept="image/*" onChange={e=>setCover(e.target.files?.[0] ?? null)} /></Button>
+                    <Typography sx={{ alignSelf:'center' }} color="text.secondary">{cover?.name ?? 'Optional'}</Typography>
+                    <Button variant="outlined" component="label">Icon<input hidden type="file" accept="image/*" onChange={e=>setIcon(e.target.files?.[0] ?? null)} /></Button>
+                    <Typography sx={{ alignSelf:'center' }} color="text.secondary">{icon?.name ?? 'Optional'}</Typography>
+                  </Stack>
+                  {uploadBusy && (
+                    <Box>
+                      <LinearProgress variant="determinate" value={uploadPct} />
+                      <Typography variant="caption" color="text.secondary">{uploadPct}%</Typography>
+                    </Box>
+                  )}
+                  <Stack direction="row" spacing={1}>
+                    <Button type="submit" variant="contained" disabled={uploadBusy || !docx}>Upload</Button>
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
 
-            <table cellPadding={6} style={{ marginTop: 16, borderCollapse: 'collapse' }}>
-              <thead><tr><th>Order</th><th>Title</th><th>Filename</th><th>Created</th><th>Updated</th><th>Cover</th><th>Icon</th><th>Path</th><th>Actions</th></tr></thead>
-              <tbody>
-                {articles.slice().sort((a,b)=>a.order-b.order).map(a => (
-                  <tr key={a.id}>
-                    <td>{a.order}</td>
-                    <td>{a.title}</td>
-                    <td>{a.filename}</td>
-                    <td>{new Date(a.createdAt).toLocaleString()}</td>
-                    <td>{new Date(a.updatedAt).toLocaleString()}</td>
-                    <td>{a.cover ? <a href={a.cover} target="_blank" rel="noreferrer">{a.cover}</a> : '-'}</td>
-                    <td>{a.icon ? <a href={a.icon} target="_blank" rel="noreferrer">{a.icon}</a> : '-'}</td>
-                    <td>{a.publicPath.replace(/^.*\/LWB\//, '/LWB/')}</td>
-                    <td>
-                      <button onClick={()=>move(a.id,'up')}>Up</button>{' '}
-                      <button onClick={()=>move(a.id,'down')}>Down</button>{' '}
-                      <button onClick={()=>{ const t=prompt('New title', a.title); if (t!==null) edit(a.id, t) }}>Edit title</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            <DataGrid autoHeight disableRowSelectionOnClick rows={articles.slice().sort((a,b)=>a.order-b.order)} getRowId={(r: Article)=>r.id}
+              columns={[
+                { field: 'order', headerName: 'Order', width: 90 },
+                { field: 'title', headerName: 'Title', flex: 1, minWidth: 200 },
+                { field: 'filename', headerName: 'Filename', minWidth: 180 },
+                { field: 'createdAt', headerName: 'Created', minWidth: 180, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
+                { field: 'updatedAt', headerName: 'Updated', minWidth: 180, valueFormatter: (p:any)=> new Date(p.value as string).toLocaleString() },
+                { field: 'cover', headerName: 'Cover', minWidth: 160, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
+                { field: 'icon', headerName: 'Icon', minWidth: 140, renderCell: (p: GridRenderCellParams)=> p.value ? <MuiLink href={p.value as string} target="_blank" rel="noreferrer" underline="hover">Open</MuiLink> : <Typography variant="body2" color="text.secondary">-</Typography> },
+                { field: 'publicPath', headerName: 'Public path', minWidth: 220, valueGetter: (p: any) => (p.row.publicPath as string).replace(/^.*\/LWB\//, '/LWB/') },
+                { field: 'actions', headerName: 'Actions', sortable: false, width: 240, renderCell: (p) => (
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>move(p.row.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                    <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>move(p.row.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                    <Tooltip title="Edit title"><span><IconButton size="small" onClick={()=>{ const t=prompt('New title', p.row.title); if (t!==null) edit(p.row.id, t) }}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                  </Stack>
+                ) },
+              ] as GridColDef[]}
+              pageSizeOptions={[10,25,50]}
+              initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+            />
+          </Stack>
         )}
         {tab === 'users' && (
-          <div>
-            <h2>Users</h2>
-            <p>Total registered users: {usersTotal}</p>
-            <form onSubmit={searchUsers} style={{ display: 'flex', gap: 8 }}>
-              <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search username" style={{ padding: 8 }} />
-              <button type="submit">Search</button>
-            </form>
-            <small style={{ color:'#666' }}>Tip: leave the search empty and click Search to list the latest users. The newest users auto-load on first open.</small>
-            <table cellPadding={6} style={{ marginTop: 12 }}>
-              <thead><tr><th>Username</th><th>Registered</th><th>Bookmarks</th><th>Threads</th><th>Last login</th><th></th></tr></thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u.id}>
-                    <td>{u.username}</td>
-                    <td>{new Date(u.createdAt).toLocaleDateString()}</td>
-                    <td>{u.bookmarks ?? '-'}</td>
-                    <td>{u.discussions ?? '-'}</td>
-                    <td>{u.lastLogin ? new Date(u.lastLogin).toLocaleString() : '-'}</td>
-                    <td><button onClick={()=>removeUser(u.id)} style={{ color: 'crimson' }}>Remove</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Stack spacing={2}>
+            <Typography variant="h5" fontWeight={700}>Users</Typography>
+            <Typography color="text.secondary">Total registered users: {usersTotal}</Typography>
+            <Stack component="form" onSubmit={searchUsers} direction={{ xs:'column', sm:'row' }} spacing={1} alignItems={{ sm:'center' }}>
+              <TextField value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search username" size="small" />
+              <Button type="submit" variant="contained" startIcon={<SearchIcon />}>Search</Button>
+              <Typography variant="caption" color="text.secondary">Tip: Leave empty and click Search to list latest users.</Typography>
+            </Stack>
+            <DataGrid autoHeight disableRowSelectionOnClick rows={users} getRowId={(r)=>r.id}
+        columns={[
+                { field: 'username', headerName: 'Username', flex: 1, minWidth: 180 },
+        { field: 'createdAt', headerName: 'Registered', minWidth: 140, valueFormatter: (p: any) => new Date(p.value as string).toLocaleDateString() },
+                { field: 'bookmarks', headerName: 'Bookmarks', width: 120, valueGetter: (p:any) => p.row.bookmarks ?? '-' },
+                { field: 'discussions', headerName: 'Threads', width: 120, valueGetter: (p:any) => p.row.discussions ?? '-' },
+                { field: 'lastLogin', headerName: 'Last login', minWidth: 180, valueGetter: (p:any) => p.row.lastLogin ? new Date(p.row.lastLogin).toLocaleString() : '-' },
+                { field: 'actions', headerName: '', sortable: false, width: 120, renderCell: (p) => (
+                  <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={()=>removeUser(p.row.id)}>Remove</Button>
+                ) },
+              ]}
+              pageSizeOptions={[10,25,50]}
+              initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+            />
+          </Stack>
         )}
-      </main>
-    </div>
+      </Box>
+    </Box>
   )
 }

@@ -1,5 +1,19 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useMemo, useState } from 'react';
+import { Box, Button, Card, CardContent, CircularProgress, Divider, Drawer, IconButton, LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Stack, TextField, Toolbar, Tooltip, Typography, Link as MuiLink, Paper } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import ArticleIcon from '@mui/icons-material/Description';
+import UsersIcon from '@mui/icons-material/People';
+import LogoutIcon from '@mui/icons-material/Logout';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { useColorMode } from './theme';
 const API = import.meta.env.VITE_API_URL ?? `${location.origin}/LWB/Admin/api`;
 function useJson() {
     return useMemo(() => ({
@@ -27,12 +41,13 @@ function Login({ onDone }) {
             setErr('Invalid credentials');
         }
     };
-    return (_jsx("div", { style: { display: 'grid', placeItems: 'center', minHeight: '100dvh', fontFamily: 'Inter, system-ui, Arial' }, children: _jsxs("form", { onSubmit: submit, style: { width: 340, padding: 24, border: '1px solid #ddd', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', background: '#fff' }, children: [_jsx("h1", { style: { marginTop: 0 }, children: "LWB Admin" }), err && _jsx("div", { style: { color: 'crimson', marginBottom: 8 }, children: err }), _jsxs("label", { children: ["Username", _jsx("input", { value: username, onChange: e => setUsername(e.target.value), required: true, style: { width: '100%', margin: '6px 0 12px', padding: 8 } })] }), _jsxs("label", { children: ["Password", _jsx("input", { type: "password", value: password, onChange: e => setPassword(e.target.value), required: true, style: { width: '100%', margin: '6px 0 16px', padding: 8 } })] }), _jsx("button", { type: "submit", style: { width: '100%', padding: 10 }, children: "Login" })] }) }));
+    return (_jsx(Box, { sx: { display: 'grid', placeItems: 'center', minHeight: '100dvh' }, children: _jsx(Card, { sx: { width: 380 }, children: _jsx(CardContent, { children: _jsxs(Stack, { component: "form", onSubmit: submit, spacing: 2, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "LWB Admin" }), err && _jsx(Paper, { variant: "outlined", sx: { p: 1.5, borderColor: 'error.main', color: 'error.main' }, children: err }), _jsx(TextField, { label: "Username", value: username, onChange: (e) => setUsername(e.target.value), autoFocus: true, required: true, fullWidth: true }), _jsx(TextField, { label: "Password", type: "password", value: password, onChange: (e) => setPassword(e.target.value), required: true, fullWidth: true }), _jsx(Button, { type: "submit", variant: "contained", fullWidth: true, children: "Login" })] }) }) }) }));
 }
 export default function App() {
     const api = useJson();
     const [auth, setAuth] = useState('unknown');
     const [tab, setTab] = useState('articles');
+    const { mode, toggle } = useColorMode();
     // Article state
     const [articles, setArticles] = useState([]);
     const [uploadBusy, setUploadBusy] = useState(false);
@@ -107,11 +122,50 @@ export default function App() {
                 xhr.onload = () => {
                     if (xhr.status >= 200 && xhr.status < 300)
                         return resolve();
+                    if (xhr.status === 409)
+                        return reject(new Error('409'));
                     return reject(new Error(String(xhr.status)));
                 };
                 xhr.onerror = () => reject(new Error('network'));
                 xhr.send(fd);
             });
+        }
+        catch (err) {
+            const msg = String(err?.message ?? err ?? '');
+            if (msg.includes('409')) {
+                const ok = confirm('An article with the same ID already exists. Replace it?');
+                if (!ok)
+                    throw err;
+                // resend with replace=true
+                const fd2 = new FormData();
+                if (title)
+                    fd2.set('title', title);
+                fd2.set('docx', docx);
+                if (cover)
+                    fd2.set('cover', cover);
+                if (icon)
+                    fd2.set('icon', icon);
+                fd2.set('replace', 'true');
+                await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', `${API}/v1/admin/articles/upload`);
+                    xhr.withCredentials = true;
+                    xhr.upload.onprogress = (evt) => {
+                        if (evt.lengthComputable)
+                            setUploadPct(Math.round((evt.loaded / evt.total) * 100));
+                    };
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300)
+                            return resolve();
+                        return reject(new Error(String(xhr.status)));
+                    };
+                    xhr.onerror = () => reject(new Error('network'));
+                    xhr.send(fd2);
+                });
+            }
+            else {
+                throw err;
+            }
             setTitle('');
             setDocx(null);
             setCover(null);
@@ -170,9 +224,26 @@ export default function App() {
         catch { }
     };
     if (auth === 'unknown')
-        return _jsx("div", { style: { padding: 16 }, children: "Loading\u2026" });
+        return _jsx(Box, { sx: { p: 3 }, children: _jsx(CircularProgress, {}) });
     if (auth === 'no')
         return _jsx(Login, { onDone: () => setAuth('yes') });
-    return (_jsxs("div", { style: { display: 'grid', gridTemplateColumns: '240px 1fr', minHeight: '100dvh', fontFamily: 'Inter, system-ui, Arial' }, children: [_jsxs("aside", { style: { borderRight: '1px solid #eee', padding: 16 }, children: [_jsx("h2", { style: { marginTop: 0 }, children: "LWB Admin" }), _jsxs("nav", { style: { display: 'grid', gap: 8 }, children: [_jsx("button", { onClick: () => setTab('articles'), style: { textAlign: 'left', padding: 8, background: tab === 'articles' ? '#f0f0f0' : 'transparent' }, children: "Article management" }), _jsx("button", { onClick: () => setTab('users'), style: { textAlign: 'left', padding: 8, background: tab === 'users' ? '#f0f0f0' : 'transparent' }, children: "User Management" }), _jsx("button", { onClick: logout, style: { textAlign: 'left', padding: 8, color: 'crimson' }, children: "Logout" })] })] }), _jsxs("main", { style: { padding: 24 }, children: [tab === 'articles' && (_jsxs("div", { children: [_jsx("h2", { children: "Articles" }), _jsxs("form", { onSubmit: upload, style: { display: 'grid', gap: 8, maxWidth: 640, padding: 12, border: '1px solid #ddd', borderRadius: 8 }, children: [_jsx("div", { children: _jsxs("label", { children: ["Title", _jsx("br", {}), _jsx("input", { value: title, onChange: e => setTitle(e.target.value), placeholder: "Optional; defaults from docx", style: { width: '100%', padding: 8 } })] }) }), _jsx("div", { children: _jsxs("label", { children: ["DOCX", _jsx("br", {}), _jsx("input", { type: "file", accept: ".docx", onChange: e => setDocx(e.target.files?.[0] ?? null), required: true })] }) }), _jsxs("div", { style: { display: 'flex', gap: 12 }, children: [_jsxs("label", { children: ["Cover", _jsx("br", {}), _jsx("input", { type: "file", accept: "image/*", onChange: e => setCover(e.target.files?.[0] ?? null) })] }), _jsxs("label", { children: ["Icon", _jsx("br", {}), _jsx("input", { type: "file", accept: "image/*", onChange: e => setIcon(e.target.files?.[0] ?? null) })] })] }), uploadBusy && (_jsxs("div", { style: { display: 'grid', gap: 6 }, children: [_jsx("div", { style: { height: 8, background: '#eee', borderRadius: 4, overflow: 'hidden' }, children: _jsx("div", { style: { width: `${uploadPct}%`, height: '100%', background: '#3b82f6', transition: 'width .2s' } }) }), _jsxs("small", { children: [uploadPct, "%"] })] })), _jsx("div", { children: _jsx("button", { type: "submit", disabled: uploadBusy, children: "Upload" }) })] }), _jsxs("table", { cellPadding: 6, style: { marginTop: 16, borderCollapse: 'collapse' }, children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "Order" }), _jsx("th", { children: "Title" }), _jsx("th", { children: "Filename" }), _jsx("th", { children: "Created" }), _jsx("th", { children: "Updated" }), _jsx("th", { children: "Cover" }), _jsx("th", { children: "Icon" }), _jsx("th", { children: "Path" }), _jsx("th", { children: "Actions" })] }) }), _jsx("tbody", { children: articles.slice().sort((a, b) => a.order - b.order).map(a => (_jsxs("tr", { children: [_jsx("td", { children: a.order }), _jsx("td", { children: a.title }), _jsx("td", { children: a.filename }), _jsx("td", { children: new Date(a.createdAt).toLocaleString() }), _jsx("td", { children: new Date(a.updatedAt).toLocaleString() }), _jsx("td", { children: a.cover || '-' }), _jsx("td", { children: a.icon || '-' }), _jsx("td", { children: a.publicPath.replace(/^.*\/LWB\//, '/LWB/') }), _jsxs("td", { children: [_jsx("button", { onClick: () => move(a.id, 'up'), children: "Up" }), ' ', _jsx("button", { onClick: () => move(a.id, 'down'), children: "Down" }), ' ', _jsx("button", { onClick: () => { const t = prompt('New title', a.title); if (t !== null)
-                                                                edit(a.id, t); }, children: "Edit title" })] })] }, a.id))) })] })] })), tab === 'users' && (_jsxs("div", { children: [_jsx("h2", { children: "Users" }), _jsxs("p", { children: ["Total registered users: ", usersTotal] }), _jsxs("form", { onSubmit: searchUsers, style: { display: 'flex', gap: 8 }, children: [_jsx("input", { value: query, onChange: e => setQuery(e.target.value), placeholder: "Search username", style: { padding: 8 } }), _jsx("button", { type: "submit", children: "Search" })] }), _jsx("small", { style: { color: '#666' }, children: "Tip: leave the search empty and click Search to list the latest users. The newest users auto-load on first open." }), _jsxs("table", { cellPadding: 6, style: { marginTop: 12 }, children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "Username" }), _jsx("th", { children: "Registered" }), _jsx("th", { children: "Bookmarks" }), _jsx("th", { children: "Threads" }), _jsx("th", { children: "Last login" }), _jsx("th", {})] }) }), _jsx("tbody", { children: users.map(u => (_jsxs("tr", { children: [_jsx("td", { children: u.username }), _jsx("td", { children: new Date(u.createdAt).toLocaleDateString() }), _jsx("td", { children: u.bookmarks ?? '-' }), _jsx("td", { children: u.discussions ?? '-' }), _jsx("td", { children: u.lastLogin ? new Date(u.lastLogin).toLocaleString() : '-' }), _jsx("td", { children: _jsx("button", { onClick: () => removeUser(u.id), style: { color: 'crimson' }, children: "Remove" }) })] }, u.id))) })] })] }))] })] }));
+    return (_jsxs(Box, { sx: { display: 'grid', gridTemplateColumns: '280px 1fr', minHeight: '100dvh' }, children: [_jsxs(Drawer, { variant: "permanent", sx: { width: 280, [`& .MuiDrawer-paper`]: { width: 280, boxSizing: 'border-box' } }, children: [_jsx(Toolbar, { children: _jsx(Typography, { variant: "h6", fontWeight: 700, children: "LWB Admin" }) }), _jsx(Divider, {}), _jsxs(List, { children: [_jsxs(ListItemButton, { selected: tab === 'articles', onClick: () => setTab('articles'), children: [_jsx(ListItemIcon, { children: _jsx(ArticleIcon, {}) }), _jsx(ListItemText, { primary: "Articles", secondary: "Manage content" })] }), _jsxs(ListItemButton, { selected: tab === 'users', onClick: () => setTab('users'), children: [_jsx(ListItemIcon, { children: _jsx(UsersIcon, {}) }), _jsx(ListItemText, { primary: "Users", secondary: "Manage accounts" })] })] }), _jsx(Box, { sx: { flexGrow: 1 } }), _jsx(Divider, {}), _jsxs(Stack, { direction: "row", alignItems: "center", justifyContent: "space-between", sx: { p: 2 }, children: [_jsx(Tooltip, { title: mode === 'dark' ? 'Switch to light' : 'Switch to dark', children: _jsx(IconButton, { onClick: toggle, color: "inherit", children: mode === 'dark' ? _jsx(LightModeIcon, {}) : _jsx(DarkModeIcon, {}) }) }), _jsx(Button, { onClick: logout, color: "error", startIcon: _jsx(LogoutIcon, {}), children: "Logout" })] })] }), _jsxs(Box, { component: "main", sx: { p: 3 }, children: [_jsx(Toolbar, {}), tab === 'articles' && (_jsxs(Stack, { spacing: 3, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Articles" }), _jsx(Card, { children: _jsx(CardContent, { children: _jsxs(Stack, { component: "form", onSubmit: upload, spacing: 2, sx: { maxWidth: 720 }, children: [_jsx(TextField, { label: "Title (optional)", value: title, onChange: (e) => setTitle(e.target.value), placeholder: "Defaults from docx", fullWidth: true }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", startIcon: _jsx(UploadFileIcon, {}), children: ["Select DOCX", _jsx("input", { hidden: true, type: "file", accept: ".docx", onChange: e => setDocx(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: docx?.name ?? 'No file selected' })] }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", children: ["Cover", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setCover(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: cover?.name ?? 'Optional' }), _jsxs(Button, { variant: "outlined", component: "label", children: ["Icon", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setIcon(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: icon?.name ?? 'Optional' })] }), uploadBusy && (_jsxs(Box, { children: [_jsx(LinearProgress, { variant: "determinate", value: uploadPct }), _jsxs(Typography, { variant: "caption", color: "text.secondary", children: [uploadPct, "%"] })] })), _jsx(Stack, { direction: "row", spacing: 1, children: _jsx(Button, { type: "submit", variant: "contained", disabled: uploadBusy || !docx, children: "Upload" }) })] }) }) }), _jsx(DataGrid, { autoHeight: true, disableRowSelectionOnClick: true, rows: articles.slice().sort((a, b) => a.order - b.order), getRowId: (r) => r.id, columns: [
+                                    { field: 'order', headerName: 'Order', width: 90 },
+                                    { field: 'title', headerName: 'Title', flex: 1, minWidth: 200 },
+                                    { field: 'filename', headerName: 'Filename', minWidth: 180 },
+                                    { field: 'createdAt', headerName: 'Created', minWidth: 180, valueFormatter: (p) => new Date(p.value).toLocaleString() },
+                                    { field: 'updatedAt', headerName: 'Updated', minWidth: 180, valueFormatter: (p) => new Date(p.value).toLocaleString() },
+                                    { field: 'cover', headerName: 'Cover', minWidth: 160, renderCell: (p) => p.value ? _jsx(MuiLink, { href: p.value, target: "_blank", rel: "noreferrer", underline: "hover", children: "Open" }) : _jsx(Typography, { variant: "body2", color: "text.secondary", children: "-" }) },
+                                    { field: 'icon', headerName: 'Icon', minWidth: 140, renderCell: (p) => p.value ? _jsx(MuiLink, { href: p.value, target: "_blank", rel: "noreferrer", underline: "hover", children: "Open" }) : _jsx(Typography, { variant: "body2", color: "text.secondary", children: "-" }) },
+                                    { field: 'publicPath', headerName: 'Public path', minWidth: 220, valueGetter: (p) => p.row.publicPath.replace(/^.*\/LWB\//, '/LWB/') },
+                                    { field: 'actions', headerName: 'Actions', sortable: false, width: 240, renderCell: (p) => (_jsxs(Stack, { direction: "row", spacing: 1, children: [_jsx(Tooltip, { title: "Move up", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(p.row.id, 'up'), children: _jsx(ArrowUpwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Move down", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(p.row.id, 'down'), children: _jsx(ArrowDownwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Edit title", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => { const t = prompt('New title', p.row.title); if (t !== null)
+                                                                edit(p.row.id, t); }, children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) })] })) },
+                                ], pageSizeOptions: [10, 25, 50], initialState: { pagination: { paginationModel: { pageSize: 10, page: 0 } } } })] })), tab === 'users' && (_jsxs(Stack, { spacing: 2, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Users" }), _jsxs(Typography, { color: "text.secondary", children: ["Total registered users: ", usersTotal] }), _jsxs(Stack, { component: "form", onSubmit: searchUsers, direction: { xs: 'column', sm: 'row' }, spacing: 1, alignItems: { sm: 'center' }, children: [_jsx(TextField, { value: query, onChange: e => setQuery(e.target.value), placeholder: "Search username", size: "small" }), _jsx(Button, { type: "submit", variant: "contained", startIcon: _jsx(SearchIcon, {}), children: "Search" }), _jsx(Typography, { variant: "caption", color: "text.secondary", children: "Tip: Leave empty and click Search to list latest users." })] }), _jsx(DataGrid, { autoHeight: true, disableRowSelectionOnClick: true, rows: users, getRowId: (r) => r.id, columns: [
+                                    { field: 'username', headerName: 'Username', flex: 1, minWidth: 180 },
+                                    { field: 'createdAt', headerName: 'Registered', minWidth: 140, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },
+                                    { field: 'bookmarks', headerName: 'Bookmarks', width: 120, valueGetter: (p) => p.row.bookmarks ?? '-' },
+                                    { field: 'discussions', headerName: 'Threads', width: 120, valueGetter: (p) => p.row.discussions ?? '-' },
+                                    { field: 'lastLogin', headerName: 'Last login', minWidth: 180, valueGetter: (p) => p.row.lastLogin ? new Date(p.row.lastLogin).toLocaleString() : '-' },
+                                    { field: 'actions', headerName: '', sortable: false, width: 120, renderCell: (p) => (_jsx(Button, { size: "small", color: "error", startIcon: _jsx(DeleteIcon, {}), onClick: () => removeUser(p.row.id), children: "Remove" })) },
+                                ], pageSizeOptions: [10, 25, 50], initialState: { pagination: { paginationModel: { pageSize: 10, page: 0 } } } })] }))] })] }));
 }
