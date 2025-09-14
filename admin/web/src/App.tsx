@@ -12,6 +12,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import EditIcon from '@mui/icons-material/Edit'
+import ImageIcon from '@mui/icons-material/Image'
+import InsertPhotoIcon from '@mui/icons-material/InsertPhoto'
 import SearchIcon from '@mui/icons-material/Search'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { useColorMode } from './theme'
@@ -94,11 +96,35 @@ export default function App() {
     const data = await api.get<{ items: Article[] }>(`${API}/v1/admin/articles`); setArticles(data.items)
   }
 
-  const edit = async (id: string, newTitle?: string) => {
-    const fd = new FormData();
-    if (newTitle) fd.set('title', newTitle)
+  // Generic updater used by title/cover/icon updates
+  const updateArticle = async (id: string, opts?: { title?: string; cover?: File; icon?: File }) => {
+    const fd = new FormData()
+    if (opts?.title) fd.set('title', opts.title)
+    if (opts?.cover) fd.set('cover', opts.cover)
+    if (opts?.icon) fd.set('icon', opts.icon)
     await api.post(`${API}/v1/admin/articles/${id}/edit`, fd)
     const data = await api.get<{ items: Article[] }>(`${API}/v1/admin/articles`); setArticles(data.items)
+  }
+
+  const edit = async (id: string, newTitle?: string) => updateArticle(id, { title: newTitle })
+
+  // Utility to prompt for a single image file using a transient input element
+  const pickImage = (): Promise<File | null> => new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = () => resolve(input.files?.[0] ?? null)
+    input.click()
+  })
+
+  const changeCover = async (id: string) => {
+    const file = await pickImage(); if (!file) return
+    await updateArticle(id, { cover: file })
+  }
+
+  const changeIcon = async (id: string) => {
+    const file = await pickImage(); if (!file) return
+    await updateArticle(id, { icon: file })
   }
 
   const upload = async (e: React.FormEvent) => {
@@ -291,6 +317,8 @@ export default function App() {
                           <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>move(a.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>move(a.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Edit title"><span><IconButton size="small" onClick={()=>{ const t=prompt('New title', a.title); if (t!==null) edit(a.id, t) }}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Change cover"><span><IconButton size="small" onClick={()=>changeCover(a.id)}><ImageIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeIcon(a.id)}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
                         </Stack>
                       </CardActions>
                     </Card>
