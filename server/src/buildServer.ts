@@ -1,37 +1,22 @@
 import Fastify, { FastifyInstance, FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
-import { OAuth2Client, TokenPayload } from 'google-auth-library';
-import { z } from 'zod';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { buildUserStore } from './userStore.js';
 import { createChallenge, verifySolution } from 'altcha-lib';
 import { buildContentStore, computeChecksumForNormalized } from './contentStore.js';
 import type { SectionKind } from './contentStore.js';
+import { registerAuthRoutes } from './auth/controller.js';
+import { AuthService } from './auth/service.js';
+import { InMemoryUserRepository, PgUserRepository } from './auth/repository.js';
 import crypto from 'crypto';
 
 export interface ArticleManifestItem {
   id: string; title: string; slug: string; version: number; updatedAt: string; wordCount: number;
 }
 
-export interface RevocationStore {
-  isRevoked(token: string): Promise<boolean> | boolean;
-  revoke(token: string): Promise<void> | void;
-}
-
-export class InMemoryRevocationStore implements RevocationStore {
-  private set = new Set<string>();
-  async isRevoked(token: string) { return this.set.has(token); }
-  async revoke(token: string) { this.set.add(token); }
-}
-
 export interface BuildServerOptions {
   googleClientId: string;
   googleBypass?: boolean; // DEV ONLY: allow bypassing online verification if Google is blocked
   allowedAudiences?: string[]; // optional: additional accepted audiences for bypass mode (e.g., Android client ID)
-  revocations?: RevocationStore;
-  jwtSecret?: string; // for password tokens
   altchaBypass?: boolean; // allow skipping ALTCHA verification (tests/dev only)
 }
 
@@ -74,12 +59,17 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 
   // (debug echo endpoint removed in production cleanup)
 
-  const oauthClient = new OAuth2Client(opts.googleClientId);
-  const revocations = opts.revocations ?? new InMemoryRevocationStore();
-  const jwtSecret = opts.jwtSecret || process.env.PWD_JWT_SECRET || 'DEV_ONLY_CHANGE_ME';
-  const users = buildUserStore();
+  // New SOLID wiring: production requires DATABASE_URL; tests use in-memory
+  const dbUrl = process.env.DATABASE_URL;
+  const users = process.env.NODE_ENV === 'test'
+    ? new InMemoryUserRepository()
+    : (dbUrl ? new PgUserRepository(dbUrl) : null);
   const content = buildContentStore();
-  app.log.info({ event: 'user_store_selected', impl: users.constructor.name }, 'User store initialized');
+  if (!users) {
+    app.log.error({ event: 'startup_failed', reason: 'missing_database_url' }, 'DATABASE_URL is required in production');
+    throw new Error('DATABASE_URL missing');
+  }
+  app.log.info({ event: 'user_repo', impl: users.constructor.name }, 'User repository initialized');
   // ALTCHA configuration
   const ALTCHA_HMAC_KEY = process.env.ALTCHA_HMAC_KEY || process.env.PWD_JWT_SECRET || 'ALTCHA_DEV_ONLY_CHANGE_ME';
   const ALTCHA_MAX_NUMBER = Number(process.env.ALTCHA_MAX_NUMBER || 100000);
@@ -87,6 +77,14 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   const ALTCHA_BYPASS = opts.altchaBypass ?? (process.env.NODE_ENV === 'test' && process.env.ALTCHA_DEV_ALLOW !== '0');
 
   app.get('/health', async () => ({ status: 'ok' }));
+
+  // Minimal Google sign-in endpoint
+  const authService = new AuthService(users, {
+    googleClientId: opts.googleClientId,
+    googleBypass: opts.googleBypass,
+    allowedAudiences: opts.allowedAudiences,
+  });
+  registerAuthRoutes(app, authService);
 
   // ALTCHA challenge endpoint for clients (Android WebView or in-app fetch)
   app.get('/v1/altcha/challenge', async (req, reply) => {
@@ -110,198 +108,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     return reply.code(200).send(art);
   });
 
-  app.post('/v1/auth/validate', async (req, reply) => {
-    const bodySchema = z.object({ idToken: z.string().min(10) });
-    const parse = bodySchema.safeParse((req as FastifyRequest).body);
-    if (!parse.success) {
-      app.log.warn({ event: 'auth_reject', reason: 'invalid_body', issues: parse.error.issues }, 'auth rejected: invalid body');
-      reply.header('X-Auth-Reason', 'invalid_body');
-      return reply.code(400).send({ error: 'invalid_body' });
-    }
-    const { idToken } = parse.data;
-    try {
-      app.log.info({ event: 'validate_start', googleBypass: !!opts.googleBypass }, 'auth validate start');
-      let payload: TokenPayload | undefined;
-  if (opts.googleBypass) {
-        // DEV ONLY: decode without verifying signature (use only when Google endpoints are blocked)
-        try {
-          const parts = idToken.split('.');
-          if (parts.length >= 2) {
-            const json = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
-            const parsed = JSON.parse(json);
-            // basic audience check to reduce risk when bypassing
-            if (parsed && typeof parsed === 'object') {
-              const aud: unknown = (parsed as any).aud;
-              const azp: unknown = (parsed as any).azp;
-              const allowed = new Set<string>([opts.googleClientId, ...(opts.allowedAudiences ?? [])]);
-              const audMatches = (typeof aud === 'string' && allowed.has(aud)) || (Array.isArray(aud) && aud.some(a => allowed.has(a)));
-              const azpMatches = typeof azp === 'string' && allowed.has(azp);
-              if (audMatches || azpMatches) {
-                if (!audMatches && azpMatches) {
-                  app.log.info({ event: 'google_bypass_accepted_via_azp', azp }, 'Accepted Google token via azp match');
-                }
-                if (audMatches) {
-                  app.log.info({ event: 'google_bypass_accepted_via_aud', aud }, 'Accepted Google token via aud match');
-                }
-                payload = parsed as unknown as TokenPayload;
-              } else {
-                app.log.warn({ event: 'google_bypass_aud_mismatch', aud, azp, expectedAllowed: Array.from(allowed) }, 'ID token audience/azp do not match allowed audiences');
-                app.log.warn({ event: 'auth_reject', reason: 'aud_mismatch', aud, azp }, 'auth rejected: audience mismatch');
-                reply.header('X-Auth-Reason', 'aud_mismatch');
-                return reply.code(401).send({ error: 'invalid_token' });
-              }
-            } else {
-              app.log.warn({ event: 'google_bypass_invalid_payload' }, 'parsed token payload was not an object');
-              app.log.warn({ event: 'auth_reject', reason: 'invalid_payload' }, 'auth rejected: invalid payload');
-              reply.header('X-Auth-Reason', 'invalid_payload');
-              return reply.code(401).send({ error: 'invalid_token' });
-            }
-          } else {
-            app.log.warn({ event: 'google_bypass_invalid_parts' }, 'ID token did not contain 2 parts');
-            app.log.warn({ event: 'auth_reject', reason: 'invalid_parts' }, 'auth rejected: invalid token parts');
-            reply.header('X-Auth-Reason', 'invalid_parts');
-            return reply.code(401).send({ error: 'invalid_token' });
-          }
-        } catch (e) {
-          app.log.warn({ event: 'google_bypass_decode_failed', err: e }, 'google bypass decode failed');
-          app.log.warn({ event: 'auth_reject', reason: 'decode_failed' }, 'auth rejected: decode failed');
-          reply.header('X-Auth-Reason', 'decode_failed');
-          return reply.code(401).send({ error: 'invalid_token' });
-        }
-      } else {
-        const ticket = await oauthClient.verifyIdToken({ idToken, audience: opts.googleClientId });
-        payload = ticket.getPayload() || undefined;
-      }
-      if (!payload) {
-        app.log.warn({ event: 'validate_no_payload' }, 'no token payload');
-        app.log.warn({ event: 'auth_reject', reason: 'no_payload' }, 'auth rejected: no payload');
-        reply.header('X-Auth-Reason', 'no_payload');
-        return reply.code(401).send({ error: 'invalid_token' });
-      }
-      // Derive a stable username: prefer email; else fallback to google:sub
-      try {
-        const sub = payload.sub;
-        const email = payload.email && String(payload.email).trim().length ? String(payload.email) : undefined;
-        if (!sub && !email) {
-          app.log.warn({ event: 'google_validate_no_identity' }, 'google token missing sub/email');
-          app.log.warn({ event: 'auth_reject', reason: 'no_identity' }, 'auth rejected: no identity');
-          reply.header('X-Auth-Reason', 'no_identity');
-          return reply.code(401).send({ error: 'invalid_token' });
-        }
-        const uname = (email ? email.toLowerCase() : `google:${sub}`);
-        const existing = await users.findByUsername(uname);
-        if (existing && (existing as any).deletedAt) {
-          // Safety if any legacy soft-deleted row still exists
-          app.log.warn({ event: 'google_validate_deleted', username: uname }, 'google user is deleted');
-          reply.header('X-Auth-Reason', 'account_deleted');
-          return reply.code(403).send({ error: 'account_deleted' });
-        }
-        const sentinel = 'GOOGLE_ONLY';
-        const rec = await users.upsert(uname, sentinel);
-        try { await users.updateLastLogin(rec.id); } catch (e) {
-          app.log.warn({ event: 'google_validate_last_login_update_failed', username: uname, err: e }, 'failed to update last_login');
-        }
-        app.log.info({ event: 'google_validate_link', username: uname, action: existing ? 'existing' : 'created' }, 'google user linked');
-      } catch (e) {
-        app.log.warn({ event: 'google_validate_linkage_failed', err: e }, 'google validate user linkage failed');
-      }
-      return {
-        sub: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        picture: payload.picture,
-        iss: payload.iss,
-        exp: payload.exp,
-      };
-    } catch (e) {
-      app.log.warn({ event: 'validate_exception', err: e }, 'token verification failed');
-      app.log.warn({ event: 'auth_reject', reason: 'exception' }, 'auth rejected: exception during validation');
-      reply.header('X-Auth-Reason', 'exception');
-      return reply.code(401).send({ error: 'invalid_token' });
-    }
-  });
-
-  app.post('/v1/auth/revoke', async (req, reply) => {
-    // Accept either { idToken } for Google or { token } for password JWT
-    const bodySchema = z.union([
-      z.object({ idToken: z.string().min(10) }),
-      z.object({ token: z.string().min(10) })
-    ]);
-    const parsed = bodySchema.safeParse((req as FastifyRequest).body);
-    if (!parsed.success) return reply.code(400).send({ error: 'invalid_body' });
-    // Only revoke our own password JWTs. Google ID tokens are short-lived and should not be locally blacklisted.
-    if ('token' in parsed.data) {
-      const tokenValue = parsed.data.token;
-      await revocations.revoke(tokenValue);
-      app.log.info({ event: 'revoke_pwd' }, 'password token revoked');
-    } else {
-      app.log.info({ event: 'revoke_google_ignored' }, 'ignored revoke for Google ID token');
-    }
-    return { revoked: true };
-  });
-
-  // ---- Username / Password Auth (username only, not email) ----
-  app.post('/v1/auth/register', async (req, reply) => {
-    const bodySchema = z.object({
-      username: z.string().min(3).max(40).regex(/^[A-Za-z0-9_-]+$/),
-      password: z.string().min(8).max(128),
-      // ALTCHA payload submitted by client; Base64 JSON string
-      altcha: z.string().min(20),
-    });
-    const parse = bodySchema.safeParse((req as FastifyRequest).body);
-    if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
-    const { username, password, altcha } = parse.data;
-  app.log.info({ event: 'pwd_register_attempt', username }, 'password register attempt');
-    // Verify ALTCHA payload
-    const verified = ALTCHA_BYPASS ? true : await verifySolution(altcha, ALTCHA_HMAC_KEY, true);
-    if (!verified) {
-      app.log.warn({ event: 'altcha_failed', username }, 'ALTCHA verification failed');
-      return reply.code(400).send({ error: 'altcha_failed' });
-    }
-    const hash = await bcrypt.hash(password, 12);
-  const created = await users.create(username, hash);
-    if (!created) return reply.code(409).send({ error: 'username_exists' });
-    const token = jwt.sign({ sub: created.id, username: created.username, typ: 'pwd' }, jwtSecret, { expiresIn: '1h' });
-  app.log.info({ event: 'pwd_register_success', username: created.username }, 'password register success');
-    return { token, user: { id: created.id, username: created.username } };
-  });
-
-  app.post('/v1/auth/login', async (req, reply) => {
-    const bodySchema = z.object({ username: z.string().min(3).max(40), password: z.string().min(1) });
-    const parse = bodySchema.safeParse((req as FastifyRequest).body);
-    if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
-    const { username, password } = parse.data;
-  app.log.info({ event: 'pwd_login_attempt', username }, 'password login attempt');
-  const user = await users.findByUsername(username);
-  if (!user) { app.log.warn({ event: 'pwd_login_invalid_user', username }, 'invalid username'); return reply.code(401).send({ error: 'invalid_credentials' }); }
-  if ((user as any).deletedAt) { app.log.warn({ event: 'pwd_login_deleted_user', username }, 'deleted user login attempt'); return reply.code(403).send({ error: 'account_deleted' }); }
-  // Block password login for Google-only accounts (sentinel hash)
-  if (user.passwordHash === 'GOOGLE_ONLY') {
-    app.log.warn({ event: 'pwd_login_disabled_google_only', username }, 'password login disabled for Google-linked account');
-    return reply.code(403).send({ error: 'password_login_disabled' });
-  }
-    const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) { app.log.warn({ event: 'pwd_login_bad_password', username }, 'bad password'); return reply.code(401).send({ error: 'invalid_credentials' }); }
-    const token = jwt.sign({ sub: user.id, username: user.username, typ: 'pwd' }, jwtSecret, { expiresIn: '1h' });
-  app.log.info({ event: 'pwd_login_success', username }, 'password login success');
-  // record last login timestamp
-  try { await users.updateLastLogin(user.id); } catch {}
-    return { token, user: { id: user.id, username: user.username } };
-  });
-
-  app.post('/v1/auth/pwd/validate', async (req, reply) => {
-  const bodySchema = z.object({ token: z.string().min(10) });
-  const parse = bodySchema.safeParse((req as FastifyRequest).body);
-    if (!parse.success) return reply.code(400).send({ error: 'invalid_body' });
-    try {
-  const token = parse.data.token;
-  if (await revocations.isRevoked(token)) return reply.code(401).send({ error: 'revoked' });
-  type PwdTokenPayload = { sub: string; username: string; typ: 'pwd'; exp: number };
-  const decoded = jwt.verify(token, jwtSecret) as unknown as PwdTokenPayload;
-    if (decoded.typ !== 'pwd') return reply.code(401).send({ error: 'wrong_type' });
-  return { sub: decoded.sub, username: decoded.username, exp: decoded.exp };
-    } catch (e) { return reply.code(401).send({ error: 'invalid_token' }); }
-  });
+  // Password-based auth endpoints removed for simplicity per new design.
 
   // ---- Ingestion: .docx upload ----
   app.post('/v1/ingest/docx', async (req, reply) => {
