@@ -77,14 +77,30 @@ export class PgUserRepository implements UserRepository {
   async upsertByUsername(username: string): Promise<{ user: User; created: boolean }> {
     await this.ensureSchema();
     const uname = username.toLowerCase();
+    // Use a CTE to determine if the row was inserted (created=true) or already existed (created=false)
+    const id = crypto.randomBytes(12).toString('hex');
     const res = await this.withClient(c => c.query(
-      'INSERT INTO users (id, username) VALUES ($1,$2) ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id, username, created_at, last_login, xmax = 0 as created',
-      [crypto.randomBytes(12).toString('hex'), uname]
+      `WITH ins AS (
+         INSERT INTO users (id, username)
+         VALUES ($1, $2)
+         ON CONFLICT (username) DO NOTHING
+         RETURNING id, username, created_at, last_login
+       )
+       SELECT id, username, created_at, last_login, TRUE AS created FROM ins
+       UNION ALL
+       SELECT u.id, u.username, u.created_at, u.last_login, FALSE AS created
+       FROM users u
+       WHERE u.username = $2 AND NOT EXISTS (SELECT 1 FROM ins)`,
+      [id, uname]
     ));
     const r = res.rows[0];
-    const user: User = { id: r.id, username: r.username, createdAt: r.created_at.toISOString?.() || r.created_at, lastLogin: r.last_login?.toISOString?.() || r.last_login };
-    // xmax=0 heuristic may not be portable; compute created by separate existence check
-    const created = (await this.findByUsername(uname)) === undefined; // fallback: conservative false; adjust below
+    const user: User = {
+      id: r.id,
+      username: r.username,
+      createdAt: r.created_at.toISOString?.() || r.created_at,
+      lastLogin: r.last_login?.toISOString?.() || r.last_login,
+    };
+    const created: boolean = !!r.created;
     return { user, created };
   }
 
