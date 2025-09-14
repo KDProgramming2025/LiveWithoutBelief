@@ -99,32 +99,17 @@ class RemoteSessionValidator @Inject constructor(
         var attempt = 0 // zero-based attempt index
         var last: ValidationResult
         var lastServerRetryable = false
-        // Heuristic: password auth tokens are JWTs we issue (three segments, contains 'typ":"pwd')
-        fun isPasswordJwt(token: String): Boolean =
-            token.count { it == '.' } == 2 && token.length < 300 // Google ID tokens are usually longer
-        val passwordMode = isPasswordJwt(idToken)
-        // Short-circuit only for our own password JWTs; do NOT block Google ID tokens locally
-        if (passwordMode && revocationStore.isRevoked(idToken)) {
-            if (BuildConfig.DEBUG) {
-                runCatching { Log.d("AuthValidate", "short-circuit: locally revoked password token") }
-            }
-            return@withContext ValidationResult(false, ValidationError.Unauthorized)
-        }
+        // All validation/sign-in goes through a single endpoint now: POST /v1/auth/google
         while (true) {
             observer.onAttempt(attempt + 1, maxAttempts)
-            val path = if (passwordMode) "/v1/auth/pwd/validate" else "/v1/auth/validate"
-            val body = if (passwordMode) {
-                '{' + "\"token\":\"" + idToken + "\"}"
-            } else {
-                '{' + "\"idToken\":\"" + idToken + "\"}"
-            }
+            val path = "/v1/auth/google"
+            val body = '{' + "\"idToken\":\"" + idToken + "\"}"
             if (BuildConfig.DEBUG) {
                 runCatching {
                     Log.d(
                         "AuthValidate",
                         "request url=" + endpoint(path) +
-                            " bodyLen=" + body.length +
-                            " pwdMode=" + passwordMode,
+                            " bodyLen=" + body.length,
                     )
                 }
             }
@@ -144,8 +129,10 @@ class RemoteSessionValidator @Inject constructor(
                         }
                     }
                     when {
-                        r.isSuccessful -> ValidationResult(true, null)
-                        r.code == 401 -> ValidationResult(false, ValidationError.Unauthorized)
+                        // Success on 200 (existing) and 201 (created)
+                        r.code == 200 || r.code == 201 -> ValidationResult(true, null)
+                        // Treat 400 (invalid token/body) and 401 (aud mismatch) as Unauthorized for UX
+                        r.code == 400 || r.code == 401 -> ValidationResult(false, ValidationError.Unauthorized)
                         r.code in 500..599 -> {
                             // mark if server suggested retry (presence of Retry-After header)
                             lastServerRetryable = r.header("Retry-After") != null
@@ -190,20 +177,8 @@ class RemoteSessionValidator @Inject constructor(
     }
 
     override suspend fun revoke(idToken: String) = withContext(Dispatchers.IO) {
-        fun isPasswordJwt(token: String): Boolean = token.count { it == '.' } == 2 && token.length < 300
-        val passwordMode = isPasswordJwt(idToken)
-        // Only persist local revocation for our own password JWTs; Google tokens are short-lived and may repeat
-        if (passwordMode) revocationStore.markRevoked(idToken)
-        val body = if (passwordMode) {
-            '{' + "\"token\":\"" + idToken + "\"}"
-        } else {
-            '{' + "\"idToken\":\"" + idToken + "\"}"
-        } // manual JSON
-        val req = Request.Builder()
-            .url(endpoint("/v1/auth/revoke"))
-            .post(body.toRequestBody("application/json".toMediaType()))
-            .build()
-        runCatching { client.newCall(req).execute() }.getOrNull()?.close()
+        // No revoke endpoint for Google ID tokens in the simplified server; tokens expire naturally.
+        // Keep method for interface compatibility, but perform no network I/O.
         Unit
     }
 }

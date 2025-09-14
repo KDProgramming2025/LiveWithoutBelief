@@ -39,8 +39,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import info.lwb.auth.AuthFacade
 import info.lwb.auth.AuthUiState
 import info.lwb.auth.AuthViewModel
-import info.lwb.auth.CachingRecaptchaProvider
-import info.lwb.auth.RecaptchaTokenProvider
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.reader.ReaderRoute
 import info.lwb.feature.search.SearchRoute
@@ -50,26 +48,21 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject lateinit var authFacade: AuthFacade
 
-    @Inject lateinit var recaptchaProvider: RecaptchaTokenProvider
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val initialLink = intent?.dataString
-        // Wrap provider with a short-lived cache (60s) to reduce repeated network calls.
-        val cachedProvider = CachingRecaptchaProvider(recaptchaProvider, ttlMillis = 60_000L)
-        setContent { appRoot(authFacade, cachedProvider, initialLink) }
+    setContent { appRoot(authFacade, initialLink) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        val link = intent.dataString
-        val cachedProvider = CachingRecaptchaProvider(recaptchaProvider, ttlMillis = 60_000L)
-        setContent { appRoot(authFacade, cachedProvider, link) }
+    val link = intent.dataString
+    setContent { appRoot(authFacade, link) }
     }
 }
 
 @Composable
-private fun appRoot(authFacade: AuthFacade, recaptchaProvider: RecaptchaTokenProvider, maybeLink: String?) {
+private fun appRoot(authFacade: AuthFacade, maybeLink: String?) {
     val navController = rememberNavController()
     MaterialTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
@@ -77,7 +70,7 @@ private fun appRoot(authFacade: AuthFacade, recaptchaProvider: RecaptchaTokenPro
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                         @Suppress("UNCHECKED_CAST")
-                        return AuthViewModel(authFacade, recaptchaProvider) as T
+                        return AuthViewModel(authFacade) as T
                     }
                 },
             )
@@ -87,22 +80,16 @@ private fun appRoot(authFacade: AuthFacade, recaptchaProvider: RecaptchaTokenPro
             Column {
                 when (val s = state.value) {
                     is AuthUiState.SignedOut -> {
-                        PasswordAuthSection(vm = vm)
-                        Spacer(Modifier.height(12.dp))
                         Button(onClick = { vm.signIn { activity } }) { Text("Google Sign In") }
                     }
                     is AuthUiState.Loading -> Text("Loading...")
                     is AuthUiState.Error -> {
                         Text("Error: ${s.message}")
                         Spacer(Modifier.height(8.dp))
-                        PasswordAuthSection(vm = vm)
-                        Spacer(Modifier.height(8.dp))
                         Button(onClick = { vm.signIn { activity } }) { Text("Google Sign In") }
                     }
                     is AuthUiState.RegionBlocked -> {
                         RegionBlockedBanner(message = s.message)
-                        Spacer(Modifier.height(12.dp))
-                        PasswordAuthSection(vm = vm)
                     }
                     is AuthUiState.SignedIn -> {
                         Text("Hello ${s.user.displayName ?: s.user.email}")
@@ -134,7 +121,7 @@ private fun EmailPromptView(onCancel: () -> Unit, onSubmit: (String) -> Unit) {
 }
 
 @Composable
-private fun RegionBlockedBanner(message: String = "Google sign-in blocked here. Use username & password instead.") {
+private fun RegionBlockedBanner(message: String = "Google sign-in blocked here.") {
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         tonalElevation = 2.dp,
@@ -150,38 +137,7 @@ private fun RegionBlockedBanner(message: String = "Google sign-in blocked here. 
     }
 }
 
-@Composable
-private fun PasswordAuthSection(vm: AuthViewModel) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    Column(horizontalAlignment = Alignment.Start) {
-        Text("Username / Password Access")
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") })
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password (min 8 chars)") },
-        )
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = {
-            if (username.isNotBlank() && password.length >= 8) {
-                vm.passwordLogin(username.trim(), password)
-            }
-        }) {
-            Text("Login")
-        }
-        Spacer(Modifier.height(4.dp))
-        Button(onClick = {
-            if (username.isNotBlank() && password.length >= 8) {
-                vm.passwordRegister(username.trim(), password)
-            }
-        }) {
-            Text("Register")
-        }
-    }
-}
+// Password auth UI removed.
 
 private object Destinations {
     const val READER = "reader"

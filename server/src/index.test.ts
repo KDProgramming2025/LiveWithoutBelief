@@ -114,3 +114,16 @@ describe('ingestion endpoint', () => {
     expect(article.wordCount).toBe(3);
   });
 });
+
+describe('auth register by email', () => {
+  test('creates then idempotent', async () => {
+    const r1 = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { email: 'newuser@example.com' } });
+    expect([200,201]).toContain(r1.statusCode);
+    const u1 = r1.json();
+    expect(u1.user.username).toBe('newuser@example.com');
+    const r2 = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { email: 'newuser@example.com' } });
+    expect([200,201]).toContain(r2.statusCode);
+    const u2 = r2.json();
+    expect(u2.user.id).toBe(u1.user.id);
+  });
+});

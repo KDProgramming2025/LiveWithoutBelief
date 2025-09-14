@@ -14,6 +14,16 @@ export class AuthService {
     this.oauth = new OAuth2Client(opts.googleClientId);
   }
 
+  async registerByEmail(email: string): Promise<{ user: { id: string; username: string; createdAt: string; lastLogin?: string }; created: boolean }> {
+    const username = email.toLowerCase();
+    const existing = await this.repo.findByUsername(username);
+    const { user, created } = existing
+      ? { user: existing, created: false }
+      : await this.repo.upsertByUsername(username);
+    await this.repo.touchLastLogin(user.id);
+    return { user, created };
+  }
+
   async signInWithGoogle(idToken: string): Promise<AuthResult> {
     const payload = await this.verifyGoogleToken(idToken);
     const username = (payload.email || payload.sub || '').toLowerCase();

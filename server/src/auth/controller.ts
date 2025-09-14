@@ -3,6 +3,19 @@ import { z } from 'zod';
 import type { AuthService } from './service.js';
 
 export function registerAuthRoutes(app: FastifyInstance, auth: AuthService) {
+  // Simple register endpoint based on email only
+  app.post('/v1/auth/register', async (req, reply) => {
+    const schema = z.object({ email: z.string().email() });
+    const parsed = schema.safeParse((req as FastifyRequest).body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_body' });
+    try {
+      const { user, created } = await auth.registerByEmail(parsed.data.email);
+      return reply.code(created ? 201 : 200).send({ user });
+    } catch (e: any) {
+      return reply.code(500).send({ error: 'server_error' });
+    }
+  });
+
   // Minimal Google sign-in endpoint
   app.post('/v1/auth/google', async (req, reply) => {
     const schema = z.object({ idToken: z.string().min(10) });

@@ -6,21 +6,12 @@ package info.lwb.auth
 
 import android.app.Activity
 import android.content.Context
-import android.util.Base64
 import androidx.activity.ComponentActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import info.lwb.BuildConfig
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import java.security.MessageDigest
 
 data class AuthUser(
@@ -35,8 +26,6 @@ interface AuthFacade {
     fun currentUser(): AuthUser?
     suspend fun signOut()
     suspend fun refreshIdToken(forceRefresh: Boolean = false): Result<String>
-    suspend fun register(username: String, password: String, recaptchaToken: String? = null): Result<AuthUser>
-    suspend fun passwordLogin(username: String, password: String, recaptchaToken: String? = null): Result<AuthUser>
 }
 
 /** Optional abstraction for One Tap / Credential Manager based Google ID token retrieval. */
@@ -81,8 +70,7 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     private val tokenRefresher: TokenRefresher,
     private val signInExecutor: SignInExecutor,
     private val oneTapProvider: OneTapCredentialProvider,
-    @AuthClient private val http: okhttp3.OkHttpClient,
-    @AuthBaseUrl private val authBaseUrl: String,
+    private val registrationApi: RegistrationApi,
 ) : AuthFacade {
     override suspend fun oneTapSignIn(activity: Activity): Result<AuthUser> = runCatching {
         if (BuildConfig.DEBUG) {
@@ -147,8 +135,8 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
                 android.util.Log.d("AuthFlow", "haveIdToken length=${idToken.length}")
             }
         }
-        // First, validate and store the Google ID token for our backend (this drives user creation and last_login).
-        secureStorage.putIdToken(idToken)
+    // Persist the Google ID token locally for potential future use (Firebase refresh etc.).
+    secureStorage.putIdToken(idToken)
         // Cache token expiry for future refresh heuristics
         val exp = JwtUtils.extractExpiryEpochSeconds(idToken)
         val storeExp = when {
@@ -156,12 +144,12 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
             else -> exp - 5 * 60
         }
         secureStorage.putTokenExpiry(storeExp)
-        sessionValidator.validate(idToken)
-
-        // Sign into Firebase for local identity/session if present, but do not overwrite server token.
+        // Sign into Firebase to obtain a reliable email, then register/upsert by email on backend.
         val user = signInExecutor.signIn(idToken)
-        val authUser = AuthUser(user.uid, user.displayName, user.email, user.photoUrl?.toString())
-        secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
+        val email = user.email ?: existing?.email ?: error("Could not determine Google account email")
+        val (regUser, created) = registrationApi.register(email)
+        val authUser = AuthUser(user.uid, user.displayName ?: regUser.displayName, email, user.photoUrl?.toString())
+    secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
         // Optionally refresh a Firebase token for Firebase-internal use, but avoid storing it as the server token
         runCatching { tokenRefresher.refresh(user, false) }.onFailure {
             if (BuildConfig.DEBUG) android.util.Log.w("AuthFlow", "tokenRefreshFailed", it)
@@ -226,182 +214,6 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         secureStorage.putTokenExpiry(storeExp)
         token
     }
-
-    @Serializable
-    private data class PasswordAuthRequest(
-        val username: String,
-        val password: String,
-        val altcha: String? = null,
-    )
-
-    private suspend fun passwordAuthRequest(
-        path: String,
-        username: String,
-        password: String,
-        recaptchaToken: String?,
-    ): Result<Pair<String, AuthUser>> = runCatching {
-        val base = authBaseUrl.trimEnd('/')
-        // Server requires ALTCHA for registration; do not send reCAPTCHA token as altcha.
-        val altchaForRegister: String? = if (path.endsWith("/register")) {
-            if (BuildConfig.DEBUG) runCatching { android.util.Log.d("AuthFlow", "altcha:fetch+solve starting (register)") }
-            fetchAndSolveAltcha(base)
-        } else null
-        val payload = PasswordAuthRequest(username = username, password = password, altcha = altchaForRegister)
-        val json = Json.encodeToString(payload)
-        if (BuildConfig.DEBUG) {
-            runCatching {
-                android.util.Log.d(
-                    "AuthFlow",
-                    "pwdAuth payloadSize=${json.length} path=$path hasAltcha=${payload.altcha != null}",
-                )
-            }
-        }
-        val body = json.toRequestBody("application/json".toMediaType())
-        val req = okhttp3.Request.Builder()
-            .url(base + path)
-            .post(body)
-            .build()
-        val resp = try {
-            // Offload blocking I/O to avoid NetworkOnMainThreadException
-            withContext(Dispatchers.IO) { http.newCall(req).execute() }
-        } catch (e: Exception) {
-            if (BuildConfig.DEBUG) {
-                runCatching {
-                    android.util.Log.w(
-                        "AuthFlow",
-                        "pwdAuth EXC path=$path msg=${e.message}",
-                        e,
-                    )
-                }
-            }
-            throw e
-        }
-        resp.use { r ->
-            if (!r.isSuccessful) {
-                val code = r.code
-                val errBody = runCatching { r.body?.string() }.getOrNull()
-                if (BuildConfig.DEBUG) {
-                    runCatching {
-                        android.util.Log.w(
-                            "AuthFlow",
-                            "pwdAuth FAIL path=$path code=$code body=${errBody?.take(300)}",
-                        )
-                    }
-                }
-                var serverErr: String? = null
-                if (errBody != null && errBody.length < 4096) {
-                    val trimmed = errBody.trim()
-                    if (trimmed.startsWith("{")) {
-                        // Try naive extraction to avoid allocating a whole model
-                        val errorRegex = Regex("\\\"error\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
-                        errorRegex.find(trimmed)?.let { m ->
-                            serverErr = m.groupValues[1]
-                        }
-                    }
-                }
-                val msg = when (serverErr) {
-                    "recaptcha_failed" -> "reCAPTCHA verification failed. Please retry."
-                    "altcha_failed" -> "Anti-bot verification failed. Please try again."
-                    "username_exists" -> "Username already taken"
-                    "invalid_credentials" -> "Invalid username or password"
-                    "invalid_body" -> "Invalid input"
-                    else -> when (code) {
-                        409 -> "Username already taken"
-                        401 -> "Invalid username or password"
-                        400 -> serverErr ?: "Invalid input"
-                        else -> serverErr ?: "Server error ($code)"
-                    }
-                }
-                error(msg)
-            }
-            val str = r.body?.string() ?: error("Empty body")
-            if (BuildConfig.DEBUG) {
-                runCatching {
-                    android.util.Log.d(
-                        "AuthFlow",
-                        "pwdAuth OK path=$path bodySize=${str.length}",
-                    )
-                }
-            }
-            @Serializable data class UserPayload(val id: String, val username: String? = null)
-
-            @Serializable data class AuthResponse(val token: String, val user: UserPayload)
-            val parsed = Json.decodeFromString<AuthResponse>(str)
-            val authUser = AuthUser(parsed.user.id, parsed.user.username, null, null)
-            parsed.token to authUser
-        }
-    }
-
-    @Serializable private data class AltchaChallenge(
-        val algorithm: String,
-        val challenge: String,
-        val salt: String,
-        val signature: String,
-        val maxnumber: Long? = null,
-    )
-
-    @Serializable private data class AltchaPayload(
-        val algorithm: String,
-        val challenge: String,
-        val number: Long,
-        val salt: String,
-        val signature: String,
-    )
-
-    private suspend fun fetchAndSolveAltcha(baseUrl: String): String = withContext(Dispatchers.IO) {
-        val url = "$baseUrl/v1/altcha/challenge"
-        val req = okhttp3.Request.Builder().url(url).get().build()
-        val resp = http.newCall(req).execute()
-        resp.use { r ->
-            if (!r.isSuccessful) error("ALTCHA challenge fetch failed (${r.code})")
-            val body = r.body?.string() ?: error("Empty ALTCHA challenge body")
-            val json = Json { ignoreUnknownKeys = true }
-            val ch = json.decodeFromString<AltchaChallenge>(body)
-            val max = (ch.maxnumber ?: 100_000L).coerceAtMost(1_000_000L)
-            // Server expects prefix match (altcha-lib verifySolution)
-            val number = withContext(Dispatchers.Default) {
-                solveAltcha(
-                    algorithm = ch.algorithm,
-                    challengePrefix = ch.challenge,
-                    salt = ch.salt,
-                    max = max,
-                )
-            }
-            if (BuildConfig.DEBUG) {
-                runCatching {
-                    android.util.Log.d(
-                        "AuthFlow",
-                        "altcha:solved number=$number max=$max",
-                    )
-                }
-            }
-            val payload = AltchaPayload(ch.algorithm, ch.challenge, number, ch.salt, ch.signature)
-            val payloadJson = Json.encodeToString(payload)
-            Base64.encodeToString(payloadJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-        }
-    }
-
-
-    override suspend fun register(username: String, password: String, recaptchaToken: String?): Result<AuthUser> =
-        passwordAuthRequest("/v1/auth/register", username, password, recaptchaToken).map { (token, user) ->
-            secureStorage.putIdToken(token)
-            // Cache exp for JWT to enable refresh heuristics and persistence
-            val exp = JwtUtils.extractExpiryEpochSeconds(token)
-            secureStorage.putTokenExpiry(exp?.let { it - 5 * 60 } ?: ((System.currentTimeMillis() / 1000L) + 50 * 60))
-            secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
-            sessionValidator.validate(token)
-            user
-        }
-
-    override suspend fun passwordLogin(username: String, password: String, recaptchaToken: String?): Result<AuthUser> =
-        passwordAuthRequest("/v1/auth/login", username, password, recaptchaToken).map { (token, user) ->
-            secureStorage.putIdToken(token)
-            val exp = JwtUtils.extractExpiryEpochSeconds(token)
-            secureStorage.putTokenExpiry(exp?.let { it - 5 * 60 } ?: ((System.currentTimeMillis() / 1000L) + 50 * 60))
-            secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
-            sessionValidator.validate(token)
-            user
-        }
 }
 
 class RegionBlockedAuthException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
@@ -421,7 +233,7 @@ private fun Throwable.isRegionBlocked(): Boolean {
     return false
 }
 
-// Email link auth removed; password auth will be implemented separately.
+// Email link and password auth removed in favor of Google Sign-In only.
 
 // Test helper (internal so accessible from unit tests in same module)
 internal fun testIsRegionBlocked(t: Throwable): Boolean = t.isRegionBlocked()

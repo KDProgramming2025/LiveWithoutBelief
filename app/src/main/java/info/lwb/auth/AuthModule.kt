@@ -58,7 +58,8 @@ abstract class AuthBindingsModule {
 
     @Binds
     @Singleton
-    abstract fun bindRecaptchaProvider(impl: GoogleRecaptchaTokenProvider): RecaptchaTokenProvider
+    abstract fun bindRegistrationApi(impl: RemoteRegistrationApi): RegistrationApi
+
 }
 
 @Module
