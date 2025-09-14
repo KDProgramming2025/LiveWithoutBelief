@@ -245,10 +245,28 @@ export default function App() {
                                                                 edit(p.row.id, t); }, children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) })] })) },
                                 ], pageSizeOptions: [10, 25, 50], initialState: { pagination: { paginationModel: { pageSize: 10, page: 0 } } } })] })), tab === 'users' && (_jsxs(Stack, { spacing: 2, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Users" }), _jsxs(Typography, { color: "text.secondary", children: ["Total registered users: ", usersTotal] }), _jsxs(Stack, { component: "form", onSubmit: searchUsers, direction: { xs: 'column', sm: 'row' }, spacing: 1, alignItems: { sm: 'center' }, children: [_jsx(TextField, { value: query, onChange: e => setQuery(e.target.value), placeholder: "Search username", size: "small" }), _jsx(Button, { type: "submit", variant: "contained", startIcon: _jsx(SearchIcon, {}), children: "Search" }), _jsx(Typography, { variant: "caption", color: "text.secondary", children: "Tip: Leave empty and click Search to list latest users." })] }), _jsx(DataGrid, { autoHeight: true, disableRowSelectionOnClick: true, rows: users, getRowId: (r) => r.id, columns: [
                                     { field: 'username', headerName: 'Username', flex: 1, minWidth: 180 },
-                                    { field: 'createdAt', headerName: 'Registered', minWidth: 140, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },
-                                    { field: 'bookmarks', headerName: 'Bookmarks', width: 120, valueGetter: (p) => p.row.bookmarks ?? '-' },
-                                    { field: 'discussions', headerName: 'Threads', width: 120, valueGetter: (p) => p.row.discussions ?? '-' },
-                                    { field: 'lastLogin', headerName: 'Last login', minWidth: 180, valueGetter: (p) => p.row.lastLogin ? new Date(p.row.lastLogin).toLocaleString() : '-' },
+                                    { field: 'createdAt', headerName: 'Registered', minWidth: 140, valueFormatter: (p) => {
+                                            const v = p?.value;
+                                            if (!v)
+                                                return '-';
+                                            const d = new Date(v);
+                                            return isNaN(d.getTime()) ? '-' : d.toLocaleDateString();
+                                        } },
+                                    { field: 'bookmarks', headerName: 'Bookmarks', width: 120, valueGetter: (p) => {
+                                            const v = p?.row?.bookmarks;
+                                            return v ?? '-';
+                                        } },
+                                    { field: 'discussions', headerName: 'Threads', width: 120, valueGetter: (p) => {
+                                            const v = p?.row?.discussions;
+                                            return v ?? '-';
+                                        } },
+                                    { field: 'lastLogin', headerName: 'Last login', minWidth: 180, valueGetter: (p) => {
+                                            const v = p?.row?.lastLogin;
+                                            if (!v)
+                                                return '-';
+                                            const d = new Date(v);
+                                            return isNaN(d.getTime()) ? '-' : d.toLocaleString();
+                                        } },
                                     { field: 'actions', headerName: '', sortable: false, width: 120, renderCell: (p) => (_jsx(Button, { size: "small", color: "error", startIcon: _jsx(DeleteIcon, {}), onClick: () => removeUser(p.row.id), children: "Remove" })) },
                                 ], pageSizeOptions: [10, 25, 50], initialState: { pagination: { paginationModel: { pageSize: 10, page: 0 } } } })] }))] })] }));
 }

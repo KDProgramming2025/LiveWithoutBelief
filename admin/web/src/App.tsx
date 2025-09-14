@@ -293,10 +293,26 @@ export default function App() {
             <DataGrid autoHeight disableRowSelectionOnClick rows={users} getRowId={(r)=>r.id}
         columns={[
                 { field: 'username', headerName: 'Username', flex: 1, minWidth: 180 },
-        { field: 'createdAt', headerName: 'Registered', minWidth: 140, valueFormatter: (p: any) => new Date(p.value as string).toLocaleDateString() },
-                { field: 'bookmarks', headerName: 'Bookmarks', width: 120, valueGetter: (p:any) => p.row.bookmarks ?? '-' },
-                { field: 'discussions', headerName: 'Threads', width: 120, valueGetter: (p:any) => p.row.discussions ?? '-' },
-                { field: 'lastLogin', headerName: 'Last login', minWidth: 180, valueGetter: (p:any) => p.row.lastLogin ? new Date(p.row.lastLogin).toLocaleString() : '-' },
+                { field: 'createdAt', headerName: 'Registered', minWidth: 140, valueFormatter: (p: any) => {
+                  const v = p?.value as string | undefined
+                  if (!v) return '-'
+                  const d = new Date(v)
+                  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString()
+                } },
+                { field: 'bookmarks', headerName: 'Bookmarks', width: 120, valueGetter: (p:any) => {
+                  const v = p?.row?.bookmarks
+                  return v ?? '-'
+                } },
+                { field: 'discussions', headerName: 'Threads', width: 120, valueGetter: (p:any) => {
+                  const v = p?.row?.discussions
+                  return v ?? '-'
+                } },
+                { field: 'lastLogin', headerName: 'Last login', minWidth: 180, valueGetter: (p:any) => {
+                  const v = p?.row?.lastLogin as string | undefined
+                  if (!v) return '-'
+                  const d = new Date(v)
+                  return isNaN(d.getTime()) ? '-' : d.toLocaleString()
+                } },
                 { field: 'actions', headerName: '', sortable: false, width: 120, renderCell: (p) => (
                   <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={()=>removeUser(p.row.id)}>Remove</Button>
                 ) },
