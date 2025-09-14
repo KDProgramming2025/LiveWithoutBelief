@@ -1,6 +1,7 @@
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import type { AuthResult, GoogleProfile } from './domain.js';
 import type { UserRepository } from './repository.js';
+import bcrypt from 'bcryptjs';
 
 export type AuthServiceOptions = {
   googleClientId: string;
@@ -62,5 +63,31 @@ export class AuthService {
     const payload = ticket.getPayload();
     if (!payload) throw Object.assign(new Error('no_payload'), { code: 'no_payload' });
     return payload;
+  }
+
+  // Password-based APIs
+  async registerWithPassword(username: string, passwordHash: string) {
+    const uname = username.toLowerCase();
+    const existing = await this.repo.findByUsername(uname);
+    if (existing) throw Object.assign(new Error('user_exists'), { code: 'user_exists' });
+    const user = await this.repo.createUserWithPassword(uname, passwordHash);
+    await this.repo.touchLastLogin(user.id);
+    return user;
+  }
+
+  async verifyPassword(username: string, password: string): Promise<boolean> {
+    const uname = username.toLowerCase();
+    const hash = await this.repo.getPasswordHash(uname);
+    if (!hash) return false;
+    try { return await bcrypt.compare(password, hash); } catch { return false; }
+  }
+
+  async ensureUser(username: string) {
+    const uname = username.toLowerCase();
+    const existing = await this.repo.findByUsername(uname);
+    if (existing) { await this.repo.touchLastLogin(existing.id); return existing; }
+    const { user } = await this.repo.upsertByUsername(uname);
+    await this.repo.touchLastLogin(user.id);
+    return user;
   }
 }

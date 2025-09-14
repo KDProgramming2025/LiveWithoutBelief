@@ -7,10 +7,14 @@ export interface UserRepository {
   findByUsername(username: string): Promise<User | undefined>;
   upsertByUsername(username: string): Promise<{ user: User; created: boolean }>;
   touchLastLogin(userId: string): Promise<void>;
+  // Password-based auth support
+  createUserWithPassword(username: string, passwordHash: string): Promise<User>;
+  getPasswordHash(username: string): Promise<string | null>;
 }
 
 export class InMemoryUserRepository implements UserRepository {
   private byUsername = new Map<string, User>();
+  private pwd = new Map<string, string>();
   async findByUsername(username: string): Promise<User | undefined> {
     return this.byUsername.get(username.toLowerCase());
   }
@@ -24,6 +28,19 @@ export class InMemoryUserRepository implements UserRepository {
   }
   async touchLastLogin(userId: string): Promise<void> {
     for (const u of this.byUsername.values()) if (u.id === userId) { (u as any).lastLogin = new Date().toISOString(); break; }
+  }
+
+  async createUserWithPassword(username: string, passwordHash: string): Promise<User> {
+    const key = username.toLowerCase();
+    if (this.byUsername.has(key)) throw Object.assign(new Error('user_exists'), { code: 'user_exists' });
+    const user: User = { id: crypto.randomBytes(12).toString('hex'), username: key, createdAt: new Date().toISOString() };
+    this.byUsername.set(key, user);
+    this.pwd.set(key, passwordHash);
+    return user;
+  }
+  async getPasswordHash(username: string): Promise<string | null> {
+    const key = username.toLowerCase();
+    return this.pwd.get(key) || null;
   }
 }
 
@@ -52,6 +69,8 @@ export class PgUserRepository implements UserRepository {
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             last_login TIMESTAMPTZ
           );`);
+          // Ensure password_hash column exists (nullable to allow google-only users)
+          await c.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT');
         } finally {
           c.release();
         }
@@ -107,5 +126,32 @@ export class PgUserRepository implements UserRepository {
   async touchLastLogin(userId: string): Promise<void> {
     await this.ensureSchema();
     await this.withClient(c => c.query('UPDATE users SET last_login = now() WHERE id = $1', [userId]));
+  }
+
+  async createUserWithPassword(username: string, passwordHash: string): Promise<User> {
+    await this.ensureSchema();
+    const uname = username.toLowerCase();
+    // Attempt insert; fail if exists
+    const id = crypto.randomBytes(12).toString('hex');
+    try {
+      const res = await this.withClient(c => c.query(
+        'INSERT INTO users (id, username, password_hash) VALUES ($1,$2,$3) RETURNING id, username, created_at, last_login',
+        [id, uname, passwordHash]
+      ));
+      const r = res.rows[0];
+      return { id: r.id, username: r.username, createdAt: r.created_at.toISOString?.() || r.created_at, lastLogin: r.last_login?.toISOString?.() || r.last_login };
+    } catch (e: any) {
+      // unique_violation code 23505
+      if (e && e.code === '23505') throw Object.assign(new Error('user_exists'), { code: 'user_exists' });
+      throw e;
+    }
+  }
+
+  async getPasswordHash(username: string): Promise<string | null> {
+    await this.ensureSchema();
+    const uname = username.toLowerCase();
+    const r = await this.withClient(c => c.query('SELECT password_hash FROM users WHERE username=$1', [uname]));
+    const row = r.rows[0];
+    return row?.password_hash ?? null;
   }
 }

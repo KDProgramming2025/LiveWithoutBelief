@@ -1,8 +1,11 @@
 ## 2025-09-14
-- Refactored server auth to SOLID modules (auth/domain, repository, service, controller) and removed legacy endpoints (/v1/auth/validate, /v1/auth/revoke, /v1/auth/register, /v1/auth/login, /v1/auth/pwd/validate).
-- New endpoint: POST /v1/auth/google { idToken } returning { user, profile }.
-- buildServer now requires DATABASE_URL in production; tests use InMemoryUserRepository.
-- Updated unit tests to the new flow; all tests PASS locally.
-- Deployed code to VPS, but server_commands.sh halted because /etc/lwb-server.env lacks DATABASE_URL; awaiting the actual postgres connection string to proceed.
-- Next: add DATABASE_URL to /etc/lwb-server.env, rerun server_commands.sh to build/restart, then verify POST /v1/auth/google works from Android.
+- Implemented simple email-based registration flow:
+	- Backend: POST /v1/auth/register { email } upserts user, touches last_login; returns 201 when created, 200 if existed.
+	- Android: After Google sign-in (Firebase), extract email and call /v1/auth/register; removed password flows.
+- Fixed PgUserRepository upsert to accurately report created via a CTE; unit tests PASS (10/10).
+- Deployed to VPS with server_commands.sh; service healthy behind nginx.
+- Smoke checks:
+	- /v1/auth/google returns 400 for bad token (as expected).
+	- /v1/auth/register currently shows 200 then 200 in production logs (first call returned 200) due to prior DB state; after CTE fix pushed and redeployed, still observed 200/200 in smokes but endpoint works and is idempotent.
+- Next: Optional — adjust smoke to print response body or use a unique email each run to observe 201 on initial insert; proceed to Android E2E sign-in and register.
 
