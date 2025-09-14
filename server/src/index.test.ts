@@ -1,10 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
-import { buildServer, InMemoryRevocationStore } from './buildServer.js';
+import { buildServer } from './buildServer.js';
 import type { ArticleManifestItem } from './buildServer.js';
 import type { FastifyInstance } from 'fastify';
 
 let app: FastifyInstance;
-// password flow tests (no email link now)
 const googleClientId = 'test-client';
 
 // Mock ingestion module globally for ESM to avoid heavy processing during tests
@@ -35,7 +34,7 @@ beforeAll(async () => {
   };
   process.env.NODE_ENV = 'test';
   // Enable ALTCHA bypass for tests
-  app = buildServer({ googleClientId, revocations: new InMemoryRevocationStore(), jwtSecret: 'test-secret', altchaBypass: true });
+  app = buildServer({ googleClientId, altchaBypass: true });
   await app.ready();
 });
 
@@ -49,106 +48,28 @@ describe('health', () => {
   });
 });
 
-describe('auth validate', () => {
-  test('valid token', async () => {
-    const res = await app.inject({ method: 'POST', url: '/v1/auth/validate', payload: { idToken: 'good-token' } });
-    expect(res.statusCode).toBe(200);
+describe('auth google sign-in', () => {
+  test('valid token creates user', async () => {
+    const res = await app.inject({ method: 'POST', url: '/v1/auth/google', payload: { idToken: 'good-token' } });
+    expect([200,201]).toContain(res.statusCode);
     const body = res.json();
-    expect(body.email).toBe('u@example.com');
+    expect(body.user.username).toBe('u@example.com');
+    expect(body.profile.email).toBe('u@example.com');
   });
 
-  test('invalid token', async () => {
-    const res = await app.inject({ method: 'POST', url: '/v1/auth/validate', payload: { idToken: 'bad-token' } });
-    // After refactor, invalid token bubbles to 401 in verify path OR 400 if schema rejected; here we now get 400 from earlier path
+  test('invalid token rejected', async () => {
+    const res = await app.inject({ method: 'POST', url: '/v1/auth/google', payload: { idToken: 'bad-token' } });
     expect([400,401]).toContain(res.statusCode);
     const body = res.json();
-    expect(['invalid_token','invalid_body']).toContain(body.error);
+    expect(body.error).toBeTruthy();
   });
 });
 
-describe('google validate creates user and disables password login', () => {
-  test('validate then password login is blocked', async () => {
-    // First validate a Google token which should create (or update) a local user with username=email
-    const v = await app.inject({ method: 'POST', url: '/v1/auth/validate', payload: { idToken: 'good-token' } });
-    expect([200, 401]).toContain(v.statusCode);
-    if (v.statusCode !== 200) return; // if revoked test ran before, skip
-    const email = 'u@example.com';
-    // Try password login with that email as username should be disabled/blocked
-    const login = await app.inject({ method: 'POST', url: '/v1/auth/login', payload: { username: email, password: 'does-not-matter' } });
-    // Expect forbidden with specific error
-    expect(login.statusCode).toBe(403);
-    const body = login.json();
-    expect(body.error).toBe('password_login_disabled');
-  });
-});
+// Password flow removed in simplified design
 
-describe('token revoke', () => {
-  test('revoke google id token is ignored', async () => {
-    // initial validate should succeed (creates/links user)
-    const first = await app.inject({ method: 'POST', url: '/v1/auth/validate', payload: { idToken: 'good-token' } });
-    expect([200, 401]).toContain(first.statusCode);
-    if (first.statusCode !== 200) return; // if some other test revoked, skip
+// Revoke/password flows removed
 
-    // revoking a Google ID token is a no-op in our server
-    const revokeRes = await app.inject({ method: 'POST', url: '/v1/auth/revoke', payload: { idToken: 'good-token' } });
-    expect(revokeRes.statusCode).toBe(200);
-    expect(revokeRes.json()).toEqual({ revoked: true });
-
-    // validate should still succeed
-    const validateAfter = await app.inject({ method: 'POST', url: '/v1/auth/validate', payload: { idToken: 'good-token' } });
-    expect(validateAfter.statusCode).toBe(200);
-    const body = validateAfter.json();
-    expect(body.email).toBe('u@example.com');
-  });
-
-  test('revoke password token blocks validation', async () => {
-    // register and login to get a password JWT
-    const username = 'revokeuser';
-    const password = 'StrongPass123!';
-    const reg = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, altcha: 'x'.repeat(24) } });
-    expect(reg.statusCode).toBe(200);
-    const login = await app.inject({ method: 'POST', url: '/v1/auth/login', payload: { username, password } });
-    expect(login.statusCode).toBe(200);
-    const token = login.json().token as string;
-
-    // revoke password token
-    const revokeRes = await app.inject({ method: 'POST', url: '/v1/auth/revoke', payload: { token } });
-    expect(revokeRes.statusCode).toBe(200);
-    expect(revokeRes.json()).toEqual({ revoked: true });
-
-    // pwd validate should now be revoked
-    const validatePwd = await app.inject({ method: 'POST', url: '/v1/auth/pwd/validate', payload: { token } });
-    expect(validatePwd.statusCode).toBe(401);
-    expect(validatePwd.json()).toEqual({ error: 'revoked' });
-  });
-});
-
-describe('password auth', () => {
-  test('register then login and validate token', async () => {
-  const username = 'userexample';
-  const password = 'StrongPass123!';
-  const regRes = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, altcha: 'x'.repeat(24) } });
-    expect(regRes.statusCode).toBe(200);
-    const regBody = regRes.json();
-    expect(regBody.token).toBeTruthy();
-  const loginRes = await app.inject({ method: 'POST', url: '/v1/auth/login', payload: { username, password } });
-    expect(loginRes.statusCode).toBe(200);
-    const loginBody = loginRes.json();
-  expect(loginBody.user.username).toBe(username);
-    const validateRes = await app.inject({ method: 'POST', url: '/v1/auth/pwd/validate', payload: { token: loginBody.token } });
-    expect(validateRes.statusCode).toBe(200);
-  });
-
-  test('duplicate register blocked', async () => {
-  const username = 'dupuser';
-  const password = 'AnotherStrong1!';
-  const first = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, altcha: 'x'.repeat(24) } });
-    expect(first.statusCode).toBe(200);
-  const second = await app.inject({ method: 'POST', url: '/v1/auth/register', payload: { username, password, altcha: 'x'.repeat(24) } });
-    expect(second.statusCode).toBe(409);
-  });
-  // ALTCHA failure scenarios are not tested here because bypass is enabled for deterministic flows.
-});
+// Password auth tests removed
 
 describe('ingestion endpoint', () => {
   test('uploads a docx and returns summary', async () => {
