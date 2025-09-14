@@ -131,6 +131,7 @@ export function buildServer(): FastifyInstance {
   // Paths and config
   const SECURE_ROOT = process.env.ADMIN_SECURE_ARTICLES_DIR || '/opt/lwb-admin-api/data/articles';
   const PUBLIC_ROOT = process.env.ADMIN_PUBLIC_ARTICLES_DIR || '/var/www/LWB/Articles';
+  const PUBLIC_URL_PREFIX = (process.env.ADMIN_PUBLIC_ARTICLES_URL_PREFIX || 'https://aparat.feezor.net/LWB/Articles').replace(/\/$/, '')
   const META_FILE = process.env.ADMIN_ARTICLES_META || '/opt/lwb-admin-api/data/articles.json';
   const ADMIN_USER = process.env.ADMIN_PANEL_USERNAME || '';
   const ADMIN_PASS = process.env.ADMIN_PANEL_PASSWORD || '';
@@ -163,13 +164,24 @@ export function buildServer(): FastifyInstance {
         const st = await fs.stat(publicDir).catch(() => null as any);
         const createdAt = st?.mtime?.toISOString?.() || new Date().toISOString();
         const updatedAt = createdAt;
-        const cover = fssync.existsSync(path.join(publicDir, 'cover.jpg')) ? 'cover.jpg'
+        const coverRel = fssync.existsSync(path.join(publicDir, 'cover.jpg')) ? 'cover.jpg'
           : fssync.existsSync(path.join(publicDir, 'cover.png')) ? 'cover.png'
           : undefined;
-        const icon = fssync.existsSync(path.join(publicDir, 'icon.jpg')) ? 'icon.jpg'
+        const iconRel = fssync.existsSync(path.join(publicDir, 'icon.jpg')) ? 'icon.jpg'
           : fssync.existsSync(path.join(publicDir, 'icon.png')) ? 'icon.png'
           : undefined;
-        items.push({ id: slug, title, createdAt, updatedAt, order: items.length + 1, filename: `${slug}.docx`, securePath: secureDir, publicPath: publicDir, cover, icon });
+        items.push({
+          id: slug,
+          title,
+          createdAt,
+          updatedAt,
+          order: items.length + 1,
+          filename: `${slug}.docx`,
+          securePath: secureDir,
+          publicPath: publicDir,
+          cover: coverRel ? `${PUBLIC_URL_PREFIX}/${slug}/${coverRel}` : undefined,
+          icon: iconRel ? `${PUBLIC_URL_PREFIX}/${slug}/${iconRel}` : undefined,
+        });
       }
     } catch (e) {
       server.log.warn({ err: e }, 'scanAndBuildMeta failed');
@@ -330,7 +342,8 @@ export function buildServer(): FastifyInstance {
           const dstDir = art.publicPath;
           ensureDirSync(dstDir);
           await fs.writeFile(path.join(dstDir, fname), buffer);
-          art[field] = fname as any;
+          // store full public URL
+          (art as any)[field] = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
         }
       }
     }
@@ -344,7 +357,17 @@ export function buildServer(): FastifyInstance {
   server.post('/v1/admin/articles/upload', async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
     const body = (req as FastifyRequest & { body?: any }).body || {};
-    const titleInput: string | undefined = typeof body.title === 'string' ? body.title.trim() : undefined;
+    // Accept title as string or multipart object with .value
+    let titleInput: string | undefined = undefined;
+    if (typeof body.title === 'string') titleInput = body.title.trim();
+    else if (body.title && typeof body.title === 'object' && typeof body.title.value !== 'undefined') titleInput = String(body.title.value).trim();
+    const replaceFlag: boolean = ((): boolean => {
+      const r = (body.replace ?? body.overwrite ?? body.force) as any;
+      if (typeof r === 'string') return /^true|1|yes$/i.test(r);
+      if (typeof r === 'boolean') return r;
+      if (r && typeof r === 'object' && typeof r.value !== 'undefined') return /^true|1|yes$/i.test(String(r.value));
+      return false;
+    })();
     let upName: string | undefined;
     let docx: Buffer | undefined;
     let coverBuf: Buffer | undefined;
@@ -415,7 +438,7 @@ export function buildServer(): FastifyInstance {
       // Determine title/slug
       const baseTitle = titleInput || (upName ? upName.replace(/\.[^.]+$/, '') : 'Untitled');
       const slug = slugify(baseTitle);
-      const createdAt = new Date().toISOString();
+  const createdAt = new Date().toISOString();
       const secureDir = path.join(SECURE_ROOT, slug);
       const publicDir = path.join(PUBLIC_ROOT, slug);
       try { ensureDirSync(secureDir); } catch (e) { server.log.error({ err: e, secureDir }, 'Cannot ensure secureDir'); return reply.code(500).send({ error: 'server_storage_unavailable' }); }
@@ -447,8 +470,22 @@ export function buildServer(): FastifyInstance {
       // Update metadata JSON (append at end)
       const items = await readMeta();
       const order = await getNextOrder(items);
-      const item: ArticleMeta = { id: slug, title: baseTitle, createdAt, updatedAt: createdAt, order, filename: originalName, securePath: secureDir, publicPath: publicDir, cover: coverName, icon: iconName };
+      const item: ArticleMeta = {
+        id: slug,
+        title: baseTitle,
+        createdAt,
+        updatedAt: createdAt,
+        order,
+        filename: originalName,
+        securePath: secureDir,
+        publicPath: publicDir,
+        cover: coverName ? `${PUBLIC_URL_PREFIX}/${slug}/${coverName}` : undefined,
+        icon: iconName ? `${PUBLIC_URL_PREFIX}/${slug}/${iconName}` : undefined,
+      };
       const existingIdx = items.findIndex(i => i.id === slug);
+      if (existingIdx >= 0 && !replaceFlag) {
+        return reply.code(409).send({ ok: false, error: 'article_exists', id: slug, message: 'Article already exists. Resubmit with replace=true to overwrite.' });
+      }
       if (existingIdx >= 0) items.splice(existingIdx, 1);
       items.push(item);
       try { await writeMeta(items); } catch (e) { server.log.error({ err: e, meta: META_FILE }, 'Cannot write metadata'); }

@@ -3,15 +3,15 @@
  */
 package info.lwb.auth
 
-import android.annotation.SuppressLint
 import android.app.Activity
-import android.webkit.JavascriptInterface
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.coroutines.resume
 
 interface AltchaTokenProvider {
     suspend fun solve(activity: Activity): String?
@@ -20,28 +20,43 @@ interface AltchaTokenProvider {
 @Singleton
 class WebViewAltchaProvider @Inject constructor(
     @AuthBaseUrl private val baseUrl: String,
+    @AuthClient private val http: OkHttpClient,
 ) : AltchaTokenProvider {
-    @SuppressLint("SetJavaScriptEnabled")
-    override suspend fun solve(activity: Activity): String? = suspendCancellableCoroutine { cont ->
-        val wv = WebView(activity)
-        val url = "file:///android_asset/altcha-solver.html?base=" + baseUrl
-        var resumed = false
-        val done: (String?) -> Unit = {
-            if (!resumed) {
-                resumed = true
-                cont.resume(it)
+    @Serializable private data class Challenge(
+        val algorithm: String,
+        val challenge: String,
+        val maxnumber: Long,
+        val salt: String,
+        val signature: String,
+    )
+
+    override suspend fun solve(activity: Activity): String? = withContext(Dispatchers.IO) {
+        try {
+            val url = baseUrl.trimEnd('/') + "/v1/altcha/challenge"
+            val req = Request.Builder().url(url).header("Cache-Control", "no-cache").build()
+            http.newCall(req).execute().use { r ->
+                if (!r.isSuccessful) return@withContext null
+                val json = r.body?.string() ?: return@withContext null
+                val ch = Json.decodeFromString(Challenge.serializer(), json)
+                // IMPORTANT: use salt exactly as provided by server
+                val n = solveAltcha(ch.algorithm, ch.challenge, ch.salt, ch.maxnumber)
+                val payloadJson = Json.encodeToString(
+                    kotlinx.serialization.json.JsonObject.serializer(),
+                    kotlinx.serialization.json.buildJsonObject {
+                        put("algorithm", kotlinx.serialization.json.JsonPrimitive(ch.algorithm))
+                        put("challenge", kotlinx.serialization.json.JsonPrimitive(ch.challenge))
+                        put("salt", kotlinx.serialization.json.JsonPrimitive(ch.salt))
+                        put("number", kotlinx.serialization.json.JsonPrimitive(n))
+                        put("signature", kotlinx.serialization.json.JsonPrimitive(ch.signature))
+                    },
+                )
+                android.util.Base64.encodeToString(payloadJson.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
             }
-        }
-        wv.settings.javaScriptEnabled = true
-        wv.addJavascriptInterface(object {
-            @JavascriptInterface fun postSolution(payload: String) { done(payload) }
-        }, "Android")
-        wv.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView, url: String) {
-                // no-op
+        } catch (e: Exception) {
+            if (info.lwb.BuildConfig.DEBUG) {
+                runCatching { android.util.Log.w("Altcha", "solve failed", e) }
             }
+            null
         }
-        wv.loadUrl(url)
-        cont.invokeOnCancellation { wv.destroy() }
     }
 }

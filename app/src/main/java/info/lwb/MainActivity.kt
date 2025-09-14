@@ -39,6 +39,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import info.lwb.auth.AuthFacade
 import info.lwb.auth.AuthUiState
 import info.lwb.auth.AuthViewModel
+import info.lwb.auth.AltchaTokenProvider
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.reader.ReaderRoute
 import info.lwb.feature.search.SearchRoute
@@ -47,22 +48,23 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var authFacade: AuthFacade
+    @Inject lateinit var altchaProvider: AltchaTokenProvider
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val initialLink = intent?.dataString
-    setContent { appRoot(authFacade, initialLink) }
+        setContent { appRoot(authFacade, altchaProvider, initialLink) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
     val link = intent.dataString
-    setContent { appRoot(authFacade, link) }
+        setContent { appRoot(authFacade, altchaProvider, link) }
     }
 }
 
 @Composable
-private fun appRoot(authFacade: AuthFacade, maybeLink: String?) {
+private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider, maybeLink: String?) {
     val navController = rememberNavController()
     MaterialTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
@@ -70,7 +72,7 @@ private fun appRoot(authFacade: AuthFacade, maybeLink: String?) {
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                         @Suppress("UNCHECKED_CAST")
-                        return AuthViewModel(authFacade) as T
+                        return AuthViewModel(authFacade, altchaProvider) as T
                     }
                 },
             )

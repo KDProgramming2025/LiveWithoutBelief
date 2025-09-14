@@ -103,7 +103,23 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       // Verify ALTCHA payload
       const verified = await verifySolution(altcha, ALTCHA_HMAC_KEY, true);
       if (!verified) {
-        app.log.warn({ event: 'altcha_failed', username }, 'ALTCHA verification failed');
+        // Try to decode the ALTCHA payload for diagnostics (non-fatal if parse fails)
+        let decoded: any = undefined;
+        try {
+          const json = Buffer.from(altcha, 'base64').toString('utf8');
+          decoded = JSON.parse(json);
+        } catch (_) {
+          // Some clients may already send a JSON string; keep silent on parse errors
+        }
+        // Extract helpful hints without leaking sensitive data
+        const exp = Number(decoded?.params?.expires ?? decoded?.expires ?? 0);
+        const now = Math.floor(Date.now() / 1000);
+        const delta = exp ? (exp - now) : undefined;
+        const alg = decoded?.algorithm;
+        const prefix = decoded?.challengePrefix;
+        app.log.warn({ event: 'altcha_failed', username, alg, prefix, exp, now, delta }, 'ALTCHA verification failed');
+        reply.header('X-Auth-Reason', 'altcha_failed');
+        if (delta !== undefined && delta < 0) reply.header('X-Altcha-Expired', String(-delta));
         return reply.code(400).send({ error: 'altcha_failed' });
       }
       const hash = await bcrypt.hash(password, 10);

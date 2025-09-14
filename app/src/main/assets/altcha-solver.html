@@ -22,27 +22,56 @@
     </div>
   </div>
   <script type="module">
+    // Simple local ALTCHA solver: finds a number n such that
+    // hex(digest(algorithm, `${salt}-${n}`)).startsWith(challengePrefix)
     const log = (m) => { const s = document.getElementById('status'); s.textContent = m; };
-    const post = (payload) => {
-      try { window.Android?.postSolution?.(payload); } catch {}
-    };
+    const post = (payload) => { try { window.Android?.postSolution?.(payload); } catch {} };
     const base = new URLSearchParams(location.search).get('base');
     const challengeUrl = (base || '').replace(/\/$/, '') + '/v1/altcha/challenge';
+
+    async function toHex(buf) {
+      const bytes = new Uint8Array(buf);
+      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      return hex;
+    }
+
+    async function digest(algorithm, data) {
+      // Map ALTCHA algorithms to SubtleCrypto names
+      const algo = algorithm && algorithm.toUpperCase().includes('1') ? 'SHA-1' : 'SHA-256';
+      const enc = new TextEncoder();
+      return crypto.subtle.digest(algo, enc.encode(data));
+    }
+
+    async function solveLocal({ algorithm, challenge, maxnumber, salt, signature }) {
+      const prefix = challenge; // ALTCHA uses `challenge` as the required hex prefix
+      const max = Number(maxnumber || 100000);
+      for (let n = 0; n <= max; n++) {
+        const h = await digest(algorithm, `${salt}-${n}`);
+        const hex = await toHex(h);
+        if (hex.startsWith(prefix)) {
+          // Match altcha-lib verifySolution expected field names
+          return { algorithm, challenge: prefix, salt, number: n, signature };
+        }
+      }
+      throw new Error('Solution not found up to max=' + max);
+    }
+
     const btn = document.getElementById('solveBtn');
     btn.addEventListener('click', async () => {
       try {
         log('Fetching challenge…');
-        const res = await fetch(challengeUrl, {cache:'no-store'});
+        const res = await fetch(challengeUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Challenge HTTP ' + res.status);
         const challenge = await res.json();
         log('Solving…');
-        // Use altcha browser lib to solve in-page
-        const mod = await import('https://unpkg.com/altcha@1.4.0/dist/altcha.umd.js');
-        const solution = await mod.solveChallenge(challenge);
-        const payload = typeof solution === 'string' ? solution : btoa(unescape(encodeURIComponent(JSON.stringify(solution))));
+        const solved = await solveLocal(challenge);
+        const payload = btoa(unescape(encodeURIComponent(JSON.stringify(solved))));
         log('Solved');
         post(payload);
       } catch (e) {
         log('Failed: ' + (e?.message || e));
+        // Explicitly inform host app that no solution is available
+        post('');
       }
     });
   </script>

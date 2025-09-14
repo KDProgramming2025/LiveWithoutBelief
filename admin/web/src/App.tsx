@@ -98,11 +98,41 @@ export default function App() {
         }
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) return resolve()
+          if (xhr.status === 409) return reject(new Error('409'))
           return reject(new Error(String(xhr.status)))
         }
         xhr.onerror = () => reject(new Error('network'))
         xhr.send(fd)
       })
+    } catch (err: any) {
+      const msg = String(err?.message ?? err ?? '')
+      if (msg.includes('409')) {
+        const ok = confirm('An article with the same ID already exists. Replace it?')
+        if (!ok) throw err
+        // resend with replace=true
+        const fd2 = new FormData()
+        if (title) fd2.set('title', title)
+        fd2.set('docx', docx)
+        if (cover) fd2.set('cover', cover)
+        if (icon) fd2.set('icon', icon)
+        fd2.set('replace', 'true')
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest()
+          xhr.open('POST', `${API}/v1/admin/articles/upload`)
+          xhr.withCredentials = true
+          xhr.upload.onprogress = (evt) => {
+            if (evt.lengthComputable) setUploadPct(Math.round((evt.loaded/evt.total)*100))
+          }
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) return resolve()
+            return reject(new Error(String(xhr.status)))
+          }
+          xhr.onerror = () => reject(new Error('network'))
+          xhr.send(fd2)
+        })
+      } else {
+        throw err
+      }
       setTitle(''); setDocx(null); setCover(null); setIcon(null)
       setUploadPct(0)
       const data = await api.get<{ items: Article[] }>(`${API}/v1/admin/articles`); setArticles(data.items)
@@ -190,8 +220,8 @@ export default function App() {
                     <td>{a.filename}</td>
                     <td>{new Date(a.createdAt).toLocaleString()}</td>
                     <td>{new Date(a.updatedAt).toLocaleString()}</td>
-                    <td>{a.cover || '-'}</td>
-                    <td>{a.icon || '-'}</td>
+                    <td>{a.cover ? <a href={a.cover} target="_blank" rel="noreferrer">{a.cover}</a> : '-'}</td>
+                    <td>{a.icon ? <a href={a.icon} target="_blank" rel="noreferrer">{a.icon}</a> : '-'}</td>
                     <td>{a.publicPath.replace(/^.*\/LWB\//, '/LWB/')}</td>
                     <td>
                       <button onClick={()=>move(a.id,'up')}>Up</button>{' '}
