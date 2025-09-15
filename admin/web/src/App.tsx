@@ -274,6 +274,19 @@ export default function App() {
   const searchUsers = async (e: React.FormEvent) => { e.preventDefault(); const res = await api.get<{ query: string; users: UserListItem[] }>(`${API}/v1/admin/users/search?q=${encodeURIComponent(query)}`); setUsers(res.users) }
   const [userToRemove, setUserToRemove] = useState<UserListItem | null>(null)
 
+  // Normalize any backend-returned path to a public URL the browser can load
+  // - Converts backslashes to forward slashes
+  // - Trims any server FS prefix before /LWB/
+  // - Leaves absolute http(s) URLs intact
+  const normalizePublicUrl = (u?: string): string | '' => {
+    if (!u) return ''
+    const s = u.replace(/\\/g, '/').trim()
+    if (/^https?:\/\//i.test(s)) return s
+    const idx = s.indexOf('/LWB/')
+    if (idx >= 0) return s.slice(idx)
+    return s.startsWith('/') ? s : `/${s}`
+  }
+
   // Auto-load latest users when switching to Users tab the first time
   useEffect(() => {
     if (auth !== 'yes') return
@@ -370,14 +383,24 @@ export default function App() {
             <Grid container spacing={2}>
               {menu.slice().sort((a,b)=>a.order-b.order).map(m => {
                 const bust = m.updatedAt ? encodeURIComponent(m.updatedAt) : String(m.order)
-                const iconSrc = m.icon ? `${m.icon}${m.icon.includes('?') ? '&' : '?'}v=${bust}` : undefined
+                const baseIcon = normalizePublicUrl(m.icon)
+                const iconSrc = baseIcon ? `${baseIcon}${baseIcon.includes('?') ? '&' : '?'}v=${bust}` : undefined
                 return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={m.id}>
                   <Card>
                     <CardContent>
                       <Stack spacing={1}>
                         <Stack direction="row" spacing={1} alignItems="center">
-                          {iconSrc && <Avatar src={iconSrc} variant="rounded" sx={{ width: 28, height: 28 }} />}
+                          {iconSrc && (
+                            <Box component="img" src={iconSrc} alt="Icon" sx={{ width: 28, height: 28, borderRadius: 1 }}
+                              onError={(e) => {
+                                // minimal retry once by appending a cache-bust r param
+                                const t = e.currentTarget
+                                const hasR = /[?&]r=/.test(t.src)
+                                t.src = hasR ? t.src : `${t.src}${t.src.includes('?') ? '&' : '?'}r=${Date.now()}`
+                              }}
+                            />
+                          )}
                           <Typography variant="subtitle1" fontWeight={700} noWrap title={m.title}>{m.title}</Typography>
                         </Stack>
                         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
