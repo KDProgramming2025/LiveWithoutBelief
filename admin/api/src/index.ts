@@ -103,6 +103,49 @@ function ensureDirSync(p: string) { if (!fssync.existsSync(p)) { fssync.mkdirSyn
 function bufSha256(b: Buffer) { return crypto.createHash('sha256').update(b).digest('hex'); }
 function slugify(s: string) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80) || 'untitled'; }
 
+// Image validation: sniff format and basic completeness checks to avoid partial writes
+function sniffImage(buf: Buffer): { ext?: 'jpg'|'png'|'gif'|'webp'; complete: boolean } {
+  if (!buf || buf.length < 8) return { complete: false };
+  // JPEG
+  if (buf[0] === 0xFF && buf[1] === 0xD8) {
+    const complete = buf.length >= 4 && buf[buf.length - 2] === 0xFF && buf[buf.length - 1] === 0xD9;
+    return { ext: 'jpg', complete };
+  }
+  // PNG
+  const pngSig = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+  if (pngSig.every((v, i) => buf[i] === v)) {
+    // Expect IEND at tail: 00 00 00 00 49 45 4E 44 AE 42 60 82
+    const tail = [0x00,0x00,0x00,0x00,0x49,0x45,0x4E,0x44,0xAE,0x42,0x60,0x82];
+    let complete = false;
+    if (buf.length >= 12) {
+      complete = tail.every((v, i) => buf[buf.length - 12 + i] === v);
+    }
+    return { ext: 'png', complete };
+  }
+  // GIF
+  const isGif = (buf.length >= 6) && (
+    (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38 && buf[4] === 0x37 && buf[5] === 0x61) ||
+    (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38 && buf[4] === 0x39 && buf[5] === 0x61)
+  );
+  if (isGif) {
+    const complete = buf[buf.length - 1] === 0x3B; // GIF trailer
+    return { ext: 'gif', complete };
+  }
+  // WEBP (RIFF...WEBP)
+  const isWebp = buf.length >= 12 &&
+    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
+  if (isWebp) { return { ext: 'webp', complete: true }; }
+  return { complete: false };
+}
+
+async function writeFileAtomic(dir: string, filename: string, buffer: Buffer) {
+  ensureDirSync(dir);
+  const tmp = path.join(dir, `.${filename}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await fs.writeFile(tmp, buffer);
+  await fs.rename(tmp, path.join(dir, filename));
+}
+
 export function buildServer(): FastifyInstance {
   const server = Fastify({ logger: true });
   server.register(cors, { origin: true, credentials: true });
@@ -339,13 +382,17 @@ export function buildServer(): FastifyInstance {
     // Files: cover, icon — robustly handle different multipart shapes
   let coverWritten = false;
   let iconWritten = false;
+  const warnings: Array<{ field: 'cover'|'icon'; error: string }> = [];
     for (const field of ['cover','icon'] as const) {
       const part = body[field];
       if (part && typeof part === 'object') {
         const { buffer, filename } = await readPartBuffer(part);
         if (buffer.length > 0) {
-          const ext = (filename || '').split('.').pop() || 'bin';
-          const fname = field + '.' + String(ext).toLowerCase();
+          const sniff = sniffImage(buffer);
+          if (!sniff.ext || !sniff.complete) {
+            warnings.push({ field, error: sniff.ext ? 'image_incomplete' : 'image_unrecognized' });
+          } else {
+          const fname = `${field}.${sniff.ext}`;
           const dstDir = art.publicPath;
           ensureDirSync(dstDir);
           // Proactively remove stale variants with different extensions
@@ -357,10 +404,11 @@ export function buildServer(): FastifyInstance {
               }
             }
           } catch {}
-          await fs.writeFile(path.join(dstDir, fname), buffer);
+          await writeFileAtomic(dstDir, fname, buffer);
           (req as any).log?.info?.({ id: art.id, field, fname, bytes: buffer.length }, 'article.edit: wrote file');
           (art as any)[field] = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
           if (field === 'cover') coverWritten = true; else iconWritten = true;
+          }
         }
       }
     }
@@ -373,29 +421,37 @@ export function buildServer(): FastifyInstance {
           try {
             const buf = await fs.readFile(f.filepath);
             if (f.fieldname === 'cover' && !coverWritten && buf?.length) {
-              const ext = (f.filename || '').split('.').pop() || 'bin';
-              const fname = `cover.${String(ext).toLowerCase()}`;
+              const sniff = sniffImage(buf);
+              if (!sniff.ext || !sniff.complete) {
+                warnings.push({ field: 'cover', error: sniff.ext ? 'image_incomplete' : 'image_unrecognized' });
+              } else {
+              const fname = `cover.${sniff.ext}`;
               ensureDirSync(art.publicPath);
               try {
                 const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
                 for (const x of files) { if (x.startsWith('cover.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} } }
               } catch {}
-              await fs.writeFile(path.join(art.publicPath, fname), buf);
+              await writeFileAtomic(art.publicPath, fname, buf);
               (req as any).log?.info?.({ id: art.id, field: 'cover', fname, bytes: buf.length }, 'article.edit: wrote file (fallback)');
               (art as any).cover = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
               coverWritten = true;
+              }
             } else if (f.fieldname === 'icon' && !iconWritten && buf?.length) {
-              const ext = (f.filename || '').split('.').pop() || 'bin';
-              const fname = `icon.${String(ext).toLowerCase()}`;
+              const sniff = sniffImage(buf);
+              if (!sniff.ext || !sniff.complete) {
+                warnings.push({ field: 'icon', error: sniff.ext ? 'image_incomplete' : 'image_unrecognized' });
+              } else {
+              const fname = `icon.${sniff.ext}`;
               ensureDirSync(art.publicPath);
               try {
                 const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
                 for (const x of files) { if (x.startsWith('icon.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} } }
               } catch {}
-              await fs.writeFile(path.join(art.publicPath, fname), buf);
+              await writeFileAtomic(art.publicPath, fname, buf);
               (req as any).log?.info?.({ id: art.id, field: 'icon', fname, bytes: buf.length }, 'article.edit: wrote file (fallback)');
               (art as any).icon = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
               iconWritten = true;
+              }
             }
           } finally {
             try { await fs.unlink(f.filepath); } catch {}
@@ -417,13 +473,18 @@ export function buildServer(): FastifyInstance {
               if (p.fieldname === 'cover' && coverWritten) { try { for await (const _ of p.file) { /* drain */ } } catch {} continue; }
               if (p.fieldname === 'icon' && iconWritten) { try { for await (const _ of p.file) { /* drain */ } } catch {} continue; }
               const bufs: Buffer[] = [];
+              let truncated = false;
+              try { p.file.on?.('limit', () => { truncated = true; }); } catch {}
               try {
                 for await (const ch of p.file) { bufs.push(Buffer.isBuffer(ch) ? ch : Buffer.from(ch)); }
               } catch {}
               const buf = Buffer.concat(bufs);
               if (buf.length > 0) {
-                const ext = (p.filename || '').split('.').pop() || 'bin';
-                const fname = `${p.fieldname}.${String(ext).toLowerCase()}`;
+                const sniff = sniffImage(buf);
+                if (truncated || !sniff.ext || !sniff.complete) {
+                  warnings.push({ field: p.fieldname, error: truncated ? 'upload_truncated' : (sniff.ext ? 'image_incomplete' : 'image_unrecognized') });
+                } else {
+                const fname = `${p.fieldname}.${sniff.ext}`;
                 ensureDirSync(art.publicPath);
                 try {
                   const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
@@ -431,10 +492,11 @@ export function buildServer(): FastifyInstance {
                     if (x.startsWith(p.fieldname + '.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} }
                   }
                 } catch {}
-                await fs.writeFile(path.join(art.publicPath, fname), buf);
+                await writeFileAtomic(art.publicPath, fname, buf);
                 (req as any).log?.info?.({ id: art.id, field: p.fieldname, fname, bytes: buf.length }, 'article.edit: wrote file (stream)');
                 if (p.fieldname === 'cover') { (art as any).cover = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`; coverWritten = true; }
                 if (p.fieldname === 'icon') { (art as any).icon = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`; iconWritten = true; }
+                }
               }
             } else if (p?.type === 'file') {
               // Drain any unrelated files to avoid hanging
@@ -454,7 +516,7 @@ export function buildServer(): FastifyInstance {
     if (!(titleChanged || coverWritten || iconWritten)) {
       (req as any).log?.info?.({ id: art.id }, 'article.edit: no changes detected');
     }
-    return { ok: true, item: art };
+    return { ok: true, item: art, warnings };
   });
 
   // Upload DOCX + cover + icon, convert to HTML/CSS/JS under PUBLIC_ROOT/slug
@@ -555,14 +617,20 @@ export function buildServer(): FastifyInstance {
       let coverName: string | undefined;
       let iconName: string | undefined;
       if (coverBuf && coverBuf.length) {
-        const ext = (coverOrig || '').split('.').pop() || 'bin';
-        coverName = `cover.${String(ext).toLowerCase()}`;
-        await fs.writeFile(path.join(publicDir, coverName), coverBuf);
+        const sniff = sniffImage(coverBuf);
+        if (!sniff.ext || !sniff.complete) {
+          return reply.code(400).send({ ok: false, error: 'invalid_cover_image' });
+        }
+        coverName = `cover.${sniff.ext}`;
+        await writeFileAtomic(publicDir, coverName, coverBuf);
       }
       if (iconBuf && iconBuf.length) {
-        const ext = (iconOrig || '').split('.').pop() || 'bin';
-        iconName = `icon.${String(ext).toLowerCase()}`;
-        await fs.writeFile(path.join(publicDir, iconName), iconBuf);
+        const sniff = sniffImage(iconBuf);
+        if (!sniff.ext || !sniff.complete) {
+          return reply.code(400).send({ ok: false, error: 'invalid_icon_image' });
+        }
+        iconName = `icon.${sniff.ext}`;
+        await writeFileAtomic(publicDir, iconName, iconBuf);
       }
       // Write simple static bundle: index.html, style.css, script.js
       const styleCss = `/* minimal styles */\nbody{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;max-width:820px;margin:2rem auto;padding:0 1rem;line-height:1.6;}h1,h2,h3{line-height:1.25}`;
