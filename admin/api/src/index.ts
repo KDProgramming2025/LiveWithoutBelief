@@ -150,10 +150,30 @@ function sniffImage(buf: Buffer): { ext?: 'jpg'|'png'|'gif'|'webp'; complete: bo
 }
 
 async function writeFileAtomic(dir: string, filename: string, buffer: Buffer) {
+  // Write to a temp file in the same directory, fsync the file, then atomically rename
+  // and fsync the parent directory. This ensures readers (nginx) see a fully-written
+  // file immediately after rename, and the change is durable across crashes.
   ensureDirSync(dir);
   const tmp = path.join(dir, `.${filename}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  await fs.writeFile(tmp, buffer);
-  await fs.rename(tmp, path.join(dir, filename));
+  const final = path.join(dir, filename);
+
+  const fh = await fs.open(tmp, 'w');
+  try {
+    // Write the entire buffer and flush it to disk
+    await fh.write(buffer, 0, buffer.length, 0);
+    try { await fh.sync(); } catch {}
+  } finally {
+    try { await fh.close(); } catch {}
+  }
+
+  // Atomic replacement
+  await fs.rename(tmp, final);
+
+  // Best-effort: fsync parent directory to ensure directory entry is durable
+  try {
+    const dh = await fs.open(dir, 'r');
+    try { await dh.sync(); } finally { await dh.close(); }
+  } catch {}
 }
 
 export function buildServer(): FastifyInstance {

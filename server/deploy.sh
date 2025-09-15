@@ -139,9 +139,9 @@ location ^~ /LWB/Admin/api/ {
 		proxy_read_timeout 300s;
 		proxy_send_timeout 300s;
 		send_timeout 300s;
-		# Buffering tweaks: allow streaming to upstream
-		proxy_request_buffering off;
-		proxy_buffering off;
+		# Buffer request bodies to avoid HTTP/2 streaming issues with multipart uploads
+		# (default is on, keep explicit for clarity)
+		proxy_request_buffering on;
 		# Enforce no-cache on proxied API responses
 		add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
 		add_header Pragma "no-cache" always;
@@ -161,6 +161,8 @@ location ^~ /LWB/Articles/ {
 		root /var/www;
 		index index.html;
 		try_files $uri $uri/ =404;
+		# Disable range requests to prevent 206 Partial Content issues over HTTP/2
+		max_ranges 0;
 		add_header Cache-Control "public, max-age=60";
 }
 NGINX
