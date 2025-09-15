@@ -18,6 +18,7 @@ import InsertPhotoIcon from '@mui/icons-material/InsertPhoto'
 import SearchIcon from '@mui/icons-material/Search'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { useColorMode } from './theme'
+import { ConfirmDialog, SingleFieldDialog, TwoFieldDialog } from './components/Dialogs'
 
 type Article = { id: string; title: string; createdAt: string; updatedAt: string; order: number; filename: string; securePath: string; publicPath: string; cover?: string; icon?: string }
 type MenuItem = { id: string; title: string; label: string; order: number; updatedAt: string; icon?: string }
@@ -144,7 +145,9 @@ export default function App() {
     } finally { setMenuBusy(false) }
   }
   const moveMenu = async (id: string, direction:'up'|'down') => { await api.post(`${API}/v1/admin/menu/${id}/move`, { direction }); await refreshMenu() }
-  const deleteMenu = async (id: string) => { if (!confirm('Delete this menu item?')) return; await api.del(`${API}/v1/admin/menu/${id}`); await refreshMenu() }
+  // Delete dialogs state
+  const [menuToDelete, setMenuToDelete] = useState<MenuItem | null>(null)
+  const confirmDeleteMenu = async () => { if (!menuToDelete) return; await api.del(`${API}/v1/admin/menu/${menuToDelete.id}`); setMenuToDelete(null); await refreshMenu(); showToast('Menu item deleted') }
 
   const logout = async () => { await api.post(`${API}/v1/admin/logout`); setAuth('no') }
 
@@ -169,6 +172,8 @@ export default function App() {
   }
 
   const edit = async (id: string, newTitle?: string) => updateArticle(id, { title: newTitle })
+  const [articleToEdit, setArticleToEdit] = useState<Article | null>(null)
+  const [menuToEdit, setMenuToEdit] = useState<MenuItem | null>(null)
 
   // Utility to prompt for a single image file using a transient input element
   const pickImage = (): Promise<File | null> => new Promise((resolve) => {
@@ -232,7 +237,9 @@ export default function App() {
     } catch (err: any) {
       const msg = String(err?.message ?? err ?? '')
       if (msg.includes('409')) {
-        const ok = confirm('An article with the same ID already exists. Replace it?')
+        // Ask via dialog
+        setReplaceDialogOpen(true)
+        const ok: boolean = await new Promise(resolve => setReplaceDialogResolve(()=>resolve))
         if (!ok) throw err
         // resend with replace=true
         const fd2 = new FormData()
@@ -265,6 +272,7 @@ export default function App() {
   }
 
   const searchUsers = async (e: React.FormEvent) => { e.preventDefault(); const res = await api.get<{ query: string; users: UserListItem[] }>(`${API}/v1/admin/users/search?q=${encodeURIComponent(query)}`); setUsers(res.users) }
+  const [userToRemove, setUserToRemove] = useState<UserListItem | null>(null)
 
   // Auto-load latest users when switching to Users tab the first time
   useEffect(() => {
@@ -283,9 +291,13 @@ export default function App() {
     })()
   }, [auth, tab, didInitialUserLoad, api, query])
   const removeUser = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this user? This action cannot be undone.')) return;
+    const u = users.find(x=>x.id===id) || null
+    setUserToRemove(u)
+  }
+  const confirmRemoveUser = async () => {
+    if (!userToRemove) return
     try {
-      await api.del(`${API}/v1/admin/users/${id}`)
+      await api.del(`${API}/v1/admin/users/${userToRemove.id}`)
     } catch (err: any) {
       // If already deleted (404), treat as success; rethrow other errors
       const msg = String(err?.message ?? err ?? '')
@@ -294,7 +306,13 @@ export default function App() {
     // refresh total and current search results
     try { const sum = await api.get<UsersSummary>(`${API}/v1/admin/users/summary`); setUsersTotal(sum.total) } catch {}
     try { await searchUsers(new Event('submit') as any) } catch {}
+    setUserToRemove(null)
+    showToast('User removed')
   }
+
+  // Replace-upload dialog state
+  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false)
+  const [replaceDialogResolve, setReplaceDialogResolve] = useState<(ok: boolean) => void>(()=>()=>{})
 
   if (auth === 'unknown') return <Box sx={{ p:3 }}><CircularProgress /></Box>
   if (auth === 'no') return <Login onDone={() => setAuth('yes')} />
@@ -380,7 +398,7 @@ export default function App() {
                       <Stack direction="row" spacing={1}>
                         <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>moveMenu(m.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
                         <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>moveMenu(m.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                        <Tooltip title="Delete"><span><IconButton size="small" onClick={()=>deleteMenu(m.id)} color="error"><DeleteIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                        <Tooltip title="Delete"><span><IconButton size="small" onClick={()=>setMenuToDelete(m)} color="error"><DeleteIcon fontSize="inherit"/></IconButton></span></Tooltip>
                       </Stack>
                     </CardActions>
                   </Card>
@@ -488,7 +506,7 @@ export default function App() {
                         <Stack direction="row" spacing={1}>
                           <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>move(a.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>move(a.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                          <Tooltip title="Edit title"><span><IconButton size="small" onClick={()=>{ const t=prompt('New title', a.title); if (t!==null) edit(a.id, t) }}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Edit title"><span><IconButton size="small" onClick={()=> setArticleToEdit(a)}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Change cover"><span><IconButton size="small" onClick={()=>changeCover(a.id)} disabled={!!busyIds[a.id]}><ImageIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeIcon(a.id)} disabled={!!busyIds[a.id]}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
                         </Stack>
@@ -544,6 +562,51 @@ export default function App() {
         <Snackbar open={toast.open} autoHideDuration={2500} onClose={() => setToast(t => ({ ...t, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
           <Alert onClose={() => setToast(t => ({ ...t, open: false }))} severity={toast.severity} sx={{ width: '100%' }}>{toast.message}</Alert>
         </Snackbar>
+
+        {/* Dialogs */}
+        <TwoFieldDialog
+          open={!!menuToEdit}
+          title="Edit menu item"
+          aLabel="Title"
+          bLabel="Label"
+          initialA={menuToEdit?.title ?? ''}
+          initialB={menuToEdit?.label ?? ''}
+          onSubmit={async (title, label) => { if (!menuToEdit) return; await editMenu(menuToEdit.id, { title, label }); showToast('Menu item updated') }}
+          onClose={() => setMenuToEdit(null)}
+        />
+
+        <SingleFieldDialog
+          open={!!articleToEdit}
+          title="Edit article title"
+          label="Title"
+          initial={articleToEdit?.title ?? ''}
+          onSubmit={async (title) => { if (!articleToEdit) return; await edit(articleToEdit.id, title); showToast('Article updated') }}
+          onClose={() => setArticleToEdit(null)}
+        />
+
+        <ConfirmDialog
+          open={!!menuToDelete}
+          title="Delete menu item"
+          message={menuToDelete ? `Are you sure you want to delete "${menuToDelete.title}"?` : ''}
+          confirmText="Delete"
+          onClose={(ok) => { if (ok) confirmDeleteMenu(); else setMenuToDelete(null) }}
+        />
+
+        <ConfirmDialog
+          open={!!userToRemove}
+          title="Remove user"
+          message={userToRemove ? `Remove user "${userToRemove.username}"? This cannot be undone.` : ''}
+          confirmText="Remove"
+          onClose={(ok) => { if (ok) confirmRemoveUser(); else setUserToRemove(null) }}
+        />
+
+        <ConfirmDialog
+          open={replaceDialogOpen}
+          title="Replace existing article?"
+          message="An article with the same ID already exists. Do you want to replace it?"
+          confirmText="Replace"
+          onClose={(ok) => { const r = replaceDialogResolve; setReplaceDialogOpen(false); setReplaceDialogResolve(()=>()=>{}); r(ok) }}
+        />
       </Box>
     </Box>
   )

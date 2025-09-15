@@ -17,6 +17,7 @@ import InsertPhotoIcon from '@mui/icons-material/InsertPhoto';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useColorMode } from './theme';
+import { ConfirmDialog, SingleFieldDialog, TwoFieldDialog } from './components/Dialogs';
 const API = import.meta.env.VITE_API_URL ?? `${location.origin}/LWB/Admin/api`;
 function useJson() {
     return useMemo(() => ({
@@ -170,8 +171,10 @@ export default function App() {
         }
     };
     const moveMenu = async (id, direction) => { await api.post(`${API}/v1/admin/menu/${id}/move`, { direction }); await refreshMenu(); };
-    const deleteMenu = async (id) => { if (!confirm('Delete this menu item?'))
-        return; await api.del(`${API}/v1/admin/menu/${id}`); await refreshMenu(); };
+    // Delete dialogs state
+    const [menuToDelete, setMenuToDelete] = useState(null);
+    const confirmDeleteMenu = async () => { if (!menuToDelete)
+        return; await api.del(`${API}/v1/admin/menu/${menuToDelete.id}`); setMenuToDelete(null); await refreshMenu(); showToast('Menu item deleted'); };
     const logout = async () => { await api.post(`${API}/v1/admin/logout`); setAuth('no'); };
     const move = async (id, direction) => {
         await api.post(`${API}/v1/admin/articles/${id}/move`, { direction });
@@ -197,6 +200,8 @@ export default function App() {
         setArticles(data.items);
     };
     const edit = async (id, newTitle) => updateArticle(id, { title: newTitle });
+    const [articleToEdit, setArticleToEdit] = useState(null);
+    const [menuToEdit, setMenuToEdit] = useState(null);
     // Utility to prompt for a single image file using a transient input element
     const pickImage = () => new Promise((resolve) => {
         const input = document.createElement('input');
@@ -274,7 +279,9 @@ export default function App() {
         catch (err) {
             const msg = String(err?.message ?? err ?? '');
             if (msg.includes('409')) {
-                const ok = confirm('An article with the same ID already exists. Replace it?');
+                // Ask via dialog
+                setReplaceDialogOpen(true);
+                const ok = await new Promise(resolve => setReplaceDialogResolve(() => resolve));
                 if (!ok)
                     throw err;
                 // resend with replace=true
@@ -320,6 +327,7 @@ export default function App() {
         }
     };
     const searchUsers = async (e) => { e.preventDefault(); const res = await api.get(`${API}/v1/admin/users/search?q=${encodeURIComponent(query)}`); setUsers(res.users); };
+    const [userToRemove, setUserToRemove] = useState(null);
     // Auto-load latest users when switching to Users tab the first time
     useEffect(() => {
         if (auth !== 'yes')
@@ -342,10 +350,14 @@ export default function App() {
         })();
     }, [auth, tab, didInitialUserLoad, api, query]);
     const removeUser = async (id) => {
-        if (!confirm('Are you sure you want to remove this user? This action cannot be undone.'))
+        const u = users.find(x => x.id === id) || null;
+        setUserToRemove(u);
+    };
+    const confirmRemoveUser = async () => {
+        if (!userToRemove)
             return;
         try {
-            await api.del(`${API}/v1/admin/users/${id}`);
+            await api.del(`${API}/v1/admin/users/${userToRemove.id}`);
         }
         catch (err) {
             // If already deleted (404), treat as success; rethrow other errors
@@ -363,7 +375,12 @@ export default function App() {
             await searchUsers(new Event('submit'));
         }
         catch { }
+        setUserToRemove(null);
+        showToast('User removed');
     };
+    // Replace-upload dialog state
+    const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+    const [replaceDialogResolve, setReplaceDialogResolve] = useState(() => () => { });
     if (auth === 'unknown')
         return _jsx(Box, { sx: { p: 3 }, children: _jsx(CircularProgress, {}) });
     if (auth === 'no')
@@ -379,7 +396,7 @@ export default function App() {
                                                                                     if (newLabel === null)
                                                                                         return;
                                                                                     editMenu(m.id, { title: newTitle, label: newLabel });
-                                                                                }, children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change icon", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeMenuIcon(m.id), children: _jsx(InsertPhotoIcon, { fontSize: "inherit" }) }) }) })] }), _jsx(Chip, { size: "small", variant: "outlined", label: `Order #${m.order}` })] }) }), _jsx(CardActions, { children: _jsxs(Stack, { direction: "row", spacing: 1, children: [_jsx(Tooltip, { title: "Move up", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => moveMenu(m.id, 'up'), children: _jsx(ArrowUpwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Move down", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => moveMenu(m.id, 'down'), children: _jsx(ArrowDownwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Delete", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => deleteMenu(m.id), color: "error", children: _jsx(DeleteIcon, { fontSize: "inherit" }) }) }) })] }) })] }) }, m.id));
+                                                                                }, children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change icon", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeMenuIcon(m.id), children: _jsx(InsertPhotoIcon, { fontSize: "inherit" }) }) }) })] }), _jsx(Chip, { size: "small", variant: "outlined", label: `Order #${m.order}` })] }) }), _jsx(CardActions, { children: _jsxs(Stack, { direction: "row", spacing: 1, children: [_jsx(Tooltip, { title: "Move up", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => moveMenu(m.id, 'up'), children: _jsx(ArrowUpwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Move down", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => moveMenu(m.id, 'down'), children: _jsx(ArrowDownwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Delete", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => setMenuToDelete(m), color: "error", children: _jsx(DeleteIcon, { fontSize: "inherit" }) }) }) })] }) })] }) }, m.id));
                                 }) })] })), tab === 'articles' && (_jsxs(Stack, { spacing: 3, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Articles" }), _jsx(Card, { children: _jsx(CardContent, { children: _jsxs(Stack, { component: "form", onSubmit: upload, spacing: 2, sx: { maxWidth: 720 }, children: [_jsx(TextField, { label: "Title (optional)", value: title, onChange: (e) => setTitle(e.target.value), placeholder: "Defaults from docx", fullWidth: true }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", startIcon: _jsx(UploadFileIcon, {}), children: ["Select DOCX", _jsx("input", { hidden: true, type: "file", accept: ".docx", onChange: e => setDocx(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: docx?.name ?? 'No file selected' })] }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", children: ["Cover", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setCover(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: cover?.name ?? 'Optional' }), _jsxs(Button, { variant: "outlined", component: "label", children: ["Icon", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setIcon(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: icon?.name ?? 'Optional' })] }), uploadBusy && (_jsxs(Box, { children: [_jsx(LinearProgress, { variant: "determinate", value: uploadPct }), _jsxs(Typography, { variant: "caption", color: "text.secondary", children: [uploadPct, "%"] })] })), _jsx(Stack, { direction: "row", spacing: 1, children: _jsx(Button, { type: "submit", variant: "contained", disabled: uploadBusy || !docx, children: "Upload" }) })] }) }) }), _jsx(Grid, { container: true, spacing: 2, children: articles.slice().sort((a, b) => a.order - b.order).map(a => {
                                     const created = a.createdAt ? new Date(a.createdAt) : null;
                                     const updated = a.updatedAt ? new Date(a.updatedAt) : null;
@@ -405,8 +422,7 @@ export default function App() {
                                                                                         return prev;
                                                                                     return { ...prev, [a.id]: Date.now() };
                                                                                 });
-                                                                            } } })), _jsx(Typography, { variant: "subtitle1", fontWeight: 700, noWrap: true, title: a.title || a.filename, children: a.title || a.filename })] }), _jsx(Typography, { variant: "body2", color: "text.secondary", noWrap: true, title: a.filename, children: a.filename }), _jsxs(Stack, { direction: "row", spacing: 1, useFlexGap: true, flexWrap: "wrap", children: [_jsx(Chip, { size: "small", label: `Order #${a.order}` }), created && _jsx(Chip, { size: "small", variant: "outlined", label: `Created ${created.toLocaleDateString()}` }), updated && _jsx(Chip, { size: "small", variant: "outlined", label: `Updated ${updated.toLocaleDateString()}` })] }), publicLink && _jsx(MuiLink, { href: publicLink, target: "_blank", rel: "noreferrer", underline: "hover", children: "Open public link" })] }) }), _jsx(CardActions, { sx: { justifyContent: 'space-between' }, children: _jsxs(Stack, { direction: "row", spacing: 1, children: [_jsx(Tooltip, { title: "Move up", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(a.id, 'up'), children: _jsx(ArrowUpwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Move down", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(a.id, 'down'), children: _jsx(ArrowDownwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Edit title", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => { const t = prompt('New title', a.title); if (t !== null)
-                                                                            edit(a.id, t); }, children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change cover", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeCover(a.id), disabled: !!busyIds[a.id], children: _jsx(ImageIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change icon", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeIcon(a.id), disabled: !!busyIds[a.id], children: _jsx(InsertPhotoIcon, { fontSize: "inherit" }) }) }) })] }) })] }) }, a.id));
+                                                                            } } })), _jsx(Typography, { variant: "subtitle1", fontWeight: 700, noWrap: true, title: a.title || a.filename, children: a.title || a.filename })] }), _jsx(Typography, { variant: "body2", color: "text.secondary", noWrap: true, title: a.filename, children: a.filename }), _jsxs(Stack, { direction: "row", spacing: 1, useFlexGap: true, flexWrap: "wrap", children: [_jsx(Chip, { size: "small", label: `Order #${a.order}` }), created && _jsx(Chip, { size: "small", variant: "outlined", label: `Created ${created.toLocaleDateString()}` }), updated && _jsx(Chip, { size: "small", variant: "outlined", label: `Updated ${updated.toLocaleDateString()}` })] }), publicLink && _jsx(MuiLink, { href: publicLink, target: "_blank", rel: "noreferrer", underline: "hover", children: "Open public link" })] }) }), _jsx(CardActions, { sx: { justifyContent: 'space-between' }, children: _jsxs(Stack, { direction: "row", spacing: 1, children: [_jsx(Tooltip, { title: "Move up", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(a.id, 'up'), children: _jsx(ArrowUpwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Move down", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => move(a.id, 'down'), children: _jsx(ArrowDownwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Edit title", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => setArticleToEdit(a), children: _jsx(EditIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change cover", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeCover(a.id), disabled: !!busyIds[a.id], children: _jsx(ImageIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Change icon", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => changeIcon(a.id), disabled: !!busyIds[a.id], children: _jsx(InsertPhotoIcon, { fontSize: "inherit" }) }) }) })] }) })] }) }, a.id));
                                 }) })] })), tab === 'users' && (_jsxs(Stack, { spacing: 2, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Users" }), _jsxs(Typography, { color: "text.secondary", children: ["Total registered users: ", usersTotal] }), _jsxs(Stack, { component: "form", onSubmit: searchUsers, direction: { xs: 'column', sm: 'row' }, spacing: 1, alignItems: { sm: 'center' }, children: [_jsx(TextField, { value: query, onChange: e => setQuery(e.target.value), placeholder: "Search username", size: "small" }), _jsx(Button, { type: "submit", variant: "contained", startIcon: _jsx(SearchIcon, {}), children: "Search" }), _jsx(Typography, { variant: "caption", color: "text.secondary", children: "Tip: Leave empty and click Search to list latest users." })] }), _jsx(DataGrid, { autoHeight: true, disableRowSelectionOnClick: true, rows: users, getRowId: (r) => r.id, columns: [
                                     { field: 'username', headerName: 'Username', flex: 1, minWidth: 180 },
                                     { field: 'createdAt', headerName: 'Registered', minWidth: 160, valueGetter: (p) => p?.row?.createdAt ?? null, renderCell: (p) => {
@@ -432,5 +448,13 @@ export default function App() {
                                             return isNaN(d.getTime()) ? '-' : d.toLocaleString();
                                         } },
                                     { field: 'actions', headerName: '', sortable: false, width: 120, renderCell: (p) => (_jsx(Button, { size: "small", color: "error", startIcon: _jsx(DeleteIcon, {}), onClick: () => removeUser(p.row.id), children: "Remove" })) },
-                                ], pageSizeOptions: [10, 25, 50], initialState: { pagination: { paginationModel: { pageSize: 10, page: 0 } } } })] })), _jsx(Snackbar, { open: toast.open, autoHideDuration: 2500, onClose: () => setToast(t => ({ ...t, open: false })), anchorOrigin: { vertical: 'bottom', horizontal: 'center' }, children: _jsx(Alert, { onClose: () => setToast(t => ({ ...t, open: false })), severity: toast.severity, sx: { width: '100%' }, children: toast.message }) })] })] }));
+                                ], pageSizeOptions: [10, 25, 50], initialState: { pagination: { paginationModel: { pageSize: 10, page: 0 } } } })] })), _jsx(Snackbar, { open: toast.open, autoHideDuration: 2500, onClose: () => setToast(t => ({ ...t, open: false })), anchorOrigin: { vertical: 'bottom', horizontal: 'center' }, children: _jsx(Alert, { onClose: () => setToast(t => ({ ...t, open: false })), severity: toast.severity, sx: { width: '100%' }, children: toast.message }) }), _jsx(TwoFieldDialog, { open: !!menuToEdit, title: "Edit menu item", aLabel: "Title", bLabel: "Label", initialA: menuToEdit?.title ?? '', initialB: menuToEdit?.label ?? '', onSubmit: async (title, label) => { if (!menuToEdit)
+                            return; await editMenu(menuToEdit.id, { title, label }); showToast('Menu item updated'); }, onClose: () => setMenuToEdit(null) }), _jsx(SingleFieldDialog, { open: !!articleToEdit, title: "Edit article title", label: "Title", initial: articleToEdit?.title ?? '', onSubmit: async (title) => { if (!articleToEdit)
+                            return; await edit(articleToEdit.id, title); showToast('Article updated'); }, onClose: () => setArticleToEdit(null) }), _jsx(ConfirmDialog, { open: !!menuToDelete, title: "Delete menu item", message: menuToDelete ? `Are you sure you want to delete "${menuToDelete.title}"?` : '', confirmText: "Delete", onClose: (ok) => { if (ok)
+                            confirmDeleteMenu();
+                        else
+                            setMenuToDelete(null); } }), _jsx(ConfirmDialog, { open: !!userToRemove, title: "Remove user", message: userToRemove ? `Remove user "${userToRemove.username}"? This cannot be undone.` : '', confirmText: "Remove", onClose: (ok) => { if (ok)
+                            confirmRemoveUser();
+                        else
+                            setUserToRemove(null); } }), _jsx(ConfirmDialog, { open: replaceDialogOpen, title: "Replace existing article?", message: "An article with the same ID already exists. Do you want to replace it?", confirmText: "Replace", onClose: (ok) => { const r = replaceDialogResolve; setReplaceDialogOpen(false); setReplaceDialogResolve(() => () => { }); r(ok); } })] })] }));
 }
