@@ -131,11 +131,21 @@ function sniffImage(buf: Buffer): { ext?: 'jpg'|'png'|'gif'|'webp'; complete: bo
     const complete = buf[buf.length - 1] === 0x3B; // GIF trailer
     return { ext: 'gif', complete };
   }
-  // WEBP (RIFF...WEBP)
-  const isWebp = buf.length >= 12 &&
-    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
-    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
-  if (isWebp) { return { ext: 'webp', complete: true }; }
+  // WEBP (RIFF <size> WEBP) — verify RIFF size and minimal chunk presence
+  if (buf.length >= 12 && buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) {
+    // little-endian size from bytes 4..7 gives number of bytes after this field; total file length should be size + 8
+    const size = buf[4] | (buf[5] << 8) | (buf[6] << 16) | (buf[7] << 24);
+    const expectedTotal = size + 8;
+    const lengthOk = buf.length >= expectedTotal; // allow larger due to padding, but not smaller
+    // Check one of VP8/VP8L/VP8X chunk headers exists somewhere after header
+    let chunkFound = false;
+    const searchMax = Math.min(buf.length - 4, 64); // scan first ~64 bytes after RIFF header
+    for (let i = 12; i < searchMax; i++) {
+      const c0 = buf[i], c1 = buf[i+1], c2 = buf[i+2], c3 = buf[i+3];
+      if ((c0===0x56&&c1===0x50&&c2===0x38&&(c3===0x20||c3===0x4C||c3===0x58))) { chunkFound = true; break; }
+    }
+    return { ext: 'webp', complete: !!(lengthOk && chunkFound) };
+  }
   return { complete: false };
 }
 
