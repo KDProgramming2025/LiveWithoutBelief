@@ -382,13 +382,7 @@ export default function App() {
                         </Stack>
                         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                           <Chip size="small" label={`Label: ${m.label}`} />
-                          <Tooltip title="Edit label/title"><span><IconButton size="small" onClick={()=>{
-                            const newTitle = prompt('New title', m.title)
-                            if (newTitle === null) return
-                            const newLabel = prompt('New label', m.label ?? '')
-                            if (newLabel === null) return
-                            editMenu(m.id, { title: newTitle, label: newLabel })
-                          }}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Edit label/title"><span><IconButton size="small" onClick={()=> setMenuToEdit(m)}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeMenuIcon(m.id)}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
                         </Stack>
                         <Chip size="small" variant="outlined" label={`Order #${m.order}`} />
