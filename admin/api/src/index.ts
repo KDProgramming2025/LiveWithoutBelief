@@ -328,12 +328,17 @@ export function buildServer(): FastifyInstance {
     else if (body.title && typeof body.title === 'object' && typeof body.title.value !== 'undefined') {
       newTitle = String(body.title.value);
     }
+    let titleChanged = false;
     if (newTitle && newTitle.trim()) {
-      art.title = newTitle.trim().slice(0, 200);
+      const nextTitle = newTitle.trim().slice(0, 200);
+      if (nextTitle !== art.title) {
+        art.title = nextTitle;
+        titleChanged = true;
+      }
     }
     // Files: cover, icon — robustly handle different multipart shapes
-    let coverWritten = false;
-    let iconWritten = false;
+  let coverWritten = false;
+  let iconWritten = false;
     for (const field of ['cover','icon'] as const) {
       const part = body[field];
       if (part && typeof part === 'object') {
@@ -400,9 +405,55 @@ export function buildServer(): FastifyInstance {
     } catch (e) {
       (req as any).log?.warn?.({ err: e }, 'edit.saveRequestFiles fallback failed');
     }
-    art.updatedAt = new Date().toISOString();
+
+    // Additional robust fallback: iterate multipart parts stream directly
+    if (!coverWritten || !iconWritten) {
+      try {
+        const iter = (req as any).parts?.();
+        if (iter && typeof (iter as any)[Symbol.asyncIterator] === 'function') {
+          for await (const p of iter as any) {
+            if (p?.type === 'file' && (p.fieldname === 'cover' || p.fieldname === 'icon')) {
+              // Skip if already handled
+              if (p.fieldname === 'cover' && coverWritten) { try { for await (const _ of p.file) { /* drain */ } } catch {} continue; }
+              if (p.fieldname === 'icon' && iconWritten) { try { for await (const _ of p.file) { /* drain */ } } catch {} continue; }
+              const bufs: Buffer[] = [];
+              try {
+                for await (const ch of p.file) { bufs.push(Buffer.isBuffer(ch) ? ch : Buffer.from(ch)); }
+              } catch {}
+              const buf = Buffer.concat(bufs);
+              if (buf.length > 0) {
+                const ext = (p.filename || '').split('.').pop() || 'bin';
+                const fname = `${p.fieldname}.${String(ext).toLowerCase()}`;
+                ensureDirSync(art.publicPath);
+                try {
+                  const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
+                  for (const x of files) {
+                    if (x.startsWith(p.fieldname + '.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} }
+                  }
+                } catch {}
+                await fs.writeFile(path.join(art.publicPath, fname), buf);
+                (req as any).log?.info?.({ id: art.id, field: p.fieldname, fname, bytes: buf.length }, 'article.edit: wrote file (stream)');
+                if (p.fieldname === 'cover') { (art as any).cover = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`; coverWritten = true; }
+                if (p.fieldname === 'icon') { (art as any).icon = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`; iconWritten = true; }
+              }
+            } else if (p?.type === 'file') {
+              // Drain any unrelated files to avoid hanging
+              try { for await (const _ of p.file) { /* drain */ } } catch {}
+            }
+          }
+        }
+      } catch (e) {
+        (req as any).log?.warn?.({ err: e }, 'edit.parts iteration failed');
+      }
+    }
+    if (titleChanged || coverWritten || iconWritten) {
+      art.updatedAt = new Date().toISOString();
+    }
     items[idx] = art;
     await writeMeta(items);
+    if (!(titleChanged || coverWritten || iconWritten)) {
+      (req as any).log?.info?.({ id: art.id }, 'article.edit: no changes detected');
+    }
     return { ok: true, item: art };
   });
 
