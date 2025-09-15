@@ -6,6 +6,7 @@ import { CONFIG } from './config'
 import { registerAuthRoutes } from './routes/auth'
 import { registerArticleRoutes } from './routes/articles'
 import { registerUserRoutes } from './routes/users'
+import { registerMenuRoutes } from './routes/menu'
 
 export function buildServer(): FastifyInstance {
   const server = Fastify({ logger: true })
@@ -27,6 +28,7 @@ export function buildServer(): FastifyInstance {
   server.register(async (app) => { await registerAuthRoutes(app) })
   server.register(async (app) => { await registerArticleRoutes(app) })
   server.register(async (app) => { await registerUserRoutes(app) })
+  server.register(async (app) => { await registerMenuRoutes(app) })
 
   return server
 }

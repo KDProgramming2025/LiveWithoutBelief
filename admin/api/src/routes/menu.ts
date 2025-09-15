@@ -1,0 +1,49 @@
+import { FastifyInstance, FastifyRequest } from 'fastify'
+import { requireAdmin } from '../security/auth'
+import { MenuService } from '../services/menuService'
+import { readPartBuffer } from '../utils/multipart'
+
+export async function registerMenuRoutes(server: FastifyInstance) {
+  const svc = new MenuService()
+
+  server.get('/v1/admin/menu', async (req, reply) => {
+    if (!requireAdmin(req, reply)) return
+    const items = await svc.list()
+    return reply.code(200).send({ items })
+  })
+
+  server.post('/v1/admin/menu', async (req, reply) => {
+    if (!requireAdmin(req, reply)) return
+    const body = (req as FastifyRequest & { body?: any }).body || {}
+    const title = typeof body.title === 'string' ? body.title : (body.title?.value != null ? String(body.title.value) : '')
+    const label = typeof body.label === 'string' ? body.label : (body.label?.value != null ? String(body.label.value) : '')
+    let order: number | undefined
+    if (typeof body.order === 'string') { const n = Number(body.order); if (!Number.isNaN(n)) order = n }
+    else if (typeof body.order === 'number') order = body.order
+
+    let iconBuf: Buffer | undefined; let iconOrig: string | undefined; let iconMime: string | undefined
+    if (body.icon && typeof body.icon === 'object') {
+      const r = await readPartBuffer(body.icon)
+      if (r.buffer?.length) { iconBuf = r.buffer; iconOrig = r.filename; iconMime = r.mimetype }
+    }
+
+    const item = await svc.add({ title, label, order, icon: iconBuf ? { buf: iconBuf, filename: iconOrig, mime: iconMime } : undefined })
+    return reply.code(200).send({ ok: true, item })
+  })
+
+  server.post('/v1/admin/menu/:id/move', async (req, reply) => {
+    if (!requireAdmin(req, reply)) return
+    const id = (req.params as { id: string }).id
+    const dir = ((req.body ?? {}) as { direction?: 'up'|'down' }).direction
+    if (dir !== 'up' && dir !== 'down') return reply.code(400).send({ error: 'invalid_direction' })
+    await svc.move(id, dir)
+    return { ok: true }
+  })
+
+  server.delete('/v1/admin/menu/:id', async (req, reply) => {
+    if (!requireAdmin(req, reply)) return
+    const id = (req.params as { id: string }).id
+    await svc.remove(id)
+    return { ok: true }
+  })
+}

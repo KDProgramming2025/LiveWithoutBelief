@@ -4,6 +4,7 @@ import { Avatar, Box, Button, Card, CardActions, CardContent, CircularProgress, 
 import { DataGrid } from '@mui/x-data-grid';
 import ArticleIcon from '@mui/icons-material/Description';
 import UsersIcon from '@mui/icons-material/People';
+import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
@@ -48,9 +49,15 @@ function Login({ onDone }) {
 export default function App() {
     const api = useJson();
     const [auth, setAuth] = useState('unknown');
-    const [tab, setTab] = useState('articles');
+    const [tab, setTab] = useState('menu');
     const { mode, toggle } = useColorMode();
     // Article state
+    const [menu, setMenu] = useState([]);
+    const [menuTitle, setMenuTitle] = useState('');
+    const [menuLabel, setMenuLabel] = useState('');
+    const [menuOrder, setMenuOrder] = useState('');
+    const [menuIcon, setMenuIcon] = useState(null);
+    const [menuBusy, setMenuBusy] = useState(false);
     const [articles, setArticles] = useState([]);
     const [uploadBusy, setUploadBusy] = useState(false);
     const [uploadPct, setUploadPct] = useState(0);
@@ -89,12 +96,53 @@ export default function App() {
         if (auth !== 'yes')
             return;
         (async () => {
-            const data = await api.get(`${API}/v1/admin/articles`);
-            setArticles(data.items);
-            const sum = await api.get(`${API}/v1/admin/users/summary`);
-            setUsersTotal(sum.total);
+            try {
+                const m = await api.get(`${API}/v1/admin/menu`);
+                setMenu(m.items);
+            }
+            catch { }
+            try {
+                const data = await api.get(`${API}/v1/admin/articles`);
+                setArticles(data.items);
+            }
+            catch { }
+            try {
+                const sum = await api.get(`${API}/v1/admin/users/summary`);
+                setUsersTotal(sum.total);
+            }
+            catch { }
         })();
     }, [auth]);
+    const refreshMenu = async () => { const m = await api.get(`${API}/v1/admin/menu`); setMenu(m.items); };
+    const addMenuItem = async (e) => {
+        e.preventDefault();
+        setMenuBusy(true);
+        try {
+            const fd = new FormData();
+            fd.set('title', menuTitle);
+            fd.set('label', menuLabel);
+            if (menuOrder !== '')
+                fd.set('order', String(menuOrder));
+            if (menuIcon)
+                fd.set('icon', menuIcon);
+            await api.post(`${API}/v1/admin/menu`, fd);
+            setMenuTitle('');
+            setMenuLabel('');
+            setMenuOrder('');
+            setMenuIcon(null);
+            await refreshMenu();
+            showToast('Menu item added', 'success');
+        }
+        catch {
+            showToast('Failed to add menu item', 'error');
+        }
+        finally {
+            setMenuBusy(false);
+        }
+    };
+    const moveMenu = async (id, direction) => { await api.post(`${API}/v1/admin/menu/${id}/move`, { direction }); await refreshMenu(); };
+    const deleteMenu = async (id) => { if (!confirm('Delete this menu item?'))
+        return; await api.del(`${API}/v1/admin/menu/${id}`); await refreshMenu(); };
     const logout = async () => { await api.post(`${API}/v1/admin/logout`); setAuth('no'); };
     const move = async (id, direction) => {
         await api.post(`${API}/v1/admin/articles/${id}/move`, { direction });
@@ -291,7 +339,7 @@ export default function App() {
         return _jsx(Box, { sx: { p: 3 }, children: _jsx(CircularProgress, {}) });
     if (auth === 'no')
         return _jsx(Login, { onDone: () => setAuth('yes') });
-    return (_jsxs(Box, { sx: { display: 'grid', gridTemplateColumns: '280px 1fr', minHeight: '100dvh', overflowX: 'hidden' }, children: [_jsxs(Drawer, { variant: "permanent", sx: { width: 280, [`& .MuiDrawer-paper`]: { width: 280, boxSizing: 'border-box' } }, children: [_jsx(Toolbar, { children: _jsx(Typography, { variant: "h6", fontWeight: 700, children: "LWB Admin" }) }), _jsx(Divider, {}), _jsxs(List, { children: [_jsxs(ListItemButton, { selected: tab === 'articles', onClick: () => setTab('articles'), children: [_jsx(ListItemIcon, { children: _jsx(ArticleIcon, {}) }), _jsx(ListItemText, { primary: "Articles", secondary: "Manage content" })] }), _jsxs(ListItemButton, { selected: tab === 'users', onClick: () => setTab('users'), children: [_jsx(ListItemIcon, { children: _jsx(UsersIcon, {}) }), _jsx(ListItemText, { primary: "Users", secondary: "Manage accounts" })] })] }), _jsx(Box, { sx: { flexGrow: 1 } }), _jsx(Divider, {}), _jsxs(Stack, { direction: "row", alignItems: "center", justifyContent: "space-between", sx: { p: 2 }, children: [_jsx(Tooltip, { title: mode === 'dark' ? 'Switch to light' : 'Switch to dark', children: _jsx(IconButton, { onClick: toggle, color: "inherit", children: mode === 'dark' ? _jsx(LightModeIcon, {}) : _jsx(DarkModeIcon, {}) }) }), _jsx(Button, { onClick: logout, color: "error", startIcon: _jsx(LogoutIcon, {}), children: "Logout" })] })] }), _jsxs(Box, { component: "main", sx: { p: 3, overflowX: 'hidden' }, children: [_jsx(Toolbar, {}), tab === 'articles' && (_jsxs(Stack, { spacing: 3, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Articles" }), _jsx(Card, { children: _jsx(CardContent, { children: _jsxs(Stack, { component: "form", onSubmit: upload, spacing: 2, sx: { maxWidth: 720 }, children: [_jsx(TextField, { label: "Title (optional)", value: title, onChange: (e) => setTitle(e.target.value), placeholder: "Defaults from docx", fullWidth: true }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", startIcon: _jsx(UploadFileIcon, {}), children: ["Select DOCX", _jsx("input", { hidden: true, type: "file", accept: ".docx", onChange: e => setDocx(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: docx?.name ?? 'No file selected' })] }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", children: ["Cover", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setCover(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: cover?.name ?? 'Optional' }), _jsxs(Button, { variant: "outlined", component: "label", children: ["Icon", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setIcon(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: icon?.name ?? 'Optional' })] }), uploadBusy && (_jsxs(Box, { children: [_jsx(LinearProgress, { variant: "determinate", value: uploadPct }), _jsxs(Typography, { variant: "caption", color: "text.secondary", children: [uploadPct, "%"] })] })), _jsx(Stack, { direction: "row", spacing: 1, children: _jsx(Button, { type: "submit", variant: "contained", disabled: uploadBusy || !docx, children: "Upload" }) })] }) }) }), _jsx(Grid, { container: true, spacing: 2, children: articles.slice().sort((a, b) => a.order - b.order).map(a => {
+    return (_jsxs(Box, { sx: { display: 'grid', gridTemplateColumns: '280px 1fr', minHeight: '100dvh', overflowX: 'hidden' }, children: [_jsxs(Drawer, { variant: "permanent", sx: { width: 280, [`& .MuiDrawer-paper`]: { width: 280, boxSizing: 'border-box' } }, children: [_jsx(Toolbar, { children: _jsx(Typography, { variant: "h6", fontWeight: 700, children: "LWB Admin" }) }), _jsx(Divider, {}), _jsxs(List, { children: [_jsxs(ListItemButton, { selected: tab === 'menu', onClick: () => setTab('menu'), children: [_jsx(ListItemIcon, { children: _jsx(MenuIcon, {}) }), _jsx(ListItemText, { primary: "App Main Menu", secondary: "Manage client menu" })] }), _jsxs(ListItemButton, { selected: tab === 'articles', onClick: () => setTab('articles'), children: [_jsx(ListItemIcon, { children: _jsx(ArticleIcon, {}) }), _jsx(ListItemText, { primary: "Articles", secondary: "Manage content" })] }), _jsxs(ListItemButton, { selected: tab === 'users', onClick: () => setTab('users'), children: [_jsx(ListItemIcon, { children: _jsx(UsersIcon, {}) }), _jsx(ListItemText, { primary: "Users", secondary: "Manage accounts" })] })] }), _jsx(Box, { sx: { flexGrow: 1 } }), _jsx(Divider, {}), _jsxs(Stack, { direction: "row", alignItems: "center", justifyContent: "space-between", sx: { p: 2 }, children: [_jsx(Tooltip, { title: mode === 'dark' ? 'Switch to light' : 'Switch to dark', children: _jsx(IconButton, { onClick: toggle, color: "inherit", children: mode === 'dark' ? _jsx(LightModeIcon, {}) : _jsx(DarkModeIcon, {}) }) }), _jsx(Button, { onClick: logout, color: "error", startIcon: _jsx(LogoutIcon, {}), children: "Logout" })] })] }), _jsxs(Box, { component: "main", sx: { p: 3, overflowX: 'hidden' }, children: [_jsx(Toolbar, {}), tab === 'menu' && (_jsxs(Stack, { spacing: 3, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "App Main Menu" }), _jsx(Card, { children: _jsx(CardContent, { children: _jsxs(Stack, { component: "form", onSubmit: addMenuItem, spacing: 2, sx: { maxWidth: 720 }, children: [_jsx(TextField, { label: "Title", value: menuTitle, onChange: (e) => setMenuTitle(e.target.value), required: true, fullWidth: true }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsx(TextField, { label: "Label tag", value: menuLabel, onChange: (e) => setMenuLabel(e.target.value), required: true, fullWidth: true }), _jsx(TextField, { label: "Order (optional)", type: "number", value: menuOrder, onChange: (e) => setMenuOrder(e.target.value === '' ? '' : Number(e.target.value)), sx: { width: 200 } })] }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", children: ["Icon image", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setMenuIcon(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: menuIcon?.name ?? 'Optional' })] }), _jsx(Button, { type: "submit", variant: "contained", disabled: menuBusy, children: "Add Menu Item" })] }) }) }), _jsx(Grid, { container: true, spacing: 2, children: menu.slice().sort((a, b) => a.order - b.order).map(m => (_jsx(Grid, { item: true, xs: 12, sm: 6, md: 4, lg: 3, children: _jsxs(Card, { children: [_jsx(CardContent, { children: _jsxs(Stack, { spacing: 1, children: [_jsxs(Stack, { direction: "row", spacing: 1, alignItems: "center", children: [m.icon && _jsx(Avatar, { src: m.icon, variant: "rounded", sx: { width: 28, height: 28 } }), _jsx(Typography, { variant: "subtitle1", fontWeight: 700, noWrap: true, title: m.title, children: m.title })] }), _jsx(Chip, { size: "small", label: `Label: ${m.label}` }), _jsx(Chip, { size: "small", variant: "outlined", label: `Order #${m.order}` })] }) }), _jsx(CardActions, { children: _jsxs(Stack, { direction: "row", spacing: 1, children: [_jsx(Tooltip, { title: "Move up", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => moveMenu(m.id, 'up'), children: _jsx(ArrowUpwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Move down", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => moveMenu(m.id, 'down'), children: _jsx(ArrowDownwardIcon, { fontSize: "inherit" }) }) }) }), _jsx(Tooltip, { title: "Delete", children: _jsx("span", { children: _jsx(IconButton, { size: "small", onClick: () => deleteMenu(m.id), color: "error", children: _jsx(DeleteIcon, { fontSize: "inherit" }) }) }) })] }) })] }) }, m.id))) })] })), tab === 'articles' && (_jsxs(Stack, { spacing: 3, children: [_jsx(Typography, { variant: "h5", fontWeight: 700, children: "Articles" }), _jsx(Card, { children: _jsx(CardContent, { children: _jsxs(Stack, { component: "form", onSubmit: upload, spacing: 2, sx: { maxWidth: 720 }, children: [_jsx(TextField, { label: "Title (optional)", value: title, onChange: (e) => setTitle(e.target.value), placeholder: "Defaults from docx", fullWidth: true }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", startIcon: _jsx(UploadFileIcon, {}), children: ["Select DOCX", _jsx("input", { hidden: true, type: "file", accept: ".docx", onChange: e => setDocx(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: docx?.name ?? 'No file selected' })] }), _jsxs(Stack, { direction: { xs: 'column', sm: 'row' }, spacing: 2, children: [_jsxs(Button, { variant: "outlined", component: "label", children: ["Cover", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setCover(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: cover?.name ?? 'Optional' }), _jsxs(Button, { variant: "outlined", component: "label", children: ["Icon", _jsx("input", { hidden: true, type: "file", accept: "image/*", onChange: e => setIcon(e.target.files?.[0] ?? null) })] }), _jsx(Typography, { sx: { alignSelf: 'center' }, color: "text.secondary", children: icon?.name ?? 'Optional' })] }), uploadBusy && (_jsxs(Box, { children: [_jsx(LinearProgress, { variant: "determinate", value: uploadPct }), _jsxs(Typography, { variant: "caption", color: "text.secondary", children: [uploadPct, "%"] })] })), _jsx(Stack, { direction: "row", spacing: 1, children: _jsx(Button, { type: "submit", variant: "contained", disabled: uploadBusy || !docx, children: "Upload" }) })] }) }) }), _jsx(Grid, { container: true, spacing: 2, children: articles.slice().sort((a, b) => a.order - b.order).map(a => {
                                     const created = a.createdAt ? new Date(a.createdAt) : null;
                                     const updated = a.updatedAt ? new Date(a.updatedAt) : null;
                                     const publicLink = typeof a.publicPath === 'string' ? a.publicPath.replace(/^.*\/LWB\//, '/LWB/') : null;

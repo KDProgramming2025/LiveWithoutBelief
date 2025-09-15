@@ -15,4 +15,10 @@ describe('admin api', () => {
     const res = await app.inject({ method: 'GET', url: '/v1/admin/articles' })
     expect(res.statusCode).toBe(401)
   })
+
+  it('menu requires auth', async () => {
+    const app = buildServer()
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/menu' })
+    expect(res.statusCode).toBe(401)
+  })
 })

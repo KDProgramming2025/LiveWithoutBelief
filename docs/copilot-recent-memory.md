@@ -1,4 +1,4 @@
-Context (last updated: now)
+Context (last updated: deploy success)
 - Admin Web: Articles are cards; change cover/icon actions show busy overlay + toasts; cache-busting ?v=updatedAt applied to images.
 - Admin API: Major refactor completed. Monolithic src/index.ts split into modular layers (config, types, utils, security, repositories, services, routes). Functionality preserved, files <600 lines, SOLID/MVVM friendly.
 - Utilities: writeFileAtomic, ensureDirSync, slugify, getImageExtFromNameOrMime, readPartBuffer.
@@ -9,11 +9,11 @@ Context (last updated: now)
 
 Known state
 - Local build succeeded (tsup). Tests passed (vitest).
-- Refactor committed. Deployment pending manual scp+ssh (ephemeral helper script not tracked).
+- Refactor committed (latest commit ceaea0f on feature/LWB-92-admin-ui).
+- Deployment executed successfully via ephemeral script (auto-stash added).
+- Remote probes: local API /v1/admin/session -> {"authenticated":false}; public proxy -> {"authenticated":false}.
 
 Next
-- Deploy steps (never batch):
-	1) scp server_commands.sh lwb-server:/tmp/server_commands.sh
-	2) ssh lwb-server "bash /tmp/server_commands.sh"
-	(Script sets DEPLOY_BRANCH=feature/LWB-92-admin-ui and calls server/deploy.sh on server.)
-- Post-deploy validation: systemctl status lwb-admin-api.service, curl /v1/admin/session via public proxy.
+- Future: review large bundle size (858kB) -> investigate code splitting / dynamic imports.
+- Optional: npm audit moderate vulnerabilities (Admin Web) - consider selective upgrades.
+- Add integration test hitting /v1/admin/session mock (already returns authenticated false when no cookie).

@@ -16,3 +16,12 @@ export type ArticleMeta = {
   cover?: string; // absolute public URL
   icon?: string;  // absolute public URL
 };
+
+export type MenuItem = {
+  id: string; // slug
+  title: string;
+  label: string;
+  order: number;
+  updatedAt: string;
+  icon?: string; // absolute public URL
+};

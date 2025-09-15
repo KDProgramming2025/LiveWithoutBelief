@@ -5,6 +5,7 @@ import {
 import { DataGrid } from '@mui/x-data-grid'
 import ArticleIcon from '@mui/icons-material/Description'
 import UsersIcon from '@mui/icons-material/People'
+import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
@@ -19,6 +20,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { useColorMode } from './theme'
 
 type Article = { id: string; title: string; createdAt: string; updatedAt: string; order: number; filename: string; securePath: string; publicPath: string; cover?: string; icon?: string }
+type MenuItem = { id: string; title: string; label: string; order: number; updatedAt: string; icon?: string }
 type UsersSummary = { total: number }
 type UserListItem = { id: string; username: string; createdAt: string; bookmarks?: number; discussions?: number; lastLogin?: string }
 
@@ -62,10 +64,16 @@ function Login({ onDone }: { onDone: () => void }) {
 export default function App() {
   const api = useJson()
   const [auth, setAuth] = useState<'unknown'|'no'|'yes'>('unknown')
-  const [tab, setTab] = useState<'articles'|'users'>('articles')
+  const [tab, setTab] = useState<'menu'|'articles'|'users'>('menu')
   const { mode, toggle } = useColorMode()
 
   // Article state
+  const [menu, setMenu] = useState<MenuItem[]>([])
+  const [menuTitle, setMenuTitle] = useState('')
+  const [menuLabel, setMenuLabel] = useState('')
+  const [menuOrder, setMenuOrder] = useState<number|''>('')
+  const [menuIcon, setMenuIcon] = useState<File | null>(null)
+  const [menuBusy, setMenuBusy] = useState(false)
   const [articles, setArticles] = useState<Article[]>([])
   const [uploadBusy, setUploadBusy] = useState(false)
   const [uploadPct, setUploadPct] = useState<number>(0)
@@ -96,9 +104,29 @@ export default function App() {
   })() }, [])
 
   useEffect(() => { if (auth !== 'yes') return; (async () => {
-    const data = await api.get<{ items: Article[] }>(`${API}/v1/admin/articles`); setArticles(data.items)
-    const sum = await api.get<UsersSummary>(`${API}/v1/admin/users/summary`); setUsersTotal(sum.total)
+    try { const m = await api.get<{ items: MenuItem[] }>(`${API}/v1/admin/menu`); setMenu(m.items) } catch {}
+    try { const data = await api.get<{ items: Article[] }>(`${API}/v1/admin/articles`); setArticles(data.items) } catch {}
+    try { const sum = await api.get<UsersSummary>(`${API}/v1/admin/users/summary`); setUsersTotal(sum.total) } catch {}
   })() }, [auth])
+  const refreshMenu = async () => { const m = await api.get<{ items: MenuItem[] }>(`${API}/v1/admin/menu`); setMenu(m.items) }
+  const addMenuItem = async (e: React.FormEvent) => {
+    e.preventDefault(); setMenuBusy(true);
+    try {
+      const fd = new FormData()
+      fd.set('title', menuTitle)
+      fd.set('label', menuLabel)
+      if (menuOrder !== '') fd.set('order', String(menuOrder))
+      if (menuIcon) fd.set('icon', menuIcon)
+      await api.post(`${API}/v1/admin/menu`, fd)
+      setMenuTitle(''); setMenuLabel(''); setMenuOrder(''); setMenuIcon(null)
+      await refreshMenu()
+      showToast('Menu item added','success')
+    } catch {
+      showToast('Failed to add menu item','error')
+    } finally { setMenuBusy(false) }
+  }
+  const moveMenu = async (id: string, direction:'up'|'down') => { await api.post(`${API}/v1/admin/menu/${id}/move`, { direction }); await refreshMenu() }
+  const deleteMenu = async (id: string) => { if (!confirm('Delete this menu item?')) return; await api.del(`${API}/v1/admin/menu/${id}`); await refreshMenu() }
 
   const logout = async () => { await api.post(`${API}/v1/admin/logout`); setAuth('no') }
 
@@ -259,6 +287,10 @@ export default function App() {
         <Toolbar><Typography variant="h6" fontWeight={700}>LWB Admin</Typography></Toolbar>
         <Divider />
         <List>
+          <ListItemButton selected={tab==='menu'} onClick={()=>setTab('menu')}>
+            <ListItemIcon><MenuIcon /></ListItemIcon>
+            <ListItemText primary="App Main Menu" secondary="Manage client menu" />
+          </ListItemButton>
           <ListItemButton selected={tab==='articles'} onClick={()=>setTab('articles')}>
             <ListItemIcon><ArticleIcon /></ListItemIcon>
             <ListItemText primary="Articles" secondary="Manage content" />
@@ -279,6 +311,53 @@ export default function App() {
       </Drawer>
   <Box component="main" sx={{ p: 3, overflowX: 'hidden' }}>
         <Toolbar />
+        {tab === 'menu' && (
+          <Stack spacing={3}>
+            <Typography variant="h5" fontWeight={700}>App Main Menu</Typography>
+            <Card>
+              <CardContent>
+                <Stack component="form" onSubmit={addMenuItem} spacing={2} sx={{ maxWidth: 720 }}>
+                  <TextField label="Title" value={menuTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setMenuTitle(e.target.value)} required fullWidth />
+                  <Stack direction={{ xs:'column', sm:'row' }} spacing={2}>
+                    <TextField label="Label tag" value={menuLabel} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setMenuLabel(e.target.value)} required fullWidth />
+                    <TextField label="Order (optional)" type="number" value={menuOrder} onChange={(e)=>setMenuOrder(e.target.value === '' ? '' : Number(e.target.value))} sx={{ width: 200 }} />
+                  </Stack>
+                  <Stack direction={{ xs:'column', sm:'row' }} spacing={2}>
+                    <Button variant="outlined" component="label">Icon image<input hidden type="file" accept="image/*" onChange={e=>setMenuIcon(e.target.files?.[0] ?? null)} /></Button>
+                    <Typography sx={{ alignSelf:'center' }} color="text.secondary">{menuIcon?.name ?? 'Optional'}</Typography>
+                  </Stack>
+                  <Button type="submit" variant="contained" disabled={menuBusy}>Add Menu Item</Button>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Grid container spacing={2}>
+              {menu.slice().sort((a,b)=>a.order-b.order).map(m => (
+                <Grid item xs={12} sm={6} md={4} lg={3} key={m.id}>
+                  <Card>
+                    <CardContent>
+                      <Stack spacing={1}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          {m.icon && <Avatar src={m.icon} variant="rounded" sx={{ width: 28, height: 28 }} />}
+                          <Typography variant="subtitle1" fontWeight={700} noWrap title={m.title}>{m.title}</Typography>
+                        </Stack>
+                        <Chip size="small" label={`Label: ${m.label}`} />
+                        <Chip size="small" variant="outlined" label={`Order #${m.order}`} />
+                      </Stack>
+                    </CardContent>
+                    <CardActions>
+                      <Stack direction="row" spacing={1}>
+                        <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>moveMenu(m.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                        <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>moveMenu(m.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                        <Tooltip title="Delete"><span><IconButton size="small" onClick={()=>deleteMenu(m.id)} color="error"><DeleteIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                      </Stack>
+                    </CardActions>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Stack>
+        )}
         {tab === 'articles' && (
           <Stack spacing={3}>
             <Typography variant="h5" fontWeight={700}>Articles</Typography>
