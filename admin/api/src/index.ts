@@ -343,7 +343,17 @@ export function buildServer(): FastifyInstance {
           const fname = field + '.' + String(ext).toLowerCase();
           const dstDir = art.publicPath;
           ensureDirSync(dstDir);
+          // Proactively remove stale variants with different extensions
+          try {
+            const files = await fs.readdir(dstDir).catch(() => [] as string[]);
+            for (const f of files) {
+              if (f.startsWith(field + '.') && f !== fname) {
+                try { await fs.unlink(path.join(dstDir, f)); } catch {}
+              }
+            }
+          } catch {}
           await fs.writeFile(path.join(dstDir, fname), buffer);
+          (req as any).log?.info?.({ id: art.id, field, fname, bytes: buffer.length }, 'article.edit: wrote file');
           (art as any)[field] = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
           if (field === 'cover') coverWritten = true; else iconWritten = true;
         }
@@ -361,14 +371,24 @@ export function buildServer(): FastifyInstance {
               const ext = (f.filename || '').split('.').pop() || 'bin';
               const fname = `cover.${String(ext).toLowerCase()}`;
               ensureDirSync(art.publicPath);
+              try {
+                const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
+                for (const x of files) { if (x.startsWith('cover.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} } }
+              } catch {}
               await fs.writeFile(path.join(art.publicPath, fname), buf);
+              (req as any).log?.info?.({ id: art.id, field: 'cover', fname, bytes: buf.length }, 'article.edit: wrote file (fallback)');
               (art as any).cover = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
               coverWritten = true;
             } else if (f.fieldname === 'icon' && !iconWritten && buf?.length) {
               const ext = (f.filename || '').split('.').pop() || 'bin';
               const fname = `icon.${String(ext).toLowerCase()}`;
               ensureDirSync(art.publicPath);
+              try {
+                const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
+                for (const x of files) { if (x.startsWith('icon.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} } }
+              } catch {}
               await fs.writeFile(path.join(art.publicPath, fname), buf);
+              (req as any).log?.info?.({ id: art.id, field: 'icon', fname, bytes: buf.length }, 'article.edit: wrote file (fallback)');
               (art as any).icon = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
               iconWritten = true;
             }
