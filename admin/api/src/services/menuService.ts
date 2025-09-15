@@ -15,7 +15,25 @@ export class MenuService {
 
   async list(): Promise<MenuItem[]> {
     const items = await this.repo.read()
-    return items.slice().sort((a,b)=>a.order-b.order)
+    // Backfill icon URLs for items created before icon support where the file exists on disk
+    const enriched = await Promise.all(items.map(async (it) => {
+      if (!it.icon) {
+        try {
+          const dir = path.join(CONFIG.MENU_PUBLIC_DIR, it.id)
+          // Try common extensions in order of preference
+          const candidates = ['icon.png', 'icon.jpg', 'icon.jpeg', 'icon.webp']
+          for (const name of candidates) {
+            const full = path.join(dir, name)
+            if (fssync.existsSync(full)) {
+              it.icon = `${CONFIG.MENU_PUBLIC_URL_PREFIX}/${it.id}/${name}`
+              break
+            }
+          }
+        } catch {}
+      }
+      return it
+    }))
+    return enriched.slice().sort((a,b)=>a.order-b.order)
   }
 
   async add(input: AddInput): Promise<MenuItem> {
