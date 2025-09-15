@@ -8,6 +8,7 @@ import { slugify } from '../utils/strings'
 import { getImageExtFromNameOrMime } from '../utils/images'
 
 type AddInput = { title: string; label: string; order?: number; icon?: { buf: Buffer; filename?: string; mime?: string } }
+type EditInput = { title?: string; label?: string; icon?: { buf: Buffer; filename?: string; mime?: string } }
 
 export class MenuService {
   private repo = buildMenuRepository()
@@ -68,5 +69,44 @@ export class MenuService {
     }
     arr.forEach(it => it.updatedAt = new Date().toISOString())
     await this.repo.write(arr)
+  }
+
+  async edit(id: string, input: EditInput): Promise<MenuItem> {
+    const items = await this.repo.read()
+    const item = items.find(i => i.id === id)
+    if (!item) throw Object.assign(new Error('not_found'), { statusCode: 404 })
+
+    let changed = false
+    if (typeof input.title === 'string' && input.title !== item.title) {
+      item.title = input.title
+      changed = true
+    }
+    if (typeof input.label === 'string' && input.label !== item.label) {
+      item.label = input.label
+      changed = true
+    }
+
+    if (input.icon?.buf?.length) {
+      const dir = path.join(CONFIG.MENU_PUBLIC_DIR, id)
+      try { await fs.mkdir(dir, { recursive: true }) } catch {}
+      // Clean up any existing icon.* to avoid stale extensions
+      try {
+        const entries = await fs.readdir(dir, { withFileTypes: true })
+        await Promise.all(entries.filter(e => e.isFile() && /^icon\./.test(e.name)).map(e => fs.unlink(path.join(dir, e.name)).catch(() => {})))
+      } catch {}
+      const ext = getImageExtFromNameOrMime(input.icon.filename, input.icon.mime) || 'png'
+      const tmp = path.join(dir, `.icon.tmp-${process.pid}-${Date.now()}`)
+      const final = path.join(dir, `icon.${ext}`)
+      await fs.writeFile(tmp, input.icon.buf)
+      await fs.rename(tmp, final)
+      item.icon = `${CONFIG.MENU_PUBLIC_URL_PREFIX}/${id}/icon.${ext}`
+      changed = true
+    }
+
+    if (changed) {
+      item.updatedAt = new Date().toISOString()
+      await this.repo.write(items)
+    }
+    return item
   }
 }

@@ -109,6 +109,24 @@ export default function App() {
     try { const sum = await api.get<UsersSummary>(`${API}/v1/admin/users/summary`); setUsersTotal(sum.total) } catch {}
   })() }, [auth])
   const refreshMenu = async () => { const m = await api.get<{ items: MenuItem[] }>(`${API}/v1/admin/menu`); setMenu(m.items) }
+  const editMenu = async (id: string, updates: { title?: string; label?: string; icon?: File }) => {
+    const fd = new FormData()
+    if (typeof updates.title === 'string') fd.set('title', updates.title)
+    if (typeof updates.label === 'string') fd.set('label', updates.label)
+    if (updates.icon) fd.set('icon', updates.icon)
+    await api.post(`${API}/v1/admin/menu/${id}/edit`, fd)
+    await refreshMenu()
+  }
+  const changeMenuIcon = async (id: string) => {
+    const input = document.createElement('input')
+    input.type = 'file'; input.accept = 'image/*'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      try { await editMenu(id, { icon: file }); showToast('Menu icon updated') } catch { showToast('Failed to update icon','error') }
+    }
+    input.click()
+  }
   const addMenuItem = async (e: React.FormEvent) => {
     e.preventDefault(); setMenuBusy(true);
     try {
@@ -332,16 +350,29 @@ export default function App() {
             </Card>
 
             <Grid container spacing={2}>
-              {menu.slice().sort((a,b)=>a.order-b.order).map(m => (
+              {menu.slice().sort((a,b)=>a.order-b.order).map(m => {
+                const bust = m.updatedAt ? encodeURIComponent(m.updatedAt) : String(m.order)
+                const iconSrc = m.icon ? `${m.icon}${m.icon.includes('?') ? '&' : '?'}v=${bust}` : undefined
+                return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={m.id}>
                   <Card>
                     <CardContent>
                       <Stack spacing={1}>
                         <Stack direction="row" spacing={1} alignItems="center">
-                          {m.icon && <Avatar src={m.icon} variant="rounded" sx={{ width: 28, height: 28 }} />}
+                          {iconSrc && <Avatar src={iconSrc} variant="rounded" sx={{ width: 28, height: 28 }} />}
                           <Typography variant="subtitle1" fontWeight={700} noWrap title={m.title}>{m.title}</Typography>
                         </Stack>
-                        <Chip size="small" label={`Label: ${m.label}`} />
+                        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                          <Chip size="small" label={`Label: ${m.label}`} />
+                          <Tooltip title="Edit label/title"><span><IconButton size="small" onClick={()=>{
+                            const newTitle = prompt('New title', m.title)
+                            if (newTitle === null) return
+                            const newLabel = prompt('New label', m.label ?? '')
+                            if (newLabel === null) return
+                            editMenu(m.id, { title: newTitle, label: newLabel })
+                          }}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeMenuIcon(m.id)}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                        </Stack>
                         <Chip size="small" variant="outlined" label={`Order #${m.order}`} />
                       </Stack>
                     </CardContent>
@@ -354,7 +385,7 @@ export default function App() {
                     </CardActions>
                   </Card>
                 </Grid>
-              ))}
+              )})}
             </Grid>
           </Stack>
         )}

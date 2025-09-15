@@ -40,6 +40,23 @@ export async function registerMenuRoutes(server: FastifyInstance) {
     return { ok: true }
   })
 
+  server.post('/v1/admin/menu/:id/edit', async (req, reply) => {
+    if (!requireAdmin(req, reply)) return
+    const id = (req.params as { id: string }).id
+    const body = (req as FastifyRequest & { body?: any }).body || {}
+    const out: { title?: string; label?: string; icon?: { buf: Buffer; filename?: string; mime?: string } } = {}
+    if (typeof body.title === 'string') out.title = body.title
+    else if (body.title?.value != null) out.title = String(body.title.value)
+    if (typeof body.label === 'string') out.label = body.label
+    else if (body.label?.value != null) out.label = String(body.label.value)
+    if (body.icon && typeof body.icon === 'object') {
+      const r = await readPartBuffer(body.icon)
+      if (r.buffer?.length) out.icon = { buf: r.buffer, filename: r.filename, mime: r.mimetype }
+    }
+    const item = await svc.edit(id, out)
+    return reply.code(200).send({ ok: true, item })
+  })
+
   server.delete('/v1/admin/menu/:id', async (req, reply) => {
     if (!requireAdmin(req, reply)) return
     const id = (req.params as { id: string }).id
