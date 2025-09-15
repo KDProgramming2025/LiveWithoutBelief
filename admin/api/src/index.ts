@@ -1,8 +1,18 @@
+// External libraries
 import Fastify, { FastifyInstance, FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import jwt from 'jsonwebtoken';
+import sanitizeHtml from 'sanitize-html';
+import mammothDefault from 'mammoth';
+
+// Node built-ins
+import path from 'path';
+import fs from 'fs/promises';
+import fssync from 'fs';
+import crypto from 'crypto';
+import os from 'os';
 // Direct Postgres user access (same schema as main server). Falls back to empty if DATABASE_URL missing.
 type UserSummary = { id: string; username: string; createdAt: string; lastLogin?: string };
 function buildUserStore() {
@@ -71,13 +81,7 @@ function buildUserStore() {
     },
   };
 }
-import path from 'path';
-import fs from 'fs/promises';
-import fssync from 'fs';
-import crypto from 'crypto';
-import sanitizeHtml from 'sanitize-html';
-import mammothDefault from 'mammoth';
-import os from 'os';
+// (imports moved to top)
 
 type ArticleMeta = {
   id: string; // slug
@@ -103,50 +107,22 @@ function ensureDirSync(p: string) { if (!fssync.existsSync(p)) { fssync.mkdirSyn
 function bufSha256(b: Buffer) { return crypto.createHash('sha256').update(b).digest('hex'); }
 function slugify(s: string) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80) || 'untitled'; }
 
-// Image validation: sniff format and basic completeness checks to avoid partial writes
-function sniffImage(buf: Buffer): { ext?: 'jpg'|'png'|'gif'|'webp'; complete: boolean } {
-  if (!buf || buf.length < 8) return { complete: false };
-  // JPEG
-  if (buf[0] === 0xFF && buf[1] === 0xD8) {
-    const complete = buf.length >= 4 && buf[buf.length - 2] === 0xFF && buf[buf.length - 1] === 0xD9;
-    return { ext: 'jpg', complete };
-  }
-  // PNG
-  const pngSig = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-  if (pngSig.every((v, i) => buf[i] === v)) {
-    // Expect IEND at tail: 00 00 00 00 49 45 4E 44 AE 42 60 82
-    const tail = [0x00,0x00,0x00,0x00,0x49,0x45,0x4E,0x44,0xAE,0x42,0x60,0x82];
-    let complete = false;
-    if (buf.length >= 12) {
-      complete = tail.every((v, i) => buf[buf.length - 12 + i] === v);
-    }
-    return { ext: 'png', complete };
-  }
-  // GIF
-  const isGif = (buf.length >= 6) && (
-    (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38 && buf[4] === 0x37 && buf[5] === 0x61) ||
-    (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38 && buf[4] === 0x39 && buf[5] === 0x61)
-  );
-  if (isGif) {
-    const complete = buf[buf.length - 1] === 0x3B; // GIF trailer
-    return { ext: 'gif', complete };
-  }
-  // WEBP (RIFF <size> WEBP) — verify RIFF size and minimal chunk presence
-  if (buf.length >= 12 && buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) {
-    // little-endian size from bytes 4..7 gives number of bytes after this field; total file length should be size + 8
-    const size = buf[4] | (buf[5] << 8) | (buf[6] << 16) | (buf[7] << 24);
-    const expectedTotal = size + 8;
-    const lengthOk = buf.length >= expectedTotal; // allow larger due to padding, but not smaller
-    // Check one of VP8/VP8L/VP8X chunk headers exists somewhere after header
-    let chunkFound = false;
-    const searchMax = Math.min(buf.length - 4, 64); // scan first ~64 bytes after RIFF header
-    for (let i = 12; i < searchMax; i++) {
-      const c0 = buf[i], c1 = buf[i+1], c2 = buf[i+2], c3 = buf[i+3];
-      if ((c0===0x56&&c1===0x50&&c2===0x38&&(c3===0x20||c3===0x4C||c3===0x58))) { chunkFound = true; break; }
-    }
-    return { ext: 'webp', complete: !!(lengthOk && chunkFound) };
-  }
-  return { complete: false };
+// Image extension resolution: use filename or mimetype; allow only common safe types
+function getImageExtFromNameOrMime(filename?: string, mimetype?: string): 'jpg'|'png'|'gif'|'webp'|undefined {
+  const name = filename?.toLowerCase() || '';
+  const mime = mimetype?.toLowerCase() || '';
+  const byExt = (() => {
+    const ext = name.includes('.') ? name.substring(name.lastIndexOf('.') + 1) : '';
+    if (ext === 'jpeg') return 'jpg' as const;
+    if (ext === 'jpg' || ext === 'png' || ext === 'gif' || ext === 'webp') return ext as any;
+    return undefined;
+  })();
+  if (byExt) return byExt;
+  if (mime === 'image/jpeg' || mime === 'image/jpg') return 'jpg';
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/gif') return 'gif';
+  if (mime === 'image/webp') return 'webp';
+  return undefined;
 }
 
 async function writeFileAtomic(dir: string, filename: string, buffer: Buffer) {
@@ -296,32 +272,32 @@ export function buildServer(): FastifyInstance {
   async function getNextOrder(items: ArticleMeta[]) { return items.length ? Math.max(...items.map(i => i.order)) + 1 : 1; }
 
   // Robustly read a multipart part into a Buffer, supporting different shapes
-  async function readPartBuffer(part: any): Promise<{ buffer: Buffer; filename: string | undefined }> {
+  async function readPartBuffer(part: any): Promise<{ buffer: Buffer; filename?: string; mimetype?: string }> {
     if (!part) return { buffer: Buffer.alloc(0), filename: undefined };
     // Common shape when attachFieldsToBody: true
     if (part.file && typeof part.file === 'object' && typeof (part.file as any)[Symbol.asyncIterator] === 'function') {
       const bufs: Buffer[] = [];
       for await (const ch of part.file as any) bufs.push(Buffer.isBuffer(ch) ? ch as Buffer : Buffer.from(ch));
-      return { buffer: Buffer.concat(bufs), filename: part.filename as string | undefined };
+      return { buffer: Buffer.concat(bufs), filename: part.filename as string | undefined, mimetype: part.mimetype as string | undefined };
     }
     // Some libs expose a toBuffer()
     if (typeof part.toBuffer === 'function') {
       const buf: Buffer = await part.toBuffer();
-      return { buffer: buf, filename: part.filename as string | undefined };
+      return { buffer: buf, filename: part.filename as string | undefined, mimetype: part.mimetype as string | undefined };
     }
     // Some provide a value (Buffer|string)
     if (part.value) {
       const val = part.value as any;
       const buf = Buffer.isBuffer(val) ? val : Buffer.from(String(val));
-      return { buffer: buf, filename: part.filename as string | undefined };
+      return { buffer: buf, filename: part.filename as string | undefined, mimetype: part.mimetype as string | undefined };
     }
     // As a last resort, treat the part itself as an async iterable
     if (typeof (part as any)[Symbol.asyncIterator] === 'function') {
       const bufs: Buffer[] = [];
       for await (const ch of part as any) bufs.push(Buffer.isBuffer(ch) ? ch as Buffer : Buffer.from(ch));
-      return { buffer: Buffer.concat(bufs), filename: (part as any).filename };
+      return { buffer: Buffer.concat(bufs), filename: (part as any).filename, mimetype: (part as any).mimetype };
     }
-    return { buffer: Buffer.alloc(0), filename: part.filename as string | undefined };
+    return { buffer: Buffer.alloc(0), filename: part.filename as string | undefined, mimetype: part.mimetype as string | undefined };
   }
 
   function setSession(reply: any, username: string) {
@@ -386,7 +362,7 @@ export function buildServer(): FastifyInstance {
     return { ok: true };
   });
 
-  // Edit title/cover/icon (multipart to support optional file replacements)
+  // Edit title/cover/icon — simplified: parse title and use saveRequestFiles() once
   server.post('/v1/admin/articles/:id/edit', async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
     const id = (req.params as { id: string }).id;
@@ -394,150 +370,59 @@ export function buildServer(): FastifyInstance {
     const idx = items.findIndex(i => i.id === id);
     if (idx < 0) return reply.code(404).send({ error: 'not_found' });
     const art = items[idx];
+
     const body = (req as FastifyRequest & { body?: any }).body || {};
-    // Accept title as plain string or as { value: string }
-    let newTitle: string | undefined;
-    if (typeof body.title === 'string') newTitle = body.title;
-    else if (body.title && typeof body.title === 'object' && typeof body.title.value !== 'undefined') {
-      newTitle = String(body.title.value);
-    }
     let titleChanged = false;
+    const getTitleFromBody = (b: any): string | undefined => {
+      if (typeof b.title === 'string') return b.title;
+      if (b.title && typeof b.title === 'object' && typeof b.title.value !== 'undefined') return String(b.title.value);
+      return undefined;
+    };
+    const newTitle = getTitleFromBody(body);
     if (newTitle && newTitle.trim()) {
       const nextTitle = newTitle.trim().slice(0, 200);
-      if (nextTitle !== art.title) {
-        art.title = nextTitle;
-        titleChanged = true;
-      }
+      if (nextTitle !== art.title) { art.title = nextTitle; titleChanged = true; }
     }
-    // Files: cover, icon — robustly handle different multipart shapes
-  let coverWritten = false;
-  let iconWritten = false;
-  const warnings: Array<{ field: 'cover'|'icon'; error: string }> = [];
-    for (const field of ['cover','icon'] as const) {
-      const part = body[field];
-      if (part && typeof part === 'object') {
-        const { buffer, filename } = await readPartBuffer(part);
-        if (buffer.length > 0) {
-          const sniff = sniffImage(buffer);
-          if (!sniff.ext || !sniff.complete) {
-            warnings.push({ field, error: sniff.ext ? 'image_incomplete' : 'image_unrecognized' });
-          } else {
-          const fname = `${field}.${sniff.ext}`;
-          const dstDir = art.publicPath;
-          ensureDirSync(dstDir);
-          // Proactively remove stale variants with different extensions
-          try {
-            const files = await fs.readdir(dstDir).catch(() => [] as string[]);
-            for (const f of files) {
-              if (f.startsWith(field + '.') && f !== fname) {
-                try { await fs.unlink(path.join(dstDir, f)); } catch {}
-              }
-            }
-          } catch {}
-          await writeFileAtomic(dstDir, fname, buffer);
-          (req as any).log?.info?.({ id: art.id, field, fname, bytes: buffer.length }, 'article.edit: wrote file');
-          (art as any)[field] = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
-          if (field === 'cover') coverWritten = true; else iconWritten = true;
-          }
-        }
-      }
-    }
-    // Fallback: use saveRequestFiles() in case attachFieldsToBody didn't expose file parts
+
+    const warnings: Array<{ field: 'cover'|'icon'; error: string }> = [];
+    let coverWritten = false;
+    let iconWritten = false;
+
+    // Collect files once via saveRequestFiles()
     try {
       const saver: any = (req as any).saveRequestFiles ? (req as any) : null;
-      if (saver) {
-        const saved: Array<any> = await saver.saveRequestFiles();
-        for (const f of saved) {
-          try {
-            const buf = await fs.readFile(f.filepath);
-            if (f.fieldname === 'cover' && !coverWritten && buf?.length) {
-              const sniff = sniffImage(buf);
-              if (!sniff.ext || !sniff.complete) {
-                warnings.push({ field: 'cover', error: sniff.ext ? 'image_incomplete' : 'image_unrecognized' });
-              } else {
-              const fname = `cover.${sniff.ext}`;
-              ensureDirSync(art.publicPath);
-              try {
-                const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
-                for (const x of files) { if (x.startsWith('cover.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} } }
-              } catch {}
-              await writeFileAtomic(art.publicPath, fname, buf);
-              (req as any).log?.info?.({ id: art.id, field: 'cover', fname, bytes: buf.length }, 'article.edit: wrote file (fallback)');
-              (art as any).cover = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
-              coverWritten = true;
-              }
-            } else if (f.fieldname === 'icon' && !iconWritten && buf?.length) {
-              const sniff = sniffImage(buf);
-              if (!sniff.ext || !sniff.complete) {
-                warnings.push({ field: 'icon', error: sniff.ext ? 'image_incomplete' : 'image_unrecognized' });
-              } else {
-              const fname = `icon.${sniff.ext}`;
-              ensureDirSync(art.publicPath);
-              try {
-                const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
-                for (const x of files) { if (x.startsWith('icon.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} } }
-              } catch {}
-              await writeFileAtomic(art.publicPath, fname, buf);
-              (req as any).log?.info?.({ id: art.id, field: 'icon', fname, bytes: buf.length }, 'article.edit: wrote file (fallback)');
-              (art as any).icon = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
-              iconWritten = true;
-              }
-            }
-          } finally {
-            try { await fs.unlink(f.filepath); } catch {}
-          }
+      const saved: Array<any> = saver ? await saver.saveRequestFiles() : [];
+
+      // Helper to write one image
+      const writeImage = async (field: 'cover'|'icon', f: any) => {
+        const buf = await fs.readFile(f.filepath);
+        if (!buf?.length) return;
+        const ext = getImageExtFromNameOrMime(f.filename, f.mimetype);
+        if (!ext) { warnings.push({ field, error: 'image_unrecognized' }); return; }
+        const fname = `${field}.${ext}`;
+        ensureDirSync(art.publicPath);
+        try {
+          const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
+          for (const x of files) { if (x.startsWith(field + '.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} } }
+        } catch {}
+        await writeFileAtomic(art.publicPath, fname, buf);
+        if (field === 'cover') { (art as any).cover = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`; coverWritten = true; }
+        if (field === 'icon') { (art as any).icon = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`; iconWritten = true; }
+        (req as any).log?.info?.({ id: art.id, field, fname, bytes: buf.length }, 'article.edit: wrote file');
+      };
+
+      for (const f of saved) {
+        try {
+          if (f.fieldname === 'cover' && !coverWritten) await writeImage('cover', f);
+          else if (f.fieldname === 'icon' && !iconWritten) await writeImage('icon', f);
+        } finally {
+          try { await fs.unlink(f.filepath); } catch {}
         }
       }
     } catch (e) {
-      (req as any).log?.warn?.({ err: e }, 'edit.saveRequestFiles fallback failed');
+      (req as any).log?.warn?.({ err: e }, 'edit.saveRequestFiles failed');
     }
 
-    // Additional robust fallback: iterate multipart parts stream directly
-    if (!coverWritten || !iconWritten) {
-      try {
-        const iter = (req as any).parts?.();
-        if (iter && typeof (iter as any)[Symbol.asyncIterator] === 'function') {
-          for await (const p of iter as any) {
-            if (p?.type === 'file' && (p.fieldname === 'cover' || p.fieldname === 'icon')) {
-              // Skip if already handled
-              if (p.fieldname === 'cover' && coverWritten) { try { for await (const _ of p.file) { /* drain */ } } catch {} continue; }
-              if (p.fieldname === 'icon' && iconWritten) { try { for await (const _ of p.file) { /* drain */ } } catch {} continue; }
-              const bufs: Buffer[] = [];
-              let truncated = false;
-              try { p.file.on?.('limit', () => { truncated = true; }); } catch {}
-              try {
-                for await (const ch of p.file) { bufs.push(Buffer.isBuffer(ch) ? ch : Buffer.from(ch)); }
-              } catch {}
-              const buf = Buffer.concat(bufs);
-              if (buf.length > 0) {
-                const sniff = sniffImage(buf);
-                if (truncated || !sniff.ext || !sniff.complete) {
-                  warnings.push({ field: p.fieldname, error: truncated ? 'upload_truncated' : (sniff.ext ? 'image_incomplete' : 'image_unrecognized') });
-                } else {
-                const fname = `${p.fieldname}.${sniff.ext}`;
-                ensureDirSync(art.publicPath);
-                try {
-                  const files = await fs.readdir(art.publicPath).catch(() => [] as string[]);
-                  for (const x of files) {
-                    if (x.startsWith(p.fieldname + '.') && x !== fname) { try { await fs.unlink(path.join(art.publicPath, x)); } catch {} }
-                  }
-                } catch {}
-                await writeFileAtomic(art.publicPath, fname, buf);
-                (req as any).log?.info?.({ id: art.id, field: p.fieldname, fname, bytes: buf.length }, 'article.edit: wrote file (stream)');
-                if (p.fieldname === 'cover') { (art as any).cover = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`; coverWritten = true; }
-                if (p.fieldname === 'icon') { (art as any).icon = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`; iconWritten = true; }
-                }
-              }
-            } else if (p?.type === 'file') {
-              // Drain any unrelated files to avoid hanging
-              try { for await (const _ of p.file) { /* drain */ } } catch {}
-            }
-          }
-        }
-      } catch (e) {
-        (req as any).log?.warn?.({ err: e }, 'edit.parts iteration failed');
-      }
-    }
     if (titleChanged || coverWritten || iconWritten) {
       art.updatedAt = new Date().toISOString();
     }
@@ -566,10 +451,12 @@ export function buildServer(): FastifyInstance {
     })();
     let upName: string | undefined;
     let docx: Buffer | undefined;
-    let coverBuf: Buffer | undefined;
-    let coverOrig: string | undefined;
-    let iconBuf: Buffer | undefined;
-    let iconOrig: string | undefined;
+  let coverBuf: Buffer | undefined;
+  let coverOrig: string | undefined;
+  let coverMime: string | undefined;
+  let iconBuf: Buffer | undefined;
+  let iconOrig: string | undefined;
+  let iconMime: string | undefined;
 
     // First attempt: read from attachFieldsToBody representation
     const fileDoc = body.docx || body.file || body.document;
@@ -579,11 +466,11 @@ export function buildServer(): FastifyInstance {
     }
     if (body.cover && typeof body.cover === 'object') {
       const r = await readPartBuffer(body.cover);
-      if (r.buffer?.length) { coverBuf = r.buffer; coverOrig = r.filename; }
+      if (r.buffer?.length) { coverBuf = r.buffer; coverOrig = r.filename; coverMime = r.mimetype; }
     }
     if (body.icon && typeof body.icon === 'object') {
       const r = await readPartBuffer(body.icon);
-      if (r.buffer?.length) { iconBuf = r.buffer; iconOrig = r.filename; }
+      if (r.buffer?.length) { iconBuf = r.buffer; iconOrig = r.filename; iconMime = r.mimetype; }
     }
 
     // Fallback: if DOCX missing/empty, use saveRequestFiles() to persist and read
@@ -598,9 +485,9 @@ export function buildServer(): FastifyInstance {
               if ((f.fieldname === 'docx' || f.fieldname === 'file' || f.fieldname === 'document') && (!docx || docx.length < 4)) {
                 docx = buf; upName = f.filename || upName;
               } else if (f.fieldname === 'cover' && !coverBuf) {
-                coverBuf = buf; coverOrig = f.filename;
+                coverBuf = buf; coverOrig = f.filename; coverMime = f.mimetype;
               } else if (f.fieldname === 'icon' && !iconBuf) {
-                iconBuf = buf; iconOrig = f.filename;
+                iconBuf = buf; iconOrig = f.filename; iconMime = f.mimetype;
               }
             } finally {
               try { await fs.unlink(f.filepath); } catch (e) { req.log.warn({ err: e, file: f.filepath }, 'cleanup tmp file failed'); }
@@ -647,19 +534,15 @@ export function buildServer(): FastifyInstance {
       let coverName: string | undefined;
       let iconName: string | undefined;
       if (coverBuf && coverBuf.length) {
-        const sniff = sniffImage(coverBuf);
-        if (!sniff.ext || !sniff.complete) {
-          return reply.code(400).send({ ok: false, error: 'invalid_cover_image' });
-        }
-        coverName = `cover.${sniff.ext}`;
+        const ext = getImageExtFromNameOrMime(coverOrig, coverMime);
+        if (!ext) { return reply.code(400).send({ ok: false, error: 'invalid_cover_image' }); }
+        coverName = `cover.${ext}`;
         await writeFileAtomic(publicDir, coverName, coverBuf);
       }
       if (iconBuf && iconBuf.length) {
-        const sniff = sniffImage(iconBuf);
-        if (!sniff.ext || !sniff.complete) {
-          return reply.code(400).send({ ok: false, error: 'invalid_icon_image' });
-        }
-        iconName = `icon.${sniff.ext}`;
+        const ext = getImageExtFromNameOrMime(iconOrig, iconMime);
+        if (!ext) { return reply.code(400).send({ ok: false, error: 'invalid_icon_image' }); }
+        iconName = `icon.${ext}`;
         await writeFileAtomic(publicDir, iconName, iconBuf);
       }
       // Write simple static bundle: index.html, style.css, script.js
