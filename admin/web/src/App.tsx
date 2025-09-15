@@ -76,6 +76,11 @@ export default function App() {
   // Per-article busy state for quick edits (cover/icon/title)
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({})
   const setBusy = (id: string, v: boolean) => setBusyIds(prev => ({ ...prev, [id]: v }))
+  // Image retry state to mitigate transient HTTP/2 load errors
+  const [coverRetry, setCoverRetry] = useState<Record<string, number>>({})
+  const [iconRetry, setIconRetry] = useState<Record<string, number>>({})
+  const [coverErrCount, setCoverErrCount] = useState<Record<string, number>>({})
+  const [iconErrCount, setIconErrCount] = useState<Record<string, number>>({})
   // Toast feedback
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success'|'error' }>({ open: false, message: '', severity: 'success' })
   const showToast = (message: string, severity: 'success'|'error' = 'success') => setToast({ open: true, message, severity })
@@ -108,7 +113,12 @@ export default function App() {
     if (opts?.title) fd.set('title', opts.title)
     if (opts?.cover) fd.set('cover', opts.cover)
     if (opts?.icon) fd.set('icon', opts.icon)
-    await api.post(`${API}/v1/admin/articles/${id}/edit`, fd)
+    const res = await api.post<{ ok: boolean; item: Article; warnings?: Array<{ field: 'cover'|'icon'; error: string }> }>(`${API}/v1/admin/articles/${id}/edit`, fd)
+    // Surface server-side warnings if any
+    if (Array.isArray(res?.warnings) && res.warnings.length) {
+      const msg = res.warnings.map(w => `${w.field}: ${w.error.replace(/_/g,' ')}`).join(', ')
+      showToast(`Upload warnings: ${msg}`, 'error')
+    }
     const data = await api.get<{ items: Article[] }>(`${API}/v1/admin/articles`); setArticles(data.items)
   }
 
@@ -308,14 +318,23 @@ export default function App() {
                 const updated = a.updatedAt ? new Date(a.updatedAt) : null
                 const publicLink = typeof a.publicPath === 'string' ? a.publicPath.replace(/^.*\/LWB\//, '/LWB/') : null
                 const bust = a.updatedAt ? (a.updatedAt.includes('?') ? a.updatedAt : encodeURIComponent(a.updatedAt)) : String(a.order)
-                const coverSrc = a.cover ? `${a.cover}${a.cover.includes('?') ? '&' : '?'}v=${bust}` : null
-                const iconSrc = a.icon ? `${a.icon}${a.icon.includes('?') ? '&' : '?'}v=${bust}` : undefined
+                const coverBase = a.cover ? `${a.cover}${a.cover.includes('?') ? '&' : '?'}v=${bust}` : null
+                const iconBase = a.icon ? `${a.icon}${a.icon.includes('?') ? '&' : '?'}v=${bust}` : undefined
+                const coverSrc = coverBase ? `${coverBase}${coverRetry[a.id] ? `&r=${coverRetry[a.id]}` : ''}` : null
+                const iconSrc = iconBase ? `${iconBase}${iconRetry[a.id] ? `&r=${iconRetry[a.id]}` : ''}` : undefined
                 return (
                   <Grid item xs={12} sm={6} md={4} lg={3} key={a.id}>
                     <Card sx={{ height:'100%', display:'flex', flexDirection:'column' }}>
                       <Box sx={{ position:'relative' }}>
                         {coverSrc ? (
-                          <CardMedia component="img" src={coverSrc} alt="Cover" sx={{ aspectRatio:'16/9', objectFit:'cover' }} />
+                          <CardMedia component="img" src={coverSrc} alt="Cover" sx={{ aspectRatio:'16/9', objectFit:'cover' }} onError={() => {
+                            setCoverErrCount(prev => ({ ...prev, [a.id]: (prev[a.id] ?? 0) + 1 }))
+                            setCoverRetry(prev => {
+                              const attempts = (coverErrCount[a.id] ?? 0) + 1
+                              if (attempts > 2) return prev // give up after 2 retries
+                              return { ...prev, [a.id]: Date.now() }
+                            })
+                          }} />
                         ) : (
                           <Box sx={{ aspectRatio:'16/9', display:'grid', placeItems:'center', bgcolor:'action.hover' }}>
                             <ArticleIcon sx={{ fontSize: 48, color:'text.secondary' }} />
@@ -330,7 +349,18 @@ export default function App() {
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Stack spacing={1}>
                           <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
-                            {iconSrc && <Avatar src={iconSrc} variant="rounded" sx={{ width: 28, height: 28 }} />}
+                            {iconSrc && (
+                              <Avatar src={iconSrc} variant="rounded" sx={{ width: 28, height: 28 }}
+                                imgProps={{ onError: () => {
+                                  setIconErrCount(prev => ({ ...prev, [a.id]: (prev[a.id] ?? 0) + 1 }))
+                                  setIconRetry(prev => {
+                                    const attempts = (iconErrCount[a.id] ?? 0) + 1
+                                    if (attempts > 2) return prev
+                                    return { ...prev, [a.id]: Date.now() }
+                                  })
+                                } }}
+                              />
+                            )}
                             <Typography variant="subtitle1" fontWeight={700} noWrap title={a.title || a.filename}>
                               {a.title || a.filename}
                             </Typography>
