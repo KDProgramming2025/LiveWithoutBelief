@@ -331,7 +331,9 @@ export function buildServer(): FastifyInstance {
     if (newTitle && newTitle.trim()) {
       art.title = newTitle.trim().slice(0, 200);
     }
-    // Files: cover, icon
+    // Files: cover, icon — robustly handle different multipart shapes
+    let coverWritten = false;
+    let iconWritten = false;
     for (const field of ['cover','icon'] as const) {
       const part = body[field];
       if (part && typeof part === 'object') {
@@ -342,10 +344,41 @@ export function buildServer(): FastifyInstance {
           const dstDir = art.publicPath;
           ensureDirSync(dstDir);
           await fs.writeFile(path.join(dstDir, fname), buffer);
-          // store full public URL
           (art as any)[field] = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
+          if (field === 'cover') coverWritten = true; else iconWritten = true;
         }
       }
+    }
+    // Fallback: use saveRequestFiles() in case attachFieldsToBody didn't expose file parts
+    try {
+      const saver: any = (req as any).saveRequestFiles ? (req as any) : null;
+      if (saver) {
+        const saved: Array<any> = await saver.saveRequestFiles();
+        for (const f of saved) {
+          try {
+            const buf = await fs.readFile(f.filepath);
+            if (f.fieldname === 'cover' && !coverWritten && buf?.length) {
+              const ext = (f.filename || '').split('.').pop() || 'bin';
+              const fname = `cover.${String(ext).toLowerCase()}`;
+              ensureDirSync(art.publicPath);
+              await fs.writeFile(path.join(art.publicPath, fname), buf);
+              (art as any).cover = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
+              coverWritten = true;
+            } else if (f.fieldname === 'icon' && !iconWritten && buf?.length) {
+              const ext = (f.filename || '').split('.').pop() || 'bin';
+              const fname = `icon.${String(ext).toLowerCase()}`;
+              ensureDirSync(art.publicPath);
+              await fs.writeFile(path.join(art.publicPath, fname), buf);
+              (art as any).icon = `${PUBLIC_URL_PREFIX}/${art.id}/${fname}`;
+              iconWritten = true;
+            }
+          } finally {
+            try { await fs.unlink(f.filepath); } catch {}
+          }
+        }
+      }
+    } catch (e) {
+      (req as any).log?.warn?.({ err: e }, 'edit.saveRequestFiles fallback failed');
     }
     art.updatedAt = new Date().toISOString();
     items[idx] = art;
