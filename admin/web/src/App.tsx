@@ -65,7 +65,12 @@ function Login({ onDone }: { onDone: () => void }) {
 export default function App() {
   const api = useJson()
   const [auth, setAuth] = useState<'unknown'|'no'|'yes'>('unknown')
-  const [tab, setTab] = useState<'menu'|'articles'|'users'>('menu')
+  const [tab, setTab] = useState<'menu'|'articles'|'users'>(() => {
+    try {
+      const saved = localStorage.getItem('lwb-admin-tab') as 'menu'|'articles'|'users'|null
+      return saved === 'menu' || saved === 'articles' || saved === 'users' ? saved : 'menu'
+    } catch { return 'menu' }
+  })
   const { mode, toggle } = useColorMode()
 
   // Article state
@@ -112,6 +117,10 @@ export default function App() {
     try { const data = await api.get<{ items: Article[] }>(`${API}/v1/admin/articles`); setArticles(data.items) } catch {}
     try { const sum = await api.get<UsersSummary>(`${API}/v1/admin/users/summary`); setUsersTotal(sum.total) } catch {}
   })() }, [auth])
+  // Persist selected tab across reloads
+  useEffect(() => {
+    try { localStorage.setItem('lwb-admin-tab', tab) } catch {}
+  }, [tab])
   const refreshMenu = async () => { const m = await api.get<{ items: MenuItem[] }>(`${API}/v1/admin/menu`); setMenu(m.items) }
   const editMenu = async (id: string, updates: { title?: string; label?: string; icon?: File }): Promise<MenuItem> => {
     const fd = new FormData()
@@ -416,9 +425,14 @@ export default function App() {
             <Grid container spacing={2}>
               {menu.slice().sort((a,b)=>a.order-b.order).map(m => {
                 const baseIcon = toCanonicalMenuUrl(m.icon)
-                const liveOrPreview = menuLocalPreview[m.id] || baseIcon
+                const isPreview = !!menuLocalPreview[m.id]
+                const liveOrPreview = isPreview ? menuLocalPreview[m.id] : baseIcon
                 const attempts = iconErrCount[m.id] ?? 0
-                const iconSrc = liveOrPreview && attempts < 1 ? liveOrPreview : undefined
+                const iconSrc = liveOrPreview
+                  ? (isPreview
+                      ? liveOrPreview
+                      : `${liveOrPreview}${liveOrPreview.includes('?') ? '&' : '?'}v=${encodeURIComponent(m.updatedAt)}${attempts>0?`&r=${Date.now()}`:''}`)
+                  : undefined
                 return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={m.id}>
                   <Card>
@@ -527,8 +541,12 @@ export default function App() {
                 const iconBase = a.icon ?? undefined
                 const coverAttempts = coverErrCount[a.id] ?? 0
                 const iconAttempts = iconErrCount[a.id] ?? 0
-                const coverSrc = coverBase && coverAttempts < 1 ? coverBase : null
-                const iconSrc = iconBase && iconAttempts < 1 ? iconBase : undefined
+                const coverSrc = coverBase && coverAttempts < 1
+                  ? `${coverBase}${coverBase.includes('?') ? '&' : '?'}v=${encodeURIComponent(a.updatedAt)}${coverAttempts>0?`&r=${Date.now()}`:''}`
+                  : null
+                const iconSrc = iconBase && iconAttempts < 1
+                  ? `${iconBase}${iconBase.includes('?') ? '&' : '?'}v=${encodeURIComponent(a.updatedAt)}${iconAttempts>0?`&r=${Date.now()}`:''}`
+                  : undefined
                 return (
                   <Grid item xs={12} sm={6} md={4} lg={3} key={a.id}>
                     <Card sx={{ height:'100%', display:'flex', flexDirection:'column' }}>
