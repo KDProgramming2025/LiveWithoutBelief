@@ -1,0 +1,16 @@
+[Unit]
+Description=LWB Node.js API Server
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/lwb-server.env
+WorkingDirectory=/var/www/LWB/server
+ExecStart=/opt/lwb-node/current/bin/node /var/www/LWB/server/dist/index.js
+Restart=always
+User=www-data
+Group=www-data
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -15,11 +15,19 @@ Date: 2025-09-16
 - Build + tests pass locally (no server run).
 
 ## In-progress / Planned (Server hardening)
-- Replace in-memory repositories with PostgreSQL-backed implementations.
-- Use Argon2id or bcrypt for password hashing.
-- Replace custom ALTCHA with official altcha-org library.
-- Optionally implement real Google ID token verification.
-- Add DB migrations and CI checks for the server package.
+- Replace in-memory repositories with PostgreSQL-backed implementations. (users: DONE)
+- Use Argon2id or bcrypt for password hashing. (argon2id: DONE)
+- Replace custom ALTCHA with official altcha-org library. (DONE)
+- Optionally implement real Google ID token verification. (Deferred)
+- Add DB migrations and CI checks for the server package. (migrations: DONE)
+
+## Deployment Progress (VPS)
+- Repo cloned to /var/www/LWB with remote `github`. (DONE)
+- Node deps installed; TypeScript build succeeds on VPS. (DONE)
+- PostgreSQL role/db created; ownership/privileges granted. (DONE)
+- Applied 001_init.sql migration; fixed FK type mismatch; tables recreated. (DONE)
+- Wrote /etc/lwb-server.env with runtime config. (DONE)
+- Install systemd unit, reload, enable, start, and check status. (NEXT)
 
 ## Notes
 - Do not run the server locally; deploy via systemd on the VPS.
