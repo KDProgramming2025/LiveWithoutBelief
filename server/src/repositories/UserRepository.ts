@@ -1,5 +1,14 @@
 import { ServerUser } from '../domain/user.js'
-import { Pool } from 'pg'
+
+// Minimal Pool-like interface to avoid depending on @types/pg at build time
+interface PgClientLike {
+  query: (text: string, params?: any[]) => Promise<any>
+  release: () => void
+}
+interface PgPoolLike {
+  connect: () => Promise<PgClientLike>
+  query: (text: string, params?: any[]) => Promise<any>
+}
 
 export interface UserCredentials {
   user: ServerUser
@@ -14,7 +23,7 @@ export interface UserRepository {
 }
 
 export class PgUserRepository implements UserRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: PgPoolLike) {}
 
   async upsertByEmail(email: string): Promise<{ user: ServerUser; created: boolean }> {
     const client = await this.pool.connect()
