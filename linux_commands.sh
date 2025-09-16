@@ -1,18 +1,32 @@
-﻿#/usr/bin/env bash
-#set -euo pipefail
+﻿#!/usr/bin/env bash
+set -euo pipefail
 
-# Single-step E2E: login, get menu id, upload icon (proxy and direct), print diagnostics
+# Single-step: deploy Admin API then E2E login + icon upload (proxy and direct) + diagnostics
 
 API_PROXY="https://aparat.feezor.net/LWB/Admin/api"
 API_LOCAL="http://127.0.0.1:5050"
 ICON_FILE="/tmp/menu-test.png"
 
+# Deploy latest code (Admin API only)
+cd /var/www/LWB/LiveWithoutBelief
+git fetch --all --prune
+git reset --hard origin/feature/LWB-92-admin-ui
+git clean -fd
+cd admin/api
+/opt/lwb-node/current/bin/npm ci --prefer-offline --no-audit
+/opt/lwb-node/current/bin/npm run build
+rsync -av --delete dist/ /opt/lwb-admin-api/
+systemctl restart lwb-admin-api
+sleep 1
+journalctl -u lwb-admin-api -n 20 --no-pager | tail -n 20
+
 # Create a tiny but non-empty PNG for testing (1x1 transparent)
 printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0cIDAT\x08\xd7c``\xf8\xff\xff?\x00\x05\xfe\x02\xfeA\x90\x80\xf0\x00\x00\x00\x00IEND\xaeB`\x82' > "$ICON_FILE"
 
 # Ensure ADMIN creds are available from env file if present
-: "${ADMIN_USER:=${ADMIN_USER:-}}"
-: "${ADMIN_PASS:=${ADMIN_PASS:-}}"
+if [ -f /etc/lwb-server.env ]; then set -a; . /etc/lwb-server.env; set +a; fi
+: "${ADMIN_USER:=${ADMIN_USER:-${ADMIN_PANEL_USERNAME:-}}}"
+: "${ADMIN_PASS:=${ADMIN_PASS:-${ADMIN_PANEL_PASSWORD:-}}}"
 
 if [ -z "${ADMIN_USER}" ] || [ -z "${ADMIN_PASS}" ]; then
 	echo "Missing ADMIN_USER/ADMIN_PASS in env; export before running." >&2
@@ -56,8 +70,8 @@ echo
 ls -la "/var/www/LWB/Menu/$MENU_ID" || true
 stat "/var/www/LWB/Menu/$MENU_ID"/icon.* 2>/dev/null || true
 
-# 6) Tail recent admin api logs for multipart debug
-journalctl -u lwb-admin-api -n 120 --no-pager | tail -n 120 | sed -n 's/.*DEBUG.*//p'
+# 6) Tail recent admin api logs for multipart/menu debug
+journalctl -u lwb-admin-api -n 200 --no-pager | grep -E '\[DEBUG\]|multipart|menu' || true
 #!/usr/bin/env bash
 set -euo pipefail
 
