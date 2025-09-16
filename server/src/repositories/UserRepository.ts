@@ -22,6 +22,51 @@ export interface UserRepository {
   updateLastLogin(userId: string): Promise<void>
 }
 
+// Simple in-memory implementation useful for tests
+export class InMemoryUserRepository implements UserRepository {
+  private users = new Map<string, ServerUser & { email?: string }>()
+  private creds = new Map<string, string>() // username -> hash
+  private seq = 1
+
+  async upsertByEmail(email: string): Promise<{ user: ServerUser; created: boolean }> {
+    let existing = [...this.users.values()].find(u => (u as any).email === email)
+    if (existing) {
+      existing.lastLogin = new Date().toISOString()
+      return { user: { id: existing.id, username: existing.username ?? null, createdAt: existing.createdAt, lastLogin: existing.lastLogin }, created: false }
+    }
+    const id = String(this.seq++)
+    const username = email.split('@')[0]
+    const now = new Date().toISOString()
+    const user: ServerUser & { email?: string } = { id, username, createdAt: now, lastLogin: now, email }
+    this.users.set(id, user)
+    return { user: { id, username, createdAt: now, lastLogin: now }, created: true }
+  }
+
+  async createWithPassword(username: string, passwordHash: string): Promise<ServerUser | null> {
+    const exists = [...this.users.values()].find(u => u.username === username)
+    if (exists) return null
+    const id = String(this.seq++)
+    const now = new Date().toISOString()
+    const user: ServerUser = { id, username, createdAt: now, lastLogin: now }
+    this.users.set(id, user)
+    this.creds.set(username!, passwordHash)
+    return user
+  }
+
+  async findCredentialsByUsername(username: string): Promise<UserCredentials | null> {
+    const user = [...this.users.values()].find(u => u.username === username)
+    if (!user) return null
+    const hash = this.creds.get(username!)
+    if (!hash) return null
+    return { user, passwordHash: hash }
+  }
+
+  async updateLastLogin(userId: string): Promise<void> {
+    const u = this.users.get(userId)
+    if (u) u.lastLogin = new Date().toISOString()
+  }
+}
+
 export class PgUserRepository implements UserRepository {
   constructor(private readonly pool: PgPoolLike) {}
 
