@@ -33,3 +33,8 @@ Next
 - Symptom: Only one menu item visible; suspected earlier rsync removed /opt/lwb-admin-api/data/menu.json. Icons folders existed.
 - Action: Extended linux_commands.sh to reconcile metadata from /var/www/LWB/Menu folder names, creating missing items with inferred title/label and sequential order. Kept runtime data safe in rsync.
 - Result: Recovered items menu-1 and menu-2 with icons; menu.json now contains [home, menu-1, menu-2]; Admin API list returns 3 items; proxy icon uploads continue to work (256B).
+
+2025-09-16 (latest)
+- UX: Removed all icon cache-busting query params from Admin Web (menu and articles). If an image fails once, we show a placeholder instead of retry loops.
+- UX: Added inline spinner directly in the icon slot while uploads are in progress (menu and article icons), on top of the button state/overlay.
+- Next: Rebuild Admin Web on the server and redeploy to apply changes; verify icons load without ?v= params and that spinners appear in-place during icon change.

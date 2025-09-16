@@ -91,8 +91,6 @@ export default function App() {
   // Local preview for menu icon while uploading
   const [menuLocalPreview, setMenuLocalPreview] = useState<Record<string, string | undefined>>({})
   // Image retry state to mitigate transient HTTP/2 load errors
-  const [coverRetry, setCoverRetry] = useState<Record<string, number>>({})
-  const [iconRetry, setIconRetry] = useState<Record<string, number>>({})
   const [coverErrCount, setCoverErrCount] = useState<Record<string, number>>({})
   const [iconErrCount, setIconErrCount] = useState<Record<string, number>>({})
   // Toast feedback
@@ -132,19 +130,7 @@ export default function App() {
     setMenuBusyId(id, true)
     try {
       const updated = await editMenu(id, { icon: file })
-      // Wait until the new icon URL (with updatedAt cache-bust) actually loads before clearing preview
-      const fresh = toCanonicalMenuUrl(updated.icon)
-      const freshUrl = fresh ? `${fresh}${fresh.includes('?') ? '&' : '?'}v=${encodeURIComponent(updated.updatedAt)}` : ''
-      await new Promise<void>((resolve) => {
-        if (!freshUrl) return resolve()
-        const img = new Image()
-        let done = false
-        const finish = () => { if (done) return; done = true; resolve() }
-        const timer = setTimeout(finish, 3000)
-        img.onload = () => { clearTimeout(timer); finish() }
-        img.onerror = () => { clearTimeout(timer); finish() }
-        img.src = freshUrl
-      })
+      // Reset error counter for this id after successful update
       // Reset error counter for this id after successful update
       setIconErrCount(prev => ({ ...prev, [id]: 0 }))
       showToast('Menu icon updated')
@@ -417,11 +403,10 @@ export default function App() {
 
             <Grid container spacing={2}>
               {menu.slice().sort((a,b)=>a.order-b.order).map(m => {
-                const bust = m.updatedAt ? encodeURIComponent(m.updatedAt) : String(m.order)
                 const baseIcon = toCanonicalMenuUrl(m.icon)
                 const liveOrPreview = menuLocalPreview[m.id] || baseIcon
                 const attempts = iconErrCount[m.id] ?? 0
-                const iconSrc = liveOrPreview && attempts <= 2 ? `${liveOrPreview}${liveOrPreview.includes('?') ? '&' : '?'}v=${bust}${attempts>0?`&r=${Date.now()}`:''}` : undefined
+                const iconSrc = liveOrPreview && attempts < 1 ? liveOrPreview : undefined
                 return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={m.id}>
                   <Card>
@@ -429,7 +414,11 @@ export default function App() {
                     <CardContent>
                       <Stack spacing={1}>
                         <Stack direction="row" spacing={1} alignItems="center">
-                          {iconSrc ? (
+                          {menuBusyIds[m.id] ? (
+                            <Box sx={{ width: 28, height: 28, borderRadius: 1, display:'grid', placeItems:'center' }}>
+                              <CircularProgress size={18} />
+                            </Box>
+                          ) : iconSrc ? (
                             <Box component="img" src={iconSrc} alt="Icon" sx={{ width: 28, height: 28, borderRadius: 1 }}
                               onError={() => {
                                 setIconErrCount(prev => ({ ...prev, [m.id]: (prev[m.id] ?? 0) + 1 }))
@@ -511,26 +500,19 @@ export default function App() {
                 const created = a.createdAt ? new Date(a.createdAt) : null
                 const updated = a.updatedAt ? new Date(a.updatedAt) : null
                 const publicLink = typeof a.publicPath === 'string' ? a.publicPath.replace(/^.*\/LWB\//, '/LWB/') : null
-                const bust = a.updatedAt ? (a.updatedAt.includes('?') ? a.updatedAt : encodeURIComponent(a.updatedAt)) : String(a.order)
-                const coverBase = a.cover ? `${a.cover}${a.cover.includes('?') ? '&' : '?'}v=${bust}` : null
-                const iconBase = a.icon ? `${a.icon}${a.icon.includes('?') ? '&' : '?'}v=${bust}` : undefined
+                const coverBase = a.cover ?? null
+                const iconBase = a.icon ?? undefined
                 const coverAttempts = coverErrCount[a.id] ?? 0
                 const iconAttempts = iconErrCount[a.id] ?? 0
-                const coverSrc = coverBase && coverAttempts <= 2 ? `${coverBase}${coverRetry[a.id] ? `&r=${coverRetry[a.id]}` : ''}` : null
-                const iconSrc = iconBase && iconAttempts <= 2 ? `${iconBase}${iconRetry[a.id] ? `&r=${iconRetry[a.id]}` : ''}` : undefined
+                const coverSrc = coverBase && coverAttempts < 1 ? coverBase : null
+                const iconSrc = iconBase && iconAttempts < 1 ? iconBase : undefined
                 return (
                   <Grid item xs={12} sm={6} md={4} lg={3} key={a.id}>
                     <Card sx={{ height:'100%', display:'flex', flexDirection:'column' }}>
                       <Box sx={{ position:'relative' }}>
                         {coverSrc ? (
                           <CardMedia component="img" src={coverSrc} alt="Cover" sx={{ aspectRatio:'16/9', objectFit:'cover' }} onError={() => {
-                            setCoverErrCount(prev => {
-                              const attempts = (prev[a.id] ?? 0) + 1
-                              if (attempts <= 2) {
-                                setCoverRetry(r => ({ ...r, [a.id]: Date.now() }))
-                              }
-                              return { ...prev, [a.id]: attempts }
-                            })
+                            setCoverErrCount(prev => ({ ...prev, [a.id]: (prev[a.id] ?? 0) + 1 }))
                           }} />
                         ) : (
                           <Box sx={{ aspectRatio:'16/9', display:'grid', placeItems:'center', bgcolor:'action.hover' }}>
@@ -546,16 +528,14 @@ export default function App() {
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Stack spacing={1}>
                           <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
-                            {iconSrc ? (
+                            {busyIds[a.id] ? (
+                              <Avatar variant="rounded" sx={{ width: 28, height: 28 }}>
+                                <CircularProgress size={18} />
+                              </Avatar>
+                            ) : iconSrc ? (
                               <Avatar src={iconSrc} variant="rounded" sx={{ width: 28, height: 28 }}
                                 imgProps={{ onError: () => {
-                                  setIconErrCount(prev => {
-                                    const attempts = (prev[a.id] ?? 0) + 1
-                                    if (attempts <= 2) {
-                                      setIconRetry(r => ({ ...r, [a.id]: Date.now() }))
-                                    }
-                                    return { ...prev, [a.id]: attempts }
-                                  })
+                                  setIconErrCount(prev => ({ ...prev, [a.id]: (prev[a.id] ?? 0) + 1 }))
                                 } }}
                               />
                             ) : (
