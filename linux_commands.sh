@@ -17,9 +17,11 @@ npm -v || true
 echo "[STEP] Navigate to repo"
 cd /var/www/LWB/LiveWithoutBelief
 
-echo "[STEP] Pull latest commits for current branch"
-git --no-pager status -sb
-git pull --ff-only || true
+echo "[STEP] Sync to remote branch (force-clean if needed)"
+git --no-pager status -sb || true
+git fetch origin feature/LWB-92-admin-ui || true
+git reset --hard origin/feature/LWB-92-admin-ui || true
+git clean -fd || true
 
 echo "[STEP] Install deps (admin/web)"
 cd admin/web
