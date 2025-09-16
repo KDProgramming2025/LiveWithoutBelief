@@ -404,7 +404,8 @@ export default function App() {
                 const bust = m.updatedAt ? encodeURIComponent(m.updatedAt) : String(m.order)
                 const baseIcon = toCanonicalMenuUrl(m.icon)
                 const liveOrPreview = menuLocalPreview[m.id] || baseIcon
-                const iconSrc = liveOrPreview ? `${liveOrPreview}${liveOrPreview.includes('?') ? '&' : '?'}v=${bust}` : undefined
+                const attempts = iconErrCount[m.id] ?? 0
+                const iconSrc = liveOrPreview && attempts <= 2 ? `${liveOrPreview}${liveOrPreview.includes('?') ? '&' : '?'}v=${bust}${attempts>0?`&r=${Date.now()}`:''}` : undefined
                 return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={m.id}>
                   <Card>
@@ -412,15 +413,16 @@ export default function App() {
                     <CardContent>
                       <Stack spacing={1}>
                         <Stack direction="row" spacing={1} alignItems="center">
-                          {iconSrc && (
+                          {iconSrc ? (
                             <Box component="img" src={iconSrc} alt="Icon" sx={{ width: 28, height: 28, borderRadius: 1 }}
-                              onError={(e) => {
-                                // minimal retry once by appending a cache-bust r param
-                                const t = e.currentTarget
-                                const hasR = /[?&]r=/.test(t.src)
-                                t.src = hasR ? t.src : `${t.src}${t.src.includes('?') ? '&' : '?'}r=${Date.now()}`
+                              onError={() => {
+                                setIconErrCount(prev => ({ ...prev, [m.id]: (prev[m.id] ?? 0) + 1 }))
                               }}
                             />
+                          ) : (
+                            <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: 'action.hover', display:'grid', placeItems:'center' }}>
+                              <InsertPhotoIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                            </Box>
                           )}
                           <Typography variant="subtitle1" fontWeight={700} noWrap title={m.title}>{m.title}</Typography>
                         </Stack>
@@ -492,19 +494,22 @@ export default function App() {
                 const bust = a.updatedAt ? (a.updatedAt.includes('?') ? a.updatedAt : encodeURIComponent(a.updatedAt)) : String(a.order)
                 const coverBase = a.cover ? `${a.cover}${a.cover.includes('?') ? '&' : '?'}v=${bust}` : null
                 const iconBase = a.icon ? `${a.icon}${a.icon.includes('?') ? '&' : '?'}v=${bust}` : undefined
-                const coverSrc = coverBase ? `${coverBase}${coverRetry[a.id] ? `&r=${coverRetry[a.id]}` : ''}` : null
-                const iconSrc = iconBase ? `${iconBase}${iconRetry[a.id] ? `&r=${iconRetry[a.id]}` : ''}` : undefined
+                const coverAttempts = coverErrCount[a.id] ?? 0
+                const iconAttempts = iconErrCount[a.id] ?? 0
+                const coverSrc = coverBase && coverAttempts <= 2 ? `${coverBase}${coverRetry[a.id] ? `&r=${coverRetry[a.id]}` : ''}` : null
+                const iconSrc = iconBase && iconAttempts <= 2 ? `${iconBase}${iconRetry[a.id] ? `&r=${iconRetry[a.id]}` : ''}` : undefined
                 return (
                   <Grid item xs={12} sm={6} md={4} lg={3} key={a.id}>
                     <Card sx={{ height:'100%', display:'flex', flexDirection:'column' }}>
                       <Box sx={{ position:'relative' }}>
                         {coverSrc ? (
                           <CardMedia component="img" src={coverSrc} alt="Cover" sx={{ aspectRatio:'16/9', objectFit:'cover' }} onError={() => {
-                            setCoverErrCount(prev => ({ ...prev, [a.id]: (prev[a.id] ?? 0) + 1 }))
-                            setCoverRetry(prev => {
-                              const attempts = (coverErrCount[a.id] ?? 0) + 1
-                              if (attempts > 2) return prev // give up after 2 retries
-                              return { ...prev, [a.id]: Date.now() }
+                            setCoverErrCount(prev => {
+                              const attempts = (prev[a.id] ?? 0) + 1
+                              if (attempts <= 2) {
+                                setCoverRetry(r => ({ ...r, [a.id]: Date.now() }))
+                              }
+                              return { ...prev, [a.id]: attempts }
                             })
                           }} />
                         ) : (
@@ -521,17 +526,22 @@ export default function App() {
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Stack spacing={1}>
                           <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
-                            {iconSrc && (
+                            {iconSrc ? (
                               <Avatar src={iconSrc} variant="rounded" sx={{ width: 28, height: 28 }}
                                 imgProps={{ onError: () => {
-                                  setIconErrCount(prev => ({ ...prev, [a.id]: (prev[a.id] ?? 0) + 1 }))
-                                  setIconRetry(prev => {
-                                    const attempts = (iconErrCount[a.id] ?? 0) + 1
-                                    if (attempts > 2) return prev
-                                    return { ...prev, [a.id]: Date.now() }
+                                  setIconErrCount(prev => {
+                                    const attempts = (prev[a.id] ?? 0) + 1
+                                    if (attempts <= 2) {
+                                      setIconRetry(r => ({ ...r, [a.id]: Date.now() }))
+                                    }
+                                    return { ...prev, [a.id]: attempts }
                                   })
                                 } }}
                               />
+                            ) : (
+                              <Avatar variant="rounded" sx={{ width: 28, height: 28, bgcolor: 'action.hover' }}>
+                                <InsertPhotoIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                              </Avatar>
                             )}
                             <Typography variant="subtitle1" fontWeight={700} noWrap title={a.title || a.filename}>
                               {a.title || a.filename}
