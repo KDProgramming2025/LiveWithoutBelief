@@ -6,10 +6,16 @@ set -euo pipefail
 API_PROXY="https://aparat.feezor.net/LWB/Admin/api"
 WEB_DIR_REMOTE="/var/www/LWB/Admin/Web"
 
-echo "--- Fetch latest branch ---"
+echo "--- Ensure single 'github' remote and fetch branch ---"
 cd /var/www/LWB/LiveWithoutBelief
-git fetch --all --prune
-git reset --hard origin/feature/LWB-92-admin-ui
+# Remove any stray 'origin' remote to adhere to policy (single remote named 'github')
+git remote remove origin 2>/dev/null || true
+# Ensure 'github' remote URL is correct (idempotent)
+git remote set-url github https://github.com/KDProgramming2025/LiveWithoutBelief.git 2>/dev/null || true
+# Fetch from 'github' only and ensure feature branch exists locally under refs/remotes/github/*
+git fetch github --prune
+git fetch github feature/LWB-92-admin-ui:refs/remotes/github/feature/LWB-92-admin-ui || true
+git reset --hard github/feature/LWB-92-admin-ui
 git clean -fd
 
 echo "--- Build Admin API ---"
