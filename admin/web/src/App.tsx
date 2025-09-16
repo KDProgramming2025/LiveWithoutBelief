@@ -416,7 +416,7 @@ export default function App() {
                         <Stack direction="row" spacing={1} alignItems="center">
                           {menuBusyIds[m.id] ? (
                             <Box sx={{ width: 28, height: 28, borderRadius: 1, display:'grid', placeItems:'center' }}>
-                              <CircularProgress size={18} />
+                              <CircularProgress size={22} />
                             </Box>
                           ) : iconSrc ? (
                             <Box component="img" src={iconSrc} alt="Icon" sx={{ width: 28, height: 28, borderRadius: 1 }}
@@ -433,6 +433,9 @@ export default function App() {
                         </Stack>
                         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                           <Chip size="small" label={`Label: ${m.label}`} />
+                          {menuBusyIds[m.id] && (
+                            <Chip size="small" color="primary" label="Uploading…" />
+                          )}
                           <Tooltip title="Edit label/title"><span><IconButton size="small" onClick={()=> setMenuToEdit(m)} disabled={!!menuBusyIds[m.id]}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
                           <Tooltip title="Change icon"><span>
                             <IconButton size="small" onClick={()=>changeMenuIcon(m.id)} disabled={!!menuBusyIds[m.id]}>
@@ -440,6 +443,11 @@ export default function App() {
                             </IconButton>
                           </span></Tooltip>
                         </Stack>
+                        {menuBusyIds[m.id] && (
+                          <Box sx={{ mt: 1 }}>
+                            <LinearProgress />
+                          </Box>
+                        )}
                         <Chip size="small" variant="outlined" label={`Order #${m.order}`} />
                       </Stack>
                     </CardContent>
@@ -525,12 +533,17 @@ export default function App() {
                           </Box>
                         )}
                       </Box>
+                      {busyIds[a.id] && (
+                        <Box sx={{ px:2, pt:1 }}>
+                          <LinearProgress />
+                        </Box>
+                      )}
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Stack spacing={1}>
                           <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
                             {busyIds[a.id] ? (
                               <Avatar variant="rounded" sx={{ width: 28, height: 28 }}>
-                                <CircularProgress size={18} />
+                                <CircularProgress size={20} />
                               </Avatar>
                             ) : iconSrc ? (
                               <Avatar src={iconSrc} variant="rounded" sx={{ width: 28, height: 28 }}
@@ -552,6 +565,9 @@ export default function App() {
                             <Chip size="small" label={`Order #${a.order}`} />
                             {created && <Chip size="small" variant="outlined" label={`Created ${created.toLocaleDateString()}`} />}
                             {updated && <Chip size="small" variant="outlined" label={`Updated ${updated.toLocaleDateString()}`} />}
+                            {busyIds[a.id] && (
+                              <Chip size="small" color="primary" label="Uploading…" />
+                            )}
                           </Stack>
                           {publicLink && <MuiLink href={publicLink} target="_blank" rel="noreferrer" underline="hover">Open public link</MuiLink>}
                         </Stack>
