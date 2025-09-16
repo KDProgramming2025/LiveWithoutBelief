@@ -1,4 +1,4 @@
-Context (last updated: Admin Web icon <img> deploy)
+Context (last updated: E2E icon upload fixed + verification)
 
 2025-09-15
 - Admin Web: replaced browser prompts with MUI Dialogs (Confirm/SingleField/TwoField) across Menu, Articles, Users, Upload flows. Built and deployed successfully to server via server_commands.sh. Chunk ~873kB; non-blocking warning.
@@ -15,3 +15,21 @@ Next
 - Future: review large bundle size (858kB) -> investigate code splitting / dynamic imports.
 - Optional: npm audit moderate vulnerabilities (Admin Web) - consider selective upgrades.
 - Add integration test hitting /v1/admin/session mock (already returns authenticated false when no cookie).
+
+2025-09-16
+- Problem: Admin Web “change icon” looked like it saved but icon stayed as 68–71 bytes on disk; server logs showed multipart size 0 via proxy and edit 404 for wrong ids.
+- Fixes shipped:
+	- Menu routes: added saveRequestFiles fallback in add/edit to handle empty attachFieldsToBody streams (nginx path).
+	- E2E script (linux_commands.sh): end-to-end deploy + login + create menu if missing + upload via proxy and (if cookie token present) direct local, then verify.
+	- Script now prints HTTP HEAD for canonical icon URL to assert Content-Length and Last-Modified, and prints disk stat for icon.*.
+	- Rsync refined to avoid deleting runtime data directory.
+- Verified on server:
+	- Proxy edit updated icon to 256 bytes; HTTP HEAD Content-Length: 256, Last-Modified updated; disk stat shows 256 bytes; menu.json updated.
+	- Direct local edit skipped in this run due to cookie token not parsed from curl jar (still acceptable since proxy path now works end-to-end).
+- Next:
+	- Optionally improve token extraction for localhost tests (set-cookie vs cookie-jar nuance) and add a small API integration test.
+
+2025-09-16 (later)
+- Symptom: Only one menu item visible; suspected earlier rsync removed /opt/lwb-admin-api/data/menu.json. Icons folders existed.
+- Action: Extended linux_commands.sh to reconcile metadata from /var/www/LWB/Menu folder names, creating missing items with inferred title/label and sequential order. Kept runtime data safe in rsync.
+- Result: Recovered items menu-1 and menu-2 with icons; menu.json now contains [home, menu-1, menu-2]; Admin API list returns 3 items; proxy icon uploads continue to work (256B).
