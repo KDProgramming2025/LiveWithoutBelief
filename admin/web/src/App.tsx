@@ -17,8 +17,8 @@ import ImageIcon from '@mui/icons-material/Image'
 import InsertPhotoIcon from '@mui/icons-material/InsertPhoto'
 import SearchIcon from '@mui/icons-material/Search'
 import DeleteIcon from '@mui/icons-material/Delete'
-import { useColorMode } from './theme'
-import { ConfirmDialog, SingleFieldDialog, TwoFieldDialog } from './components/Dialogs'
+import { useColorMode } from './theme.tsx'
+import { ConfirmDialog, SingleFieldDialog, TwoFieldDialog } from './components/Dialogs.tsx'
 
 type Article = { id: string; title: string; createdAt: string; updatedAt: string; order: number; filename: string; securePath: string; publicPath: string; cover?: string; icon?: string }
 type MenuItem = { id: string; title: string; label: string; order: number; updatedAt: string; icon?: string }
