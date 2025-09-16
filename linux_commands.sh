@@ -45,6 +45,11 @@ npm run build
 echo "[STEP] Deploy Admin API dist to /opt/lwb-admin-api and restart service"
 mkdir -p /opt/lwb-admin-api
 rsync -ah --delete dist/ /opt/lwb-admin-api/
+# Ensure DEBUG env vars for temporary verbose logging
+if [ -f /etc/lwb-server.env ]; then
+	if ! grep -q '^DEBUG_MENU=' /etc/lwb-server.env; then echo 'DEBUG_MENU=1' >> /etc/lwb-server.env; fi
+	if ! grep -q '^DEBUG_MULTIPART=' /etc/lwb-server.env; then echo 'DEBUG_MULTIPART=1' >> /etc/lwb-server.env; fi
+fi
 systemctl restart lwb-admin-api.service || true
 sleep 1
 
