@@ -85,6 +85,11 @@ export default function App() {
   // Per-article busy state for quick edits (cover/icon/title)
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({})
   const setBusy = (id: string, v: boolean) => setBusyIds(prev => ({ ...prev, [id]: v }))
+  // Per-menu-item busy state (icon upload/edit)
+  const [menuBusyIds, setMenuBusyIds] = useState<Record<string, boolean>>({})
+  const setMenuBusyId = (id: string, v: boolean) => setMenuBusyIds(prev => ({ ...prev, [id]: v }))
+  // Local preview for menu icon while uploading
+  const [menuLocalPreview, setMenuLocalPreview] = useState<Record<string, string | undefined>>({})
   // Image retry state to mitigate transient HTTP/2 load errors
   const [coverRetry, setCoverRetry] = useState<Record<string, number>>({})
   const [iconRetry, setIconRetry] = useState<Record<string, number>>({})
@@ -119,14 +124,22 @@ export default function App() {
     await refreshMenu()
   }
   const changeMenuIcon = async (id: string) => {
-    const input = document.createElement('input')
-    input.type = 'file'; input.accept = 'image/*'
-    input.onchange = async () => {
-      const file = input.files?.[0]
-      if (!file) return
-      try { await editMenu(id, { icon: file }); showToast('Menu icon updated') } catch { showToast('Failed to update icon','error') }
+    const file = await pickImage(); if (!file) return
+    // Show immediate local preview and busy overlay while uploading
+    const url = URL.createObjectURL(file)
+    setMenuLocalPreview(prev => ({ ...prev, [id]: url }))
+    setMenuBusyId(id, true)
+    try {
+      await editMenu(id, { icon: file })
+      showToast('Menu icon updated')
+    } catch {
+      showToast('Failed to update icon','error')
+    } finally {
+      setMenuBusyId(id, false)
+      // Revoke and clear local preview
+      try { URL.revokeObjectURL(url) } catch {}
+      setMenuLocalPreview(prev => { const { [id]: _, ...rest } = prev; return rest })
     }
-    input.click()
   }
   const addMenuItem = async (e: React.FormEvent) => {
     e.preventDefault(); setMenuBusy(true);
@@ -286,6 +299,12 @@ export default function App() {
     if (idx >= 0) return s.slice(idx)
     return s.startsWith('/') ? s : `/${s}`
   }
+  // Force canonical Menu icon path to /LWB/Admin/Menu to avoid legacy upstream decoy
+  const toCanonicalMenuUrl = (u?: string): string | '' => {
+    const s = normalizePublicUrl(u)
+    if (!s) return ''
+    return s.replace(/\/LWB\/Menu\//, '/LWB/Admin/Menu/')
+  }
 
   // Auto-load latest users when switching to Users tab the first time
   useEffect(() => {
@@ -383,11 +402,13 @@ export default function App() {
             <Grid container spacing={2}>
               {menu.slice().sort((a,b)=>a.order-b.order).map(m => {
                 const bust = m.updatedAt ? encodeURIComponent(m.updatedAt) : String(m.order)
-                const baseIcon = normalizePublicUrl(m.icon)
-                const iconSrc = baseIcon ? `${baseIcon}${baseIcon.includes('?') ? '&' : '?'}v=${bust}` : undefined
+                const baseIcon = toCanonicalMenuUrl(m.icon)
+                const liveOrPreview = menuLocalPreview[m.id] || baseIcon
+                const iconSrc = liveOrPreview ? `${liveOrPreview}${liveOrPreview.includes('?') ? '&' : '?'}v=${bust}` : undefined
                 return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={m.id}>
                   <Card>
+                    <Box sx={{ position:'relative' }}>
                     <CardContent>
                       <Stack spacing={1}>
                         <Stack direction="row" spacing={1} alignItems="center">
@@ -405,17 +426,23 @@ export default function App() {
                         </Stack>
                         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                           <Chip size="small" label={`Label: ${m.label}`} />
-                          <Tooltip title="Edit label/title"><span><IconButton size="small" onClick={()=> setMenuToEdit(m)}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                          <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeMenuIcon(m.id)}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Edit label/title"><span><IconButton size="small" onClick={()=> setMenuToEdit(m)} disabled={!!menuBusyIds[m.id]}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeMenuIcon(m.id)} disabled={!!menuBusyIds[m.id]}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
                         </Stack>
                         <Chip size="small" variant="outlined" label={`Order #${m.order}`} />
                       </Stack>
                     </CardContent>
+                    {menuBusyIds[m.id] && (
+                      <Box sx={{ position:'absolute', inset:0, display:'grid', placeItems:'center', bgcolor:'rgba(0,0,0,0.25)' }}>
+                        <CircularProgress size={28} />
+                      </Box>
+                    )}
+                    </Box>
                     <CardActions>
                       <Stack direction="row" spacing={1}>
-                        <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>moveMenu(m.id,'up')}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                        <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>moveMenu(m.id,'down')}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                        <Tooltip title="Delete"><span><IconButton size="small" onClick={()=>setMenuToDelete(m)} color="error"><DeleteIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                        <Tooltip title="Move up"><span><IconButton size="small" onClick={()=>moveMenu(m.id,'up')} disabled={!!menuBusyIds[m.id]}><ArrowUpwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                        <Tooltip title="Move down"><span><IconButton size="small" onClick={()=>moveMenu(m.id,'down')} disabled={!!menuBusyIds[m.id]}><ArrowDownwardIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                        <Tooltip title="Delete"><span><IconButton size="small" onClick={()=>setMenuToDelete(m)} color="error" disabled={!!menuBusyIds[m.id]}><DeleteIcon fontSize="inherit"/></IconButton></span></Tooltip>
                       </Stack>
                     </CardActions>
                   </Card>
@@ -588,7 +615,7 @@ export default function App() {
           bLabel="Label"
           initialA={menuToEdit?.title ?? ''}
           initialB={menuToEdit?.label ?? ''}
-          onSubmit={async (title, label) => { if (!menuToEdit) return; await editMenu(menuToEdit.id, { title, label }); showToast('Menu item updated') }}
+          onSubmit={async (title, label) => { if (!menuToEdit) return; await editMenu(menuToEdit.id, { title, label }); showToast('Menu item updated'); setMenuToEdit(null) }}
           onClose={() => setMenuToEdit(null)}
         />
 
