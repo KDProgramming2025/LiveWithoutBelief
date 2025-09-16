@@ -64,3 +64,20 @@ if [ -n "$FIRST_ICON" ]; then
 else
 	echo " - No icon files found to probe"
 fi
+
+echo "[DIAG] Current menu metadata file"
+if [ -f /opt/lwb-admin-api/data/menu.json ]; then
+	echo " - /opt/lwb-admin-api/data/menu.json exists; head:"
+	head -n 200 /opt/lwb-admin-api/data/menu.json | sed -n '1,200p'
+else
+	echo " - menu.json not found at /opt/lwb-admin-api/data/menu.json"
+fi
+
+echo "[DIAG] Permissions for /var/www/LWB/Menu"
+ls -ld /var/www/LWB/Menu
+ls -l /var/www/LWB/Menu | sed -n '1,200p'
+
+echo "[DIAG] Admin API service status/logs (best-effort)"
+SYSTEMD_UNIT="lwb-admin-api.service"
+systemctl status "$SYSTEMD_UNIT" --no-pager || true
+journalctl -u "$SYSTEMD_UNIT" -n 50 --no-pager || true
