@@ -33,4 +33,9 @@ Date: 2025-09-16
 
 ## Notes
 - Do not run the server locally; deploy via systemd on the VPS.
+ - New env: `ALTCHA_MAXNUMBER` (optional). Lower values make challenges easier/faster. Set in `/etc/lwb-server.env` and restart service.
+
+## Next
+- [ ] App UX: show a small "Solving challenge…" indicator during registration and add a 10–15s timeout + retry.
+- [ ] Server: tune ALTCHA difficulty via `ALTCHA_MAXNUMBER` for production vs. debug.
 

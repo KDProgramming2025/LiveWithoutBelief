@@ -11,6 +11,7 @@ dotenv.config({ path: envFile })
 
 const PORT = Number(process.env.PORT || 4433)
 const ALTCHA_SECRET = process.env.ALTCHA_SECRET || 'dev-secret'
+const ALTCHA_MAXNUMBER = process.env.ALTCHA_MAXNUMBER ? Number(process.env.ALTCHA_MAXNUMBER) : undefined
 const GOOGLE_CLIENT_IDS = (process.env.GOOGLE_CLIENT_IDS || '')
   .split(',')
   .map((s) => s.trim())
@@ -19,5 +20,6 @@ const GOOGLE_CLIENT_IDS = (process.env.GOOGLE_CLIENT_IDS || '')
 export const env = {
   PORT,
   ALTCHA_SECRET,
+  ALTCHA_MAXNUMBER,
   GOOGLE_CLIENT_IDS,
 }
