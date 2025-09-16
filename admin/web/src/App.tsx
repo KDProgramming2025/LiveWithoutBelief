@@ -115,13 +115,14 @@ export default function App() {
     try { const sum = await api.get<UsersSummary>(`${API}/v1/admin/users/summary`); setUsersTotal(sum.total) } catch {}
   })() }, [auth])
   const refreshMenu = async () => { const m = await api.get<{ items: MenuItem[] }>(`${API}/v1/admin/menu`); setMenu(m.items) }
-  const editMenu = async (id: string, updates: { title?: string; label?: string; icon?: File }) => {
+  const editMenu = async (id: string, updates: { title?: string; label?: string; icon?: File }): Promise<MenuItem> => {
     const fd = new FormData()
     if (typeof updates.title === 'string') fd.set('title', updates.title)
     if (typeof updates.label === 'string') fd.set('label', updates.label)
     if (updates.icon) fd.set('icon', updates.icon)
-    await api.post(`${API}/v1/admin/menu/${id}/edit`, fd)
+    const res = await api.post<{ ok: boolean; item: MenuItem }>(`${API}/v1/admin/menu/${id}/edit`, fd)
     await refreshMenu()
+    return res.item
   }
   const changeMenuIcon = async (id: string) => {
     const file = await pickImage(); if (!file) return
@@ -130,7 +131,22 @@ export default function App() {
     setMenuLocalPreview(prev => ({ ...prev, [id]: url }))
     setMenuBusyId(id, true)
     try {
-      await editMenu(id, { icon: file })
+      const updated = await editMenu(id, { icon: file })
+      // Wait until the new icon URL (with updatedAt cache-bust) actually loads before clearing preview
+      const fresh = toCanonicalMenuUrl(updated.icon)
+      const freshUrl = fresh ? `${fresh}${fresh.includes('?') ? '&' : '?'}v=${encodeURIComponent(updated.updatedAt)}` : ''
+      await new Promise<void>((resolve) => {
+        if (!freshUrl) return resolve()
+        const img = new Image()
+        let done = false
+        const finish = () => { if (done) return; done = true; resolve() }
+        const timer = setTimeout(finish, 3000)
+        img.onload = () => { clearTimeout(timer); finish() }
+        img.onerror = () => { clearTimeout(timer); finish() }
+        img.src = freshUrl
+      })
+      // Reset error counter for this id after successful update
+      setIconErrCount(prev => ({ ...prev, [id]: 0 }))
       showToast('Menu icon updated')
     } catch {
       showToast('Failed to update icon','error')
@@ -429,7 +445,11 @@ export default function App() {
                         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                           <Chip size="small" label={`Label: ${m.label}`} />
                           <Tooltip title="Edit label/title"><span><IconButton size="small" onClick={()=> setMenuToEdit(m)} disabled={!!menuBusyIds[m.id]}><EditIcon fontSize="inherit"/></IconButton></span></Tooltip>
-                          <Tooltip title="Change icon"><span><IconButton size="small" onClick={()=>changeMenuIcon(m.id)} disabled={!!menuBusyIds[m.id]}><InsertPhotoIcon fontSize="inherit"/></IconButton></span></Tooltip>
+                          <Tooltip title="Change icon"><span>
+                            <IconButton size="small" onClick={()=>changeMenuIcon(m.id)} disabled={!!menuBusyIds[m.id]}>
+                              {menuBusyIds[m.id] ? <CircularProgress size={14} /> : <InsertPhotoIcon fontSize="inherit"/>}
+                            </IconButton>
+                          </span></Tooltip>
                         </Stack>
                         <Chip size="small" variant="outlined" label={`Order #${m.order}`} />
                       </Stack>
