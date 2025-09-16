@@ -2,7 +2,7 @@ import express, { Router } from 'express'
 import { PgUserRepository } from '../../repositories/UserRepository.js'
 import { AuthService } from '../../services/AuthService.js'
 import { Pool } from 'pg'
-import * as altcha from 'altcha'
+import { verifySolution } from 'altcha-lib'
 import { env } from '../config/env.js'
 
 const pool = new Pool() // reads PG* env vars
@@ -26,10 +26,9 @@ authRouter.post('/pwd/register', async (req: express.Request, res: express.Respo
   const { username, password, altcha: token } = req.body ?? {}
   if (!username || !password || !token) return res.status(400).json({ error: 'bad_request' })
   try {
-    // altcha verification – API shape depends on library version; using a generic verify call
-    const result = await altcha.verifyToken(String(token))
-    if (!result.valid) {
-      return res.status(400).set('X-Auth-Reason', result.reason || 'altcha_failed').json({ error: 'altcha_failed' })
+    const ok = await verifySolution(String(token), env.ALTCHA_SECRET)
+    if (!ok) {
+      return res.status(400).set('X-Auth-Reason', 'altcha_failed').json({ error: 'altcha_failed' })
     }
   } catch (e) {
     return res.status(400).set('X-Auth-Reason', 'altcha_error').json({ error: 'altcha_failed' })
