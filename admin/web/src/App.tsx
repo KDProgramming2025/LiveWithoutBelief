@@ -348,6 +348,13 @@ export default function App() {
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false)
   const [replaceDialogResolve, setReplaceDialogResolve] = useState<(ok: boolean) => void>(()=>()=>{})
 
+  // Global uploading flag for unmistakable feedback
+  const isUploading = useMemo(() => {
+    const anyMenu = Object.values(menuBusyIds).some(Boolean)
+    const anyArticle = Object.values(busyIds).some(Boolean)
+    return uploadBusy || anyMenu || anyArticle
+  }, [menuBusyIds, busyIds, uploadBusy])
+
   if (auth === 'unknown') return <Box sx={{ p:3 }}><CircularProgress /></Box>
   if (auth === 'no') return <Login onDone={() => setAuth('yes')} />
 
@@ -381,6 +388,11 @@ export default function App() {
       </Drawer>
   <Box component="main" sx={{ p: 3, overflowX: 'hidden' }}>
         <Toolbar />
+        {isUploading && (
+          <Box sx={{ mb: 2 }}>
+            <LinearProgress />
+          </Box>
+        )}
         {tab === 'menu' && (
           <Stack spacing={3}>
             <Typography variant="h5" fontWeight={700}>App Main Menu</Typography>
@@ -453,7 +465,10 @@ export default function App() {
                     </CardContent>
                     {menuBusyIds[m.id] && (
                       <Box sx={{ position:'absolute', inset:0, display:'grid', placeItems:'center', bgcolor:'rgba(0,0,0,0.25)' }}>
-                        <CircularProgress size={28} />
+                        <Stack alignItems="center" spacing={1}>
+                          <CircularProgress size={28} />
+                          <Typography variant="caption" sx={{ color: 'common.white' }}>Uploading…</Typography>
+                        </Stack>
                       </Box>
                     )}
                     </Box>
@@ -529,7 +544,10 @@ export default function App() {
                         )}
                         {busyIds[a.id] && (
                           <Box sx={{ position:'absolute', inset:0, display:'grid', placeItems:'center', bgcolor:'rgba(0,0,0,0.25)' }}>
-                            <CircularProgress size={28} />
+                            <Stack alignItems="center" spacing={1}>
+                              <CircularProgress size={28} />
+                              <Typography variant="caption" sx={{ color: 'common.white' }}>Uploading…</Typography>
+                            </Stack>
                           </Box>
                         )}
                       </Box>
