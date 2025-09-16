@@ -6,6 +6,7 @@ import { buildMenuRepository } from '../repositories/menuRepository'
 import type { MenuItem } from '../types'
 import { slugify } from '../utils/strings'
 import { getImageExtFromNameOrMime } from '../utils/images'
+import { Debug } from '../utils/debug'
 
 type AddInput = { title: string; label: string; order?: number; icon?: { buf: Buffer; filename?: string; mime?: string } }
 type EditInput = { title?: string; label?: string; icon?: { buf: Buffer; filename?: string; mime?: string } }
@@ -52,8 +53,15 @@ export class MenuService {
       try { await fs.mkdir(dir, { recursive: true }) } catch {}
       const tmp = path.join(dir, `.icon.tmp-${process.pid}-${Date.now()}`)
       const final = path.join(dir, `icon.${ext}`)
+      if (Debug.menuEnabled()) Debug.menu('add(): writing icon', { id, ext, dir, tmp, final, size: input.icon.buf.length })
       await fs.writeFile(tmp, input.icon.buf)
       await fs.rename(tmp, final)
+      if (Debug.menuEnabled()) {
+        try {
+          const st = await fs.stat(final)
+          Debug.menu('add(): wrote icon', { id, final, size: st.size, mtime: st.mtime.toISOString() })
+        } catch (e) { Debug.menu('add(): stat final failed', { id, final, err: String(e) }) }
+      }
       iconUrl = `${CONFIG.MENU_PUBLIC_URL_PREFIX}/${id}/icon.${ext}`
     }
     const item: MenuItem = { id, title, label, order, updatedAt: now, icon: iconUrl }
@@ -110,13 +118,23 @@ export class MenuService {
       // Clean up any existing icon.* to avoid stale extensions
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true })
+        if (Debug.menuEnabled()) Debug.menu('edit(): pre-clean entries', entries.map(e => e.name))
         await Promise.all(entries.filter(e => e.isFile() && /^icon\./.test(e.name)).map(e => fs.unlink(path.join(dir, e.name)).catch(() => {})))
       } catch {}
       const ext = getImageExtFromNameOrMime(input.icon.filename, input.icon.mime) || 'png'
       const tmp = path.join(dir, `.icon.tmp-${process.pid}-${Date.now()}`)
       const final = path.join(dir, `icon.${ext}`)
+      if (Debug.menuEnabled()) Debug.menu('edit(): writing icon', { id, ext, dir, tmp, final, size: input.icon.buf.length })
       await fs.writeFile(tmp, input.icon.buf)
       await fs.rename(tmp, final)
+      if (Debug.menuEnabled()) {
+        try {
+          const st = await fs.stat(final)
+          Debug.menu('edit(): wrote icon', { id, final, size: st.size, mtime: st.mtime.toISOString() })
+          const after = await fs.readdir(dir)
+          Debug.menu('edit(): post-write entries', after)
+        } catch (e) { Debug.menu('edit(): stat final failed', { id, final, err: String(e) }) }
+      }
       item.icon = `${CONFIG.MENU_PUBLIC_URL_PREFIX}/${id}/icon.${ext}`
       changed = true
     }
