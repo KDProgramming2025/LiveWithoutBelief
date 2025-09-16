@@ -4,6 +4,7 @@ import { AuthService } from '../../services/AuthService.js'
 import { Pool } from 'pg'
 import { verifySolution } from 'altcha-lib'
 import { env } from '../config/env.js'
+import { OAuth2Client } from 'google-auth-library'
 
 const pool = new Pool() // reads PG* env vars
 const users = new PgUserRepository(pool)
@@ -19,6 +20,26 @@ authRouter.post('/register', async (req: express.Request, res: express.Response)
   if (!email || typeof email !== 'string') return res.status(400).json({ error: 'bad_request' })
   const { user, created } = await svc.registerByEmail(email)
   res.status(created ? 201 : 200).json({ user })
+})
+
+// Verify Google ID token and upsert user by verified email
+authRouter.post('/google', async (req: express.Request, res: express.Response) => {
+  const { idToken } = req.body ?? {}
+  if (!idToken || typeof idToken !== 'string') return res.status(400).json({ error: 'bad_request' })
+  try {
+    const client = new OAuth2Client()
+    const ticket = await client.verifyIdToken({ idToken })
+    const payload = ticket.getPayload()
+    if (!payload?.email || !payload.aud) return res.status(401).json({ error: 'invalid_token' })
+    const aud = Array.isArray(payload.aud) ? payload.aud[0] : String(payload.aud)
+    if (env.GOOGLE_CLIENT_IDS.length > 0 && !env.GOOGLE_CLIENT_IDS.includes(aud)) {
+      return res.status(401).json({ error: 'invalid_audience' })
+    }
+    const { user, created } = await svc.registerByEmail(payload.email)
+    res.status(created ? 201 : 200).json({ user })
+  } catch (e) {
+    return res.status(401).json({ error: 'invalid_token' })
+  }
 })
 
 // Username/password registration (requires official ALTCHA token)

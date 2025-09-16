@@ -27,7 +27,9 @@ Date: 2025-09-16
 - PostgreSQL role/db created; ownership/privileges granted. (DONE)
 - Applied 001_init.sql migration; fixed FK type mismatch; tables recreated. (DONE)
 - Wrote /etc/lwb-server.env with runtime config. (DONE)
-- Install systemd unit, reload, enable, start, and check status. (NEXT)
+- Installed systemd unit; daemon-reload; enabled; started. (DONE)
+- Fixed crash by switching from browser `altcha` to server-side `altcha-lib`. (DONE)
+- Service status: active (running). (DONE)
 
 ## Notes
 - Do not run the server locally; deploy via systemd on the VPS.

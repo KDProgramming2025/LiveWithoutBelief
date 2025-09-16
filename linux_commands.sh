@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-sudo journalctl -u lwb-server -n 200 --no-pager
+sudo systemctl --no-pager status lwb-server
