@@ -1,4 +1,0 @@
-# Ensure shell scripts use LF on all platforms to keep shebangs valid
-*.sh text eol=lf
-server_commands.sh text eol=lf
-linux_commands.sh text eol=lf
