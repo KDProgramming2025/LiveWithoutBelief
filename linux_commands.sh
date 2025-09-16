@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-sudo systemctl --no-pager status lwb-server
+sudo systemctl restart lwb-server

@@ -118,3 +118,24 @@ ALTCHA_SECRET=dev-secret
 Android app points to http://10.0.2.2:4433/ by default.
 
 Note: This demo uses in-memory storage for users and articles. Replace repositories with persistent stores as needed.
+ 
+## Environment (production)
+
+Set via `/etc/lwb-server.env` on VPS:
+
+- PORT=4433
+- ALTCHA_SECRET=change-me
+- GOOGLE_CLIENT_IDS=186459205865-sk2gq9gicidvtfnb97bdsqkev0t368mk.apps.googleusercontent.com,186459205865-2h72dus840f2db75c4fp2vijqdrubchv.apps.googleusercontent.com
+- PGHOST=127.0.0.1
+- PGPORT=5432
+- PGUSER=lwb_app
+- PGPASSWORD=change-me
+- PGDATABASE=lwb
+- NODE_ENV=production
+- LWB_ENV_FILE=/etc/lwb-server.env
+
+## Admin micro-site
+
+For a minimal, production-safe way to create accounts with ALTCHA:
+
+- GET /admin/register — HTML form with `<altcha-widget challengeurl="/v1/altcha/challenge">` which POSTs to `/v1/auth/pwd/register`.
