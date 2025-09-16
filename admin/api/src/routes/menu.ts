@@ -26,6 +26,27 @@ export async function registerMenuRoutes(server: FastifyInstance) {
       const r = await readPartBuffer(body.icon)
       if (r.buffer?.length) { iconBuf = r.buffer; iconOrig = r.filename; iconMime = r.mimetype }
     }
+    // Fallback: if no icon buffer was captured, try saving to temp files (proxy/env variations may exhaust streams)
+    if (!iconBuf || iconBuf.length === 0) {
+      try {
+        const saver: any = (req as any).saveRequestFiles ? (req as any) : null
+        if (saver) {
+          const saved: Array<any> = await saver.saveRequestFiles()
+          for (const f of saved) {
+            try {
+              if (f.fieldname === 'icon' && (!iconBuf || iconBuf.length === 0)) {
+                const buf = await (await import('fs/promises')).readFile(f.filepath)
+                iconBuf = buf; iconOrig = f.filename; iconMime = f.mimetype
+              }
+            } finally {
+              try { await (await import('fs/promises')).unlink(f.filepath) } catch (e) { (req as any).log?.warn?.({ err: e, file: f.filepath }, 'menu.add cleanup tmp file failed') }
+            }
+          }
+        }
+      } catch (e) {
+        (req as any).log?.warn?.({ err: e }, 'menu.add saveRequestFiles fallback failed')
+      }
+    }
 
     const item = await svc.add({ title, label, order, icon: iconBuf ? { buf: iconBuf, filename: iconOrig, mime: iconMime } : undefined })
     return reply.code(200).send({ ok: true, item })
@@ -52,6 +73,27 @@ export async function registerMenuRoutes(server: FastifyInstance) {
     if (body.icon && typeof body.icon === 'object') {
       const r = await readPartBuffer(body.icon)
       if (r.buffer?.length) out.icon = { buf: r.buffer, filename: r.filename, mime: r.mimetype }
+    }
+    // Fallback: if icon still missing or zero-length, try saveRequestFiles to capture buffered upload
+    if (!out.icon || !out.icon.buf?.length) {
+      try {
+        const saver: any = (req as any).saveRequestFiles ? (req as any) : null
+        if (saver) {
+          const saved: Array<any> = await saver.saveRequestFiles()
+          for (const f of saved) {
+            try {
+              if (f.fieldname === 'icon' && (!out.icon || !out.icon.buf?.length)) {
+                const buf = await (await import('fs/promises')).readFile(f.filepath)
+                out.icon = { buf, filename: f.filename, mime: f.mimetype }
+              }
+            } finally {
+              try { await (await import('fs/promises')).unlink(f.filepath) } catch (e) { (req as any).log?.warn?.({ err: e, file: f.filepath }, 'menu.edit cleanup tmp file failed') }
+            }
+          }
+        }
+      } catch (e) {
+        (req as any).log?.warn?.({ err: e }, 'menu.edit saveRequestFiles fallback failed')
+      }
     }
     const item = await svc.edit(id, out)
     return reply.code(200).send({ ok: true, item })
