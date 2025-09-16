@@ -1,148 +1,104 @@
-﻿#!/usr/bin/env bash
+﻿#/usr/bin/env bash
+#set -euo pipefail
+
+# Single-step E2E: login, get menu id, upload icon (proxy and direct), print diagnostics
+
+API_PROXY="https://aparat.feezor.net/LWB/Admin/api"
+API_LOCAL="http://127.0.0.1:5050"
+ICON_FILE="/tmp/menu-test.png"
+
+# Create a tiny but non-empty PNG for testing (1x1 transparent)
+printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0cIDAT\x08\xd7c``\xf8\xff\xff?\x00\x05\xfe\x02\xfeA\x90\x80\xf0\x00\x00\x00\x00IEND\xaeB`\x82' > "$ICON_FILE"
+
+# Ensure ADMIN creds are available from env file if present
+: "${ADMIN_USER:=${ADMIN_USER:-}}"
+: "${ADMIN_PASS:=${ADMIN_PASS:-}}"
+
+if [ -z "${ADMIN_USER}" ] || [ -z "${ADMIN_PASS}" ]; then
+	echo "Missing ADMIN_USER/ADMIN_PASS in env; export before running." >&2
+	exit 1
+fi
+
+# 1) Login via proxy and capture cookie
+COOKIE_JAR="/tmp/lwb_admin_cookies.txt"
+rm -f "$COOKIE_JAR"
+
+curl -sS -k -c "$COOKIE_JAR" -H "Content-Type: application/json" \
+	-d "{\"username\":\"$ADMIN_USER\",\"password\":\"$ADMIN_PASS\"}" \
+	"$API_PROXY/v1/admin/login" | cat
+
+echo
+
+# 2) Get a valid menu id
+MENU_ID=$(curl -sS -k -b "$COOKIE_JAR" "$API_PROXY/v1/admin/menu" | sed -n 's/.*"id":"\([^"]\+\)".*/\1/p' | head -n1)
+if [ -z "$MENU_ID" ]; then
+	echo "No menu id found via API; falling back to filesystem" >&2
+	MENU_ID=$(ls -1 /var/www/LWB/Menu 2>/dev/null | head -n1 || true)
+fi
+if [ -z "$MENU_ID" ]; then
+	echo "No MENU_ID available" >&2
+	exit 1
+fi
+
+echo "Using MENU_ID=$MENU_ID"
+
+# 3) Upload icon through proxy
+curl -sS -k -b "$COOKIE_JAR" -F "icon=@$ICON_FILE;type=image/png" "$API_PROXY/v1/admin/menu/$MENU_ID/edit" | cat
+
+echo
+
+# 4) Upload icon directly to local port (bypass nginx) to compare
+curl -sS -b "$COOKIE_JAR" -F "icon=@$ICON_FILE;type=image/png" "$API_LOCAL/v1/admin/menu/$MENU_ID/edit" | cat
+
+echo
+
+# 5) Print on-disk files and sizes
+ls -la "/var/www/LWB/Menu/$MENU_ID" || true
+stat "/var/www/LWB/Menu/$MENU_ID"/icon.* 2>/dev/null || true
+
+# 6) Tail recent admin api logs for multipart debug
+journalctl -u lwb-admin-api -n 120 --no-pager | tail -n 120 | sed -n 's/.*DEBUG.*//p'
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Rebuild Admin Web and deploy static assets
-# Environment specifics:
-# - Node is isolated at /opt/lwb-node/current
-# - Repo path on server: /var/www/LWB/LiveWithoutBelief
-# - Admin Web path: admin/web
-# - Public web root for Admin Web: /var/www/LWB/Admin/Web
-
-export PATH="/opt/lwb-node/current/bin:$PATH"
-
-echo "[STEP] Node version"
-node -v
-npm -v || true
-
-echo "[STEP] Navigate to repo"
-cd /var/www/LWB/LiveWithoutBelief
-
-echo "[STEP] Sync to remote branch (force-clean if needed)"
-git --no-pager status -sb || true
-git fetch origin feature/LWB-92-admin-ui || true
-git reset --hard origin/feature/LWB-92-admin-ui || true
-git clean -fd || true
-
-echo "[STEP] Install deps (admin/web)"
-cd admin/web
-npm ci --no-audit --no-fund
-
-echo "[STEP] Build admin web"
-npm run build
-
-echo "[STEP] Deploy dist -> /var/www/LWB/Admin/Web"
-mkdir -p /var/www/LWB/Admin/Web
-rsync -ah --delete dist/ /var/www/LWB/Admin/Web/
-
-echo "[DONE] Admin Web deployed. Sample index:"
-ls -lah /var/www/LWB/Admin/Web | sed -n '1,50p'
-
-echo "[STEP] Build Admin API"
-cd /var/www/LWB/LiveWithoutBelief/admin/api
-npm ci --no-audit --no-fund
-npm run build
-
-echo "[STEP] Deploy Admin API dist to /opt/lwb-admin-api and restart service"
-mkdir -p /opt/lwb-admin-api
-rsync -ah --delete dist/ /opt/lwb-admin-api/
-# Ensure DEBUG env vars for temporary verbose logging
-if [ -f /etc/lwb-server.env ]; then
-	if ! grep -q '^DEBUG_MENU=' /etc/lwb-server.env; then echo 'DEBUG_MENU=1' >> /etc/lwb-server.env; fi
-	if ! grep -q '^DEBUG_MULTIPART=' /etc/lwb-server.env; then echo 'DEBUG_MULTIPART=1' >> /etc/lwb-server.env; fi
-fi
-systemctl restart lwb-admin-api.service || true
-sleep 1
-
-echo "[DIAG] List existing menu icon files"
-shopt -s nullglob
-for f in /var/www/LWB/Menu/*/icon.*; do
-	echo " - $(basename $(dirname "$f"))/$(basename "$f") => $(stat -c '%s bytes, %y' "$f" || echo 'stat failed')"
-done
-
-echo "[DIAG] Check bundle contains canonical '/LWB/Admin/Menu'"
-JS_BUNDLE=$(ls -1 /var/www/LWB/Admin/Web/assets/index-*.js 2>/dev/null | head -n1 || true)
-if [ -n "$JS_BUNDLE" ]; then
-	echo " - Bundle: $JS_BUNDLE"
-	grep -q "/LWB/Admin/Menu" "$JS_BUNDLE" && echo "   FOUND canonical path in bundle" || echo "   NOT FOUND canonical path in bundle"
-else
-	echo " - No JS bundle found under /var/www/LWB/Admin/Web/assets"
-fi
-
-echo "[DIAG] Test menu icon edit end-to-end (login + upload)"
-# Source env if present to get ADMIN_PANEL_USERNAME/ADMIN_PANEL_PASSWORD without echoing them
-if [ -f /etc/lwb-server.env ]; then
-	# shellcheck disable=SC1091
-	. /etc/lwb-server.env || true
-fi
+# Single-step: login, upload a test icon for the first existing menu ID, print resulting file size, and show recent API logs.
 API_ORIGIN="https://aparat.feezor.net"
 API_BASE="$API_ORIGIN/LWB/Admin/api"
-
-# Create a non-placeholder test file (>68 bytes) into /tmp/menu-test.png (not a valid PNG but good for size check)
-dd if=/dev/zero of=/tmp/menu-test.png bs=1 count=256 status=none || true
-
-# Login to admin and store cookie (avoid printing credentials)
 COOKIE_JAR="/tmp/lwb-admin-cookies.txt"
 rm -f "$COOKIE_JAR" || true
-if [ -n "$ADMIN_PANEL_USERNAME" ] && [ -n "$ADMIN_PANEL_PASSWORD" ]; then
-	# Enable debug logs for multipart and menu for this run
-	export DEBUG_MULTIPART=1
-	export DEBUG_MENU=1
-	curl -sS -c "$COOKIE_JAR" -H "Content-Type: application/json" \
-		-d "{\"username\":\"$ADMIN_PANEL_USERNAME\",\"password\":\"$ADMIN_PANEL_PASSWORD\"}" \
-		"$API_BASE/v1/admin/login" >/dev/null || true
-		# Upload new icon for menu-1 if it exists
-	if [ -f /var/www/LWB/Menu/menu-1/icon.png ] || [ -d /var/www/LWB/Menu/menu-1 ]; then
-		echo " - Uploading test icon to menu-1"
-			NEW_TITLE="menu 1 $(date +%s)"
-			curl -sS -b "$COOKIE_JAR" \
-				-F "title=$NEW_TITLE" \
-				-F "icon=@/tmp/menu-test.png;type=image/png" \
-				"$API_BASE/v1/admin/menu/menu-1/edit" >/dev/null || true
-			# Show resulting file size and timestamp
-			if ls -1 /var/www/LWB/Menu/menu-1/icon.* >/dev/null 2>&1; then
-				for f in /var/www/LWB/Menu/menu-1/icon.*; do
-					echo "   -> $(basename "$f"): $(stat -c '%s bytes, %y' "$f" || echo 'stat failed')"
-				done
-			fi
-			# Show last 30 lines of API logs for debug output
-			journalctl -u lwb-admin-api.service -n 30 --no-pager || true
-	else
-		echo " - Skipping upload: menu-1 directory not found"
-	fi
+
+# Load credentials (if available) and ensure debug toggles are active for this run
+if [ -f /etc/lwb-server.env ]; then . /etc/lwb-server.env || true; fi
+export DEBUG_MENU=1
+export DEBUG_MULTIPART=1
+
+# Login (silently)
+curl -sS -c "$COOKIE_JAR" -H "Content-Type: application/json" \
+	-d "{\"username\":\"$ADMIN_PANEL_USERNAME\",\"password\":\"$ADMIN_PANEL_PASSWORD\"}" \
+	"$API_BASE/v1/admin/login" >/dev/null || true
+
+# Resolve a menu ID to target: pick first directory under /var/www/LWB/Menu
+MENU_ID=""
+FIRST_DIR=$(ls -1d /var/www/LWB/Menu/* 2>/dev/null | head -n1 || true)
+if [ -n "$FIRST_DIR" ]; then MENU_ID=$(basename "$FIRST_DIR"); fi
+if [ -z "$MENU_ID" ]; then echo "No menu directories found under /var/www/LWB/Menu"; exit 1; fi
+echo "Using MENU_ID=$MENU_ID"
+
+# Create a >68B test file and upload it as the new icon
+dd if=/dev/zero of=/tmp/menu-test.png bs=1 count=256 status=none || true
+curl -sS -b "$COOKIE_JAR" \
+	-F "title=$MENU_ID debug $(date +%s)" \
+	-F "icon=@/tmp/menu-test.png;type=image/png" \
+	"$API_BASE/v1/admin/menu/$MENU_ID/edit" >/dev/null || true
+
+# Show resulting file size and timestamp on disk
+if ls -1 "/var/www/LWB/Menu/$MENU_ID/icon.*" >/dev/null 2>&1; then
+	for f in "/var/www/LWB/Menu/$MENU_ID/icon.*"; do
+		echo "$(basename "$f"): $(stat -c '%s bytes, %y' "$f" || echo 'stat failed')"
+	done
 else
-	echo " - Skipping login/upload: ADMIN_PANEL_USERNAME/PASSWORD not available"
+	echo "No icon files present under /var/www/LWB/Menu/$MENU_ID"
 fi
 
-echo "[DIAG] Probe canonical vs legacy icon URLs (first found)"
-FIRST_ICON=$(ls -1 /var/www/LWB/Menu/*/icon.* 2>/dev/null | head -n1 || true)
-if [ -n "$FIRST_ICON" ]; then
-	ID=$(basename "$(dirname "$FIRST_ICON")")
-	NAME=$(basename "$FIRST_ICON")
-	CANON="https://aparat.feezor.net/LWB/Admin/Menu/$ID/$NAME"
-	LEGACY="https://aparat.feezor.net/LWB/Menu/$ID/$NAME"
-	echo " - Canonical: $CANON"
-	curl -Is "$CANON" | sed -n '1,10p'
-	echo " - Legacy: $LEGACY"
-	curl -Is "$LEGACY" | sed -n '1,10p'
-	echo " - Canonical (with cache-bust)"
-	curl -Is "$CANON?v=$(date +%s)" | sed -n '1,10p'
-else
-	echo " - No icon files found to probe"
-fi
-
-echo "[DIAG] Current menu metadata file"
-if [ -f /opt/lwb-admin-api/data/menu.json ]; then
-	echo " - /opt/lwb-admin-api/data/menu.json exists; head:"
-	head -n 200 /opt/lwb-admin-api/data/menu.json | sed -n '1,200p'
-else
-	echo " - menu.json not found at /opt/lwb-admin-api/data/menu.json"
-fi
-
-echo "[DIAG] Permissions for /var/www/LWB/Menu"
-ls -ld /var/www/LWB/Menu
-ls -l /var/www/LWB/Menu | sed -n '1,200p'
-
-echo "[DIAG] Admin API service status/logs (best-effort)"
-SYSTEMD_UNIT="lwb-admin-api.service"
-systemctl status "$SYSTEMD_UNIT" --no-pager || true
-journalctl -u "$SYSTEMD_UNIT" -n 50 --no-pager || true
+# Tail recent API logs which include debug statements
+journalctl -u lwb-admin-api.service -n 60 --no-pager | sed -n '1,60p'
