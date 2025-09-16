@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 set -euo pipefail
 
 # Build and deploy Admin API and Admin Web, then verify basics
@@ -9,7 +9,7 @@ WEB_DIR_REMOTE="/var/www/LWB/Admin/Web"
 echo "--- Fetch latest branch ---"
 cd /var/www/LWB/LiveWithoutBelief
 git fetch --all --prune
-git reset --hard github/feature/LWB-92-admin-ui
+git reset --hard origin/feature/LWB-92-admin-ui
 git clean -fd
 
 echo "--- Build Admin API ---"
