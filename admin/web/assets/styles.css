@@ -82,7 +82,7 @@ html[data-theme="light"]{--bg:#f1f5f9;--panel:#ffffff;--panel-alt:#f1f5f9;--pane
 .brand__text,.nav-item__label{transition:opacity .5s linear .5s!important}
 /* During active collapsing we override delay so fade-out finishes by midpoint */
 .sidebar.is-collapsing .brand__text,
-.sidebar.is-collapsing .nav-item__label{transition:opacity .5s linear 0s!important}
+.sidebar.is-collapsing .nav-item__label{transition:opacity .25s linear 0s!important}
 .brand__text{display:inline-block;max-width:200px}
 .sidebar[data-state="collapsed"] .brand__text,.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;pointer-events:none}
 .sidebar[data-state="collapsed"] .nav-item{justify-content:flex-start;padding:10px 8px}
@@ -143,4 +143,4 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 /* === End Sidebar Animation Refinements === */
 /* --- Final override to guarantee collapse fade completes by midpoint --- */
 .sidebar.is-collapsing .brand__text,
-.sidebar.is-collapsing .nav-item__label{transition:opacity .5s linear 0s!important}
+.sidebar.is-collapsing .nav-item__label{transition:opacity .25s linear 0s!important}
