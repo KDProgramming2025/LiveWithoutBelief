@@ -97,9 +97,11 @@ export class ArticleService {
         "p[style-name='Subtitle'] => h2:fresh",
       ]
     })
-    // Replace inlined placeholders with proper media tags
+    // Clean up: remove any OLE icon image blocks that Mammoth rendered immediately
+    // before our injected placeholders, then replace placeholders with media tags.
     let html = initialHtml
     if (mediaResult.inline.length > 0) {
+      html = removeOleIconBlocksBeforePlaceholders(html, mediaResult.inline.map(i => i.placeholder))
       for (const m of mediaResult.inline) {
         const tag = m.type === 'video'
           ? `<figure class=\"media__item\"><video controls src=\"./media/${m.filename}\"></video></figure>`
@@ -329,6 +331,44 @@ async function extractBufferFile(zip: JSZip, pathInZip: string): Promise<Buffer>
 // Escape string for literal usage in RegExp
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// Remove Word OLE icon image blocks that Mammoth renders before our injected placeholders.
+// Heuristic: for each placeholder occurrence, if the immediately preceding block-level
+// element (<p> or <figure>) contains an <img> and no meaningful text, drop that block.
+function removeOleIconBlocksBeforePlaceholders(html: string, placeholders: string[]): string {
+  let out = html
+  for (const ph of placeholders) {
+    let idx = out.indexOf(ph)
+    while (idx !== -1) {
+      // Find the nearest block end tag before the placeholder
+      const prevPEnd = out.lastIndexOf('</p>', idx)
+      const prevFigEnd = out.lastIndexOf('</figure>', idx)
+      let blockType: 'p' | 'figure' | null = null
+      let endPos = -1
+      if (prevPEnd === -1 && prevFigEnd === -1) break
+      if (prevPEnd > prevFigEnd) { blockType = 'p'; endPos = prevPEnd } else { blockType = 'figure'; endPos = prevFigEnd }
+      // Find start tag
+      const startTag = blockType === 'p' ? '<p' : '<figure'
+      const startPos = out.lastIndexOf(startTag, endPos)
+      if (startPos === -1) break
+      const blockHtml = out.slice(startPos, endPos + (blockType === 'p' ? '</p>'.length : '</figure>'.length))
+      // Check if block is essentially an image-only container
+      if (/<img\b/i.test(blockHtml)) {
+        const withoutImg = blockHtml.replace(/<img[^>]*>/gi, '')
+        const textOnly = withoutImg.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+        if (textOnly === '') {
+          out = out.slice(0, startPos) + out.slice(endPos + (blockType === 'p' ? '</p>'.length : '</figure>'.length))
+          // After removal, recompute placeholder position from startPos
+          idx = out.indexOf(ph, startPos)
+          continue
+        }
+      }
+      // Advance to next placeholder occurrence if nothing removed here
+      idx = out.indexOf(ph, idx + ph.length)
+    }
+  }
+  return out
 }
 
 // Sniff OLE .bin payload to find embedded media start offset and type/extension
