@@ -141,3 +141,6 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 /* Ensure icon scaling remains smooth */
 .nav-item__icon{transition:transform var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),opacity var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
 /* === End Sidebar Animation Refinements === */
+/* --- Final override to guarantee collapse fade completes by midpoint --- */
+.sidebar.is-collapsing .brand__text,
+.sidebar.is-collapsing .nav-item__label{transition:opacity .5s linear 0s!important}
