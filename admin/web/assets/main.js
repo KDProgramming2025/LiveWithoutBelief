@@ -158,17 +158,20 @@ const views = {
         <h3>Upload Article (.docx)</h3>
         <form id="article-form" class="form-grid">
           <input class="input" name="title" placeholder="Title" required />
+          <input class="input" name="label" placeholder="Label (optional)" />
+          <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
           <label>Cover Image <input class="input" name="cover" type="file" accept="image/*" /></label>
           <label>Icon <input class="input" name="icon" type="file" accept="image/*" /></label>
           <label>DOCX <input class="input" name="docx" type="file" accept=".docx" required /></label>
           <div class="row">
-            <button class="button" type="submit">Upload</button>
+            <button class="button" id="article-submit" type="submit">Upload</button>
             <span id="article-uploading" class="badge" style="display:none">Uploading…</span>
           </div>
         </form>
         <div id="article-progress" style="display:none;gap:8px;align-items:center">
           <div class="progress" style="flex:1"><div class="progress__bar" id="article-progress-bar"></div></div>
           <div class="progress__text" id="article-progress-text">0%</div>
+          <button class="button secondary" id="article-cancel" type="button" style="display:none">Cancel</button>
         </div>
       </section>`
     const listEl = el.querySelector('#article-list')
@@ -208,22 +211,40 @@ const views = {
       const progWrap = el.querySelector('#article-progress')
       const progBar = el.querySelector('#article-progress-bar')
       const progText = el.querySelector('#article-progress-text')
+      const cancelBtn = el.querySelector('#article-cancel')
+      const submitBtn = el.querySelector('#article-submit')
       progWrap.style.display = 'flex'
       progBar.style.width = '0%'
       progText.textContent = '0%'
       uploading.style.display = 'inline-block'
+      submitBtn.disabled = true
+      cancelBtn.style.display = 'inline-block'
+      const startedAt = Date.now()
+      let lastLoaded = 0
+      let lastAt = startedAt
       xhr.open('POST', '/v1/admin/articles')
       if (state.token) xhr.setRequestHeader('Authorization', `Bearer ${state.token}`)
       xhr.upload.onprogress = (ev) => {
         if(!ev.lengthComputable) return
         const percent = Math.min(100, Math.round((ev.loaded / ev.total) * 100))
         progBar.style.width = percent + '%'
-        progText.textContent = percent + '%'
+        // Compute speed (bytes/s) and ETA
+        const now = Date.now()
+        const dt = Math.max(1, now - lastAt) / 1000
+        const dbytes = Math.max(0, ev.loaded - lastLoaded)
+        const speed = dbytes / dt // bytes/s
+        const remain = Math.max(0, ev.total - ev.loaded)
+        const etaSec = speed > 0 ? Math.round(remain / speed) : 0
+        progText.textContent = `${percent}% • ${fmtBytes(ev.loaded)} / ${fmtBytes(ev.total)} • ${fmtBytes(speed)}/s • ${fmtEta(etaSec)}`
+        lastLoaded = ev.loaded
+        lastAt = now
       }
       xhr.onreadystatechange = async () => {
         if(xhr.readyState !== 4) return
         uploading.style.display = 'none'
         progWrap.style.display = 'none'
+        submitBtn.disabled = false
+        cancelBtn.style.display = 'none'
         if(xhr.status >= 200 && xhr.status < 300){
           form.reset(); await fetchList()
         } else if (xhr.status === 401) {
@@ -232,6 +253,7 @@ const views = {
           alert('Upload failed: ' + (xhr.statusText || 'Unknown error'))
         }
       }
+      cancelBtn.onclick = () => { try{ xhr.abort() }catch{} }
       xhr.send(fd)
     })
     await fetchList()
@@ -341,3 +363,22 @@ function boot() {
 }
 
 document.addEventListener('DOMContentLoaded', boot)
+
+// Helpers
+function fmtBytes(bytes){
+  if(!isFinite(bytes) || bytes < 0) return '0 B'
+  const units = ['B','KB','MB','GB','TB']
+  let i = 0
+  let val = bytes
+  while(val >= 1024 && i < units.length - 1){ val /= 1024; i++ }
+  return (i === 0 ? Math.round(val) : val.toFixed(1)) + ' ' + units[i]
+}
+function fmtEta(sec){
+  sec = Math.max(0, Number(sec) || 0)
+  const h = Math.floor(sec/3600)
+  const m = Math.floor((sec%3600)/60)
+  const s = sec%60
+  const pad = (n) => String(n).padStart(2,'0')
+  if(h>0) return `${h}:${pad(m)}:${pad(s)}`
+  return `${m}:${pad(s)}`
+}
