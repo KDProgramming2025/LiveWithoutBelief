@@ -42,7 +42,7 @@ const views = {
       const card = document.createElement('div')
       card.className = 'menu-card'
       card.innerHTML = `
-        <div class="menu-card__icon">${m.iconPath ? `<img src="${iconUrl(m)}" alt="icon"/>` : '<div class="placeholder">No Icon</div>'}</div>
+        <div class="menu-card__icon">${m.iconPath ? `<img src="${iconUrl(m)}" alt="icon"/>` : '<div class="placeholder">No Icon</div>'}<span class="uploading" style="display:none">Uploading…</span></div>
         <div class="menu-card__body">
           <div class="menu-card__title">${m.title}</div>
           <div class="menu-card__label">${m.label ?? ''}</div>
@@ -50,8 +50,7 @@ const views = {
         <div class="menu-card__actions">
           <button class="button secondary" data-move="up" data-id="${m.id}">↑</button>
           <button class="button secondary" data-move="down" data-id="${m.id}">↓</button>
-          <button class="button secondary" data-edit="title" data-id="${m.id}">Edit Title</button>
-          <button class="button secondary" data-edit="label" data-id="${m.id}">Edit Label</button>
+          <button class="button secondary" data-edit="item" data-id="${m.id}" data-title="${m.title ?? ''}" data-label="${m.label ?? ''}">Edit</button>
           <label class="button secondary" style="position:relative;overflow:hidden">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
           <button class="button secondary" data-del="${m.id}">Delete</button>
         </div>`
@@ -83,17 +82,35 @@ const views = {
         if(res.status === 204){ await loadMenu() }
         return
       }
-      const edt = e.target.closest('button[data-edit]')
+      const edt = e.target.closest('button[data-edit="item"]')
       if(edt){
         const id = edt.getAttribute('data-id')
-        const what = edt.getAttribute('data-edit')
-        const value = prompt(`New ${what}:`)
-        if(value === null) return
-        const headers = { 'Content-Type': 'application/json' }
-        if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-        const body = what === 'title' ? { title: value } : { label: value }
-        const res = await fetch(`/v1/admin/menu/${id}`, { method: 'PATCH', headers, body: JSON.stringify(body) })
-        if(res.ok){ await loadMenu() }
+        const currentTitle = edt.getAttribute('data-title') || ''
+        const currentLabel = edt.getAttribute('data-label') || ''
+        const overlay = document.getElementById('modal-overlay')
+        const closeBtn = document.getElementById('modal-close')
+        const modalContent = document.getElementById('modal-content')
+        modalContent.innerHTML = `
+          <h3>Edit Menu Item</h3>
+          <form id="edit-item-form" class="form-grid">
+            <input class="input" name="title" placeholder="Title" value="${currentTitle.replaceAll('"','&quot;')}" required />
+            <input class="input" name="label" placeholder="Label" value="${currentLabel.replaceAll('"','&quot;')}" />
+            <div class="row"><button class="button" type="submit">Save</button></div>
+          </form>`
+        overlay.hidden = false
+        overlay.className = 'overlay'
+        function hide(){ overlay.hidden = true; overlay.className = '' }
+        closeBtn.onclick = hide
+        const form = document.getElementById('edit-item-form')
+        form.onsubmit = async (ev) => {
+          ev.preventDefault()
+          const fd = new FormData(form)
+          const payload = { title: fd.get('title'), label: fd.get('label') }
+          const headers = { 'Content-Type': 'application/json' }
+          if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+          const res = await fetch(`/v1/admin/menu/${id}`, { method: 'PATCH', headers, body: JSON.stringify(payload) })
+          if(res.ok){ hide(); await loadMenu() }
+        }
         return
       }
     })
@@ -101,12 +118,18 @@ const views = {
       const input = e.target.closest('input[type=file][data-edit-icon]')
       if(!input) return
       const id = input.getAttribute('data-edit-icon')
+      const iconBox = input.closest('.menu-card').querySelector('.menu-card__icon .uploading')
       const fd = new FormData()
       if(input.files && input.files[0]) fd.append('icon', input.files[0])
       const headers = {}
       if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-      const res = await fetch(`/v1/admin/menu/${id}/icon`, { method: 'POST', body: fd, headers })
-      if(res.status === 204){ await loadMenu() }
+      iconBox.style.display = 'inline-block'
+      try{
+        const res = await fetch(`/v1/admin/menu/${id}/icon`, { method: 'POST', body: fd, headers })
+        if(res.status === 204){ await loadMenu() }
+      } finally {
+        iconBox.style.display = 'none'
+      }
     })
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
