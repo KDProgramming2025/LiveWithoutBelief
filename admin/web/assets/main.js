@@ -166,6 +166,10 @@ const views = {
             <span id="article-uploading" class="badge" style="display:none">Uploading…</span>
           </div>
         </form>
+        <div id="article-progress" style="display:none;gap:8px;align-items:center">
+          <div class="progress" style="flex:1"><div class="progress__bar" id="article-progress-bar"></div></div>
+          <div class="progress__text" id="article-progress-text">0%</div>
+        </div>
       </section>`
     const listEl = el.querySelector('#article-list')
     const form = el.querySelector('#article-form')
@@ -199,13 +203,36 @@ const views = {
         const ok = confirm('An article with the same title exists. Uploading will replace it. Continue?')
         if(!ok) return
       }
-      const headers = {}
-      if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+      // Use XHR to get real upload progress
+      const xhr = new XMLHttpRequest()
+      const progWrap = el.querySelector('#article-progress')
+      const progBar = el.querySelector('#article-progress-bar')
+      const progText = el.querySelector('#article-progress-text')
+      progWrap.style.display = 'flex'
+      progBar.style.width = '0%'
+      progText.textContent = '0%'
       uploading.style.display = 'inline-block'
-      try{
-        const res = await fetch('/v1/admin/articles', { method: 'POST', body: fd, headers })
-        if(res.ok){ form.reset(); await fetchList() }
-      } finally { uploading.style.display = 'none' }
+      xhr.open('POST', '/v1/admin/articles')
+      if (state.token) xhr.setRequestHeader('Authorization', `Bearer ${state.token}`)
+      xhr.upload.onprogress = (ev) => {
+        if(!ev.lengthComputable) return
+        const percent = Math.min(100, Math.round((ev.loaded / ev.total) * 100))
+        progBar.style.width = percent + '%'
+        progText.textContent = percent + '%'
+      }
+      xhr.onreadystatechange = async () => {
+        if(xhr.readyState !== 4) return
+        uploading.style.display = 'none'
+        progWrap.style.display = 'none'
+        if(xhr.status >= 200 && xhr.status < 300){
+          form.reset(); await fetchList()
+        } else if (xhr.status === 401) {
+          clearToken(); document.getElementById('login-overlay').hidden = false; document.getElementById('login-overlay').className = 'overlay'
+        } else {
+          alert('Upload failed: ' + (xhr.statusText || 'Unknown error'))
+        }
+      }
+      xhr.send(fd)
     })
     await fetchList()
     return el
