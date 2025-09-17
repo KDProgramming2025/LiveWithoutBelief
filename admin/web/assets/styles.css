@@ -82,7 +82,8 @@ html[data-theme="light"]{--bg:#f1f5f9;--panel:#ffffff;--panel-alt:#f1f5f9;--pane
 .brand__text,.nav-item__label{transition:opacity var(--transition-fast),transform var(--transition-fast),max-width var(--transition-fast)}
 .brand__text{display:inline-block;max-width:200px}
 .sidebar[data-state="collapsed"] .brand__text,.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;transform:translateX(-6px);max-width:0;pointer-events:none}
-.sidebar[data-state="collapsed"] .nav-item{justify-content:center;padding:10px 8px}
+.sidebar[data-state="collapsed"] .nav-item{justify-content:flex-start;padding:10px 8px}
+.sidebar[data-state="collapsed"] .nav-item__icon{transform:translateX(2px)}
 .sidebar[data-state="collapsed"] .nav-item__icon{margin:0}
 .sidebar::-webkit-scrollbar{width:10px}
 .sidebar::-webkit-scrollbar-track{background:transparent}
