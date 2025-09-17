@@ -376,15 +376,23 @@ function boot() {
   collapseBtn?.addEventListener('click', () => {
     const collapsed = sidebar?.getAttribute('data-state') === 'collapsed'
     if(collapsed){
+      // Start expanding
+      sidebar?.classList.add('is-expanding')
       sidebar?.setAttribute('data-state','expanded')
       collapseBtn.setAttribute('aria-expanded','true')
       layoutRoot?.classList.remove('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'expanded')
+      // Remove flag after full duration (1s); labels become visible at halfway via CSS
+      setTimeout(() => { sidebar?.classList.remove('is-expanding') }, 1000)
     } else {
+      // Start collapsing
+      sidebar?.classList.add('is-collapsing')
       sidebar?.setAttribute('data-state','collapsed')
       collapseBtn.setAttribute('aria-expanded','false')
       layoutRoot?.classList.add('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'collapsed')
+      // Remove flag after animation
+      setTimeout(() => { sidebar?.classList.remove('is-collapsing') }, 1000)
     }
   })
   // Theme toggle logic
