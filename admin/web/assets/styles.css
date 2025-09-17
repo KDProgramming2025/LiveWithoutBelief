@@ -79,9 +79,9 @@ html[data-theme="light"]{--bg:#f1f5f9;--panel:#ffffff;--panel-alt:#f1f5f9;--pane
 .sidebar__spacer{flex:1 1 auto}
 .sidebar__footer{display:flex;flex-direction:column;gap:4px;padding-top:8px;margin-top:8px;border-top:1px solid var(--border)}
 .sidebar[data-state="collapsed"]{width:var(--sidebar-collapsed);padding:14px 10px}
-.brand__text,.nav-item__label{transition:opacity var(--transition-fast),transform var(--transition-fast),max-width var(--transition-fast)}
+.brand__text,.nav-item__label{transition:opacity .5s linear .5s!important}
 .brand__text{display:inline-block;max-width:200px}
-.sidebar[data-state="collapsed"] .brand__text,.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;transform:translateX(-6px);max-width:0;pointer-events:none}
+.sidebar[data-state="collapsed"] .brand__text,.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;pointer-events:none}
 .sidebar[data-state="collapsed"] .nav-item{justify-content:flex-start;padding:10px 8px}
 .sidebar[data-state="collapsed"] .nav-item__icon{transform:translateX(2px)}
 .sidebar[data-state="collapsed"] .nav-item__icon{margin:0}
@@ -110,7 +110,7 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 :root{--sidebar-anim-duration:1s}
 .layout{transition:padding-left var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
 .sidebar{transition:width var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),padding var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),background var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
-.brand__text,.nav-item__label{transition:opacity .5s cubic-bezier(.4,0,.2,1),max-width .5s cubic-bezier(.4,0,.2,1)!important;transform:none!important}
+.brand__text,.nav-item__label{transition:opacity .5s linear .5s!important}
 .nav-item{transition:background .18s ease,color .18s ease,gap var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),padding var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
 
 /* Brand logo also fades & scales */
@@ -121,18 +121,13 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 .sidebar[data-state="collapsed"] .nav-item{gap:0}
 .nav-item__icon{min-width:22px}
 
-/* Text fade refinement: delay visibility removal via max-width shrinking */
-/* Collapsed target state: labels hidden (fade & shrink triggered with possible delay) */
+/* Midpoint fade logic: text stays static, only opacity changes during second half */
 .sidebar[data-state="collapsed"] .brand__text,
-.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;max-width:0;transform:none!important}
-/* Midpoint delay logic: apply 0.5s delay during direction animation */
-/* Collapse: keep labels visible for first half, then fade/shrink */
-.sidebar.is-collapsing .brand__text,
-.sidebar.is-collapsing .nav-item__label{transition-delay:.5s}
-/* Expand: delay fade-in start until midpoint; starting value (0) held by previous collapsed state */
-.sidebar.is-expanding .brand__text,
-.sidebar.is-expanding .nav-item__label{transition-delay:.5s}
-/* Center icon horizontally when collapsed by distributing free space */
+.sidebar[data-state="collapsed"] .nav-item__label{opacity:0}
+.sidebar[data-state="expanded"] .brand__text,
+.sidebar[data-state="expanded"] .nav-item__label{opacity:1}
+
+/* Center icon horizontally when collapsed */
 .sidebar[data-state="collapsed"] .nav-item__icon{margin-left:2px;margin-right:auto}
 
 /* Ensure icon scaling remains smooth */
