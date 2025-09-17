@@ -2,10 +2,9 @@
 
 - [x] Wire admin Users view to backend
 	- Implement fetch to `/v1/admin/users` with search and render table with delete action.
-- [ ] Deploy server updates to VPS
-	- Pull latest from `github` remote on VPS for `/var/www/LWB` and ensure static admin UI updated.
-- [ ] Smoke test Users view
-	- Visit https://aparat.feezor.net/LWB/Admin/, login, verify list/search/delete work.
-
+- [ ] Provide config checklist
+- [ ] Investigate Google Sign-In failure (ApiException 7)
+- [ ] Migrate existing usernames to full email
+	- The upsert path updates username on next login; consider a one-off SQL migration to update existing users where username != email and email is not null.
 Notes:
 - Admin UI static files are served from Express at `/admin/ui`; updating the repo on VPS is sufficient—no restart strictly required.

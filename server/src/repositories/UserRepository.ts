@@ -31,11 +31,13 @@ export class InMemoryUserRepository implements UserRepository {
   async upsertByEmail(email: string): Promise<{ user: ServerUser; created: boolean }> {
     let existing = [...this.users.values()].find(u => (u as any).email === email)
     if (existing) {
+      // Ensure username equals the full email going forward
+      existing.username = email
       existing.lastLogin = new Date().toISOString()
       return { user: { id: existing.id, username: existing.username ?? null, createdAt: existing.createdAt, lastLogin: existing.lastLogin }, created: false }
     }
     const id = String(this.seq++)
-    const username = email.split('@')[0]
+    const username = email
     const now = new Date().toISOString()
     const user: ServerUser & { email?: string } = { id, username, createdAt: now, lastLogin: now, email }
     this.users.set(id, user)
@@ -77,11 +79,15 @@ export class PgUserRepository implements UserRepository {
       const sel = await client.query('SELECT id, username, created_at, last_login FROM users WHERE email = $1', [email])
       if (sel.rowCount && sel.rowCount > 0) {
         const row = sel.rows[0]
+        // If username differs, update to full email to meet new requirement
+        if (row.username !== email) {
+          await client.query('UPDATE users SET username = $1 WHERE id = $2', [email, row.id])
+        }
         await client.query('UPDATE users SET last_login = NOW() WHERE id = $1', [row.id])
         await client.query('COMMIT')
         return { user: mapUser(row), created: false }
       }
-      const username = email.split('@')[0]
+      const username = email
       const ins = await client.query(
         'INSERT INTO users (email, username, created_at, last_login) VALUES ($1, $2, NOW(), NOW()) RETURNING id, username, created_at, last_login',
         [email, username],
