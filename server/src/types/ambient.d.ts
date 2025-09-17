@@ -4,6 +4,7 @@ declare module 'google-auth-library';
 declare module 'argon2';
 declare module 'pg';
 declare module 'multer';
+declare module 'mammoth';
 
 declare global {
 	namespace NodeJS {

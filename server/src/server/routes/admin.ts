@@ -7,12 +7,14 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { MenuService } from '../../services/MenuService.js'
+import { ArticleService } from '../../services/ArticleService.js'
 
 export const adminRouter = express.Router()
 const auth = new AdminAuthService()
 const pool = new Pool()
 const userSvc = new AdminUserService(pool)
 const menuSvc = new MenuService(pool)
+const articleSvc = new ArticleService()
 const uploadDir = path.resolve('/var/www/LWB/uploads')
 fs.mkdirSync(uploadDir, { recursive: true })
 
@@ -115,6 +117,37 @@ adminRouter.delete('/menu/:id', (req, res) => {
   const handler = async () => {
     const ok = await menuSvc.delete(req.params.id)
     res.status(ok ? 204 : 404).end()
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
+// Articles: list (from JSON manifest)
+adminRouter.get('/articles', (req, res) => {
+  const handler = async () => {
+    const items = await articleSvc.list()
+    res.json({ items })
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
+// Articles: upload (multipart form) — fields: title, label, order; files: docx, cover, icon
+const articleUpload = multer({ dest: path.resolve('/var/www/LWB/tmp') })
+adminRouter.post('/articles', articleUpload.fields([
+  { name: 'docx', maxCount: 1 },
+  { name: 'cover', maxCount: 1 },
+  { name: 'icon', maxCount: 1 },
+]), (req, res) => {
+  const handler = async () => {
+    const { title, label, order } = req.body || {}
+    const anyReq: any = req
+    if (!title || !anyReq.files || !anyReq.files.docx || !anyReq.files.docx[0]) {
+      return res.status(400).json({ error: 'bad_request' })
+    }
+    const docxTmpPath = anyReq.files.docx[0].path
+    const coverPath = anyReq.files.cover?.[0]?.path
+    const iconPath = anyReq.files.icon?.[0]?.path
+    const item = await articleSvc.createOrReplace({ title, label: label ?? null, order: Number(order ?? 0), docxTmpPath, coverPath, iconPath })
+    res.status(201).json({ item })
   }
   return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
 })

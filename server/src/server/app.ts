@@ -20,12 +20,14 @@ export function createServer() {
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
   const adminRoot = path.resolve(__dirname, '../../../admin/web')
   const uploadDir = path.resolve('/var/www/LWB/uploads')
+  const adminArticlesDir = path.resolve('/var/www/LWB/admin/web/articles')
   app.get(['/admin/ui','/admin/ui/'], (_req, res) => {
     res.set('Cache-Control', 'no-store')
     res.sendFile(path.join(adminRoot, 'index.html'))
   })
   app.use('/admin/ui', express.static(adminRoot, { etag: false, lastModified: false, maxAge: '1h' }))
   app.use('/admin/ui/uploads', express.static(uploadDir, { etag: false, lastModified: false, maxAge: '1y' }))
+  app.use('/admin/ui/web/articles', express.static(adminArticlesDir, { etag: false, lastModified: false, maxAge: '1h' }))
   app.use('/admin', createWebRouter())
 
   // 404

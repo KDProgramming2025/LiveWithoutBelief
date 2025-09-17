@@ -152,7 +152,7 @@ const views = {
     el.innerHTML = `
       <section class="card">
         <h2>Articles</h2>
-        <div id="article-list"></div>
+        <div id="article-list" class="grid"></div>
       </section>
       <section class="card">
         <h3>Upload Article (.docx)</h3>
@@ -161,9 +161,53 @@ const views = {
           <label>Cover Image <input class="input" name="cover" type="file" accept="image/*" /></label>
           <label>Icon <input class="input" name="icon" type="file" accept="image/*" /></label>
           <label>DOCX <input class="input" name="docx" type="file" accept=".docx" required /></label>
-          <button class="button" type="submit">Upload</button>
+          <div class="row">
+            <button class="button" type="submit">Upload</button>
+            <span id="article-uploading" class="badge" style="display:none">Uploading…</span>
+          </div>
         </form>
       </section>`
+    const listEl = el.querySelector('#article-list')
+    const form = el.querySelector('#article-form')
+    const uploading = el.querySelector('#article-uploading')
+    const fetchList = async () => {
+      const res = await api('/articles')
+      const json = await res.json()
+      listEl.innerHTML = ''
+      for(const a of json.items){
+        const card = document.createElement('div')
+        card.className = 'menu-card'
+        card.innerHTML = `
+          <div class="menu-card__icon">${a.iconUrl ? `<img src="${a.iconUrl}" alt="icon"/>` : '<div class="placeholder">No Icon</div>'}</div>
+          <div class="menu-card__body">
+            <div class="menu-card__title">${a.title}</div>
+            <div class="menu-card__label">${a.label ?? ''}</div>
+          </div>
+          <div class="menu-card__actions">
+            <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
+          </div>`
+        listEl.appendChild(card)
+      }
+    }
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const fd = new FormData(form)
+      const title = String(fd.get('title') || '').trim()
+      // Client-side duplicate check
+      const current = Array.from(listEl.querySelectorAll('.menu-card .menu-card__title')).map(n => n.textContent?.trim().toLowerCase())
+      if(current.includes(title.toLowerCase())){
+        const ok = confirm('An article with the same title exists. Uploading will replace it. Continue?')
+        if(!ok) return
+      }
+      const headers = {}
+      if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+      uploading.style.display = 'inline-block'
+      try{
+        const res = await fetch('/v1/admin/articles', { method: 'POST', body: fd, headers })
+        if(res.ok){ form.reset(); await fetchList() }
+      } finally { uploading.style.display = 'none' }
+    })
+    await fetchList()
     return el
   },
   users: async () => {
