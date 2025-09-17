@@ -52,57 +52,70 @@ export async function injectYouTubePlaceholders(originalDocx: Buffer): Promise<Y
   let newDocXml = docXml
   const embeds: YouTubePlaceholder[] = []
 
-  // 1. Relationship-based detection (existing logic)
-  for (const rel of rels) {
-    const videoId = deriveVideoId(rel.target)
-    const placeholder = `[[LWB_YT:${videoId || rel.id}]]`
-    const drawingRe = new RegExp(`<w:drawing[\s\S]*?r:id="${escapeRegExp(rel.id)}"[\s\S]*?</w:drawing>`, 'g')
-    let dm: RegExpExecArray | null
-    while ((dm = drawingRe.exec(newDocXml)) !== null) {
-      const drawStart = dm.index
-      const drawEnd = dm.index + dm[0].length
-      const paraStart = newDocXml.lastIndexOf('<w:p', drawStart)
-      if (paraStart === -1) continue
-      const paraClose = newDocXml.indexOf('</w:p>', drawEnd)
-      if (paraClose === -1) continue
-      const paraEnd = paraClose + '</w:p>'.length
-      const replacement = `<w:p><w:r><w:t xml:space="preserve">${placeholder}</w:t></w:r></w:p>`
-      newDocXml = newDocXml.slice(0, paraStart) + replacement + newDocXml.slice(paraEnd)
-      embeds.push({ videoId: videoId || rel.id, url: rel.target, placeholder })
-      drawingRe.lastIndex = paraStart + replacement.length
-    }
-  }
+  // Unified pass: find any <w:drawing> blocks that contain either a relationship-based r:id referencing a YouTube target
+  // or an embedded <wp15:webVideoPr ... embeddedHtml="...youtube..."> element. We will append a marker paragraph *after*
+  // the drawing instead of replacing the original paragraph to avoid truncating the document.
+  // Provided user regex pattern (adapted to JS): <w:drawing(?:(?!<w:drawing).)*webVideoPr.*?</w:drawing>
 
-  // 2. Embedded webVideoPr detection (handles case where YouTube URL only appears inside embeddedHtml attribute)
-  // Pattern example: <wp15:webVideoPr ... embeddedHtml="&lt;iframe ... src=&quot;https://www.youtube.com/embed/VIDEOID?...&quot; ... &gt;&lt;/iframe&gt;" .../>
-  const webVideoRe = /<wp15:webVideoPr\b[^>]*embeddedHtml="([^"]+)"[^>]*\/>/g
-  let wvm: RegExpExecArray | null
-  while ((wvm = webVideoRe.exec(newDocXml)) !== null) {
-    const raw = wvm[1]
-    // Decode minimal XML entities required to locate src
-    const decoded = raw.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&amp;/g,'&')
-    const srcMatch = /src="(https?:\/\/[^"']+)"/.exec(decoded)
-    if (!srcMatch) continue
-    const srcUrl = srcMatch[1]
-    if (!/youtu/i.test(srcUrl)) continue
-    const vid = deriveVideoId(srcUrl) || 'yt'
-    const placeholder = `[[LWB_YT:${vid}]]`
-    // Find paragraph containing this webVideoPr tag occurrence.
-    const tagStart = wvm.index
-    const tagEnd = wvm.index + wvm[0].length
-    const paraStart = newDocXml.lastIndexOf('<w:p', tagStart)
-    if (paraStart === -1) continue
-    const paraClose = newDocXml.indexOf('</w:p>', tagEnd)
-    if (paraClose === -1) continue
-    const paraEnd = paraClose + '</w:p>'.length
-    // Avoid duplicate insertion if a relationship-based pass already replaced this paragraph (contains placeholder)
-    const existingPara = newDocXml.slice(paraStart, paraEnd)
-    if (existingPara.includes('[[LWB_YT:')) continue
-    const replacement = `<w:p><w:r><w:t xml:space="preserve">${placeholder}</w:t></w:r></w:p>`
-    newDocXml = newDocXml.slice(0, paraStart) + replacement + newDocXml.slice(paraEnd)
-    embeds.push({ videoId: vid, url: srcUrl, placeholder })
-    // Adjust regex search position after modification
-    webVideoRe.lastIndex = paraStart + replacement.length
+  // Pre-build a map rId -> YouTube target data.
+  const ytRelMap = new Map<string, { target: string; videoId: string | null }>()
+  for (const rel of rels) ytRelMap.set(rel.id, { target: rel.target, videoId: deriveVideoId(rel.target) })
+
+  const drawingGlobalRe = /<w:drawing[\s\S]*?<\/w:drawing>/g
+  let dm: RegExpExecArray | null
+  const processedPositions = new Set<number>()
+  while ((dm = drawingGlobalRe.exec(newDocXml)) !== null) {
+    const block = dm[0]
+    const blockStart = dm.index
+    const blockEnd = blockStart + block.length
+    if (processedPositions.has(blockEnd)) continue
+
+    let videoId: string | null = null
+    let url: string | null = null
+
+    // 1) Relationship id reference
+    const relIdMatch = /r:id="(rId[0-9A-Za-z]+)"/.exec(block)
+    if (relIdMatch) {
+      const relInfo = ytRelMap.get(relIdMatch[1])
+      if (relInfo) {
+        videoId = relInfo.videoId
+        url = relInfo.target
+      }
+    }
+
+    // 2) Embedded webVideoPr detection inside this drawing
+    if (!url) {
+      const webVideoTag = /<wp15:webVideoPr\b[^>]*embeddedHtml="([^"]+)"[^>]*\/>/i.exec(block)
+      if (webVideoTag) {
+        const raw = webVideoTag[1]
+        const decoded = raw.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&amp;/g,'&')
+        const srcMatch = /src="(https?:\/\/[^"']+)"/.exec(decoded)
+        if (srcMatch && /youtu/i.test(srcMatch[1])) {
+          url = srcMatch[1]
+          videoId = deriveVideoId(url) || videoId
+        }
+      }
+    }
+
+    if (!url) continue // not a YouTube drawing
+    const finalVideoId = videoId || 'yt'
+    const placeholder = `[[LWB_YT:${finalVideoId}]]`
+
+    // Append marker paragraph AFTER the drawing's parent paragraph boundary if possible; else right after drawing tag.
+    // Find closing parent paragraph end.
+    const paraClose = newDocXml.indexOf('</w:p>', blockEnd)
+    const paraStart = newDocXml.lastIndexOf('<w:p', blockStart)
+    let insertAt = blockEnd
+    if (paraStart !== -1 && paraClose !== -1 && paraStart < blockStart && paraClose > blockEnd) {
+      // Insert before paragraph close to keep block and placeholder grouped.
+      insertAt = paraClose
+    }
+    const inject = `<w:p><w:r><w:t xml:space="preserve">${placeholder}</w:t></w:r></w:p>`
+    newDocXml = newDocXml.slice(0, insertAt) + inject + newDocXml.slice(insertAt)
+    processedPositions.add(insertAt + inject.length)
+    embeds.push({ videoId: finalVideoId, url, placeholder })
+    // Adjust regex lastIndex due to insertion shift
+    drawingGlobalRe.lastIndex = insertAt + inject.length
   }
 
   if (embeds.length === 0) return { embeds: [] }

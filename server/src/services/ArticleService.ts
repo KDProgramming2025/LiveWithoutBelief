@@ -112,16 +112,20 @@ export class ArticleService {
     let html = initialHtml
     // remove EMF/WMF images anywhere in the HTML
     html = removeOleIconDataImages(html)
-    if (mediaResult.inline.length > 0) {
-      // also remove preceding image-only blocks in case some slipped through
-      html = removeOleIconBlocksBeforePlaceholders(html, mediaResult.inline.map(i => i.placeholder))
-      for (const m of mediaResult.inline) {
-        const tag = m.type === 'video'
-          ? `<figure class=\"media__item\"><video controls src=\"./media/${m.filename}\"></video></figure>`
-          : `<figure class=\"media__item\"><audio controls src=\"./media/${m.filename}\"></audio></figure>`
-        const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
-        html = html.replace(pattern, tag)
-      }
+    // Gather all placeholders (media + yt) for cleanup, then replace
+    const mediaPlaceholders = mediaResult.inline.map(i => i.placeholder)
+    const ytPlaceholders = (ytResult?.embeds || []).map(e => e.placeholder)
+    const allPlaceholders = [...mediaPlaceholders, ...ytPlaceholders]
+    if (allPlaceholders.length > 0) {
+      html = removeOleIconBlocksBeforePlaceholders(html, allPlaceholders)
+    }
+    // Replace media placeholders
+    for (const m of mediaResult.inline) {
+      const tag = m.type === 'video'
+        ? `<figure class=\"media__item\"><video controls src=\"./media/${m.filename}\"></video></figure>`
+        : `<figure class=\"media__item\"><audio controls src=\"./media/${m.filename}\"></audio></figure>`
+      const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
+      html = html.replace(pattern, tag)
     }
     // Replace YouTube placeholders with iframe embeds
     if (ytResult && ytResult.embeds.length > 0) {
@@ -378,21 +382,37 @@ function removeOleIconBlocksBeforePlaceholders(html: string, placeholders: strin
       // Find the nearest block end tag before the placeholder
       const prevPEnd = out.lastIndexOf('</p>', idx)
       const prevFigEnd = out.lastIndexOf('</figure>', idx)
-      let blockType: 'p' | 'figure' | null = null
-      let endPos = -1
-      if (prevPEnd === -1 && prevFigEnd === -1) break
-      if (prevPEnd > prevFigEnd) { blockType = 'p'; endPos = prevPEnd } else { blockType = 'figure'; endPos = prevFigEnd }
-      // Find start tag
-      const startTag = blockType === 'p' ? '<p' : '<figure'
+      const prevHEnds: Array<{ tag: string; pos: number }> = []
+      for (let level = 1; level <= 6; level++) {
+        const end = out.lastIndexOf(`</h${level}>`, idx)
+        if (end !== -1) prevHEnds.push({ tag: `h${level}`, pos: end })
+      }
+      let candidateEnd = prevPEnd
+      let blockType: 'p' | 'figure' | 'heading' | null = null
+      let headingTag: string | null = null
+      if (prevFigEnd > candidateEnd) { candidateEnd = prevFigEnd; blockType = 'figure' }
+      if (prevPEnd !== -1 && candidateEnd === prevPEnd) blockType = 'p'
+      for (const h of prevHEnds) {
+        if (h.pos > candidateEnd) { candidateEnd = h.pos; blockType = 'heading'; headingTag = h.tag }
+      }
+      if (candidateEnd === -1) break
+      const endPos = candidateEnd
+      // Find start tag based on block type
+      let startTag: string
+      if (blockType === 'p') startTag = '<p'
+      else if (blockType === 'figure') startTag = '<figure'
+      else if (blockType === 'heading' && headingTag) startTag = `<${headingTag}`
+      else break
       const startPos = out.lastIndexOf(startTag, endPos)
       if (startPos === -1) break
-      const blockHtml = out.slice(startPos, endPos + (blockType === 'p' ? '</p>'.length : '</figure>'.length))
+      const closing = blockType === 'p' ? '</p>' : (blockType === 'figure' ? '</figure>' : (`</${headingTag}>`))
+      const blockHtml = out.slice(startPos, endPos + closing.length)
       // Check if block is essentially an image-only container
       if (/<img\b/i.test(blockHtml)) {
         const withoutImg = blockHtml.replace(/<img[^>]*>/gi, '')
         const textOnly = withoutImg.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
         if (textOnly === '') {
-          out = out.slice(0, startPos) + out.slice(endPos + (blockType === 'p' ? '</p>'.length : '</figure>'.length))
+          out = out.slice(0, startPos) + out.slice(endPos + closing.length)
           // After removal, recompute placeholder position from startPos
           idx = out.indexOf(ph, startPos)
           continue
