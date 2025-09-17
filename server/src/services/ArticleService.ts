@@ -145,6 +145,34 @@ export class ArticleService {
     return rec
   }
 
+  /**
+   * Delete an article by id (or slug), removing:
+   * - the associated docx file under this.docxDir
+   * - the entire article public directory under this.webArticlesDir/<slug>
+   * - the record from the JSON manifest
+   * Returns true if a record was found and removed, false otherwise.
+   */
+  async delete(idOrSlug: string): Promise<boolean> {
+    await this.ensure()
+    const items = await this.list()
+    const idx = items.findIndex(a => a.id === idOrSlug || a.slug === idOrSlug)
+    if (idx < 0) return false
+    const rec = items[idx]
+    // Remove docx file if present
+    try {
+      if (rec.docxPath) await fs.rm(rec.docxPath, { force: true })
+    } catch {}
+    // Remove article directory recursively
+    const articleDir = path.join(this.webArticlesDir, rec.slug)
+    try {
+      await fs.rm(articleDir, { recursive: true, force: true })
+    } catch {}
+    // Remove record and save
+    items.splice(idx, 1)
+    await this.saveAll(items)
+    return true
+  }
+
   // Extract embedded media (mp4/mp3) from DOCX into ./media
   // Returns: list of media items, inline placeholder mapping, and an optional modified docx buffer
   private async extractMediaFromDocx(docxPath: string, articleDir: string): Promise<{ items: ExtractedMedia[]; inline: Array<{ placeholder: string; filename: string; type: 'audio'|'video' }>; modifiedDocxBuffer?: Buffer }> {

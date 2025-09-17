@@ -152,6 +152,15 @@ adminRouter.post('/articles', articleUpload.fields([
   return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
 })
 
+// Articles: delete by id (or slug)
+adminRouter.delete('/articles/:id', (req, res) => {
+  const handler = async () => {
+    const ok = await articleSvc.delete(req.params.id)
+    res.status(ok ? 204 : 404).end()
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
 // Menu: update title/label/order (JSON)
 adminRouter.patch('/menu/:id', (req, res) => {
   const handler = async () => {
