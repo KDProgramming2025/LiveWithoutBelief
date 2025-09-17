@@ -3,6 +3,7 @@ import { AdminAuthService } from '../../services/AdminAuthService.js'
 import { AdminUserService } from '../../services/AdminUserService.js'
 import { Pool } from 'pg'
 import multer from 'multer'
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { MenuService } from '../../services/MenuService.js'
@@ -14,7 +15,36 @@ const userSvc = new AdminUserService(pool)
 const menuSvc = new MenuService(pool)
 const uploadDir = path.resolve('/var/www/LWB/uploads')
 fs.mkdirSync(uploadDir, { recursive: true })
-const upload = multer({ dest: uploadDir })
+
+const IMAGE_MIME_TO_EXT: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/svg+xml': '.svg',
+  'image/avif': '.avif'
+}
+
+const storage = multer.diskStorage({
+  destination: (_req: any, _file: any, cb: any) => cb(null, uploadDir),
+  filename: (_req: any, file: any, cb: any) => {
+    const extFromMime = IMAGE_MIME_TO_EXT[file.mimetype] ?? ''
+    const extFromName = path.extname(file.originalname || '')
+    const ext = extFromMime || extFromName || ''
+    const base = crypto.randomBytes(16).toString('hex')
+    cb(null, `${base}${ext}`)
+  }
+})
+
+const upload = multer({
+  storage,
+  fileFilter: (_req: any, file: any, cb: any) => {
+    if (file.mimetype && file.mimetype.startsWith('image/')) return cb(null, true)
+    cb(new Error('unsupported_file_type'))
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }
+})
 
 adminRouter.post('/login', async (req, res) => {
   const { username, password } = req.body || {}

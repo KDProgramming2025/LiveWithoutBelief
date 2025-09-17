@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-systemctl restart lwb-server
+git -C /var/www/LWB/server --no-pager pull --ff-only && nginx -t && systemctl reload nginx
 

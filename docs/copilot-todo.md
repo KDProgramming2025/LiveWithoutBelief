@@ -11,5 +11,6 @@
 	- Install deps on VPS, build, restart systemd service
 - [ ] Smoke test Admin Menu end-to-end
 	- Verify GET/POST/DELETE /v1/admin/menu via UI; icon files visible under /admin/ui/uploads
+ - [ ] Verify uploaded icons preserve extension and render inline
 Notes:
 - Admin UI static files are served from Express at `/admin/ui`; updating the repo on VPS is sufficient—no restart strictly required.
