@@ -18,56 +18,108 @@ const views = {
     const el = document.createElement('div')
     el.innerHTML = `
       <section class="card">
-        <h2>Menu Items</h2>
-        <table class="table" id="menu-table">
-          <thead><tr><th>Order</th><th>Title</th><th>Label</th><th>Icon</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </section>
-      <section class="card">
         <h3>Add Menu Item</h3>
         <form id="menu-form" class="form-grid">
           <input class="input" name="title" placeholder="Title" required />
           <input class="input" name="label" placeholder="Label" />
           <input class="input" name="order" type="number" placeholder="Order" min="0" />
           <input class="input" name="icon" type="file" accept="image/*" />
-          <button class="button" type="submit">Add</button>
+          <div class="row">
+            <button class="button" type="submit">Add</button>
+            <span id="menu-uploading" class="badge" style="display:none">Uploading…</span>
+          </div>
         </form>
+      </section>
+      <section class="card">
+        <h2>Menu Items</h2>
+        <div id="menu-grid" class="grid"></div>
       </section>`
-    const tbody = el.querySelector('#menu-table tbody')
+    const grid = el.querySelector('#menu-grid')
     const form = el.querySelector('#menu-form')
+    const uploading = el.querySelector('#menu-uploading')
+    function iconUrl(m){ return m.iconPath ? `/LWB/Admin/uploads${m.iconPath.replace('/uploads','')}` : '' }
+    function renderCard(m){
+      const card = document.createElement('div')
+      card.className = 'menu-card'
+      card.innerHTML = `
+        <div class="menu-card__icon">${m.iconPath ? `<img src="${iconUrl(m)}" alt="icon"/>` : '<div class="placeholder">No Icon</div>'}</div>
+        <div class="menu-card__body">
+          <div class="menu-card__title">${m.title}</div>
+          <div class="menu-card__label">${m.label ?? ''}</div>
+        </div>
+        <div class="menu-card__actions">
+          <button class="button secondary" data-move="up" data-id="${m.id}">↑</button>
+          <button class="button secondary" data-move="down" data-id="${m.id}">↓</button>
+          <button class="button secondary" data-edit="title" data-id="${m.id}">Edit Title</button>
+          <button class="button secondary" data-edit="label" data-id="${m.id}">Edit Label</button>
+          <label class="button secondary" style="position:relative;overflow:hidden">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
+          <button class="button secondary" data-del="${m.id}">Delete</button>
+        </div>`
+      return card
+    }
     async function loadMenu(){
       const res = await api('/menu')
       if(res.status === 401) throw new Error('unauthorized')
       const json = await res.json()
-      tbody.innerHTML = ''
-      for(const m of json.items){
-        const tr = document.createElement('tr')
-        tr.innerHTML = `
-          <td>${m.order}</td>
-          <td>${m.title}</td>
-          <td>${m.label ?? ''}</td>
-          <td>${m.iconPath ? `<img src="/LWB/Admin/uploads${m.iconPath.replace('/uploads','')}" alt="icon" style="width:24px;height:24px;object-fit:contain;border-radius:4px"/>` : ''}</td>
-          <td><button class="button secondary" data-del="${m.id}">Delete</button></td>`
-        tbody.appendChild(tr)
-      }
+      grid.innerHTML = ''
+      for(const m of json.items){ grid.appendChild(renderCard(m)) }
     }
-    tbody.addEventListener('click', async (e) => {
-      const btn = e.target.closest('button[data-del]')
-      if(!btn) return
-      if(!confirm('Delete this menu item?')) return
-      const id = btn.getAttribute('data-del')
-      const res = await api(`/menu/${id}`, { method:'DELETE' })
+    grid.addEventListener('click', async (e) => {
+      const del = e.target.closest('button[data-del]')
+      if(del){
+        if(!confirm('Delete this menu item?')) return
+        const id = del.getAttribute('data-del')
+        const res = await api(`/menu/${id}`, { method:'DELETE' })
+        if(res.status === 204){ await loadMenu() }
+        return
+      }
+      const mv = e.target.closest('button[data-move]')
+      if(mv){
+        const id = mv.getAttribute('data-id')
+        const direction = mv.getAttribute('data-move')
+        const headers = { 'Content-Type': 'application/json' }
+        if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+        const res = await fetch(`/v1/admin/menu/${id}/move`, { method: 'POST', headers, body: JSON.stringify({ direction }) })
+        if(res.status === 204){ await loadMenu() }
+        return
+      }
+      const edt = e.target.closest('button[data-edit]')
+      if(edt){
+        const id = edt.getAttribute('data-id')
+        const what = edt.getAttribute('data-edit')
+        const value = prompt(`New ${what}:`)
+        if(value === null) return
+        const headers = { 'Content-Type': 'application/json' }
+        if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+        const body = what === 'title' ? { title: value } : { label: value }
+        const res = await fetch(`/v1/admin/menu/${id}`, { method: 'PATCH', headers, body: JSON.stringify(body) })
+        if(res.ok){ await loadMenu() }
+        return
+      }
+    })
+    grid.addEventListener('change', async (e) => {
+      const input = e.target.closest('input[type=file][data-edit-icon]')
+      if(!input) return
+      const id = input.getAttribute('data-edit-icon')
+      const fd = new FormData()
+      if(input.files && input.files[0]) fd.append('icon', input.files[0])
+      const headers = {}
+      if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+      const res = await fetch(`/v1/admin/menu/${id}/icon`, { method: 'POST', body: fd, headers })
       if(res.status === 204){ await loadMenu() }
     })
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
       const fd = new FormData(form)
-      // Use fetch without forcing JSON header; include Authorization header
       const headers = {}
       if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-      const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
-      if(res.ok){ form.reset(); await loadMenu() }
+      uploading.style.display = 'inline-block'
+      try{
+        const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
+        if(res.ok){ form.reset(); await loadMenu() }
+      } finally {
+        uploading.style.display = 'none'
+      }
     })
     await loadMenu()
     return el

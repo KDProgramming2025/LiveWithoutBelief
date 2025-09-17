@@ -118,3 +118,36 @@ adminRouter.delete('/menu/:id', (req, res) => {
   }
   return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
 })
+
+// Menu: update title/label/order (JSON)
+adminRouter.patch('/menu/:id', (req, res) => {
+  const handler = async () => {
+    const { title, label, order } = req.body || {}
+    const updated = await menuSvc.update(req.params.id, { title, label, order: Number.isFinite(order) ? Number(order) : undefined })
+    if (!updated) return res.status(404).json({ error: 'not_found' })
+    res.json({ item: updated })
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
+// Menu: move up/down
+adminRouter.post('/menu/:id/move', (req, res) => {
+  const handler = async () => {
+    const dir = (req.body?.direction === 'up' || req.body?.direction === 'down') ? req.body.direction : undefined
+    if (!dir) return res.status(400).json({ error: 'bad_request' })
+    const ok = await menuSvc.move(req.params.id, dir)
+    res.status(ok ? 204 : 404).end()
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
+// Menu: update icon (multipart)
+adminRouter.post('/menu/:id/icon', upload.single('icon'), (req, res) => {
+  const handler = async () => {
+    if (!req.file) return res.status(400).json({ error: 'bad_request' })
+    const iconPath = `/uploads/${path.basename(req.file.path)}`
+    const ok = await menuSvc.updateIcon(req.params.id, iconPath)
+    res.status(ok ? 204 : 404).end()
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
