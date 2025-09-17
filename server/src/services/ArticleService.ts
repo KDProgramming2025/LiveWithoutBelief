@@ -137,6 +137,20 @@ export class ArticleService {
         const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
         html = html.replace(pattern, iframe)
       }
+      // Remove residual YouTube thumbnail <img> that Mammoth may have placed inside a heading with the iframe
+      // Pattern: <hN> <img ...base64...> ( optional <p></p> ) <div class="media__item youtube">...</div> ... </hN>
+      html = html.replace(/<h([1-6])(\b[^>]*)>\s*(<img[^>]+src="data:image\/jpeg;base64,[^"]+"[^>]*>)((?:\s*<p>\s*<\/p>)*)\s*(<div class=\"media__item youtube\">[\s\S]*?<\/div>)\s*<\/h\1>/gi,
+        (
+          _m: string,
+          level: string,
+          attrs: string,
+          _img: string,
+          empties: string,
+          div: string
+        ): string => {
+          return `<div class=\"youtube-heading-wrap\">${div}</div>`
+        }
+      )
     }
     // Append extracted media players (if any)
     let bodyHtml = html
