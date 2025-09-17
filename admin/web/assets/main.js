@@ -72,21 +72,34 @@ const views = {
     const tbody = el.querySelector('#user-table tbody')
     const qEl = el.querySelector('#user-q')
     const load = async () => {
-      const q = qEl.value.trim()
-      const res = await api(`/users?limit=50&offset=0${q ? `&q=${encodeURIComponent(q)}`:''}`)
-      const json = await res.json()
-      stats.textContent = `Total users: ${json.total}`
-      tbody.innerHTML = ''
-      for(const u of json.items){
-        const tr = document.createElement('tr')
-        tr.innerHTML = `
-          <td>${u.username ?? '(no-username)'} <span class="badge">#${u.id}</span></td>
-          <td>${u.registeredAt?.replace('T',' ').replace('Z','')}</td>
-          <td>${u.bookmarks}</td>
-          <td>${u.threads}</td>
-          <td>${u.lastLogin ? u.lastLogin.replace('T',' ').replace('Z','') : ''}</td>
-          <td><button class="button secondary" data-del="${u.id}">Remove</button></td>`
-        tbody.appendChild(tr)
+      try{
+        const q = qEl.value.trim()
+        const res = await api(`/users?limit=50&offset=0${q ? `&q=${encodeURIComponent(q)}`:''}`)
+        if(res.status === 401) throw new Error('unauthorized')
+        if(!res.ok) throw new Error('failed')
+        const json = await res.json()
+        stats.textContent = `Total users: ${json.total}`
+        tbody.innerHTML = ''
+        for(const u of (json.items || [])){
+          const tr = document.createElement('tr')
+          tr.innerHTML = `
+            <td>${u.username ?? '(no-username)'} <span class="badge">#${u.id}</span></td>
+            <td>${u.registeredAt?.replace('T',' ').replace('Z','')}</td>
+            <td>${u.bookmarks}</td>
+            <td>${u.threads}</td>
+            <td>${u.lastLogin ? u.lastLogin.replace('T',' ').replace('Z','') : ''}</td>
+            <td><button class="button secondary" data-del="${u.id}">Remove</button></td>`
+          tbody.appendChild(tr)
+        }
+      }catch(err){
+        if(String(err).includes('unauthorized')){
+          // force re-login
+          clearToken();
+          document.getElementById('login-overlay').hidden = false
+          document.getElementById('login-overlay').className = 'overlay'
+          return
+        }
+        stats.textContent = 'Failed to load users'
       }
     }
     el.querySelector('#user-search').addEventListener('click', load)
