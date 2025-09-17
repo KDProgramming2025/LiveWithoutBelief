@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import fssync from 'node:fs'
 import path from 'node:path'
 import mammoth from 'mammoth'
+import JSZip from 'jszip'
 
 export interface ArticleRecord {
   id: string
@@ -81,6 +82,9 @@ export class ArticleService {
       iconUrl = `${this.baseUrl}/web/articles/${slug}/icon${ext}`
     }
 
+    // Extract embedded media from DOCX (mp4/mp3) into ./media
+  const extractedMedia = await this.extractMediaFromDocx(docxFinal, articleDir)
+
     // Convert docx → HTML using mammoth
     const { value: html } = await mammoth.convertToHtml({ path: docxFinal }, {
       styleMap: [
@@ -88,7 +92,18 @@ export class ArticleService {
         "p[style-name='Subtitle'] => h2:fresh",
       ]
     })
-    const indexHtml = `<!doctype html><html><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><title>${escapeHtml(input.title)}</title><link rel=\"stylesheet\" href=\"./styles.css\"/></head><body><main class=\"article\">${html}</main><script src=\"./script.js\" defer></script></body></html>`
+    // Append extracted media players (if any)
+    let bodyHtml = html
+    if (extractedMedia.length > 0) {
+      const items = extractedMedia.map((m: ExtractedMedia) => {
+        const src = `./media/${m.filename}`
+        return m.type === 'video'
+          ? `<figure class=\"media__item\"><video controls src=\"${src}\"></video></figure>`
+          : `<figure class=\"media__item\"><audio controls src=\"${src}\"></audio></figure>`
+      }).join('')
+      bodyHtml += `<section class=\"media\"><h2>Media</h2>${items}</section>`
+    }
+    const indexHtml = `<!doctype html><html><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><title>${escapeHtml(input.title)}</title><link rel=\"stylesheet\" href=\"./styles.css\"/></head><body><main class=\"article\">${bodyHtml}</main><script src=\"./script.js\" defer></script></body></html>`
     await fs.writeFile(path.join(articleDir, 'index.html'), indexHtml, 'utf8')
     await fs.writeFile(path.join(articleDir, 'styles.css'), defaultArticleCss, 'utf8')
     await fs.writeFile(path.join(articleDir, 'script.js'), defaultArticleJs, 'utf8')
@@ -112,6 +127,26 @@ export class ArticleService {
     await this.saveAll(list)
     return rec
   }
+
+  // Extract embedded media (mp4/mp3) from DOCX into ./media
+  private async extractMediaFromDocx(docxPath: string, articleDir: string): Promise<ExtractedMedia[]> {
+    const out: ExtractedMedia[] = []
+    const mediaDir = path.join(articleDir, 'media')
+    await fs.mkdir(mediaDir, { recursive: true })
+    const data = await fs.readFile(docxPath)
+    const zip = await JSZip.loadAsync(data)
+    const candidates = Object.keys(zip.files).filter(p => p.startsWith('word/media/'))
+    for (const p of candidates) {
+      const ext = path.extname(p).toLowerCase()
+      const base = path.basename(p)
+      const type = ext === '.mp4' ? 'video' : (ext === '.mp3' ? 'audio' : null)
+      if (!type) continue
+      const buf = await extractBufferFile(zip, p)
+      await fs.writeFile(path.join(mediaDir, base), buf)
+      out.push({ filename: base, type })
+    }
+    return out
+  }
 }
 
 function escapeHtml(s: string){
@@ -123,8 +158,53 @@ body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto
 .article img{max-width:100%;height:auto}
 .article h1,.article h2,.article h3{margin:18px 0 8px}
 .article p{margin:12px 0}
+.media{margin-top:24px;padding-top:8px;border-top:1px solid #ddd}
+.media h2{font-size:18px;margin:0 0 12px}
+.media__item{margin:8px 0}
+video{max-width:100%;height:auto;background:#000}
+audio{width:100%}
 `
 
 const defaultArticleJs = `
-// Custom article enhancements can go here
+// Enhance YouTube links into embeds
+document.addEventListener('DOMContentLoaded', () => {
+  const anchors = Array.from(document.querySelectorAll('a[href]'))
+  for(const a of anchors){
+    const href = a.getAttribute('href') || ''
+    const vid = extractYouTubeId(href)
+    if(!vid) continue
+    const iframe = document.createElement('iframe')
+    iframe.width = '560'; iframe.height = '315'
+    iframe.src = 'https://www.youtube.com/embed/' + vid
+    iframe.title = 'YouTube video player'
+    iframe.frameBorder = '0'
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+    iframe.allowFullscreen = true
+    const wrap = document.createElement('div')
+    wrap.style.position = 'relative'; wrap.style.paddingBottom = '56.25%'; wrap.style.height = '0'; wrap.style.margin = '12px 0'
+    iframe.style.position = 'absolute'; iframe.style.top = '0'; iframe.style.left = '0'; iframe.style.width = '100%'; iframe.style.height = '100%'
+    wrap.appendChild(iframe)
+    a.insertAdjacentElement('afterend', wrap)
+  }
+  function extractYouTubeId(u){
+    try{
+      const url = new URL(u)
+      if(url.hostname.includes('youtube.com')) return url.searchParams.get('v')
+      if(url.hostname.includes('youtu.be')) return url.pathname.replace(/^\//,'')
+    }catch{}
+    return null
+  }
+})
 `
+
+export type ExtractedMedia = { filename: string; type: 'audio'|'video' }
+
+// Helper to read file contents from docx zip
+async function extractBufferFile(zip: JSZip, pathInZip: string): Promise<Buffer> {
+  const file = zip.file(pathInZip)
+  if (!file) throw new Error('missing ' + pathInZip)
+  const buf = await file.async('nodebuffer')
+  return buf as unknown as Buffer
+}
+
+// (no more duplicate class)
