@@ -1,0 +1,20 @@
+/* animations.css */
+/* Sidebar animation refinements */
+.layout{transition:padding-left var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
+.sidebar{transition:width var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),padding var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),background var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
+.brand__logo{transition:opacity var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),transform var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
+.sidebar[data-state="collapsed"] .brand__logo{opacity:0;transform:scale(.6) rotate(-10deg)}
+.sidebar[data-state="collapsed"] .nav-item{gap:0}
+.nav-item{transition:background .18s ease,color .18s ease,gap var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),padding var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
+.nav-item__icon{min-width:22px;transition:transform var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),opacity var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
+/* Midpoint fade logic */
+.sidebar[data-state="collapsed"] .brand__text,.sidebar[data-state="collapsed"] .nav-item__label{opacity:0}
+.sidebar[data-state="expanded"] .brand__text,.sidebar[data-state="expanded"] .nav-item__label{opacity:1}
+html[data-theme="light"] .sidebar[data-state="collapsed"] .nav-item__icon svg{filter:drop-shadow(0 0 1px rgba(0,0,0,.15))}
+.nav-item__icon svg,.brand__logo svg,.sidebar__collapse .icon svg{width:20px;height:20px;stroke:currentColor}
+.brand__logo svg{width:22px;height:22px}
+.sidebar__collapse .icon svg{width:24px;height:24px}
+.nav-item__label,.brand__text{white-space:nowrap;line-height:1.2;overflow:hidden}
+.sidebar.is-collapsing .brand__text,.sidebar.is-collapsing .nav-item__label{transition:opacity .25s linear 0s!important}
+[data-icon-theme] svg{transition:transform .4s ease;transform-origin:50% 50%}
+html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
