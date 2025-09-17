@@ -28,9 +28,12 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 ----------------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
 	html, body, .layout, .content, .card, .sidebar, .nav-item, .menu-card, .progress, .badge, .input, .button {
-		transition: background-color .45s ease, color .45s ease, border-color .45s ease, box-shadow .45s ease;
+		transition: background-color 1s ease-in, color 1s ease-in, border-color 1s ease-in, box-shadow 1s ease-in;
 	}
-	body { transition-duration: .55s; }
+	/* Sidebar may have gradient/background token shifts; ensure its nested elements also fade smoothly */
+	.sidebar * {
+		transition: background-color 1s ease-in, color 1s ease-in, border-color 1s ease-in;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
