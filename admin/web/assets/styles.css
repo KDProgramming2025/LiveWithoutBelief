@@ -110,7 +110,7 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 :root{--sidebar-anim-duration:1s}
 .layout{transition:padding-left var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
 .sidebar{transition:width var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),padding var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),background var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
-.brand__text,.nav-item__label{transition:opacity .5s cubic-bezier(.4,0,.2,1),transform .5s cubic-bezier(.4,0,.2,1),max-width .5s cubic-bezier(.4,0,.2,1)!important}
+.brand__text,.nav-item__label{transition:opacity .5s cubic-bezier(.4,0,.2,1),max-width .5s cubic-bezier(.4,0,.2,1)!important;transform:none!important}
 .nav-item{transition:background .18s ease,color .18s ease,gap var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),padding var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
 
 /* Brand logo also fades & scales */
@@ -122,13 +122,16 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 .nav-item__icon{min-width:22px}
 
 /* Text fade refinement: delay visibility removal via max-width shrinking */
-.sidebar[data-state="collapsed"] .brand__text,.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;transform:translateX(-8px);max-width:0}
-/* During first half of expansion keep labels hidden */
-.sidebar.is-expanding .brand__text,
-.sidebar.is-expanding .nav-item__label{opacity:0;transform:translateX(-8px);max-width:0}
-/* During collapsing instantly hide labels so they are gone by midpoint */
+/* Collapsed target state: labels hidden (fade & shrink triggered with possible delay) */
+.sidebar[data-state="collapsed"] .brand__text,
+.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;max-width:0;transform:none!important}
+/* Midpoint delay logic: apply 0.5s delay during direction animation */
+/* Collapse: keep labels visible for first half, then fade/shrink */
 .sidebar.is-collapsing .brand__text,
-.sidebar.is-collapsing .nav-item__label{opacity:0;transform:translateX(-8px);max-width:0}
+.sidebar.is-collapsing .nav-item__label{transition-delay:.5s}
+/* Expand: delay fade-in start until midpoint; starting value (0) held by previous collapsed state */
+.sidebar.is-expanding .brand__text,
+.sidebar.is-expanding .nav-item__label{transition-delay:.5s}
 /* Center icon horizontally when collapsed by distributing free space */
 .sidebar[data-state="collapsed"] .nav-item__icon{margin-left:2px;margin-right:auto}
 
