@@ -47,7 +47,7 @@ const views = {
           <td>${m.order}</td>
           <td>${m.title}</td>
           <td>${m.label ?? ''}</td>
-          <td>${m.iconPath ? `<img src="/admin/ui${m.iconPath}" alt="icon" style="width:24px;height:24px;object-fit:contain;border-radius:4px"/>` : ''}</td>
+          <td>${m.iconPath ? `<img src="/LWB/Admin/uploads${m.iconPath.replace('/uploads','')}" alt="icon" style="width:24px;height:24px;object-fit:contain;border-radius:4px"/>` : ''}</td>
           <td><button class="button secondary" data-del="${m.id}">Delete</button></td>`
         tbody.appendChild(tr)
       }
