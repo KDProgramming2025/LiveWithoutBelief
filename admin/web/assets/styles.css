@@ -80,6 +80,9 @@ html[data-theme="light"]{--bg:#f1f5f9;--panel:#ffffff;--panel-alt:#f1f5f9;--pane
 .sidebar__footer{display:flex;flex-direction:column;gap:4px;padding-top:8px;margin-top:8px;border-top:1px solid var(--border)}
 .sidebar[data-state="collapsed"]{width:var(--sidebar-collapsed);padding:14px 10px}
 .brand__text,.nav-item__label{transition:opacity .5s linear .5s!important}
+/* During active collapsing we override delay so fade-out finishes by midpoint */
+.sidebar.is-collapsing .brand__text,
+.sidebar.is-collapsing .nav-item__label{transition:opacity .5s linear 0s!important}
 .brand__text{display:inline-block;max-width:200px}
 .sidebar[data-state="collapsed"] .brand__text,.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;pointer-events:none}
 .sidebar[data-state="collapsed"] .nav-item{justify-content:flex-start;padding:10px 8px}
