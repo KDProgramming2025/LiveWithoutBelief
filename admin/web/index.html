@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="./assets/styles.css" />
   </head>
   <body>
-    <div id="app" class="layout">
+    <div id="app" class="layout layout--with-sidebar">
       <div id="login-overlay" hidden>
         <div class="card" style="max-width:420px;margin:10vh auto;">
           <h2>Admin Login</h2>
@@ -19,15 +19,43 @@
           <div id="login-error" class="badge" style="margin-top:8px"></div>
         </div>
       </div>
-      <aside class="sidebar" aria-label="Main menu">
-        <div class="brand">LWB Admin</div>
-        <nav>
-          <button data-view="menu" class="nav-item" id="nav-menu">Menu Items</button>
-          <button data-view="articles" class="nav-item" id="nav-articles">Articles</button>
-          <button data-view="users" class="nav-item" id="nav-users">Users</button>
-        </nav>
-        <div class="spacer"></div>
-        <button id="logout" class="nav-item danger">Logout</button>
+      <aside class="sidebar" data-state="expanded" aria-label="Primary" id="sidebar">
+        <div class="sidebar__inner">
+          <div class="sidebar__top">
+            <button id="sidebar-collapse" class="sidebar__collapse" aria-expanded="true" aria-label="Collapse sidebar">
+              <span class="icon" aria-hidden="true" data-lucide="chevrons-left"></span>
+            </button>
+            <div class="brand" id="brand">
+              <span class="brand__logo" aria-hidden="true" data-lucide="compass"></span>
+              <span class="brand__text">LWB Admin</span>
+            </div>
+          </div>
+          <nav class="nav" aria-label="Main navigation" id="main-nav">
+            <button data-view="menu" class="nav-item" id="nav-menu">
+              <span class="nav-item__icon" aria-hidden="true" data-lucide="list"></span>
+              <span class="nav-item__label">Menu Items</span>
+            </button>
+            <button data-view="articles" class="nav-item" id="nav-articles">
+              <span class="nav-item__icon" aria-hidden="true" data-lucide="file-text"></span>
+              <span class="nav-item__label">Articles</span>
+            </button>
+            <button data-view="users" class="nav-item" id="nav-users">
+              <span class="nav-item__icon" aria-hidden="true" data-lucide="users"></span>
+              <span class="nav-item__label">Users</span>
+            </button>
+          </nav>
+          <div class="sidebar__spacer"></div>
+          <div class="sidebar__footer">
+            <button id="theme-toggle" class="nav-item nav-item--utility" aria-pressed="false">
+              <span class="nav-item__icon" aria-hidden="true" data-icon-theme></span>
+              <span class="nav-item__label">Theme</span>
+            </button>
+            <button id="logout" class="nav-item danger nav-item--utility">
+              <span class="nav-item__icon" aria-hidden="true" data-lucide="power"></span>
+              <span class="nav-item__label">Logout</span>
+            </button>
+          </div>
+        </div>
       </aside>
       <main class="content" id="content" tabindex="-1" aria-live="polite"></main>
       <div id="modal-overlay" hidden>

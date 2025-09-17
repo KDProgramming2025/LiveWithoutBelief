@@ -1,7 +1,5 @@
 # Copilot TODO
 
-- [x] Fix YouTube thumbnail still appearing
-	- Replaced entire paragraph containing drawing with placeholder, removing preview image so iframe fully replaces it.
-	- Deploy & smoke test pending.
+All tasks related to the sidebar redesign (HTML restructure, CSS revamp, JS interactions, theme + collapse persistence) plus Lucide icon integration (icon replacement, dynamic theme icon, sizing styles) are completed in branch `feature/LWB-92-admin-ui`.
 
-Refer to previous commit history for earlier completed tasks (Menu, Articles, OLE media, YouTube detection).
+No pending items for this feature.

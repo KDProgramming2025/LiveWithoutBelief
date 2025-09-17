@@ -1,5 +1,9 @@
 // Minimal router for admin single-page feel without frameworks
 const state = { token: null, view: 'menu' }
+// UI preferences persisted
+const PREF_KEYS = { theme: 'lwb_admin_theme', sidebar: 'lwb_admin_sidebar' }
+function savePref(key,val){ try{ localStorage.setItem(key,val) }catch{} }
+function loadPref(key, fallback){ try{ return localStorage.getItem(key) ?? fallback }catch{ return fallback } }
 
 function saveToken(t){ localStorage.setItem('lwb_admin_token', t); state.token = t }
 function loadToken(){ state.token = localStorage.getItem('lwb_admin_token') }
@@ -349,6 +353,61 @@ function boot() {
   const loginForm = document.getElementById('login-form')
   const loginError = document.getElementById('login-error')
 
+  // Theme + Sidebar preference initialization
+  const html = document.documentElement
+  const sidebar = document.getElementById('sidebar')
+  const collapseBtn = document.getElementById('sidebar-collapse')
+  const themeToggle = document.getElementById('theme-toggle')
+  const layoutRoot = document.querySelector('.layout')
+  // Apply stored theme
+  const storedTheme = loadPref(PREF_KEYS.theme, 'dark')
+  if(storedTheme === 'light') html.setAttribute('data-theme','light')
+  else html.removeAttribute('data-theme')
+  // Update theme toggle pressed state
+  if(themeToggle) themeToggle.setAttribute('aria-pressed', storedTheme === 'light')
+  // Apply stored sidebar state
+  const storedSidebar = loadPref(PREF_KEYS.sidebar, 'expanded')
+  if(storedSidebar === 'collapsed'){
+    sidebar?.setAttribute('data-state','collapsed')
+    collapseBtn?.setAttribute('aria-expanded','false')
+    layoutRoot?.classList.add('sidebar--collapsed')
+  }
+  // Collapse button logic
+  collapseBtn?.addEventListener('click', () => {
+    const collapsed = sidebar?.getAttribute('data-state') === 'collapsed'
+    if(collapsed){
+      sidebar?.setAttribute('data-state','expanded')
+      collapseBtn.setAttribute('aria-expanded','true')
+      layoutRoot?.classList.remove('sidebar--collapsed')
+      savePref(PREF_KEYS.sidebar,'expanded')
+    } else {
+      sidebar?.setAttribute('data-state','collapsed')
+      collapseBtn.setAttribute('aria-expanded','false')
+      layoutRoot?.classList.add('sidebar--collapsed')
+      savePref(PREF_KEYS.sidebar,'collapsed')
+    }
+  })
+  // Theme toggle logic
+  themeToggle?.addEventListener('click', () => {
+    const isLight = html.getAttribute('data-theme') === 'light'
+    if(isLight){ html.removeAttribute('data-theme'); savePref(PREF_KEYS.theme,'dark'); themeToggle.setAttribute('aria-pressed','false') }
+    else { html.setAttribute('data-theme','light'); savePref(PREF_KEYS.theme,'light'); themeToggle.setAttribute('aria-pressed','true') }
+    setThemeIcon()
+  })
+  // Close expanded sidebar on very small screens when user clicks outside
+  document.addEventListener('click', (e) => {
+    if(window.innerWidth > 640) return
+    if(!sidebar) return
+    if(sidebar.getAttribute('data-state') !== 'expanded') return
+    const target = e.target
+    if(target instanceof Node && !sidebar.contains(target) && !collapseBtn.contains(target)){
+      sidebar.setAttribute('data-state','collapsed')
+      collapseBtn.setAttribute('aria-expanded','false')
+      layoutRoot?.classList.add('sidebar--collapsed')
+      savePref(PREF_KEYS.sidebar,'collapsed')
+    }
+  })
+
   async function ensureAuth(){
     if (!state.token) { loginOverlay.hidden = false; loginOverlay.className='overlay'; return false }
     loginOverlay.hidden = true; loginOverlay.className=''; return true
@@ -376,6 +435,42 @@ function boot() {
 }
 
 document.addEventListener('DOMContentLoaded', boot)
+
+// --- Icon System (Lucide) ---
+async function loadIcons(){
+  // Avoid duplicate loads
+  if(window.__LUCIDE_LOADED__) return
+  window.__LUCIDE_LOADED__ = true
+  // Dynamically import from CDN (no bundler assumption)
+  try {
+    const mod = await import('https://cdn.jsdelivr.net/npm/lucide@0.469.0/+esm')
+    const { createIcons, icons } = mod
+    createIcons({ icons })
+  } catch(e){
+    console.warn('Lucide failed to load', e)
+  }
+}
+
+// Provide a function to refresh icons after DOM mutations if needed
+async function refreshIcons(){
+  try {
+    const mod = await import('https://cdn.jsdelivr.net/npm/lucide@0.469.0/+esm')
+    const { createIcons, icons } = mod
+    createIcons({ icons })
+  } catch(e){ /* silent */ }
+}
+
+// Observe theme toggle icon (sun/moon) without DOM rebuild
+function setThemeIcon(){
+  const holder = document.querySelector('[data-icon-theme]')
+  if(!holder) return
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+  holder.setAttribute('data-lucide', isLight ? 'moon' : 'sun')
+  refreshIcons()
+}
+
+// Initial icon load and theme icon set
+document.addEventListener('DOMContentLoaded', () => { loadIcons().then(setThemeIcon) })
 
 // Helpers
 function fmtBytes(bytes){
