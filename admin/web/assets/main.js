@@ -192,10 +192,23 @@ const views = {
           </div>
           <div class="menu-card__actions">
             <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
+            <button class="button secondary" data-article-del="${a.id}">Delete</button>
           </div>`
         listEl.appendChild(card)
       }
     }
+    listEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-article-del]')
+      if(!btn) return
+      const id = btn.getAttribute('data-article-del')
+      if(!confirm('Delete this article? This will remove the DOCX, the generated folder, and the manifest entry.')) return
+      const headers = {}
+      if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+      const res = await fetch(`/v1/admin/articles/${encodeURIComponent(id)}`, { method:'DELETE', headers })
+      if(res.status === 204){ await fetchList() }
+      else if(res.status === 401){ clearToken(); document.getElementById('login-overlay').hidden=false; document.getElementById('login-overlay').className='overlay' }
+      else { alert('Delete failed') }
+    })
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
       const fd = new FormData(form)
