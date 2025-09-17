@@ -82,6 +82,7 @@ export class PgUserRepository implements UserRepository {
         // If username differs, update to full email to meet new requirement
         if (row.username !== email) {
           await client.query('UPDATE users SET username = $1 WHERE id = $2', [email, row.id])
+          row.username = email
         }
         await client.query('UPDATE users SET last_login = NOW() WHERE id = $1', [row.id])
         await client.query('COMMIT')
