@@ -20,7 +20,7 @@ export function createServer() {
   // Serve admin static UI (no frameworks)
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
   const adminRoot = path.resolve(__dirname, '../../../admin/web')
-  app.get('/admin/ui', (_req, res) => {
+  app.get(['/admin/ui','/admin/ui/'], (_req, res) => {
     res.set('Cache-Control', 'no-store')
     res.sendFile(path.join(adminRoot, 'index.html'))
   })
