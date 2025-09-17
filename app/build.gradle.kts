@@ -81,10 +81,10 @@ android {
                 ?: (project.findProperty("EMAIL_LINK_CONTINUE_URL") as String?)
                 ?: "https://live-without-belief-app.firebaseapp.com/emailLink"
         buildConfigField("String", "EMAIL_LINK_CONTINUE_URL", '"' + emailLinkContinue + '"')
-        val authBase =
+    val authBase =
             System.getenv("AUTH_BASE_URL")
                 ?: (project.findProperty("AUTH_BASE_URL") as String?)
-                ?: "https://aparat.feezor.net/lwb-api"
+        ?: "https://aparat.feezor.net/LWB/API"
         buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
     // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
 

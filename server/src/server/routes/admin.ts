@@ -1,8 +1,12 @@
 import express from 'express'
 import { AdminAuthService } from '../../services/AdminAuthService.js'
+import { AdminUserService } from '../../services/AdminUserService.js'
+import { Pool } from 'pg'
 
 export const adminRouter = express.Router()
 const auth = new AdminAuthService()
+const pool = new Pool()
+const userSvc = new AdminUserService(pool)
 
 adminRouter.post('/login', async (req, res) => {
   const { username, password } = req.body || {}
@@ -22,3 +26,27 @@ export function requireAdmin(req: express.Request, res: express.Response, next: 
   ;(req as any).admin = session
   next()
 }
+
+// Users: list with optional search q, simple paging
+adminRouter.get('/users', (req, res) => {
+  const q = typeof req.query.q === 'string' ? req.query.q : undefined
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)))
+  const offset = Math.max(0, Number(req.query.offset ?? 0))
+  const handler = async () => {
+    const [total, items] = await Promise.all([
+      userSvc.countUsers(),
+      userSvc.listUsers(q, limit, offset),
+    ])
+    res.json({ total, items, limit, offset })
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
+// Users: delete
+adminRouter.delete('/users/:id', (req, res) => {
+  const handler = async () => {
+    const ok = await userSvc.deleteUser(req.params.id)
+    res.status(ok ? 204 : 404).end()
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})

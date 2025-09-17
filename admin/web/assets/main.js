@@ -68,6 +68,37 @@ const views = {
           <tbody></tbody>
         </table>
       </section>`
+    const stats = el.querySelector('#user-stats')
+    const tbody = el.querySelector('#user-table tbody')
+    const qEl = el.querySelector('#user-q')
+    const load = async () => {
+      const q = qEl.value.trim()
+      const res = await api(`/users?limit=50&offset=0${q ? `&q=${encodeURIComponent(q)}`:''}`)
+      const json = await res.json()
+      stats.textContent = `Total users: ${json.total}`
+      tbody.innerHTML = ''
+      for(const u of json.items){
+        const tr = document.createElement('tr')
+        tr.innerHTML = `
+          <td>${u.username ?? '(no-username)'} <span class="badge">#${u.id}</span></td>
+          <td>${u.registeredAt?.replace('T',' ').replace('Z','')}</td>
+          <td>${u.bookmarks}</td>
+          <td>${u.threads}</td>
+          <td>${u.lastLogin ? u.lastLogin.replace('T',' ').replace('Z','') : ''}</td>
+          <td><button class="button secondary" data-del="${u.id}">Remove</button></td>`
+        tbody.appendChild(tr)
+      }
+    }
+    el.querySelector('#user-search').addEventListener('click', load)
+    tbody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-del]')
+      if(!btn) return
+      const id = btn.getAttribute('data-del')
+      if(!confirm('Remove this user?')) return
+      const res = await api(`/users/${id}`, { method:'DELETE' })
+      if(res.status === 204){ await load() }
+    })
+    await load()
     return el
   }
 }
