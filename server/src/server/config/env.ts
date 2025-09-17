@@ -12,6 +12,10 @@ dotenv.config({ path: envFile })
 const PORT = Number(process.env.PORT || 4433)
 const ALTCHA_SECRET = process.env.ALTCHA_SECRET || 'dev-secret'
 const ALTCHA_MAXNUMBER = process.env.ALTCHA_MAXNUMBER ? Number(process.env.ALTCHA_MAXNUMBER) : undefined
+const ADMIN_USER = process.env.ADMIN_USER || 'admin'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ''
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || ''
+const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || (process.env.ALTCHA_SECRET ?? 'dev-secret')
 const GOOGLE_CLIENT_IDS = (process.env.GOOGLE_CLIENT_IDS || '')
   .split(',')
   .map((s) => s.trim())
@@ -22,4 +26,8 @@ export const env = {
   ALTCHA_SECRET,
   ALTCHA_MAXNUMBER,
   GOOGLE_CLIENT_IDS,
+  ADMIN_USER,
+  ADMIN_PASSWORD,
+  ADMIN_PASSWORD_HASH,
+  ADMIN_JWT_SECRET,
 }
