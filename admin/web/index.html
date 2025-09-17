@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LWB Admin</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="layout">
+      <aside class="sidebar" aria-label="Main menu">
+        <div class="brand">LWB Admin</div>
+        <nav>
+          <button data-view="menu" class="nav-item" id="nav-menu">Menu Items</button>
+          <button data-view="articles" class="nav-item" id="nav-articles">Articles</button>
+          <button data-view="users" class="nav-item" id="nav-users">Users</button>
+        </nav>
+        <div class="spacer"></div>
+        <button id="logout" class="nav-item danger">Logout</button>
+      </aside>
+      <main class="content" id="content" tabindex="-1" aria-live="polite"></main>
+    </div>
+    <script src="./assets/main.js" type="module"></script>
+  </body>
+</html>
