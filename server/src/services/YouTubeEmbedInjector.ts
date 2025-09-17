@@ -56,21 +56,24 @@ export async function injectYouTubePlaceholders(originalDocx: Buffer): Promise<Y
   for (const rel of rels) {
     const videoId = deriveVideoId(rel.target)
     const placeholder = `[[LWB_YT:${videoId || rel.id}]]`
-    // Find occurrences referencing this rId within drawings
-    // Pattern: <w:drawing> ... r:id="rIdX" ... </w:drawing>
+    // Locate drawing blocks referencing this rId
     const drawingRe = new RegExp(`<w:drawing[\s\S]*?r:id="${escapeRegExp(rel.id)}"[\s\S]*?</w:drawing>`, 'g')
     let dm: RegExpExecArray | null
-    const already = new Set<number>()
     while ((dm = drawingRe.exec(newDocXml)) !== null) {
-      const endPos = dm.index + dm[0].length
-      if (already.has(endPos)) continue
-      already.add(endPos)
-      // Inject marker paragraph after the drawing block
-      const inject = `<w:p><w:r><w:t xml:space="preserve">${placeholder}</w:t></w:r></w:p>`
-      newDocXml = newDocXml.slice(0, endPos) + inject + newDocXml.slice(endPos)
+      const drawStart = dm.index
+      const drawEnd = dm.index + dm[0].length
+      // Find containing <w:p ...> ... </w:p> that wraps this drawing.
+      const paraStart = newDocXml.lastIndexOf('<w:p', drawStart)
+      if (paraStart === -1) continue
+      const paraClose = newDocXml.indexOf('</w:p>', drawEnd)
+      if (paraClose === -1) continue
+      const paraEnd = paraClose + '</w:p>'.length
+      // Replace entire paragraph with ONLY our placeholder paragraph so the thumbnail image is removed.
+      const replacement = `<w:p><w:r><w:t xml:space="preserve">${placeholder}</w:t></w:r></w:p>`
+      newDocXml = newDocXml.slice(0, paraStart) + replacement + newDocXml.slice(paraEnd)
       embeds.push({ videoId: videoId || rel.id, url: rel.target, placeholder })
-      // Adjust regex lastIndex to continue after injected content
-      drawingRe.lastIndex = endPos + inject.length
+      // Reset regex lastIndex to continue after the replacement start to catch further occurrences safely.
+      drawingRe.lastIndex = paraStart + replacement.length
     }
   }
 
