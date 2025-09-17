@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-grep -R "location \^~ /v1/admin/" /etc/nginx 2>/dev/null || true
+cd /var/www/LWB/server && /opt/lwb-node/current/bin/npm i -D @types/multer --no-fund --no-audit --silent
 
