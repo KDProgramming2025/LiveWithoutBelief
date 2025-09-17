@@ -83,19 +83,36 @@ export class ArticleService {
     }
 
     // Extract embedded media from DOCX (mp4/mp3) into ./media
-  const extractedMedia = await this.extractMediaFromDocx(docxFinal, articleDir)
+    // Also produce a modified DOCX buffer which places markers where OLE objects occur
+    const mediaResult = await this.extractMediaFromDocx(docxFinal, articleDir)
+    const extractedMedia = mediaResult.items
 
     // Convert docx → HTML using mammoth
-    const { value: html } = await mammoth.convertToHtml({ path: docxFinal }, {
+    const mammothInput: any = mediaResult.modifiedDocxBuffer
+      ? { buffer: mediaResult.modifiedDocxBuffer }
+      : { path: docxFinal }
+    const { value: initialHtml } = await mammoth.convertToHtml(mammothInput, {
       styleMap: [
         "p[style-name='Title'] => h1:fresh",
         "p[style-name='Subtitle'] => h2:fresh",
       ]
     })
+    // Replace inlined placeholders with proper media tags
+    let html = initialHtml
+    if (mediaResult.inline.length > 0) {
+      for (const m of mediaResult.inline) {
+        const tag = m.type === 'video'
+          ? `<figure class=\"media__item\"><video controls src=\"./media/${m.filename}\"></video></figure>`
+          : `<figure class=\"media__item\"><audio controls src=\"./media/${m.filename}\"></audio></figure>`
+        const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
+        html = html.replace(pattern, tag)
+      }
+    }
     // Append extracted media players (if any)
     let bodyHtml = html
-    if (extractedMedia.length > 0) {
-      const items = extractedMedia.map((m: ExtractedMedia) => {
+    const remaining = extractedMedia.filter(x => !mediaResult.inline.some(i => i.filename === x.filename))
+    if (remaining.length > 0) {
+      const items = remaining.map((m: ExtractedMedia) => {
         const src = `./media/${m.filename}`
         return m.type === 'video'
           ? `<figure class=\"media__item\"><video controls src=\"${src}\"></video></figure>`
@@ -129,23 +146,95 @@ export class ArticleService {
   }
 
   // Extract embedded media (mp4/mp3) from DOCX into ./media
-  private async extractMediaFromDocx(docxPath: string, articleDir: string): Promise<ExtractedMedia[]> {
-    const out: ExtractedMedia[] = []
+  // Returns: list of media items, inline placeholder mapping, and an optional modified docx buffer
+  private async extractMediaFromDocx(docxPath: string, articleDir: string): Promise<{ items: ExtractedMedia[]; inline: Array<{ placeholder: string; filename: string; type: 'audio'|'video' }>; modifiedDocxBuffer?: Buffer }> {
+    const items: ExtractedMedia[] = []
+    const inline: Array<{ placeholder: string; filename: string; type: 'audio'|'video' }> = []
     const mediaDir = path.join(articleDir, 'media')
     await fs.mkdir(mediaDir, { recursive: true })
     const data = await fs.readFile(docxPath)
     const zip = await JSZip.loadAsync(data)
-    const candidates = Object.keys(zip.files).filter(p => p.startsWith('word/media/'))
-    for (const p of candidates) {
+
+    // 1) Direct media under word/media
+    const direct = Object.keys(zip.files).filter(p => p.startsWith('word/media/'))
+    for (const p of direct) {
       const ext = path.extname(p).toLowerCase()
       const base = path.basename(p)
       const type = ext === '.mp4' ? 'video' : (ext === '.mp3' ? 'audio' : null)
       if (!type) continue
       const buf = await extractBufferFile(zip, p)
       await fs.writeFile(path.join(mediaDir, base), buf)
-      out.push({ filename: base, type })
+      items.push({ filename: base, type })
     }
-    return out
+
+    // 2) OLE-embedded media under word/embeddings/*.bin
+    const embeddings = Object.keys(zip.files).filter(p => p.startsWith('word/embeddings/') && p.toLowerCase().endsWith('.bin'))
+    const oleMap = new Map<string, { filename: string; type: 'audio'|'video' }>()
+    for (const p of embeddings) {
+      const buf = await extractBufferFile(zip, p)
+      const sniff = sniffOleEmbedded(buf)
+      if (sniff.start < 0 || !sniff.ext || !sniff.type) continue
+      // derive output name from oleObject name
+      const outName = path.basename(p, '.bin') + sniff.ext
+      await fs.writeFile(path.join(mediaDir, outName), buf.subarray(sniff.start))
+      items.push({ filename: outName, type: sniff.type })
+      // store mapping with target like 'embeddings/oleObject1.bin'
+      oleMap.set(p.replace(/^word\//, ''), { filename: outName, type: sniff.type })
+    }
+
+    // 3) If OLE entries exist, inject placeholders into word/document.xml next to their anchors
+    let modifiedDocxBuffer: Buffer | undefined
+    if (oleMap.size > 0) {
+      const docXmlPath = 'word/document.xml'
+      const relsPath = 'word/_rels/document.xml.rels'
+      const docXml = await zip.file(docXmlPath)?.async('string')
+      const relsXml = await zip.file(relsPath)?.async('string')
+      if (docXml && relsXml) {
+        // Map rId -> Target
+        const relMap = new Map<string, string>()
+        const relRe = /<Relationship[^>]*Id=\"([^\"]+)\"[^>]*Target=\"([^\"]+)\"[^>]*\/>/g
+        let m: RegExpExecArray | null
+        while ((m = relRe.exec(relsXml)) !== null) relMap.set(m[1], m[2])
+
+        let newDocXml = docXml
+        for (const [rId, target] of relMap.entries()) {
+          const normTarget = target.replace(/^\.\//, '')
+          if (!normTarget.startsWith('embeddings/')) continue
+          const ole = oleMap.get(normTarget)
+          if (!ole) continue
+          const marker = `[[LWB_MEDIA:${normTarget}]]`
+          // find usage(s) of r:id="rId"
+          let from = 0
+          while (true) {
+            const idx = newDocXml.indexOf(`r:id=\"${rId}\"`, from)
+            if (idx === -1) break
+            const closeObj = newDocXml.indexOf('</w:object>', idx)
+            const inject = `<w:p><w:r><w:t>${marker}</w:t></w:r></w:p>`
+            if (closeObj !== -1) {
+              const insertAt = closeObj + '</w:object>'.length
+              newDocXml = newDocXml.slice(0, insertAt) + inject + newDocXml.slice(insertAt)
+              from = insertAt + inject.length
+              inline.push({ placeholder: marker, filename: ole.filename, type: ole.type })
+            } else {
+              const closePara = newDocXml.indexOf('</w:p>', idx)
+              if (closePara !== -1) {
+                const insertAt = closePara + '</w:p>'.length
+                newDocXml = newDocXml.slice(0, insertAt) + inject + newDocXml.slice(insertAt)
+                from = insertAt + inject.length
+                inline.push({ placeholder: marker, filename: ole.filename, type: ole.type })
+              } else {
+                from = idx + 10
+              }
+            }
+          }
+        }
+        // write back and repackage
+        zip.file(docXmlPath, newDocXml)
+        modifiedDocxBuffer = await zip.generateAsync({ type: 'nodebuffer' }) as unknown as Buffer
+      }
+    }
+
+    return { items, inline, modifiedDocxBuffer }
   }
 }
 
@@ -208,3 +297,24 @@ async function extractBufferFile(zip: JSZip, pathInZip: string): Promise<Buffer>
 }
 
 // (no more duplicate class)
+
+// Escape string for literal usage in RegExp
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// Sniff OLE .bin payload to find embedded media start offset and type/extension
+function sniffOleEmbedded(buf: Buffer): { start: number; type?: 'audio'|'video'; ext?: string } {
+  // Look for common tags
+  const ftyp = buf.indexOf(Buffer.from('ftyp'))
+  if (ftyp >= 4) {
+    // assume MP4
+    return { start: ftyp - 4, type: 'video', ext: '.mp4' }
+  }
+  const id3 = buf.indexOf(Buffer.from('ID3'))
+  if (id3 >= 0) {
+    return { start: id3, type: 'audio', ext: '.mp3' }
+  }
+  // RIFF (AVI/WAV), Ogg, etc. Not handled for now
+  return { start: -1 }
+}
