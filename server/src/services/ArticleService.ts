@@ -137,20 +137,47 @@ export class ArticleService {
         const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
         html = html.replace(pattern, iframe)
       }
-      // Remove residual YouTube thumbnail <img> that Mammoth may have placed inside a heading with the iframe
-      // Pattern: <hN> <img ...base64...> ( optional <p></p> ) <div class="media__item youtube">...</div> ... </hN>
-      html = html.replace(/<h([1-6])(\b[^>]*)>\s*(<img[^>]+src="data:image\/jpeg;base64,[^"]+"[^>]*>)((?:\s*<p>\s*<\/p>)*)\s*(<div class=\"media__item youtube\">[\s\S]*?<\/div>)\s*<\/h\1>/gi,
-        (
-          _m: string,
-          level: string,
-          attrs: string,
-          _img: string,
-          empties: string,
-          div: string
-        ): string => {
-          return `<div class=\"youtube-heading-wrap\">${div}</div>`
+      // Robust cleanup: remove any base64 thumbnail <img> inside a heading that also contains a YouTube embed.
+      // We perform iterative passes to catch variants like:
+      // <h2><img ... /><div class="media__item youtube">...</div></h2>
+      // <h2><img ... /><p><div class="media__item youtube">...</div></p></h2>
+      // <h2><img ... /><p><span><div class="media__item youtube">...</div></span></p></h2>
+      // Strategy:
+      // 1. Find each heading block.
+      // 2. If it contains a youtube embed div.
+      // 3. Remove all <img src="data:image/*;base64,..."> inside that heading.
+      // 4. Collapse trivial wrappers (<p>, <span>, <strong>, <em>) that only wrap the youtube div.
+      // 5. If heading text content becomes empty (only the youtube div remains), unwrap the heading to a neutral div wrapper.
+      const headingRe = /<h([1-6])([^>]*)>([\s\S]*?)<\/h\1>/gi
+      html = html.replace(headingRe, (
+        full: string,
+        level: string,
+        attrs: string,
+        inner: string
+      ) => {
+        if (!/class=\"media__item youtube\"/i.test(inner)) return full
+        // Remove base64 images
+        let updated = inner.replace(/<img[^>]+src=\"data:image\/[a-zA-Z0-9+]+;base64,[^\"]+\"[^>]*>/gi, '')
+        // Remove empty paragraphs/spans created by image removal
+        updated = updated.replace(/<(p|span|strong|em)[^>]*>\s*<\/\1>/gi, '')
+        // If youtube div wrapped inside trivial single wrapper(s), unwrap them
+        // Repeat a few times to collapse nesting
+        for (let i = 0; i < 5; i++) {
+          updated = updated.replace(/^(?:\s*<(p|span|strong|em)[^>]*>\s*)+(<div class=\"media__item youtube\">[\s\S]*?<\/div>)(?:\s*<\/(?:p|span|strong|em)>\s*)+$/i, '$2')
+          // Also unwrap when extra <p> ... </p> only contains whitespace + youtube div
+          updated = updated.replace(/^\s*<p[^>]*>\s*(<div class=\"media__item youtube\">[\s\S]*?<\/div>)\s*<\/p>\s*$/i, '$1')
         }
-      )
+        const textContent = updated
+          .replace(/<div class=\"media__item youtube\">[\s\S]*?<\/div>/gi, '')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .trim()
+        // If no remaining textual content besides the video, drop the heading semantics
+        if (textContent === '') {
+          return `<div class=\"youtube-heading-wrap h${level}\">${updated}</div>`
+        }
+        return `<h${level}${attrs}>${updated}</h${level}>`
+      })
     }
     // Append extracted media players (if any)
     let bodyHtml = html
