@@ -31,8 +31,12 @@ class DefaultGoogleSignInClientFacade : GoogleSignInClientFacade {
 
     override fun buildSignInIntent(activity: Activity): Intent {
         // IMPORTANT: requestIdToken must use the WEB (server) client id from Firebase (client_type=3) for FirebaseAuth.signInWithCredential
+        val serverId = BuildConfig.GOOGLE_SERVER_CLIENT_ID
+        check(serverId.isNotBlank() && !serverId.startsWith("CHANGE_ME")) {
+            "GOOGLE_SERVER_CLIENT_ID is not configured correctly"
+        }
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(BuildConfig.GOOGLE_SERVER_CLIENT_ID)
+            .requestIdToken(serverId)
             .requestEmail()
             .build()
         if (BuildConfig.DEBUG) {
@@ -65,6 +69,14 @@ class ActivityResultGoogleSignInExecutor : GoogleSignInIntentExecutor {
                     val acc = task.getResult(ApiException::class.java)
                     cont.resume(acc)
                 } catch (e: Exception) {
+                    if (BuildConfig.DEBUG) {
+                        val status = (e as? ApiException)?.statusCode
+                        android.util.Log.e(
+                            "AuthFlow",
+                            "oneTapSignIn:failure status=${status}",
+                            e,
+                        )
+                    }
                     cont.resumeWith(Result.failure(RuntimeException("Sign-in failed", e)))
                 }
             }
