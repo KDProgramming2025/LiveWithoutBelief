@@ -1,12 +1,7 @@
-/* Basic modern dashboard layout with accessible contrast */
-:root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#9ca3af;--brand:#22c55e;--danger:#ef4444;--accent:#38bdf8;--border:#1f2937;--inset:#0b1220;--inset-border:color-mix(in oklab,var(--border),#ffffff 8%)}
+/* Tokens & Base (consolidated) */
+:root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#9ca3af;--brand:#22c55e;--danger:#ef4444;--accent:#38bdf8;--border:#1f2937;--inset:#0b1220;--inset-border:color-mix(in oklab,var(--border),#ffffff 8%);--bg-alt:#091021;--panel-alt:#0d1424;--panel-glow:rgba(56,189,248,0.12);--text-dim:#cbd5e1;--brand-accent:#16a34a;--accent-rgb:56 189 248;--radius-sm:6px;--radius:10px;--radius-lg:18px;--shadow-xs:0 1px 2px rgba(0,0,0,.4);--shadow:0 4px 20px -4px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.02);--grad-accent:linear-gradient(135deg,#38bdf8 0%,#818cf8 40%,#22c55e 85%);--focus-ring:0 0 0 2px #0f172a,0 0 0 4px var(--accent);--transition-fast:.18s cubic-bezier(.4,.0,.2,1);--transition-slow:.35s cubic-bezier(.4,0,.2,1);--sidebar-width:260px;--sidebar-collapsed:68px;--elevated-ring:0 0 0 1px rgba(255,255,255,.04);--sidebar-anim-duration:1s}
+html[data-theme="light"]{--bg:#edf2f6;--panel:#f8fafc;--panel-alt:#f2f6fa;--panel-glow:rgba(56,189,248,0.12);--text:#182230;--text-dim:#475569;--muted:#5b6675;--border:#d3dbe3;--inset:#e6ecf1;--inset-border:#c8d1d9;--shadow:0 2px 8px -2px rgba(15,23,42,.08),0 0 0 1px rgba(0,0,0,.04);--focus-ring:0 0 0 2px #ffffff,0 0 0 4px var(--accent)}
 *{box-sizing:border-box}html,body,#app{height:100%}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
-.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
-.sidebar{display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--panel);padding:16px;gap:8px}
-.brand{font-weight:700;color:var(--brand);letter-spacing:.3px;margin-bottom:8px}
-.nav-item{appearance:none;border:1px solid var(--border);background:transparent;color:var(--text);padding:10px 12px;border-radius:10px;text-align:left;cursor:pointer}
-.nav-item:hover,.nav-item.active{border-color:var(--accent);color:var(--accent)}
-.nav-item.danger{color:var(--danger);border-color:color-mix(in oklab,var(--danger),#000 70%)}
 .content{padding:20px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
@@ -19,7 +14,7 @@
 .button.secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
 .badge{display:inline-block;padding:2px 6px;border-radius:999px;background:var(--inset);border:1px solid var(--inset-border);color:var(--muted);font-size:12px}
 .form-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
-@media (max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:sticky;top:0;z-index:10}}
+@media (max-width:900px){.layout{padding-left:var(--sidebar-width)}}
 
 /* Menu grid */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
@@ -43,14 +38,7 @@
 .progress__bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--brand));transition:width .15s ease}
 .progress__text{font-size:12px;color:var(--muted)}
 
-/* === Sidebar Revamp Overrides (appended) === */
-/* Extended design tokens */
-:root{
-	--bg-alt:#091021;--panel-alt:#0d1424;--panel-glow:rgba(56,189,248,0.12);--text-dim:#cbd5e1;--brand-accent:#16a34a;--accent-rgb:56 189 248;--radius-sm:6px;--radius:10px;--radius-lg:18px;--shadow-xs:0 1px 2px rgba(0,0,0,.4);--shadow:0 4px 20px -4px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.02);--grad-accent:linear-gradient(135deg,#38bdf8 0%,#818cf8 40%,#22c55e 85%);--focus-ring:0 0 0 2px #0f172a,0 0 0 4px var(--accent);--transition-fast:.18s cubic-bezier(.4,.0,.2,1);--transition-slow:.35s cubic-bezier(.4,0,.2,1);--sidebar-width:260px;--sidebar-collapsed:68px;--elevated-ring:0 0 0 1px rgba(255,255,255,.04);
-}
-html[data-theme="light"]{--bg:#edf2f6;--panel:#f8fafc;--panel-alt:#f2f6fa;--panel-glow:rgba(56,189,248,0.12);--text:#182230;--text-dim:#475569;--muted:#5b6675;--border:#d3dbe3;--inset:#e6ecf1;--inset-border:#c8d1d9;--shadow:0 2px 8px -2px rgba(15,23,42,.08),0 0 0 1px rgba(0,0,0,.04);--focus-ring:0 0 0 2px #ffffff,0 0 0 4px var(--accent)}
-
-/* Grid adjustments for collapsible behavior */
+/* Layout adjustments for collapsible behavior */
 .layout{position:relative;min-height:100vh;display:block;padding-left:var(--sidebar-width);transition:padding-left var(--transition-slow)}
 .layout.sidebar--collapsed{padding-left:var(--sidebar-collapsed)}
 
@@ -83,9 +71,8 @@ html[data-theme="light"] .nav-item.active{--_bg:linear-gradient(110deg,rgba(var(
 .sidebar__footer{display:flex;flex-direction:column;gap:4px;padding-top:8px;margin-top:8px;border-top:1px solid var(--border)}
 .sidebar[data-state="collapsed"]{width:var(--sidebar-collapsed);padding:14px 10px}
 .brand__text,.nav-item__label{transition:opacity .5s linear .5s!important}
-/* During active collapsing we override delay so fade-out finishes by midpoint */
-.sidebar.is-collapsing .brand__text,
-.sidebar.is-collapsing .nav-item__label{transition:opacity .25s linear 0s!important}
+/* Collapse override (fade-out completes by midpoint) */
+.sidebar.is-collapsing .brand__text,.sidebar.is-collapsing .nav-item__label{transition:opacity .25s linear 0s!important}
 .brand__text{display:inline-block;max-width:200px}
 .sidebar[data-state="collapsed"] .brand__text,.sidebar[data-state="collapsed"] .nav-item__label{opacity:0;pointer-events:none}
 .sidebar[data-state="collapsed"] .nav-item{justify-content:flex-start;padding:10px 12px}
@@ -115,8 +102,7 @@ html[data-theme="light"] .nav-item.active{--_bg:linear-gradient(110deg,rgba(var(
 html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 
 /* === Sidebar Animation Refinements (LWB-92) === */
-/* Unified 1s timing */
-:root{--sidebar-anim-duration:1s}
+/* Unified 1s timing token already declared at top */
 .layout{transition:padding-left var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
 .sidebar{transition:width var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),padding var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),background var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
 .brand__text,.nav-item__label{transition:opacity .5s linear .5s!important}
@@ -136,13 +122,8 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 .sidebar[data-state="expanded"] .brand__text,
 .sidebar[data-state="expanded"] .nav-item__label{opacity:1}
 
-/* Center icon horizontally when collapsed */
-/* Keep icon centered area stable: remove dynamic margin shift */
-.sidebar[data-state="collapsed"] .nav-item__icon{margin-left:0;margin-right:0}
 /* Light theme subtle differentiation for collapsed icons */
 html[data-theme="light"] .sidebar[data-state="collapsed"] .nav-item__icon svg{filter:drop-shadow(0 0 1px rgba(0,0,0,.15))}
-/* During collapsing keep original horizontal position (no early nudge) */
-.sidebar.is-collapsing[data-state="collapsed"] .nav-item__icon{margin-left:0;margin-right:0}
 
 /* Ensure icon scaling remains smooth */
 .nav-item__icon{transition:transform var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),opacity var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
