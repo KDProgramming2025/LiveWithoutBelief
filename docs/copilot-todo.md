@@ -33,3 +33,5 @@ Notes:
 	- Upload a sample .docx; verify conversion, manifest update, and public index loads.
  - [ ] OLE media extraction
 	 - Extract MP4/MP3 from word/embeddings OLE .bin; inline placement; deploy and verify.
+ - [x] Remove OLE placeholder icon images
+	 - Strip image-only blocks that Mammoth renders for OLE icons immediately before inline media placeholders so they don't show above audio/video.

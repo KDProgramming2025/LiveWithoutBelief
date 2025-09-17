@@ -97,10 +97,14 @@ export class ArticleService {
         "p[style-name='Subtitle'] => h2:fresh",
       ]
     })
-    // Clean up: remove any OLE icon image blocks that Mammoth rendered immediately
-    // before our injected placeholders, then replace placeholders with media tags.
+    // Clean up: remove any OLE icon images that Mammoth rendered (usually EMF/WMF data URLs)
+    // and remove icon-only blocks that appear immediately before our placeholders. Then
+    // replace placeholders with media tags.
     let html = initialHtml
+    // remove EMF/WMF images anywhere in the HTML
+    html = removeOleIconDataImages(html)
     if (mediaResult.inline.length > 0) {
+      // also remove preceding image-only blocks in case some slipped through
       html = removeOleIconBlocksBeforePlaceholders(html, mediaResult.inline.map(i => i.placeholder))
       for (const m of mediaResult.inline) {
         const tag = m.type === 'video'
@@ -331,6 +335,16 @@ async function extractBufferFile(zip: JSZip, pathInZip: string): Promise<Buffer>
 // Escape string for literal usage in RegExp
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// Remove images that are likely OLE icons embedded by Word (EMF/WMF rendered as data URLs)
+function removeOleIconDataImages(html: string): string {
+  let out = html
+  // Strip <img src="data:image/x-emf;..."> and <img src="data:image/x-wmf;...">
+  out = out.replace(/<img[^>]+src="data:image\/(x-emf|x-wmf)[^"]*"[^>]*>/gi, '')
+  // If this made some empty blocks (<p> or <figure>) with only whitespace, remove them
+  out = out.replace(/<(p|figure)([^>]*)>\s*<\/\1>/gi, '')
+  return out
 }
 
 // Remove Word OLE icon image blocks that Mammoth renders before our injected placeholders.
