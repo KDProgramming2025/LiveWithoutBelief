@@ -8,6 +8,7 @@
 .nav-item:hover,.nav-item.active{border-color:var(--accent);color:var(--accent)}
 .nav-item.danger{color:var(--danger);border-color:color-mix(in oklab,var(--danger),#000 70%)}
 .content{padding:20px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
 .table{width:100%;border-collapse:collapse}
 .table th,.table td{border-bottom:1px solid var(--border);padding:10px;text-align:left}

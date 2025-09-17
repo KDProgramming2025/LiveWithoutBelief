@@ -3,6 +3,7 @@ import { articleRouter } from './routes/articles.js'
 import { authRouter } from './routes/auth.js'
 import { altchaRouter } from './routes/altcha.js'
 import { createWebRouter } from './routes/web.js'
+import { adminRouter } from './routes/admin.js'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -14,6 +15,7 @@ export function createServer() {
   app.use('/v1/articles', articleRouter)
   app.use('/v1/auth', authRouter)
   app.use('/v1/altcha', altchaRouter)
+  app.use('/v1/admin', adminRouter)
   app.use('/admin', createWebRouter())
   // Serve admin static UI (no frameworks)
   const __dirname = path.dirname(fileURLToPath(import.meta.url))

@@ -8,6 +8,17 @@
   </head>
   <body>
     <div id="app" class="layout">
+      <div id="login-overlay" hidden>
+        <div class="card" style="max-width:420px;margin:10vh auto;">
+          <h2>Admin Login</h2>
+          <form id="login-form" class="form-grid">
+            <input class="input" name="username" placeholder="Username" required />
+            <input class="input" type="password" name="password" placeholder="Password" required />
+            <button class="button" type="submit">Login</button>
+          </form>
+          <div id="login-error" class="badge" style="margin-top:8px"></div>
+        </div>
+      </div>
       <aside class="sidebar" aria-label="Main menu">
         <div class="brand">LWB Admin</div>
         <nav>

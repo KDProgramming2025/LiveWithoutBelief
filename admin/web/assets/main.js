@@ -1,6 +1,18 @@
 // Minimal router for admin single-page feel without frameworks
 const state = { token: null, view: 'menu' }
 
+function saveToken(t){ localStorage.setItem('lwb_admin_token', t); state.token = t }
+function loadToken(){ state.token = localStorage.getItem('lwb_admin_token') }
+function clearToken(){ localStorage.removeItem('lwb_admin_token'); state.token = null }
+
+async function api(path, opts={}){
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {})
+  if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+  const res = await fetch(`/v1/admin${path}`, { ...opts, headers })
+  if (res.status === 401) throw new Error('unauthorized')
+  return res
+}
+
 const views = {
   menu: async () => {
     const el = document.createElement('div')
@@ -69,11 +81,35 @@ async function render(view) {
 }
 
 function boot() {
+  loadToken()
+  const loginOverlay = document.getElementById('login-overlay')
+  const loginForm = document.getElementById('login-form')
+  const loginError = document.getElementById('login-error')
+
+  async function ensureAuth(){
+    if (!state.token) { loginOverlay.hidden = false; loginOverlay.className='overlay'; return false }
+    loginOverlay.hidden = true; loginOverlay.className=''; return true
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    loginError.textContent = ''
+    const fd = new FormData(loginForm)
+    const body = JSON.stringify(Object.fromEntries(fd.entries()))
+    try{
+      const res = await api('/login', { method:'POST', body, headers: {'Content-Type':'application/json'}, })
+      const json = await res.json()
+      saveToken(json.token)
+      await render(state.view)
+      await ensureAuth()
+    }catch(err){ loginError.textContent = 'Login failed' }
+  })
+
   document.getElementById('nav-menu').addEventListener('click', () => render('menu'))
   document.getElementById('nav-articles').addEventListener('click', () => render('articles'))
   document.getElementById('nav-users').addEventListener('click', () => render('users'))
-  document.getElementById('logout').addEventListener('click', () => {/* TODO: logout */})
-  render(state.view)
+  document.getElementById('logout').addEventListener('click', () => { clearToken(); render(state.view); loginOverlay.hidden=false; loginOverlay.className='overlay' })
+  render(state.view).then(ensureAuth)
 }
 
 document.addEventListener('DOMContentLoaded', boot)
