@@ -85,6 +85,9 @@ html[data-theme="light"]{--bg:#f1f5f9;--panel:#ffffff;--panel-alt:#f1f5f9;--pane
 .sidebar[data-state="collapsed"] .nav-item{justify-content:flex-start;padding:10px 8px}
 .sidebar[data-state="collapsed"] .nav-item__icon{transform:translateX(2px)}
 .sidebar[data-state="collapsed"] .nav-item__icon{margin:0}
+/* Prevent early horizontal jump while collapsing: keep original spacing during first half */
+.sidebar.is-collapsing[data-state="collapsed"] .nav-item{padding:10px 12px}
+.sidebar.is-collapsing[data-state="collapsed"] .nav-item__icon{transform:none}
 .sidebar::-webkit-scrollbar{width:10px}
 .sidebar::-webkit-scrollbar-track{background:transparent}
 .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:20px;border:2px solid transparent;background-clip:content-box}
@@ -129,6 +132,8 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 
 /* Center icon horizontally when collapsed */
 .sidebar[data-state="collapsed"] .nav-item__icon{margin-left:2px;margin-right:auto}
+/* During collapsing keep original horizontal position (no early nudge) */
+.sidebar.is-collapsing[data-state="collapsed"] .nav-item__icon{margin-left:0;margin-right:0}
 
 /* Ensure icon scaling remains smooth */
 .nav-item__icon{transition:transform var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1),opacity var(--sidebar-anim-duration) cubic-bezier(.4,0,.2,1)!important}
