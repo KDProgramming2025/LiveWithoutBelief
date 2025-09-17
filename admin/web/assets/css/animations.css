@@ -18,3 +18,23 @@ html[data-theme="light"] .sidebar[data-state="collapsed"] .nav-item__icon svg{fi
 .sidebar.is-collapsing .brand__text,.sidebar.is-collapsing .nav-item__label{transition:opacity .25s linear 0s!important}
 [data-icon-theme] svg{transition:transform .4s ease;transform-origin:50% 50%}
 html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
+
+/* ----------------------------------------------------
+	 THEME TRANSITION
+	 Smoothly interpolate background / color tokens when
+	 the data-theme attribute changes (light <-> dark).
+	 We transition common surfaces & text colors; variable
+	 changes cascade naturally. Guarded by prefers-reduced-motion.
+----------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+	html, body, .layout, .content, .card, .sidebar, .nav-item, .menu-card, .progress, .badge, .input, .button {
+		transition: background-color .45s ease, color .45s ease, border-color .45s ease, box-shadow .45s ease;
+	}
+	body { transition-duration: .55s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html, body, .layout, .content, .card, .sidebar, .nav-item, .menu-card, .progress, .badge, .input, .button {
+		transition: none !important;
+	}
+}
