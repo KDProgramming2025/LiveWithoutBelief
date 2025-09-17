@@ -3,6 +3,7 @@ import fssync from 'node:fs'
 import path from 'node:path'
 import mammoth from 'mammoth'
 import JSZip from 'jszip'
+import { injectYouTubePlaceholders } from './YouTubeEmbedInjector.js'
 
 export interface ArticleRecord {
   id: string
@@ -85,12 +86,20 @@ export class ArticleService {
     // Extract embedded media from DOCX (mp4/mp3) into ./media
     // Also produce a modified DOCX buffer which places markers where OLE objects occur
     const mediaResult = await this.extractMediaFromDocx(docxFinal, articleDir)
+
+    // Inject YouTube placeholders (if any YouTube embeds present) working on either modifiedDocxBuffer or original docx file
+    let workingBuffer: Buffer | undefined = mediaResult.modifiedDocxBuffer
+    if (!workingBuffer) {
+      workingBuffer = await fs.readFile(docxFinal)
+    }
+    const ytResult = await injectYouTubePlaceholders(workingBuffer)
+    if (ytResult.modifiedBuffer) {
+      workingBuffer = ytResult.modifiedBuffer
+    }
     const extractedMedia = mediaResult.items
 
     // Convert docx → HTML using mammoth
-    const mammothInput: any = mediaResult.modifiedDocxBuffer
-      ? { buffer: mediaResult.modifiedDocxBuffer }
-      : { path: docxFinal }
+    const mammothInput: any = workingBuffer ? { buffer: workingBuffer } : { path: docxFinal }
     const { value: initialHtml } = await mammoth.convertToHtml(mammothInput, {
       styleMap: [
         "p[style-name='Title'] => h1:fresh",
@@ -112,6 +121,17 @@ export class ArticleService {
           : `<figure class=\"media__item\"><audio controls src=\"./media/${m.filename}\"></audio></figure>`
         const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
         html = html.replace(pattern, tag)
+      }
+    }
+    // Replace YouTube placeholders with iframe embeds
+    if (ytResult && ytResult.embeds.length > 0) {
+      for (const yt of ytResult.embeds) {
+        const id = yt.videoId || yt.videoId || ''
+        const iframe = id
+          ? `<div class=\"media__item youtube\"><iframe src=\"https://www.youtube.com/embed/${id}\" title=\"YouTube video\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" allowfullscreen></iframe></div>`
+          : `<div class=\"media__item youtube\"><a href=\"${yt.url}\">YouTube Video</a></div>`
+        const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
+        html = html.replace(pattern, iframe)
       }
     }
     // Append extracted media players (if any)
