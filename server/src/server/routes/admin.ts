@@ -2,11 +2,19 @@ import express from 'express'
 import { AdminAuthService } from '../../services/AdminAuthService.js'
 import { AdminUserService } from '../../services/AdminUserService.js'
 import { Pool } from 'pg'
+import multer from 'multer'
+import fs from 'node:fs'
+import path from 'node:path'
+import { MenuService } from '../../services/MenuService.js'
 
 export const adminRouter = express.Router()
 const auth = new AdminAuthService()
 const pool = new Pool()
 const userSvc = new AdminUserService(pool)
+const menuSvc = new MenuService(pool)
+const uploadDir = path.resolve('/var/www/LWB/uploads')
+fs.mkdirSync(uploadDir, { recursive: true })
+const upload = multer({ dest: uploadDir })
 
 adminRouter.post('/login', async (req, res) => {
   const { username, password } = req.body || {}
@@ -46,6 +54,36 @@ adminRouter.get('/users', (req, res) => {
 adminRouter.delete('/users/:id', (req, res) => {
   const handler = async () => {
     const ok = await userSvc.deleteUser(req.params.id)
+    res.status(ok ? 204 : 404).end()
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
+// Menu: list
+adminRouter.get('/menu', (req, res) => {
+  const handler = async () => {
+    const items = await menuSvc.list()
+    res.json({ items })
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
+// Menu: create (multipart form)
+adminRouter.post('/menu', upload.single('icon'), (req, res) => {
+  const handler = async () => {
+    const { title, label, order } = req.body || {}
+    if (!title || typeof title !== 'string') return res.status(400).json({ error: 'bad_request' })
+    const iconPath = req.file ? `/uploads/${path.basename(req.file.path)}` : null
+    const item = await menuSvc.create({ title, label: label ?? null, order: Number(order ?? 0), iconPath })
+    res.status(201).json({ item })
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
+// Menu: delete
+adminRouter.delete('/menu/:id', (req, res) => {
+  const handler = async () => {
+    const ok = await menuSvc.delete(req.params.id)
     res.status(ok ? 204 : 404).end()
   }
   return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())

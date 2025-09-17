@@ -19,7 +19,10 @@ const views = {
     el.innerHTML = `
       <section class="card">
         <h2>Menu Items</h2>
-        <div id="menu-list"></div>
+        <table class="table" id="menu-table">
+          <thead><tr><th>Order</th><th>Title</th><th>Label</th><th>Icon</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
       </section>
       <section class="card">
         <h3>Add Menu Item</h3>
@@ -31,7 +34,42 @@ const views = {
           <button class="button" type="submit">Add</button>
         </form>
       </section>`
-    // TODO: fetch and render items
+    const tbody = el.querySelector('#menu-table tbody')
+    const form = el.querySelector('#menu-form')
+    async function loadMenu(){
+      const res = await api('/menu')
+      if(res.status === 401) throw new Error('unauthorized')
+      const json = await res.json()
+      tbody.innerHTML = ''
+      for(const m of json.items){
+        const tr = document.createElement('tr')
+        tr.innerHTML = `
+          <td>${m.order}</td>
+          <td>${m.title}</td>
+          <td>${m.label ?? ''}</td>
+          <td>${m.iconPath ? `<img src="/admin/ui${m.iconPath}" alt="icon" style="width:24px;height:24px;object-fit:contain;border-radius:4px"/>` : ''}</td>
+          <td><button class="button secondary" data-del="${m.id}">Delete</button></td>`
+        tbody.appendChild(tr)
+      }
+    }
+    tbody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-del]')
+      if(!btn) return
+      if(!confirm('Delete this menu item?')) return
+      const id = btn.getAttribute('data-del')
+      const res = await api(`/menu/${id}`, { method:'DELETE' })
+      if(res.status === 204){ await loadMenu() }
+    })
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const fd = new FormData(form)
+      // Use fetch without forcing JSON header; include Authorization header
+      const headers = {}
+      if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+      const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
+      if(res.ok){ form.reset(); await loadMenu() }
+    })
+    await loadMenu()
     return el
   },
   articles: async () => {

@@ -19,11 +19,13 @@ export function createServer() {
   // Serve admin static UI (no frameworks) before /admin router
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
   const adminRoot = path.resolve(__dirname, '../../../admin/web')
+  const uploadDir = path.resolve('/var/www/LWB/uploads')
   app.get(['/admin/ui','/admin/ui/'], (_req, res) => {
     res.set('Cache-Control', 'no-store')
     res.sendFile(path.join(adminRoot, 'index.html'))
   })
   app.use('/admin/ui', express.static(adminRoot, { etag: false, lastModified: false, maxAge: '1h' }))
+  app.use('/admin/ui/uploads', express.static(uploadDir, { etag: false, lastModified: false, maxAge: '1y' }))
   app.use('/admin', createWebRouter())
 
   // 404
