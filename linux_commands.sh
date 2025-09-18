@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
-sudo -u www-data git -C /var/www/LWB --no-pager pull --ff-only github feature/LWB-92-admin-ui
+set -e
+cd /var/www/LWB
+sudo -u www-data git fetch --all
+sudo -u www-data git checkout feature/LWB-92-admin-ui
+sudo -u www-data git pull --ff-only github feature/LWB-92-admin-ui
+echo "Deployed latest admin web assets."
 

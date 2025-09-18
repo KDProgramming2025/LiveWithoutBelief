@@ -143,7 +143,7 @@ export async function viewArticles(){
   form.addEventListener('reset', () => {
     for(const tile of fileTiles.querySelectorAll('.file-tile')){
       tile.style.backgroundImage = ''
-      const icon = tile.querySelector('.tile-icon')
+      const icon = tile.querySelector('.tile-icon, svg.lucide')
       if(icon) icon.style.visibility = 'visible'
       const nameEl = tile.querySelector('.tile-filename')
       if(nameEl) nameEl.remove()
@@ -155,7 +155,7 @@ export async function viewArticles(){
     if(!input) return
     const tile = input.closest('.file-tile')
     if(!tile) return
-    const icon = tile.querySelector('.tile-icon')
+    const icon = tile.querySelector('.tile-icon, svg.lucide')
     const kind = tile.getAttribute('data-kind')
 
     // Reset visuals
