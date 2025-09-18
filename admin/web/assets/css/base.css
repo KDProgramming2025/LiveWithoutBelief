@@ -8,11 +8,11 @@ body{
 	color:var(--text);
 	font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif
 }
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.28;mix-blend-mode:soft-light;background:
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.42;mix-blend-mode:soft-light;background:
 	url("../textures/matte-coarse.svg") repeat,
 	url("../textures/matte-medium.svg") repeat}
 .content{padding:20px;position:relative;background:var(--surface-matte-1);border-radius:var(--radius-lg)}
-.content::before{content:"";position:absolute;inset:-8px;pointer-events:none;opacity:.35;mix-blend-mode:soft-light;background:
+.content::before{content:"";position:absolute;inset:-8px;pointer-events:none;opacity:.52;mix-blend-mode:soft-light;background:
 	url("../textures/matte-coarse.svg") repeat,
 	radial-gradient(70% 60% at 10% 0%, rgba(255,255,255,.10), transparent 60%),
 	radial-gradient(60% 50% at 90% 100%, rgba(255,255,255,.08), transparent 60%)}
@@ -25,7 +25,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opa
 	box-shadow:var(--shadow-sm);
 	position:relative
 }
-.card::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:.32;mix-blend-mode:soft-light;background:
+.card::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:.48;mix-blend-mode:soft-light;background:
 	url("../textures/matte-fine.svg") repeat,
 	linear-gradient(180deg, rgba(255,255,255,.08), transparent 25%),
 	radial-gradient(80% 80% at 0% 0%, rgba(255,255,255,.08), transparent 50%)}

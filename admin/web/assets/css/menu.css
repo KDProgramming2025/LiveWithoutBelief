@@ -8,7 +8,7 @@
 	box-shadow:var(--shadow-sm);
 	position:relative
 }
-.menu-card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:.28;mix-blend-mode:soft-light;background:
+.menu-card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:.42;mix-blend-mode:soft-light;background:
 	url("../textures/matte-fine.svg") repeat,
 	radial-gradient(110% 90% at 10% -10%, rgba(255,255,255,.10), transparent 50%)}
 .menu-card__icon{

@@ -24,12 +24,9 @@
 	border-radius:var(--radius);
 	padding:10px 12px;
 	cursor:pointer;
-	box-shadow:var(--shadow-raised);
+	box-shadow:var(--shadow-raised), inset 0 1px 0 var(--edge-hi), inset 0 -1px 0 color-mix(in oklab, var(--panel), #000 25%);
 	transition:transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast)
 }
-.button{position:relative;overflow:hidden}
-.button::before{content:"";position:absolute;left:10px;right:10px;top:6px;height:1px;border-radius:1px;background:var(--edge-hi);opacity:.35;pointer-events:none}
-.button::after{content:"";position:absolute;left:10px;right:10px;bottom:6px;height:1px;border-radius:1px;background:var(--edge-lo);opacity:.25;pointer-events:none}
 .button:hover{filter:saturate(1.05)}
 .button:active{transform:translateY(1px);box-shadow:var(--shadow-sm)}
 .button:focus-visible{outline:none;box-shadow:var(--shadow-raised), var(--focus-ring)}
