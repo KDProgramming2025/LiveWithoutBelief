@@ -13,9 +13,9 @@ export async function viewArticles(){
           <input class="input" name="label" placeholder="Label" required />
           <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
           <div class="row">
-            <label class="button secondary" style="position:relative;overflow:hidden">Cover Image<input class="input" name="cover" type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" /></label>
-            <label class="button secondary" style="position:relative;overflow:hidden">Icon<input class="input" name="icon" type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" /></label>
-            <label class="button" style="position:relative;overflow:hidden">DOCX<input class="input" name="docx" type="file" accept=".docx" required style="position:absolute;inset:0;opacity:0;cursor:pointer" /></label>
+            <label class="button secondary file">Cover Image<input name="cover" type="file" accept="image/*" /></label>
+            <label class="button secondary file">Icon<input name="icon" type="file" accept="image/*" /></label>
+            <label class="button file">DOCX<input name="docx" type="file" accept=".docx" required /></label>
           </div>
           <div class="row">
             <button class="button" id="article-submit" type="submit">Upload</button>

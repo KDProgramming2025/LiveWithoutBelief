@@ -15,7 +15,7 @@ body {
 }
 
 .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh }
-.layout.sidebar--collapsed { grid-template-columns: 64px 1fr }
+.layout.is-collapsed { grid-template-columns: 72px 1fr }
 .content > .card + .card { margin-top: var(--space-16) }
 
 img, svg, video { max-width: 100%; height: auto; display: block }
@@ -23,7 +23,7 @@ img, svg, video { max-width: 100%; height: auto; display: block }
 .row{ display:flex; gap: var(--space-8); align-items: center; flex-wrap: wrap }
 .row--search{ flex-wrap: nowrap }
 
-.layout--with-sidebar .content { padding: var(--space-16) }
+.layout--with-sidebar .content { padding: var(--space-16) var(--space-20) }
 
 .content { max-width: var(--container-max); margin: 0 auto }
 

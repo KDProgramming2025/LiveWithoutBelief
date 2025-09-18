@@ -12,8 +12,8 @@ export async function viewMenu(){
             <input class="input" name="label" placeholder="Label" />
             <input class="input" name="order" type="number" placeholder="#" min="0" />
             <div class="mc-icon-slot">
-              <label class="mc-upload button secondary">
-                Icon<input class="mc-file" id="menu-icon-input" name="icon" type="file" accept="image/*" />
+              <label class="button secondary file">
+                Icon<input id="menu-icon-input" name="icon" type="file" accept="image/*" />
               </label>
               <div class="mc-thumb" id="menu-icon-thumb" hidden></div>
             </div>
@@ -50,7 +50,7 @@ export async function viewMenu(){
           <button class="button secondary" data-move="up" data-id="${m.id}">↑</button>
             <button class="button secondary" data-move="down" data-id="${m.id}">↓</button>
             <button class="button secondary" data-edit="item" data-id="${m.id}" data-title="${m.title ?? ''}" data-label="${m.label ?? ''}">Edit</button>
-            <label class="button secondary" style="position:relative;overflow:hidden">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
+            <label class="button secondary file">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}"></label>
             <button class="button secondary" data-del="${m.id}">Delete</button>
         </div>`
     return card

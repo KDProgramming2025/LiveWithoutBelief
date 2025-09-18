@@ -1,6 +1,8 @@
 .menu-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-12); align-items: start }
 .menu-grid{ margin-top: var(--space-16) }
 
+.menu-compact{ margin-bottom: var(--space-16) }
+
 .menu-card{
 	background: var(--color-surface-2);
 	border: 1px solid var(--color-border);
