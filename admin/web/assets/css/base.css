@@ -1,47 +1,73 @@
-/* base.css - resets & generic elements (skeuomorphic surfaces) */
-*{box-sizing:border-box}
-html,body,#app{height:100%}
-body{
-	margin:0;
-	background:
-		var(--surface-matte-0);
-	color:var(--text);
-	font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif
+/* Direction B — base surfaces and layout */
+
+* { box-sizing: border-box }
+html, body { height: 100% }
+html { color-scheme: dark }
+[data-theme="light"] html { color-scheme: light }
+
+body {
+	margin: 0;
+	font-family: var(--font-sans);
+	font-size: var(--text-size-md);
+	line-height: 1.45;
+	color: var(--text-primary);
+	background-color: var(--color-bg);
+	background-image: var(--texture-noise), var(--hidden-lights);
+	background-blend-mode: soft-light, normal;
+	background-size: 240px 240px, cover;
 }
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.42;mix-blend-mode:soft-light;background:
-	url("../textures/matte-coarse.svg") repeat,
-	url("../textures/matte-medium.svg") repeat}
-.content{padding:20px;position:relative;background:var(--surface-matte-1);border-radius:var(--radius-lg)}
-.content::before{content:"";position:absolute;inset:-8px;pointer-events:none;opacity:.52;mix-blend-mode:soft-light;background:
-	url("../textures/matte-coarse.svg") repeat,
-	radial-gradient(70% 60% at 10% 0%, rgba(255,255,255,.10), transparent 60%),
-	radial-gradient(60% 50% at 90% 100%, rgba(255,255,255,.08), transparent 60%)}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center}
-.card{
-	background:var(--surface-matte-2);
-	border-radius:var(--radius-lg);
-	padding:16px;
-	margin-bottom:16px;
-	box-shadow:var(--shadow-sm);
-	position:relative
+
+.layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh }
+.layout--with-sidebar .content { padding: var(--space-16) }
+
+.content { max-width: var(--container-max); margin: 0 auto }
+
+/* Cards and panels */
+.card {
+	background: var(--color-surface-2);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-raised-1);
+	border: 1px solid var(--color-border);
+	padding: var(--space-12);
+	position: relative;
 }
-.card::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:.48;mix-blend-mode:soft-light;background:
-	url("../textures/matte-fine.svg") repeat,
-	linear-gradient(180deg, rgba(255,255,255,.08), transparent 25%),
-	radial-gradient(80% 80% at 0% 0%, rgba(255,255,255,.08), transparent 50%)}
-.table{width:100%;border-collapse:separate;border-spacing:0}
-.table th,.table td{border-bottom:1px solid var(--border);padding:10px;text-align:left}
-.table thead th{
-	background:linear-gradient(180deg, color-mix(in oklab, var(--panel), #fff 4%) 0%, var(--panel) 100%);
-	position:sticky;top:0;z-index:1
+.card::before{
+	content: "";
+	position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+	background-image: var(--texture-paper);
+	mix-blend-mode: soft-light; opacity: .22;
 }
-.table tr{
-	background:linear-gradient(180deg, color-mix(in oklab, var(--panel), #000 2%) 0%, var(--panel) 100%);
+
+/* Typography */
+h1,h2,h3{ margin: 0 0 var(--space-8) 0; line-height: 1.2 }
+h1{ font-size: 28px }
+h2{ font-size: 22px }
+h3{ font-size: 18px }
+p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
+
+/* Badges */
+.badge{
+	display: inline-flex; align-items: center; gap: 6px;
+	padding: 2px 8px; border-radius: var(--radius-pill);
+	font-size: var(--text-size-sm);
+	color: var(--text-primary);
+	background: linear-gradient(#2f3134, #272a2e);
+	border: 1px solid var(--color-border-strong);
+	box-shadow: var(--shadow-raised-1);
 }
-.table tr:hover{
-	background:linear-gradient(180deg, color-mix(in oklab, var(--panel), #fff 2%) 0%, color-mix(in oklab, var(--panel), #fff 1%) 100%)
+
+/* Utility spacing */
+.stack-8 > * + * { margin-top: var(--space-8) }
+.stack-12 > * + * { margin-top: var(--space-12) }
+
+/* Overlays */
+#login-overlay, #modal-overlay{
+	position: fixed; inset: 0; background: rgba(0,0,0,.5);
+	display: none;
 }
-.row{display:flex;gap:12px}
-.row>*{flex:1}
-.form-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
-@media (max-width:900px){.layout{padding-left:var(--sidebar-width)}}
+#login-overlay[hidden], #modal-overlay[hidden]{ display: none }
+#login-overlay:not([hidden]), #modal-overlay:not([hidden]){ display: block }
+
+/* Focus outline reset */
+:focus-visible{ outline: none; box-shadow: var(--focus) }
+

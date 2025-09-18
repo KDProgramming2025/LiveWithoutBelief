@@ -1,9 +1,8 @@
-/* progress.css (skeuomorphic) */
-.progress{
-	width:100%;height:12px;border-radius:999px;overflow:hidden;
-	background:var(--surface-inset);
-	box-shadow:var(--shadow-pressed)
-}
-.progress__bar{height:100%;width:0;background:linear-gradient(90deg, color-mix(in oklab, var(--accent), #fff 12%), color-mix(in oklab, var(--accent), #000 8%));transition:width .15s ease;position:relative}
-.progress__bar::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg, rgba(255,255,255,.18), transparent 60%);mix-blend-mode:screen;pointer-events:none}
-.progress__text{font-size:12px;color:var(--muted)}
+/* Direction B — progress */
+
+.progress{ height: 10px; background: var(--color-inset); border: 1px solid var(--color-border-strong); border-radius: 999px; box-shadow: var(--shadow-inset-1); position: relative; overflow: hidden }
+.progress__bar{ position:absolute; inset: 0 auto 0 0; width: 30%; background: linear-gradient(#cfae67,#bd9650); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(0,0,0,.12) }
+.progress--ok .progress__bar{ background: linear-gradient(#6fbf8b,#5aa576) }
+.progress--warn .progress__bar{ background: linear-gradient(#d9b45a,#c6a149) }
+.progress--danger .progress__bar{ background: linear-gradient(#e36b6b,#c55858) }
+

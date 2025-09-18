@@ -1,27 +1,19 @@
-/* menu.css - menu grid & cards (skeuomorphic) */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+/* Direction B — menu cards */
+
+.menu-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-12) }
+
 .menu-card{
-	display:flex;flex-direction:column;gap:10px;
-	background:var(--surface-matte-2);
-	border-radius:var(--radius-lg);
-	padding:12px;
-	box-shadow:var(--shadow-sm);
-	position:relative
+	background: var(--color-surface-2);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	padding: var(--space-12);
+	box-shadow: var(--shadow-raised-1);
+	position: relative;
+	transition: transform .15s ease, box-shadow .15s ease;
 }
-.menu-card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:.42;mix-blend-mode:soft-light;background:
-	url("../textures/matte-fine.svg") repeat,
-	radial-gradient(110% 90% at 10% -10%, rgba(255,255,255,.10), transparent 50%)}
-.menu-card__icon{
-	display:flex;align-items:center;justify-content:center;height:90px;
-	background:var(--surface-inset);
-	border-radius:var(--radius);
-	position:relative;
-	box-shadow:var(--shadow-pressed)
-}
-.menu-card__icon .uploading{position:absolute;inset:auto 6px 6px auto;background:var(--surface-inset);padding:2px 6px;border-radius:6px;font-size:11px;color:var(--muted);box-shadow:var(--shadow-pressed)}
-.menu-card__icon img{max-width:100%;max-height:100%;object-fit:contain}
-.menu-card__body{display:flex;flex-direction:column;gap:4px}
-.menu-card__title{font-weight:600}
-.menu-card__label{color:var(--muted);font-size:12px}
-.menu-card__actions{display:flex;flex-wrap:wrap;gap:8px}
-.placeholder{color:var(--muted);font-size:12px}
+.menu-card::before{ content:""; position:absolute; inset:0; border-radius: inherit; pointer-events:none; background-image: var(--texture-paper); mix-blend-mode: soft-light; opacity:.2 }
+.menu-card:hover{ transform: translateY(-1px); box-shadow: var(--shadow-raised-2) }
+.menu-card .icon-well{ width:44px; height:44px; border-radius:12px; background: var(--color-inset); border:1px solid var(--color-border-strong); box-shadow: var(--shadow-inset-1); display: grid; place-items: center; color: var(--text-muted) }
+.menu-card h3{ margin-top: var(--space-8) }
+.menu-card p{ margin: 6px 0 0 0 }
+

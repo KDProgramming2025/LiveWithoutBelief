@@ -1,26 +1,35 @@
-- 2025-09-18: Admin UI skeuomorphic redesign
-	- Implemented textured matte surfaces, hidden light bands, bevel edges, and realistic raised/pressed shadows.
-	- Updated files:
-		- `admin/web/assets/css/tokens.css` (new tokens: noise texture, bevel colors, elevation presets; refined palettes for light/dark)
-		- `admin/web/assets/css/base.css` (matte cards/tables)
-		- `admin/web/assets/css/forms.css` (pressed inputs, raised buttons)
-		- `admin/web/assets/css/menu.css` (inset icon wells, raised cards)
-		- `admin/web/assets/css/sidebar.css` (matte sidebar with hidden lights; refined nav states)
-		- `admin/web/assets/css/progress.css` (pressed track with glossy bar)
-		- `admin/web/assets/styles.css` (minimized to avoid overrides)
-	- Local smoke test: Opened `admin/web/index.html` successfully.
-	- Git: committed and pushed to `feature/LWB-92-admin-ui`.
-	- Server sync (one command per cycle via linux_commands.sh):
-		1) `git fetch --all`
-		2) `git checkout feature/LWB-92-admin-ui`
-		3) `git pull --ff-only github feature/LWB-92-admin-ui`
-	- Next visual refinements (optional):
-		- Add subtle edge highlights on focusable components using ::before top edge.
-		- Introduce micro-animations for press/release depth with scale/brightness.
-		- Fine-tune noise intensity for ultra-low DPI devices.
+# Admin Web — Direction B (Modern Analog Studio)# Copilot TODO
 
-	- 2025-09-18: Palette and LED updates
-		- Lightened dark theme backgrounds and panels for better shadow visibility.
-		- Increased matte texture intensity and added architectural LED accents to sidebar, cards, buttons, and progress.
-		- Adjusted shadow and bevel tokens for more visible depth.
-# Copilot TODO
+
+This iteration resets the admin UI to a skeuomorphic, tactile look inspired by analog studio gear. The default theme is dark with warm, low-saturation neutrals and brass-accent hints. A light mode is included via `[data-theme="light"]`.
+
+## What changed
+- New tokens in `admin/web/assets/css/tokens.css` for palette, elevation/shadows, radii, spacing, typography, focus, and textures.
+- Base surfaces and layout in `base.css` with subtle hidden-lights and hairline noise.
+- Tactile form controls in `forms.css` (inset inputs, raised buttons, select arrow, checkbox/switch).
+- Menu cards in `menu.css` with fine paper texture and depth hover.
+- Sidebar/navigation in `sidebar.css` with compact controls and theme-fade support.
+- Progress bar in `progress.css` inspired by analog VU, using semantic colors (no flashy gradients).
+- Tileable SVG textures added: `paper-fiber.svg`, `brushed-metal.svg`, `hairline-noise.svg`.
+
+## Design tokens (highlights)
+- Palette (dark default):
+  - bg: `#161718`, surfaces: `#1c1e20`/`#232529`/`#2a2d31`, inset `#131415`.
+  - text: primary/muted/subdued tuned for warm neutral contrast.
+  - accent: warm brass `--accent-500: #cfae67` used sparingly.
+- Shadows: `--shadow-raised-1/2`, `--shadow-inset-1`, `--shadow-press-1`.
+- Focus: layered neutral + brass halo via `--focus`.
+- Textures: paper for cards, brushed-metal for accents if needed, hairline-noise on page.
+
+## Theming
+- Dark is default. Light mode overrides palette/shadows for proper contrast.
+- Theme toggle logic is unchanged (`assets/js/ui/theme.js`). The sidebar fade layer is supported in CSS.
+
+## Next ideas (optional)
+- Add a subtle “VU tick” animation class for progress milestones (reduced-motion aware).
+- Small embossed section headers (micro-bevel) for data tables.
+- Accessibility audit: ensure ≥ 4.5:1 for interactive text in both themes.
+
+## Deploy notes
+- Use the one-command Linux runner to fetch then fast-forward pull on `/var/www/LWB`.
+- If CSS purging/minification is added later, thread it through CI and verify `index.html` includes the right outputs.

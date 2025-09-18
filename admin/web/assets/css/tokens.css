@@ -1,104 +1,114 @@
-/* tokens.css - design system tokens (skeuomorphic) */
 /*
-	Core color system + surface physics. These tokens power subtle matte textures,
-	bevel highlights, hidden light bands, and realistic raised/pressed shadows.
+	Direction B — Modern Analog Studio
+	Design tokens: palette, elevation, radii, spacing, typography, textures.
+	Dark theme is default. Light overrides under [data-theme="light"].
 */
-:root{
-	/* Graphite tones for elevation (dark) */
-	--tone-0:#1d232c; /* background */
-	--tone-1:#232a35; /* base surface */
-	--tone-2:#2a3240; /* raised */
-	--tone-3:#303a4a; /* highest */
-	/* Brighter graphite dark theme */
-	--bg:#1f252e;           /* graphite */
-	--bg-2:#262d38;         /* deeper graphite */
-	--panel:#262e3a;        /* panel surface */
-	--panel-alt:#2c3442;    /* alternate panel */
-	--text:#f2f4f7;         /* high contrast text */
-	--text-dim:#d3d9e2;     /* secondary text */
-	--muted:#aab4c0;        /* captions */
-	--border:#3a4252;       /* visible on graphite */
-	--inset:#1b212b;        /* cavity */
-	--inset-border:#333b49;
-	--brand:#22c55e;        /* used sparingly */
-	--brand-accent:#16a34a;
-	--accent:#8aa3c2;       /* neutral steel-blue */
-	--danger:#ef4444;
-	--accent-rgb:138 163 194;
+
+:root {
+	/* Typography */
+	--font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+	--text-size-xs: 12px;
+	--text-size-sm: 13px;
+	--text-size-md: 14px;
+	--text-size-lg: 16px;
+	--text-size-xl: 18px;
+
+	/* Spacing scale */
+	--space-1: 2px;
+	--space-2: 4px;
+	--space-3: 6px;
+	--space-4: 8px;
+	--space-6: 12px;
+	--space-8: 16px;
+	--space-10: 20px;
+	--space-12: 24px;
+	--space-16: 32px;
+	--space-20: 40px;
 
 	/* Radii */
-	--radius-sm:6px;--radius:12px;--radius-lg:18px;--radius-xl:22px;
+	--radius-xs: 6px;
+	--radius-sm: 10px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+	--radius-pill: 999px;
 
-	/* External SVG textures */
-	--texture-fine:url("../textures/matte-fine.svg");
-	--texture-medium:url("../textures/matte-medium.svg");
-	--texture-coarse:url("../textures/matte-coarse.svg");
-	--texture-body:var(--texture-coarse);
+	/* Palette — dark (default) with warm neutral undertones */
+	--color-bg: #161718;            /* studio charcoal */
+	--color-surface-1: #1c1e20;     /* desk matte */
+	--color-surface-2: #232529;     /* card */
+	--color-surface-3: #2a2d31;     /* raised */
+	--color-inset: #131415;         /* inset wells */
+	--color-border: #2c2f33;        /* hairline borders */
+	--color-border-strong: #383c41;
 
-	/* Bevel edges (dark) */
-	--edge-hi:rgba(255,255,255,.09); /* top/left highlight */
-	--edge-lo:rgba(0,0,0,.65);       /* bottom/right shadow */
+	--text-primary: #eae7e0;        /* warm paper white */
+	--text-muted: #bbb8b2;
+	--text-subdued: #95928e;
 
-	/* Elevation presets: stronger to show on graphite */
-	--shadow-xs:0 1.5px 2.5px rgba(0,0,0,.45);
-	--shadow-sm:0 3px 8px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.05);
-	--shadow-raised:0 10px 24px -6px rgba(0,0,0,.6), 0 2px 0 0 var(--edge-hi), 0 0 0 1px rgba(255,255,255,.04);
-	--shadow-raised-lg:0 18px 36px -10px rgba(0,0,0,.65), 0 2px 0 0 var(--edge-hi), 0 0 0 1px rgba(255,255,255,.04);
-	--shadow-pressed:inset 2px 3px 5px rgba(0,0,0,.62), inset -1px -1px 1px var(--edge-hi), 0 0 0 1px rgba(255,255,255,.03);
+	/* Accent — warm brass/amber, low saturation */
+	--accent-50: #f3ead7;
+	--accent-200: #e7d5ac;
+	--accent-400: #d6bb7a;
+	--accent-500: #cfae67;
+	--accent-600: #bd9650;
+	--accent-700: #a5793a;
+	--accent: var(--accent-500);
 
-	/* Neutral hidden light bands (achromatic) */
-	--hidden-lights:
-		radial-gradient(60% 80% at 20% 0%, rgba(255,255,255,.10), transparent 60%),
-		radial-gradient(70% 90% at 80% 100%, rgba(255,255,255,.08), transparent 65%);
+	/* Semantic */
+	--success-500: #6fbf8b;
+	--warning-500: #d9b45a;
+	--danger-500: #e36b6b;
+
+	/* Shadows — tuned for OLED-friendly subtlety */
+	--shadow-raised-1: 0 0.5px 0 rgba(255,255,255,0.04), 0 6px 14px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.6);
+	--shadow-raised-2: 0 1px 0 rgba(255,255,255,0.05), 0 10px 24px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.65);
+	--shadow-inset-1: inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.7), inset 0 8px 20px rgba(0,0,0,0.65);
+	--shadow-press-1: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -2px 4px rgba(0,0,0,0.75), 0 0 0 1px rgba(0,0,0,0.3);
 
 	/* Focus ring */
-	--focus-ring:0 0 0 2px color-mix(in oklab, var(--panel), #ffffff 12%), 0 0 0 5px rgba(138,163,194,.45);
+	--focus: 0 0 0 2px rgba(255,255,255,0.07), 0 0 0 4px rgba(207,174,103,0.35);
 
-	/* Motion */
-	--transition-fast:.18s cubic-bezier(.4,0,.2,1);
-	--transition-slow:.35s cubic-bezier(.4,0,.2,1);
-	--sidebar-anim-duration:1s;
+	/* Textures */
+	--texture-paper: url('../textures/paper-fiber.svg');
+	--texture-metal: url('../textures/brushed-metal.svg');
+	--texture-noise: url('../textures/hairline-noise.svg');
 
-	/* Layout */
-	--sidebar-width:260px;--sidebar-collapsed:68px;
+	/* Hidden lights banding (subtle) */
+	--hidden-lights: radial-gradient(1200px 600px at 30% -10%, rgba(255,255,255,0.06), transparent 60%),
+									 radial-gradient(900px 500px at 80% 110%, rgba(255,255,255,0.04), transparent 60%);
+
+	/* Component dimensions */
+	--control-height: 36px;
+	--control-padding-x: 12px;
+	--container-max: 1200px;
 }
 
-/* Light theme refinements: realistic paper/plastic surfaces */
-html[data-theme="light"]{
-	--bg:#edf1f6; --bg-2:#e7ecf3; --panel:#f8fafc; --panel-alt:#f1f5f9;
-	--text:#1a2433; --text-dim:#485669; --muted:#5b6675; --border:#d1d9e3;
-	--inset:#e8eef3; --inset-border:#c8d1d9; --accent:#7c8ea8; --accent-rgb:124 142 168;
-	--edge-hi:rgba(255,255,255,.9);
-	--edge-lo:rgba(15,23,42,.16);
-	--shadow-xs:0 1px 2px rgba(15,23,42,.10);
-	--shadow-sm:0 2px 8px rgba(15,23,42,.12), 0 0 0 1px rgba(0,0,0,.04);
-	--shadow-raised:0 6px 14px -6px rgba(15,23,42,.18), 0 1px 0 0 var(--edge-hi), 0 0 0 1px rgba(0,0,0,.04);
-	--shadow-raised-lg:0 16px 32px -12px rgba(15,23,42,.22), 0 1px 0 0 var(--edge-hi), 0 0 0 1px rgba(0,0,0,.05);
-	--shadow-pressed:inset 2px 2px 4px rgba(15,23,42,.12), inset -1px -1px 1px var(--edge-hi), 0 0 0 1px rgba(0,0,0,.04);
-	--hidden-lights: radial-gradient(60% 80% at 20% 0%, rgba(255,255,255,.22), transparent 60%),
-									 radial-gradient(70% 90% at 80% 100%, rgba(255,255,255,.16), transparent 65%);
-	--focus-ring:0 0 0 2px #ffffff,0 0 0 5px rgba(124,142,168,.35);
+/* Light theme overrides */
+[data-theme="light"] {
+	--color-bg: #f4f2ee;            /* warm studio paper */
+	--color-surface-1: #ffffff;
+	--color-surface-2: #f5f3ef;
+	--color-surface-3: #ebe8e2;
+	--color-inset: #f1eee8;
+	--color-border: #e6e2da;
+	--color-border-strong: #d6d1c8;
+
+	--text-primary: #1d1f21;
+	--text-muted: #4a4f55;
+	--text-subdued: #6e747b;
+
+	--shadow-raised-1: 0 0.5px 0 rgba(0,0,0,0.05), 0 8px 18px rgba(0,0,0,0.12), 0 2px 5px rgba(0,0,0,0.08);
+	--shadow-raised-2: 0 1px 0 rgba(0,0,0,0.06), 0 14px 30px rgba(0,0,0,0.14), 0 6px 12px rgba(0,0,0,0.08);
+	--shadow-inset-1: inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.06), inset 0 8px 20px rgba(0,0,0,0.06);
+	--shadow-press-1: inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -2px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.05);
+
+	--focus: 0 0 0 2px rgba(0,0,0,0.06), 0 0 0 4px rgba(189,150,80,0.35);
 }
 
-/* Utility surface backgrounds */
-:root{
-	/* Multi-tone matte surfaces */
-	--surface-matte-0: linear-gradient(180deg, var(--tone-0) 0%, var(--tone-1) 100%), var(--texture-coarse);
-	--surface-matte-1: linear-gradient(180deg, var(--tone-1) 0%, var(--tone-2) 100%), var(--texture-fine), var(--hidden-lights);
-	--surface-matte-2: linear-gradient(180deg, var(--tone-2) 0%, var(--tone-3) 100%), var(--texture-fine), var(--hidden-lights);
-	/* Back-compat alias */
-	--surface-matte: var(--surface-matte-1);
-	--surface-inset: linear-gradient(180deg, color-mix(in oklab, var(--inset), #000 2%) 0%, var(--inset) 100%), var(--texture-medium);
+/* Utility tokens */
+:root {
+	--ring: 0 0 0 1px var(--color-border-strong) inset;
+	--hairline: 1px solid var(--color-border);
 }
 
-/* Light surfaces & tones */
-html[data-theme="light"]{
-	--tone-0:#f0f3f8;
-	--tone-1:#e9eef5;
-	--tone-2:#e2e8ef;
-	--tone-3:#d9e1ea;
-	--surface-matte-0: linear-gradient(180deg, var(--tone-0) 0%, var(--tone-1) 100%), var(--texture-fine);
-	--surface-matte-1: linear-gradient(180deg, var(--tone-1) 0%, var(--tone-2) 100%), var(--texture-fine);
-	--surface-matte-2: linear-gradient(180deg, var(--tone-2) 0%, var(--tone-3) 100%), var(--texture-fine);
-	--surface-matte: var(--surface-matte-1);
-}
