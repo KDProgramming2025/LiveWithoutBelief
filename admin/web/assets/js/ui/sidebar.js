@@ -5,14 +5,21 @@ export function initSidebar(){
   const sidebar = document.getElementById('sidebar')
   const collapseBtn = document.getElementById('sidebar-collapse')
   const layoutRoot = document.querySelector('.layout')
-  const iconEl = collapseBtn?.querySelector('[data-lucide]')
+  // Helper: get the current icon node (supports original span or generated svg)
+  const getIconEl = () => collapseBtn?.querySelector('[data-lucide], svg.lucide')
+  const setIcon = (collapsed) => {
+    const el = getIconEl()
+    if(!el) return
+    el.setAttribute('data-lucide', collapsed ? 'chevrons-right' : 'chevrons-left')
+    refreshIcons()
+  }
 
   const storedSidebar = loadPref(PREF_KEYS.sidebar, 'expanded')
   if(storedSidebar === 'collapsed'){
     sidebar?.setAttribute('data-state','collapsed')
     collapseBtn?.setAttribute('aria-expanded','false')
     layoutRoot?.classList.add('sidebar--collapsed')
-  if(iconEl){ iconEl.setAttribute('data-lucide','chevrons-right'); refreshIcons() }
+    setIcon(true)
   }
 
   collapseBtn?.addEventListener('click', () => {
@@ -23,7 +30,7 @@ export function initSidebar(){
       collapseBtn.setAttribute('aria-expanded','true')
       layoutRoot?.classList.remove('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'expanded')
-  if(iconEl){ iconEl.setAttribute('data-lucide','chevrons-left'); refreshIcons() }
+      setIcon(false)
       const onEnd = (e) => {
         if(e.propertyName === 'width'){
           sidebar?.classList.remove('is-expanding')
@@ -37,7 +44,7 @@ export function initSidebar(){
       collapseBtn.setAttribute('aria-expanded','false')
       layoutRoot?.classList.add('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'collapsed')
-  if(iconEl){ iconEl.setAttribute('data-lucide','chevrons-right'); refreshIcons() }
+      setIcon(true)
       const onEnd = (e) => {
         if(e.propertyName === 'width'){
           sidebar?.classList.remove('is-collapsing')
@@ -59,6 +66,7 @@ export function initSidebar(){
       collapseBtn.setAttribute('aria-expanded','false')
       layoutRoot?.classList.add('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'collapsed')
+      setIcon(true)
     }
   })
 }
