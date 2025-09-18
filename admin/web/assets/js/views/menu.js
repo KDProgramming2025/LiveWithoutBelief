@@ -49,11 +49,16 @@ export async function viewMenu(){
           <div class="menu-card__label">${m.label ?? ''}</div>
         </div>
         <div class="menu-card__actions">
-          <button class="button secondary" data-move="up" data-id="${m.id}">↑</button>
-            <button class="button secondary" data-move="down" data-id="${m.id}">↓</button>
-            <button class="button secondary" data-edit="item" data-id="${m.id}" data-title="${m.title ?? ''}" data-label="${m.label ?? ''}">Edit</button>
-            <label class="button secondary file-button">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}"></label>
-            <button class="button danger" data-del="${m.id}">Delete</button>
+          <div class="actions-row actions-row--move">
+            <button class="button secondary left" data-move="up" data-id="${m.id}">↑</button>
+            <span></span>
+            <button class="button secondary right" data-move="down" data-id="${m.id}">↓</button>
+          </div>
+          <div class="actions-row actions-row--ops">
+            <button class="button danger left" data-del="${m.id}">Delete</button>
+            <button class="button secondary center" data-edit="item" data-id="${m.id}" data-title="${m.title ?? ''}" data-label="${m.label ?? ''}">Edit</button>
+            <label class="button secondary right file-button">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}"></label>
+          </div>
         </div>`
     return card
   }
