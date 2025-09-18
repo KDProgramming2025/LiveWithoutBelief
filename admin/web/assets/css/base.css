@@ -14,7 +14,7 @@ body {
 	background-size: 400px 400px;
 }
 
-.layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh }
+.layout { display: grid; grid-template-columns: auto 1fr; min-height: 100vh }
 .layout.sidebar--collapsed { grid-template-columns: 64px 1fr }
 .content > .card + .card { margin-top: var(--space-16) }
 

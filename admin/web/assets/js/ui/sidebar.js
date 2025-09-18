@@ -20,14 +20,26 @@ export function initSidebar(){
       collapseBtn.setAttribute('aria-expanded','true')
       layoutRoot?.classList.remove('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'expanded')
-      setTimeout(() => { sidebar?.classList.remove('is-expanding') }, 1000)
+      const onEnd = (e) => {
+        if(e.propertyName === 'width'){
+          sidebar?.classList.remove('is-expanding')
+          sidebar?.removeEventListener('transitionend', onEnd)
+        }
+      }
+      sidebar?.addEventListener('transitionend', onEnd)
     } else {
       sidebar?.classList.add('is-collapsing')
       sidebar?.setAttribute('data-state','collapsed')
       collapseBtn.setAttribute('aria-expanded','false')
       layoutRoot?.classList.add('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'collapsed')
-      setTimeout(() => { sidebar?.classList.remove('is-collapsing') }, 1000)
+      const onEnd = (e) => {
+        if(e.propertyName === 'width'){
+          sidebar?.classList.remove('is-collapsing')
+          sidebar?.removeEventListener('transitionend', onEnd)
+        }
+      }
+      sidebar?.addEventListener('transitionend', onEnd)
     }
   })
 

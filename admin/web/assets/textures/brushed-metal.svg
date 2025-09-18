@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <defs>
     <filter id="brush" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.06 0.3" numOctaves="1" seed="8" stitchTiles="stitch" />
+      <!-- Low frequencies to produce 2–3 broad vertical waves per 400px tile (CSS scales this 2x) -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.002" numOctaves="1" seed="7" stitchTiles="stitch" />
       <feColorMatrix type="saturate" values="0" />
       <feComponentTransfer>
-        <feFuncA type="table" tableValues="0 0.06 0.12 0.06 0"/>
+        <!-- Soften band edges and reduce micro speckle -->
+        <feFuncA type="table" tableValues="0 0.08 0.16 0.08 0"/>
       </feComponentTransfer>
     </filter>
   </defs>
