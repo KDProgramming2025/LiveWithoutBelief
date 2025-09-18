@@ -17,11 +17,11 @@
 .menu-card p{ margin: 6px 0 0 0 }
 
 /* Menu card internal layout */
-.menu-card__icon{ display:flex; align-items:center; justify-content:center; height: 72px; border-radius: 12px; background: var(--color-inset); border:1px solid var(--color-border); box-shadow: var(--shadow-inset-1); overflow: hidden; margin-bottom: var(--space-8) }
-.menu-card__icon img{ max-height: 64px; max-width: 64px; object-fit: contain }
-.menu-card__icon .placeholder{ color: var(--text-subdued); font-size: var(--text-size-sm) }
-.menu-card__body{ display:grid; gap: 4px }
-.menu-card__title{ font-weight: 600 }
+.menu-card__icon{ width: 28px; height: 28px; border-radius: 8px; background: var(--color-inset); border:1px solid var(--color-border); box-shadow: var(--shadow-inset-1); display:grid; place-items:center; overflow:hidden; flex: 0 0 28px }
+.menu-card__icon img{ max-height: 22px; max-width: 22px; object-fit: contain }
+.menu-card__icon .placeholder{ color: var(--text-subdued); font-size: 11px }
+.menu-card__body{ display:grid; gap: 2px }
+.menu-card__title{ font-weight: 600; display:flex; align-items:center; gap: 8px }
 .menu-card__label{ color: var(--text-muted); font-size: var(--text-size-sm) }
 .menu-card__actions{ display:flex; gap: 6px; flex-wrap: wrap; margin-top: var(--space-8) }
 
