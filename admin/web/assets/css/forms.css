@@ -22,6 +22,16 @@ textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: ve
 
 .input:disabled{ opacity: .6; cursor: not-allowed }
 
+/* Cyan glow focus effect */
+.input:focus-visible,
+.select:focus-visible,
+textarea:focus-visible,
+.button:focus-visible {
+	box-shadow: 0 0 0 2px rgba(0, 255, 255, 0.4), 0 0 12px rgba(0, 255, 255, 0.35);
+	outline: none;
+	border-color: rgba(0, 255, 255, 0.45);
+}
+
 .button{
 	--btn-bg-top: #2d2f34;
 	--btn-bg-bot: #24272b;

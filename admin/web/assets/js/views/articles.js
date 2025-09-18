@@ -10,15 +10,17 @@ export async function viewArticles(){
         <h3>Upload Article (.docx)</h3>
         <form id="article-form" class="form-grid">
           <input class="input" name="title" placeholder="Title" required />
-          <input class="input" name="label" placeholder="Label" required />
-          <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
-          <div class="row">
+          <div class="row row--two">
+            <input class="input" name="label" placeholder="Label" required />
+            <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
+          </div>
+          <div class="row row--center">
             <label class="button secondary file-button">Cover Image<input class="input" name="cover" type="file" accept="image/*" /></label>
             <label class="button secondary file-button">Icon<input class="input" name="icon" type="file" accept="image/*" /></label>
             <label class="button file-button">DOCX<input class="input" name="docx" type="file" accept=".docx" required /></label>
           </div>
-          <div class="row">
-            <button class="button" id="article-submit" type="submit">Upload</button>
+          <button class="button button--block" id="article-submit" type="submit">Upload</button>
+          <div class="row row--center">
             <span id="article-uploading" class="badge" style="display:none">Uploading…</span>
           </div>
         </form>

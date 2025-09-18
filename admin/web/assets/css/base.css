@@ -22,13 +22,17 @@ img, svg, video { max-width: 100%; height: auto; display: block }
 
 .row{ display:flex; gap: var(--space-8); align-items: center; flex-wrap: wrap }
 .row--search{ flex-wrap: nowrap }
+.row--center{ justify-content: center }
+.row--two{ display:grid; grid-template-columns: 1fr 160px; gap: var(--space-8); align-items: center }
 
 .layout--with-sidebar .content { padding: var(--space-16) }
 
 .content { max-width: var(--container-max); margin: 50px }
 .content.content--wide { max-width: none }
 
-.grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-12); align-items: start }
+.grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 280px)); justify-content: center; gap: var(--space-12); align-items: start }
+
+.button--block{ width: 100% }
 
 .card {
 	background: var(--color-surface-2);
