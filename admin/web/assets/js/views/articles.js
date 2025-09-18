@@ -139,21 +139,50 @@ export async function viewArticles(){
     cancelBtn.onclick = () => { try{ xhr.abort() }catch{} }
     xhr.send(fd)
   })
-  // Preview selected images inside tiles
+  // Reset tiles to default icons on form reset
+  form.addEventListener('reset', () => {
+    for(const tile of fileTiles.querySelectorAll('.file-tile')){
+      tile.style.backgroundImage = ''
+      const icon = tile.querySelector('.tile-icon')
+      if(icon) icon.style.visibility = 'visible'
+      const nameEl = tile.querySelector('.tile-filename')
+      if(nameEl) nameEl.remove()
+    }
+  })
+  // Preview selected files inside tiles (images get preview; docx shows filename)
   fileTiles.addEventListener('change', (e) => {
     const input = e.target.closest('input[type=file]')
     if(!input) return
     const tile = input.closest('.file-tile')
     if(!tile) return
     const icon = tile.querySelector('.tile-icon')
-    if(input.accept?.includes('image') && input.files && input.files[0]){
-      const url = URL.createObjectURL(input.files[0])
+    const kind = tile.getAttribute('data-kind')
+
+    // Reset visuals
+    tile.style.backgroundImage = ''
+    if(icon) icon.style.visibility = 'visible'
+    // Remove any previous filename elements
+    const oldName = tile.querySelector('.tile-filename')
+    if(oldName) oldName.remove()
+
+    const file = input.files && input.files[0]
+    if(!file) return
+
+    if(kind !== 'docx' && input.accept?.includes('image')){
+      // Image preview for cover/icon
+      const url = URL.createObjectURL(file)
       tile.style.backgroundImage = `url('${url}')`
       tile.style.backgroundSize = 'cover'
       tile.style.backgroundPosition = 'center'
       if(icon) icon.style.visibility = 'hidden'
-    } else {
-      tile.style.backgroundImage = ''
+    } else if (kind === 'docx') {
+      // Show filename for docx
+      const nameEl = document.createElement('div')
+      nameEl.className = 'tile-filename'
+      nameEl.title = file.name
+      nameEl.textContent = file.name
+      tile.appendChild(nameEl)
+      // Keep the file-text icon visible behind the text for context
       if(icon) icon.style.visibility = 'visible'
     }
   })

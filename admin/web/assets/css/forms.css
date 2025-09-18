@@ -30,11 +30,21 @@ textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: ve
 .input:focus-visible,
 .select:focus-visible,
 textarea:focus-visible,
-.button:focus-visible {
+.button:focus-visible,
+.input:focus,
+.select:focus,
+textarea:focus,
+.button:focus {
 	outline: none;
 	border-color: rgba(0,255,255,.5);
 	animation: glowPulse 1.6s ease-in-out infinite;
 	transition: box-shadow .18s ease, border-color .18s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+	.input:focus, .input:focus-visible,
+	.select:focus, .select:focus-visible,
+	textarea:focus, textarea:focus-visible,
+	.button:focus, .button:focus-visible { animation: none }
 }
 
 .button{
@@ -86,4 +96,20 @@ textarea:focus-visible,
 }
 .file-tile .tile-icon{ width: 32px; height: 32px; color: var(--text-muted) }
 .file-tile:hover{ box-shadow: 0 0 0 1px rgba(0,255,255,.25), 0 0 14px rgba(0,255,255,.2) }
+/* Filename overlay for docx tile */
+.file-tile .tile-filename{
+	position: absolute;
+	left: 8px; right: 8px; bottom: 8px;
+	max-width: calc(100% - 16px);
+	padding: 4px 6px;
+	font-size: 12px;
+	line-height: 1.2;
+	text-align: center;
+	color: var(--text-primary);
+	background: rgba(12,14,16,.75);
+	border-radius: 6px;
+	border: 1px solid var(--color-border);
+	backdrop-filter: blur(2px);
+	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
