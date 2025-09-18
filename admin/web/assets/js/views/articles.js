@@ -1,19 +1,16 @@
 import { api } from '../core/api.js'
 import { state, clearToken } from '../core/state.js'
 import { fmtBytes, fmtEta } from '../core/helpers.js'
+import { confirm as modalConfirm } from '../ui/modal.js'
 
 export async function viewArticles(){
   const el = document.createElement('div')
   el.innerHTML = `
       <section class="card">
-        <h2>Articles</h2>
-        <div id="article-list" class="grid"></div>
-      </section>
-      <section class="card">
         <h3>Upload Article (.docx)</h3>
         <form id="article-form" class="form-grid">
           <input class="input" name="title" placeholder="Title" required />
-          <input class="input" name="label" placeholder="Label (optional)" />
+          <input class="input" name="label" placeholder="Label" required />
           <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
           <label>Cover Image <input class="input" name="cover" type="file" accept="image/*" /></label>
           <label>Icon <input class="input" name="icon" type="file" accept="image/*" /></label>
@@ -28,6 +25,10 @@ export async function viewArticles(){
           <div class="progress__text" id="article-progress-text">0%</div>
           <button class="button secondary" id="article-cancel" type="button" style="display:none">Cancel</button>
         </div>
+      </section>
+      <section class="card" style="margin-top: var(--space-16)">
+        <h2>Articles</h2>
+        <div id="article-list" class="grid"></div>
       </section>`
   const listEl = el.querySelector('#article-list')
   const form = el.querySelector('#article-form')
@@ -56,13 +57,16 @@ export async function viewArticles(){
     const btn = e.target.closest('button[data-article-del]')
     if(!btn) return
     const id = btn.getAttribute('data-article-del')
-    if(!confirm('Delete this article? This will remove the DOCX, the generated folder, and the manifest entry.')) return
+    const ok = await modalConfirm('Delete this article? This will remove the DOCX, the generated folder, and the manifest entry.', { danger: true, confirmText: 'Delete' })
+    if(!ok) return
     const headers = {}
     if (state.token) headers['Authorization'] = `Bearer ${state.token}`
     const res = await fetch(`/v1/admin/articles/${encodeURIComponent(id)}`, { method:'DELETE', headers })
     if(res.status === 204){ await fetchList() }
     else if(res.status === 401){ clearToken(); document.getElementById('login-overlay').hidden=false; document.getElementById('login-overlay').className='overlay' }
-    else { alert('Delete failed') }
+    else {
+      await modalConfirm('Delete failed', { confirmText: 'Close' })
+    }
   })
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -70,7 +74,7 @@ export async function viewArticles(){
     const title = String(fd.get('title') || '').trim()
     const current = Array.from(listEl.querySelectorAll('.menu-card .menu-card__title')).map(n => n.textContent?.trim().toLowerCase())
     if(current.includes(title.toLowerCase())){
-      const ok = confirm('An article with the same title exists. Uploading will replace it. Continue?')
+      const ok = await modalConfirm('An article with the same title exists. Uploading will replace it. Continue?', { confirmText: 'Continue' })
       if(!ok) return
     }
     const xhr = new XMLHttpRequest()
@@ -115,7 +119,7 @@ export async function viewArticles(){
       } else if (xhr.status === 401) {
         clearToken(); document.getElementById('login-overlay').hidden = false; document.getElementById('login-overlay').className = 'overlay'
       } else {
-        alert('Upload failed: ' + (xhr.statusText || 'Unknown error'))
+        await modalConfirm('Upload failed: ' + (xhr.statusText || 'Unknown error'), { confirmText: 'Close' })
       }
     }
     cancelBtn.onclick = () => { try{ xhr.abort() }catch{} }

@@ -1,5 +1,6 @@
 import { api } from '../core/api.js'
 import { state } from '../core/state.js'
+import { confirm as modalConfirm } from '../ui/modal.js'
 
 export async function viewMenu(){
   const el = document.createElement('div')
@@ -64,7 +65,8 @@ export async function viewMenu(){
   grid.addEventListener('click', async (e) => {
     const del = e.target.closest('button[data-del]')
     if(del){
-      if(!confirm('Delete this menu item?')) return
+      const ok = await modalConfirm('Delete this menu item?', { danger: true, confirmText: 'Delete' })
+      if(!ok) return
       const id = del.getAttribute('data-del')
       const res = await api(`/menu/${id}`, { method:'DELETE' })
       if(res.status === 204){ await loadMenu() }

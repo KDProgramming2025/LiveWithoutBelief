@@ -1,8 +1,5 @@
-/* Direction B — form controls */
-
 .form-grid{ display: grid; gap: var(--space-8) }
 
-/* Compact menu creation row */
 .menu-compact .mc-row{ display:grid; grid-template-columns: 1.2fr 1fr 80px auto auto; gap: var(--space-8); align-items: center }
 .menu-compact .mc-icon-slot{ display:flex; align-items:center; gap: var(--space-8) }
 .menu-compact .mc-thumb{ display:flex; align-items:center; gap: 6px }
@@ -44,10 +41,8 @@ textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: ve
 .button.danger{ --btn-bg-top:#4d2b2b; --btn-bg-bot:#3a2323; border-color: rgba(227,107,107,.5) }
 .button[disabled]{ opacity:.6; cursor:not-allowed }
 
-/* Select wrapper */
 .select{ appearance: none; background-image: linear-gradient(transparent,transparent), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M6 8l4 4 4-4" stroke="%23bbb8b2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px }
 
-/* Checkbox & switch */
 .check{ display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-size-sm) }
 .check input[type="checkbox"]{ appearance: none; width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--color-border-strong); background: var(--color-inset); box-shadow: var(--shadow-inset-1); position: relative }
 .check input[type="checkbox"]:checked{ background: linear-gradient(#3b4035,#2a2e27); border-color: rgba(111,191,139,.5) }

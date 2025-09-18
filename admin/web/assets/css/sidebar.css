@@ -1,5 +1,3 @@
-/* Direction B — sidebar */
-
 .sidebar{ position: sticky; top:0; height: 100vh; background: var(--color-surface-1); border-right: 1px solid var(--color-border); box-shadow: 8px 0 24px rgba(0,0,0,0.25) inset }
 .sidebar__inner{ display: grid; grid-template-rows: auto auto 1fr auto; height: 100% }
 .sidebar__top{ display:flex; align-items:center; gap: 8px; padding: var(--space-12) }
@@ -18,6 +16,4 @@
 
 .sidebar__spacer{ flex:1 }
 .sidebar__footer{ padding: var(--space-12) }
-
-/* Theme switching removed: fade layer not used */
 

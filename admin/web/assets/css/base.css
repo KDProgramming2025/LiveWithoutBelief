@@ -1,5 +1,3 @@
-/* Direction B — base surfaces and layout */
-
 * { box-sizing: border-box }
 html, body { height: 100% }
 html { color-scheme: dark }
@@ -11,28 +9,24 @@ body {
 	line-height: 1.45;
 	color: var(--text-primary);
 	background-color: var(--color-bg);
-	background-image: var(--texture-noise), var(--hidden-lights);
-	background-blend-mode: soft-light, normal;
-	background-size: 240px 240px, cover;
+	background-image: var(--texture-metal);
+	background-repeat: repeat;
+	background-size: 200px 200px;
 }
 
 .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh }
-.content > .card + .card { margin-top: var(--space-12) }
+.content > .card + .card { margin-top: var(--space-16) }
 
-/* Media defaults */
 img, svg, video { max-width: 100%; height: auto; display: block }
 
-/* Simple row utility */
 .row{ display:flex; gap: var(--space-8); align-items: center; flex-wrap: wrap }
 
 .layout--with-sidebar .content { padding: var(--space-16) }
 
 .content { max-width: var(--container-max); margin: 0 auto }
 
-/* Reusable card grid (used by Menu and Articles) */
 .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-12); align-items: start }
 
-/* Cards and panels */
 .card {
 	background: var(--color-surface-2);
 	border-radius: var(--radius-lg);
@@ -41,27 +35,19 @@ img, svg, video { max-width: 100%; height: auto; display: block }
 	padding: var(--space-12);
 	position: relative;
 }
-.card::before{
-	content: "";
-	position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-	background-image: var(--texture-paper);
-	mix-blend-mode: soft-light; opacity: .22;
-}
+.card::before{ content: none }
 
-/* Typography */
 h1,h2,h3{ margin: 0 0 var(--space-8) 0; line-height: 1.2 }
 h1{ font-size: 28px }
 h2{ font-size: 22px }
 h3{ font-size: 18px }
 p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
 
-/* Table baseline */
 .table{ width: 100%; border-collapse: collapse; font-size: var(--text-size-sm) }
 .table th, .table td{ padding: 10px 12px; border-bottom: 1px solid var(--color-border) }
 .table thead th{ text-align: left; color: var(--text-muted); font-weight: 600 }
 .table tbody tr:hover{ background: var(--color-surface-1) }
 
-/* Badges */
 .badge{
 	display: inline-flex; align-items: center; gap: 6px;
 	padding: 2px 8px; border-radius: var(--radius-pill);
@@ -72,11 +58,11 @@ p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
 	box-shadow: var(--shadow-raised-1);
 }
 
-/* Utility spacing */
+.row--search > input{ flex:1 1 auto }
+
 .stack-8 > * + * { margin-top: var(--space-8) }
 .stack-12 > * + * { margin-top: var(--space-12) }
 
-/* Overlays */
 #login-overlay, #modal-overlay{
 	position: fixed; inset: 0; background: rgba(0,0,0,.5);
 	display: none;
@@ -84,6 +70,5 @@ p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
 #login-overlay[hidden], #modal-overlay[hidden]{ display: none }
 #login-overlay:not([hidden]), #modal-overlay:not([hidden]){ display: block }
 
-/* Focus outline reset */
 :focus-visible{ outline: none; box-shadow: var(--focus) }
 

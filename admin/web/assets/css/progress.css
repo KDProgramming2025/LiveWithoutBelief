@@ -1,5 +1,3 @@
-/* Direction B — progress */
-
 .progress{ height: 10px; background: var(--color-inset); border: 1px solid var(--color-border-strong); border-radius: 999px; box-shadow: var(--shadow-inset-1); position: relative; overflow: hidden }
 .progress__bar{ position:absolute; inset: 0 auto 0 0; width: 30%; background: linear-gradient(#cfae67,#bd9650); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(0,0,0,.12) }
 .progress--ok .progress__bar{ background: linear-gradient(#6fbf8b,#5aa576) }

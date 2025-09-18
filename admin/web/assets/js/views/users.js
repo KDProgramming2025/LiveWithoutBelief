@@ -1,18 +1,20 @@
 import { api } from '../core/api.js'
 import { clearToken } from '../core/state.js'
+import { fmtLocalDateTime } from '../core/helpers.js'
+import { confirm as modalConfirm } from '../ui/modal.js'
 
 export async function viewUsers(){
   const el = document.createElement('div')
   el.innerHTML = `
       <section class="card">
         <h2>Users</h2>
-        <div class="row">
+        <div class="row row--search">
           <input class="input" id="user-q" placeholder="Search by username or email" />
           <button class="button secondary" id="user-search">Search</button>
         </div>
         <div id="user-stats" class="badge" style="margin-top:12px"></div>
         <table class="table" id="user-table">
-          <thead><tr><th>User</th><th>Registered</th><th>Bookmarks</th><th>Threads</th><th>Last Login</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>User</th><th>Registered</th><th>Bookmarks</th><th>Threads</th><th>Last Login</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </section>`
@@ -31,11 +33,12 @@ export async function viewUsers(){
       for(const u of (json.items || [])){
         const tr = document.createElement('tr')
         tr.innerHTML = `
-            <td>${u.username ?? '(no-username)'} <span class="badge">#${u.id}</span></td>
-            <td>${u.registeredAt?.replace('T',' ').replace('Z','')}</td>
+            <td>${u.id}</td>
+            <td>${u.username ?? '(no-username)'}</td>
+            <td>${fmtLocalDateTime(u.registeredAt)}</td>
             <td>${u.bookmarks}</td>
             <td>${u.threads}</td>
-            <td>${u.lastLogin ? u.lastLogin.replace('T',' ').replace('Z','') : ''}</td>
+            <td>${u.lastLogin ? fmtLocalDateTime(u.lastLogin) : ''}</td>
             <td><button class="button secondary" data-del="${u.id}">Remove</button></td>`
         tbody.appendChild(tr)
       }
@@ -54,7 +57,8 @@ export async function viewUsers(){
     const btn = e.target.closest('button[data-del]')
     if(!btn) return
     const id = btn.getAttribute('data-del')
-    if(!confirm('Remove this user?')) return
+    const ok = await modalConfirm('Remove this user?', { danger: true, confirmText: 'Remove' })
+    if(!ok) return
     const res = await api(`/users/${id}`, { method:'DELETE' })
     if(res.status === 204){ await load() }
   })

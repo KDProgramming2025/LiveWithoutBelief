@@ -1,6 +1,5 @@
-/* Direction B — menu cards */
-
 .menu-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-12); align-items: start }
+.menu-grid{ margin-top: var(--space-16) }
 
 .menu-card{
 	background: var(--color-surface-2);
@@ -11,7 +10,7 @@
 	position: relative;
 	transition: transform .15s ease, box-shadow .15s ease;
 }
-.menu-card::before{ content:""; position:absolute; inset:0; border-radius: inherit; pointer-events:none; background-image: var(--texture-paper); mix-blend-mode: soft-light; opacity:.2 }
+.menu-card::before{ content: none }
 .menu-card:hover{ transform: translateY(-1px); box-shadow: var(--shadow-raised-2) }
 .menu-card .icon-well{ width:44px; height:44px; border-radius:12px; background: var(--color-inset); border:1px solid var(--color-border-strong); box-shadow: var(--shadow-inset-1); display: grid; place-items: center; color: var(--text-muted) }
 .menu-card h3{ margin-top: var(--space-8) }
@@ -28,7 +27,7 @@
 
 /* Article cards reuse .menu-card styles */
 .article-card{ background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-12); box-shadow: var(--shadow-raised-1); position: relative; transition: transform .15s ease, box-shadow .15s ease }
-.article-card::before{ content:""; position:absolute; inset:0; border-radius: inherit; pointer-events:none; background-image: var(--texture-paper); mix-blend-mode: soft-light; opacity:.2 }
+.article-card::before{ content: none }
 .article-card:hover{ transform: translateY(-1px); box-shadow: var(--shadow-raised-2) }
 .article-card .menu-card__icon img{ max-height: 64px; max-width: 64px }
 
