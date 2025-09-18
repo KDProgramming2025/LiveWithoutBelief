@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <defs>
     <filter id="brush" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.35" numOctaves="1" seed="9" stitchTiles="stitch" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.06 0.3" numOctaves="1" seed="8" stitchTiles="stitch" />
       <feColorMatrix type="saturate" values="0" />
       <feComponentTransfer>
         <feFuncA type="table" tableValues="0 0.06 0.12 0.06 0"/>
