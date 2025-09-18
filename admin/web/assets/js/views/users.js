@@ -24,8 +24,7 @@ export async function viewUsers(){
   const load = async () => {
     try{
       const q = qEl.value.trim()
-      const res = await api(`/users?limit=50&offset=0${q ? `&q=${encodeURIComponent(q)}`:''}`)
-      if(res.status === 401) throw new Error('unauthorized')
+  const res = await api(`/users?limit=50&offset=0${q ? `&q=${encodeURIComponent(q)}`:''}`)
       if(!res.ok) throw new Error('failed')
       const json = await res.json()
       stats.textContent = `Total users: ${json.total}`
@@ -43,12 +42,7 @@ export async function viewUsers(){
         tbody.appendChild(tr)
       }
     }catch(err){
-      if(String(err).includes('unauthorized')){
-        clearToken();
-        document.getElementById('login-overlay').hidden = false
-        document.getElementById('login-overlay').className = 'overlay'
-        return
-      }
+      if(String(err).includes('unauthorized')) return
       stats.textContent = 'Failed to load users'
     }
   }

@@ -1,5 +1,5 @@
 import { api } from '../core/api.js'
-import { state } from '../core/state.js'
+import { state, clearToken } from '../core/state.js'
 import { confirm as modalConfirm } from '../ui/modal.js'
 
 export async function viewMenu(){
@@ -78,8 +78,9 @@ export async function viewMenu(){
       const direction = mv.getAttribute('data-move')
       const headers = { 'Content-Type': 'application/json' }
       if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-      const res = await fetch(`/v1/admin/menu/${id}/move`, { method: 'POST', headers, body: JSON.stringify({ direction }) })
-      if(res.status === 204){ await loadMenu() }
+  const res = await fetch(`/v1/admin/menu/${id}/move`, { method: 'POST', headers, body: JSON.stringify({ direction }) })
+  if(res.status === 401){ clearToken(); const ov = document.getElementById('login-overlay'); if(ov){ ov.hidden=false; ov.className='overlay' } return }
+  if(res.status === 204){ await loadMenu() }
       return
     }
     const edt = e.target.closest('button[data-edit="item"]')
@@ -108,8 +109,9 @@ export async function viewMenu(){
         const payload = { title: fd.get('title'), label: fd.get('label') }
         const headers = { 'Content-Type': 'application/json' }
         if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-        const res = await fetch(`/v1/admin/menu/${id}`, { method: 'PATCH', headers, body: JSON.stringify(payload) })
-        if(res.ok){ hide(); await loadMenu() }
+  const res = await fetch(`/v1/admin/menu/${id}`, { method: 'PATCH', headers, body: JSON.stringify(payload) })
+  if(res.status === 401){ clearToken(); const ov = document.getElementById('login-overlay'); if(ov){ ov.hidden=false; ov.className='overlay' } return }
+  if(res.ok){ hide(); await loadMenu() }
       }
       return
     }
@@ -125,7 +127,8 @@ export async function viewMenu(){
     if (state.token) headers['Authorization'] = `Bearer ${state.token}`
     iconBox.style.display = 'inline-block'
     try{
-      const res = await fetch(`/v1/admin/menu/${id}/icon`, { method: 'POST', body: fd, headers })
+  const res = await fetch(`/v1/admin/menu/${id}/icon`, { method: 'POST', body: fd, headers })
+  if(res.status === 401){ clearToken(); const ov = document.getElementById('login-overlay'); if(ov){ ov.hidden=false; ov.className='overlay' } return }
       if(res.status === 204){ await loadMenu() }
     } finally {
       iconBox.style.display = 'none'
@@ -139,6 +142,7 @@ export async function viewMenu(){
   uploading.hidden = false
     try{
       const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
+      if(res.status === 401){ clearToken(); const ov = document.getElementById('login-overlay'); if(ov){ ov.hidden=false; ov.className='overlay' } return }
       if(res.ok){
         form.reset();
         await loadMenu()

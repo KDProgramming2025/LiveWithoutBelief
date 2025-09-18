@@ -48,7 +48,7 @@ export async function viewArticles(){
   const fileTiles = el.querySelector('.file-tiles')
   const uploading = el.querySelector('#article-uploading')
   const fetchList = async () => {
-    const res = await api('/articles')
+  const res = await api('/articles')
     const json = await res.json()
     listEl.innerHTML = ''
     for(const a of json.items){
@@ -77,7 +77,7 @@ export async function viewArticles(){
     if (state.token) headers['Authorization'] = `Bearer ${state.token}`
     const res = await fetch(`/v1/admin/articles/${encodeURIComponent(id)}`, { method:'DELETE', headers })
     if(res.status === 204){ await fetchList() }
-    else if(res.status === 401){ clearToken(); document.getElementById('login-overlay').hidden=false; document.getElementById('login-overlay').className='overlay' }
+  else if(res.status === 401){ /* handled centrally by api() */ }
     else {
       await modalConfirm('Delete failed', { confirmText: 'Close' })
     }

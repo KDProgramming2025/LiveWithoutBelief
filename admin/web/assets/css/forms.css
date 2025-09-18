@@ -124,3 +124,15 @@ textarea:focus,
 	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* Compact size for menu form icon tile */
+.menu-compact #menu-icon-tile{
+	width: var(--control-height);
+	height: var(--control-height);
+	border-radius: var(--radius-md);
+}
+.menu-compact #menu-icon-tile .tile-icon,
+.menu-compact #menu-icon-tile .tile-icon svg,
+.menu-compact #menu-icon-tile svg.lucide{
+	width: 18px; height: 18px;
+}
+
