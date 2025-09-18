@@ -39,7 +39,7 @@ export async function viewUsers(){
             <td>${u.bookmarks}</td>
             <td>${u.threads}</td>
             <td>${u.lastLogin ? fmtLocalDateTime(u.lastLogin) : ''}</td>
-            <td><button class="button secondary" data-del="${u.id}">Remove</button></td>`
+            <td><button class="button danger" data-del="${u.id}">Remove</button></td>`
         tbody.appendChild(tr)
       }
     }catch(err){

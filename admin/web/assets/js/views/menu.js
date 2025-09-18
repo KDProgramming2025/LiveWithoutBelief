@@ -51,7 +51,7 @@ export async function viewMenu(){
             <button class="button secondary" data-move="down" data-id="${m.id}">↓</button>
             <button class="button secondary" data-edit="item" data-id="${m.id}" data-title="${m.title ?? ''}" data-label="${m.label ?? ''}">Edit</button>
             <label class="button secondary file-button">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}"></label>
-            <button class="button secondary" data-del="${m.id}">Delete</button>
+            <button class="button danger" data-del="${m.id}">Delete</button>
         </div>`
     return card
   }

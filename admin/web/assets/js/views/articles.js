@@ -62,7 +62,7 @@ export async function viewArticles(){
           </div>
           <div class="menu-card__actions">
             <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
-            <button class="button secondary" data-article-del="${a.id}">Delete</button>
+            <button class="button danger" data-article-del="${a.id}">Delete</button>
           </div>`
       listEl.appendChild(card)
     }
