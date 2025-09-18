@@ -1,4 +1,4 @@
-.sidebar{ position: sticky; top:0; height: 100vh; background: var(--color-surface-1); border-right: 1px solid var(--color-border); box-shadow: 8px 0 24px rgba(0,0,0,0.25) inset }
+.sidebar{ position: sticky; top:0; height: 100vh; background: var(--color-surface-1); border-right: 1px solid var(--color-border); box-shadow: 8px 0 24px rgba(0,0,0,0.25) inset; width: 280px; transition: width .18s ease }
 .sidebar__inner{ display: grid; grid-template-rows: auto auto 1fr auto; height: 100% }
 .sidebar__top{ display:flex; align-items:center; gap: 8px; padding: var(--space-12) }
 .brand{ display:flex; align-items:center; gap: 8px; font-weight: 600 }
@@ -16,4 +16,10 @@
 
 .sidebar__spacer{ flex:1 }
 .sidebar__footer{ padding: var(--space-12) }
+
+[data-state="collapsed"].sidebar{ width: 64px }
+[data-state="collapsed"].sidebar .brand__text{ display: none }
+[data-state="collapsed"].sidebar .nav-item__label{ display: none }
+[data-state="collapsed"].sidebar .nav{ padding: 0 8px }
+[data-state="collapsed"] .nav-item{ justify-content: center }
 
