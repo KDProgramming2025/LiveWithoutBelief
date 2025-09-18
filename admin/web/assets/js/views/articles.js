@@ -14,10 +14,19 @@ export async function viewArticles(){
             <input class="input" name="label" placeholder="Label" required />
             <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
           </div>
-          <div class="row row--center">
-            <label class="button secondary file-button">Cover Image<input class="input" name="cover" type="file" accept="image/*" /></label>
-            <label class="button secondary file-button">Icon<input class="input" name="icon" type="file" accept="image/*" /></label>
-            <label class="button file-button">DOCX<input class="input" name="docx" type="file" accept=".docx" required /></label>
+          <div class="row row--center file-tiles">
+            <label class="file-tile file-button" data-kind="cover">
+              <span class="tile-icon" data-lucide="image"></span>
+              <input class="input" name="cover" type="file" accept="image/*" />
+            </label>
+            <label class="file-tile file-button" data-kind="icon">
+              <span class="tile-icon" data-lucide="image"></span>
+              <input class="input" name="icon" type="file" accept="image/*" />
+            </label>
+            <label class="file-tile file-button" data-kind="docx">
+              <span class="tile-icon" data-lucide="file-text"></span>
+              <input class="input" name="docx" type="file" accept=".docx" required />
+            </label>
           </div>
           <button class="button button--block" id="article-submit" type="submit">Upload</button>
           <div class="row row--center">
@@ -36,6 +45,7 @@ export async function viewArticles(){
       </section>`
   const listEl = el.querySelector('#article-list')
   const form = el.querySelector('#article-form')
+  const fileTiles = el.querySelector('.file-tiles')
   const uploading = el.querySelector('#article-uploading')
   const fetchList = async () => {
     const res = await api('/articles')
@@ -128,6 +138,24 @@ export async function viewArticles(){
     }
     cancelBtn.onclick = () => { try{ xhr.abort() }catch{} }
     xhr.send(fd)
+  })
+  // Preview selected images inside tiles
+  fileTiles.addEventListener('change', (e) => {
+    const input = e.target.closest('input[type=file]')
+    if(!input) return
+    const tile = input.closest('.file-tile')
+    if(!tile) return
+    const icon = tile.querySelector('.tile-icon')
+    if(input.accept?.includes('image') && input.files && input.files[0]){
+      const url = URL.createObjectURL(input.files[0])
+      tile.style.backgroundImage = `url('${url}')`
+      tile.style.backgroundSize = 'cover'
+      tile.style.backgroundPosition = 'center'
+      if(icon) icon.style.visibility = 'hidden'
+    } else {
+      tile.style.backgroundImage = ''
+      if(icon) icon.style.visibility = 'visible'
+    }
   })
   await fetchList()
   return el

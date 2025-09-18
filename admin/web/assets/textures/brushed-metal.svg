@@ -8,6 +8,13 @@
                     seed="10"
                     stitchTiles="stitch"/>
       <feColorMatrix type="saturate" values="0"/>
+      <!-- Subtle blue‑purplish tint bias -->
+      <feColorMatrix type="matrix" values="
+        0.97 0    0    0  0.005
+        0    0.97 0    0  0.005
+        0    0    1.04 0  0.012
+        0    0    0    1  0
+      "/>
       <feComponentTransfer>
         <feFuncA type="table" tableValues="0 0.08 0.16 0.08 0"/>
       </feComponentTransfer>

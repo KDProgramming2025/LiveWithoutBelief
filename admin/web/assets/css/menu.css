@@ -11,7 +11,7 @@
 	transition: transform .15s ease, box-shadow .15s ease;
 }
 .menu-card::before{ content: none }
-.menu-card:hover{ transform: translateY(-1px); box-shadow: var(--shadow-raised-2) }
+.menu-card:hover{ transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(0,255,255,.25), 0 0 18px rgba(0,255,255,.25) }
 .menu-card .icon-well{ width:44px; height:44px; border-radius:12px; background: var(--color-inset); border:1px solid var(--color-border-strong); box-shadow: var(--shadow-inset-1); display: grid; place-items: center; color: var(--text-muted) }
 .menu-card h3{ margin-top: var(--space-8) }
 .menu-card p{ margin: 6px 0 0 0 }
@@ -28,6 +28,6 @@
 /* Article cards reuse .menu-card styles */
 .article-card{ background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-12); box-shadow: var(--shadow-raised-1); position: relative; transition: transform .15s ease, box-shadow .15s ease }
 .article-card::before{ content: none }
-.article-card:hover{ transform: translateY(-1px); box-shadow: var(--shadow-raised-2) }
+.article-card:hover{ transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(0,255,255,.25), 0 0 18px rgba(0,255,255,.25) }
 .article-card .menu-card__icon img{ max-height: 64px; max-width: 64px }
 
