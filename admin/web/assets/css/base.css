@@ -30,6 +30,9 @@ img, svg, video { max-width: 100%; height: auto; display: block }
 
 .content { max-width: var(--container-max); margin: 0 auto }
 
+/* Reusable card grid (used by Menu and Articles) */
+.grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-12); align-items: start }
+
 /* Cards and panels */
 .card {
 	background: var(--color-surface-2);
