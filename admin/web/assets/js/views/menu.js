@@ -17,7 +17,12 @@ export async function viewMenu(){
               <div class="mc-thumb" id="menu-icon-thumb" hidden></div>
             </div>
             <button class="button mc-add" type="submit">Add</button>
-            <span id="menu-uploading" class="badge" style="display:none">Uploading…</span>
+            <span id="menu-uploading" class="loader-badge" hidden>
+              <span class="loader-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </span>
+              <span class="loader-text">Uploading</span>
+            </span>
           </div>
         </form>
       </section>
@@ -129,7 +134,7 @@ export async function viewMenu(){
     const fd = new FormData(form)
     const headers = {}
     if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-    uploading.style.display = 'inline-block'
+  uploading.hidden = false
     try{
       const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
       if(res.ok){
@@ -138,7 +143,7 @@ export async function viewMenu(){
         await loadMenu()
       }
     } finally {
-      uploading.style.display = 'none'
+  uploading.hidden = true
     }
   })
   iconInput?.addEventListener('change', () => {
