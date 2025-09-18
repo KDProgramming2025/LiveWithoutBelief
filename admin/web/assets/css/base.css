@@ -12,11 +12,16 @@ body{
 .content{padding:20px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center}
 .card{
+	position:relative;
 	background:var(--surface-matte);
 	border-radius:var(--radius-lg);
 	padding:16px;
 	margin-bottom:16px;
 	box-shadow:var(--shadow-sm);
+}
+.card::before{
+	content:"";position:absolute;inset:0 0 auto 0;height:2px;border-radius:inherit;pointer-events:none;
+	background:var(--led-strip-accent);filter:blur(2px);opacity:.9
 }
 .table{width:100%;border-collapse:separate;border-spacing:0}
 .table th,.table td{border-bottom:1px solid var(--border);padding:10px;text-align:left}

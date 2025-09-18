@@ -23,6 +23,8 @@
 	box-shadow:var(--shadow-raised);
 	transition:transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast)
 }
+.button::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;border-radius:inherit;background:var(--led-strip-accent);filter:blur(2px);opacity:.9;pointer-events:none}
+.button{position:relative}
 .button:hover{filter:saturate(1.05)}
 .button:active{transform:translateY(1px);box-shadow:var(--shadow-sm)}
 .button:focus-visible{outline:none;box-shadow:var(--shadow-raised), var(--focus-ring)}
