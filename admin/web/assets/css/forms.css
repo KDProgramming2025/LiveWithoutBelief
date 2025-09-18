@@ -41,10 +41,6 @@ textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: ve
 .button.danger{ --btn-bg-top:#4d2b2b; --btn-bg-bot:#3a2323; border-color: rgba(227,107,107,.5) }
 .button[disabled]{ opacity:.6; cursor:not-allowed }
 
-/* Global file chooser style: wrap input[type=file] in a label.button.file */
-.button.file{ position: relative; overflow: hidden }
-.button.file input[type=file]{ position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer }
-
 .select{ appearance: none; background-image: linear-gradient(transparent,transparent), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M6 8l4 4 4-4" stroke="%23bbb8b2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px }
 
 .check{ display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-size-sm) }
@@ -57,4 +53,8 @@ textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: ve
 .switch input::after{ content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background: linear-gradient(#2f3136,#26282c); box-shadow: var(--shadow-raised-1) }
 .switch input:checked{ background: linear-gradient(#37392e,#2e3027); border-color: rgba(111,191,139,.45) }
 .switch input:checked::after{ left: calc(100% - 21px); background: linear-gradient(#485242,#374036) }
+
+/* Global file chooser button pattern */
+.file-button{ position: relative; overflow: hidden }
+.file-button input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer }
 

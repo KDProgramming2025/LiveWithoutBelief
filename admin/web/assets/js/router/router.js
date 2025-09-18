@@ -13,6 +13,7 @@ export async function render(view){
   state.view = view
   document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view))
   const content = document.getElementById('content')
+  content.classList.toggle('content--wide', view === 'articles')
   content.innerHTML = ''
   content.appendChild(await registry[view]())
 }
