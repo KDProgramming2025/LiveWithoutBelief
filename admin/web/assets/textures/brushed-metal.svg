@@ -2,7 +2,7 @@
   <defs>
     <filter id="brush" x="-10%" y="-10%" width="120%" height="120%">
       <!-- Low frequencies to produce 2–3 broad vertical waves per 400px tile (CSS scales this 2x) -->
-      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.002" numOctaves="1" seed="7" stitchTiles="stitch" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.002" numOctaves="1" seed="10" stitchTiles="stitch" />
       <feColorMatrix type="saturate" values="0" />
       <feComponentTransfer>
         <!-- Soften band edges and reduce micro speckle -->
