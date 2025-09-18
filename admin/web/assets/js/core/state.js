@@ -6,7 +6,9 @@ export const state = {
 
 export const PREF_KEYS = Object.freeze({
   theme: 'lwb_admin_theme',
-  sidebar: 'lwb_admin_sidebar'
+  sidebar: 'lwb_admin_sidebar',
+  view: 'lwb_admin_view',
+  scroll: 'lwb_admin_scroll'
 })
 
 export function savePref(key, val){
