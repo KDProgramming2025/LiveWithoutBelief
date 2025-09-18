@@ -1,5 +1,6 @@
 import { api } from '../core/api.js'
 import { state } from '../core/state.js'
+import { fmtBytes, fmtEta } from '../core/helpers.js'
 
 export async function viewMenu(){
   const el = document.createElement('div')
@@ -107,38 +108,84 @@ export async function viewMenu(){
       return
     }
   })
+  function uploadWithProgress({ url, method='POST', formData, onProgress }){
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open(method, url)
+      if(state.token) xhr.setRequestHeader('Authorization', `Bearer ${state.token}`)
+      const start = performance.now()
+      let lastLoaded = 0
+      let lastTime = start
+      xhr.upload.onprogress = (ev) => {
+        if(ev.lengthComputable){
+          const now = performance.now()
+          const deltaBytes = ev.loaded - lastLoaded
+            const deltaTime = (now - lastTime)/1000
+            const speed = deltaTime > 0 ? deltaBytes / deltaTime : 0
+            lastLoaded = ev.loaded; lastTime = now
+            const remaining = ev.total - ev.loaded
+            const eta = speed > 0 ? remaining / speed : 0
+            onProgress?.({ loaded: ev.loaded, total: ev.total, percent: ev.loaded/ev.total*100, speed, eta })
+        }
+      }
+      xhr.onreadystatechange = () => {
+        if(xhr.readyState === 4){
+          if(xhr.status >=200 && xhr.status <300) resolve(xhr)
+          else reject(new Error('upload failed'))
+        }
+      }
+      xhr.onerror = () => reject(new Error('network error'))
+      xhr.send(formData)
+    })
+  }
+
   grid.addEventListener('change', async (e) => {
     const input = e.target.closest('input[type=file][data-edit-icon]')
     if(!input) return
     const id = input.getAttribute('data-edit-icon')
-    const iconBox = input.closest('.menu-card').querySelector('.menu-card__icon .uploading')
+    const iconWrapper = input.closest('.menu-card').querySelector('.menu-card__icon')
+    const status = iconWrapper.querySelector('.uploading')
+    status.style.display = 'inline-block'
+    status.textContent = '0%'
     const fd = new FormData()
     if(input.files && input.files[0]) fd.append('icon', input.files[0])
-    const headers = {}
-    if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-    iconBox.style.display = 'inline-block'
     try{
-      const res = await fetch(`/v1/admin/menu/${id}/icon`, { method: 'POST', body: fd, headers })
-      if(res.status === 204){ await loadMenu() }
+      await uploadWithProgress({
+        url: `/v1/admin/menu/${id}/icon`,
+        formData: fd,
+        onProgress: ({ percent, speed, eta }) => {
+          status.textContent = `${percent.toFixed(0)}% ${fmtBytes(speed)}/s ETA ${fmtEta(eta)}`
+        }
+      })
+      await loadMenu()
+    } catch(_e){
+      status.textContent = 'Error'
+      setTimeout(()=>{ status.style.display='none' }, 1500)
     } finally {
-      iconBox.style.display = 'none'
+      setTimeout(()=>{ status.style.display='none' }, 400)
     }
   })
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const fd = new FormData(form)
-    const headers = {}
-    if (state.token) headers['Authorization'] = `Bearer ${state.token}`
     uploading.style.display = 'inline-block'
-    try{
-      const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
-      if(res.ok){
-        form.reset();
-        if(iconThumb){ iconThumb.innerHTML=''; iconThumb.hidden = true }
-        await loadMenu()
-      }
-    } finally {
-      uploading.style.display = 'none'
+    uploading.textContent = '0%'
+    try {
+      await uploadWithProgress({
+        url:'/v1/admin/menu',
+        formData: fd,
+        onProgress: ({ percent, speed, eta }) => {
+          uploading.textContent = `${percent.toFixed(0)}% ${fmtBytes(speed)}/s ETA ${fmtEta(eta)}`
+        }
+      })
+      form.reset()
+      if(iconThumb){ iconThumb.innerHTML=''; iconThumb.hidden = true }
+      await loadMenu()
+      uploading.textContent = 'Done'
+      setTimeout(()=> uploading.style.display='none', 800)
+    } catch(_e){
+      uploading.textContent = 'Error'
+      setTimeout(()=> uploading.style.display='none', 1200)
     }
   })
   iconInput?.addEventListener('change', () => {
