@@ -2,6 +2,13 @@
 
 .form-grid{ display: grid; gap: var(--space-8) }
 
+/* Compact menu creation row */
+.menu-compact .mc-row{ display:grid; grid-template-columns: 1.2fr 1fr 80px auto auto; gap: var(--space-8); align-items: center }
+.menu-compact .mc-icon-slot{ display:flex; align-items:center; gap: var(--space-8) }
+.menu-compact .mc-thumb{ display:flex; align-items:center; gap: 6px }
+.menu-compact .mc-thumb img{ width: 32px; height: 32px; object-fit: contain; border-radius: 6px; border: 1px solid var(--color-border) }
+.menu-compact .mc-clear{ height: 24px; width: 24px; line-height: 0; display:inline-grid; place-items:center; border-radius: 50%; border: 1px solid var(--color-border); background: var(--color-surface-2) }
+
 .input, .select, textarea {
 	height: var(--control-height);
 	width: 100%;

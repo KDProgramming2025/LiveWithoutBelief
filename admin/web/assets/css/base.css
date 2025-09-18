@@ -18,6 +18,14 @@ body {
 }
 
 .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh }
+.content > .card + .card { margin-top: var(--space-12) }
+
+/* Media defaults */
+img, svg, video { max-width: 100%; height: auto; display: block }
+
+/* Simple row utility */
+.row{ display:flex; gap: var(--space-8); align-items: center; flex-wrap: wrap }
+
 .layout--with-sidebar .content { padding: var(--space-16) }
 
 .content { max-width: var(--container-max); margin: 0 auto }
@@ -44,6 +52,12 @@ h1{ font-size: 28px }
 h2{ font-size: 22px }
 h3{ font-size: 18px }
 p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
+
+/* Table baseline */
+.table{ width: 100%; border-collapse: collapse; font-size: var(--text-size-sm) }
+.table th, .table td{ padding: 10px 12px; border-bottom: 1px solid var(--color-border) }
+.table thead th{ text-align: left; color: var(--text-muted); font-weight: 600 }
+.table tbody tr:hover{ background: var(--color-surface-1) }
 
 /* Badges */
 .badge{
