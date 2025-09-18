@@ -12,10 +12,10 @@ export async function viewMenu(){
             <input class="input" name="label" placeholder="Label" />
             <input class="input" name="order" type="number" placeholder="#" min="0" />
             <div class="mc-icon-slot">
-              <label class="mc-upload button secondary file-button">
-                Icon<input class="mc-file" id="menu-icon-input" name="icon" type="file" accept="image/*" />
+              <label class="file-tile file-button" id="menu-icon-tile">
+                <span class="tile-icon" data-lucide="image"></span>
+                <input class="input" id="menu-icon-input" name="icon" type="file" accept="image/*" />
               </label>
-              <div class="mc-thumb" id="menu-icon-thumb" hidden></div>
             </div>
             <button class="button mc-add" type="submit">Add</button>
             <span id="menu-uploading" class="loader-badge" hidden>
@@ -35,7 +35,7 @@ export async function viewMenu(){
   const form = el.querySelector('#menu-form')
   const uploading = el.querySelector('#menu-uploading')
   const iconInput = el.querySelector('#menu-icon-input')
-  const iconThumb = el.querySelector('#menu-icon-thumb')
+  const iconTile = el.querySelector('#menu-icon-tile')
   function iconUrl(m){ return m.iconPath ? `/LWB/Admin/uploads${m.iconPath.replace('/uploads','')}` : '' }
   function renderCard(m){
     const card = document.createElement('div')
@@ -141,25 +141,32 @@ export async function viewMenu(){
       const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
       if(res.ok){
         form.reset();
-        if(iconThumb){ iconThumb.innerHTML=''; iconThumb.hidden = true }
         await loadMenu()
       }
     } finally {
   uploading.hidden = true
     }
   })
+  // Preview selected menu icon inside the tile
   iconInput?.addEventListener('change', () => {
-    if(!iconInput.files || !iconInput.files[0]){ iconThumb.hidden = true; iconThumb.innerHTML=''; return }
-    const file = iconInput.files[0]
-    const url = URL.createObjectURL(file)
-    iconThumb.innerHTML = `<img src="${url}" alt="preview" /> <button type="button" class="mc-clear" aria-label="Clear icon">×</button>`
-    iconThumb.hidden = false
-    const clearBtn = iconThumb.querySelector('.mc-clear')
-    clearBtn.addEventListener('click', () => {
-      iconInput.value = ''
-      iconThumb.innerHTML = ''
-      iconThumb.hidden = true
-    })
+    if(!iconTile) return
+    const icon = iconTile.querySelector('.tile-icon, svg.lucide')
+    iconTile.style.backgroundImage = ''
+    if(icon) icon.style.visibility = 'visible'
+    if(iconInput.files && iconInput.files[0]){
+      const url = URL.createObjectURL(iconInput.files[0])
+      iconTile.style.backgroundImage = `url('${url}')`
+      iconTile.style.backgroundSize = 'cover'
+      iconTile.style.backgroundPosition = 'center'
+      if(icon) icon.style.visibility = 'hidden'
+    }
+  })
+  // Reset tile on form reset
+  form.addEventListener('reset', () => {
+    if(!iconTile) return
+    iconTile.style.backgroundImage = ''
+    const icon = iconTile.querySelector('.tile-icon, svg.lucide')
+    if(icon) icon.style.visibility = 'visible'
   })
   await loadMenu()
   return el
