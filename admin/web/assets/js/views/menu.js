@@ -35,7 +35,7 @@ export async function viewMenu(){
     const card = document.createElement('div')
     card.className = 'menu-card'
     card.innerHTML = `
-  <div class="menu-card__icon">${m.iconPath ? `<img src="${iconUrl(m)}" alt="icon"/>` : '<div class="placeholder">No Icon</div>'}<span class="uploading" hidden>Uploading…</span></div>
+        <div class="menu-card__icon">${m.iconPath ? `<img src="${iconUrl(m)}" alt="icon"/>` : '<div class="placeholder">No Icon</div>'}<span class="uploading" style="display:none">Uploading…</span></div>
         <div class="menu-card__body">
           <div class="menu-card__title">${m.title}</div>
           <div class="menu-card__label">${m.label ?? ''}</div>
@@ -116,12 +116,12 @@ export async function viewMenu(){
     if(input.files && input.files[0]) fd.append('icon', input.files[0])
     const headers = {}
     if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-  iconBox.hidden = false
+    iconBox.style.display = 'inline-block'
     try{
       const res = await fetch(`/v1/admin/menu/${id}/icon`, { method: 'POST', body: fd, headers })
       if(res.status === 204){ await loadMenu() }
     } finally {
-  iconBox.hidden = true
+      iconBox.style.display = 'none'
     }
   })
   form.addEventListener('submit', async (e) => {
