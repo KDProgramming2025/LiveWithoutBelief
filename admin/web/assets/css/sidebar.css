@@ -9,7 +9,8 @@
 .sidebar__collapse:hover{ filter: brightness(1.05) }
 
 .nav{ display: grid; padding: 0 var(--space-12); transition: padding .18s ease }
-.nav-item{ display:flex; align-items:center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; min-width: 0 }
+.nav-item{ display:grid; grid-template-columns: 24px 1fr; align-items:center; column-gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; min-width: 0 }
+.nav-item__icon{ width: 20px; height: 20px; justify-self: start }
 .nav-item__label{ opacity: 1; transform: translateX(0); transition: opacity .18s ease, transform .18s ease; white-space: nowrap; overflow: hidden }
 .nav-item:hover{ background: var(--color-surface-2); border-color: var(--color-border) }
 .nav-item[aria-current="page"], .nav-item.active{ color: var(--text-primary); background: linear-gradient(#2a2c30,#222428); border-color: var(--color-border-strong); box-shadow: var(--shadow-raised-1) }
@@ -23,5 +24,5 @@
 [data-state="collapsed"].sidebar .brand__text{ opacity: 0; transform: translateX(-6px); pointer-events: none }
 [data-state="collapsed"].sidebar .nav-item__label{ opacity: 0; transform: translateX(-6px); pointer-events: none }
 [data-state="collapsed"].sidebar .nav{ padding: 0 8px }
-[data-state="collapsed"] .nav-item{ justify-content: center }
+[data-state="collapsed"] .nav-item{ grid-template-columns: 24px 0 }
 
