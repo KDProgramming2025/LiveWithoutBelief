@@ -15,7 +15,9 @@
 	border: 1px solid var(--color-border-strong);
 	border-radius: var(--radius-md);
 	box-shadow: var(--shadow-inset-1);
-	position: relative;
+	/* Base glow off; we'll fade this in/out for smooth appearance */
+	filter: drop-shadow(0 0 0 rgba(0,255,255,0));
+	transition: filter .22s ease, box-shadow .18s ease, border-color .18s ease;
 }
 textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: vertical }
 
@@ -23,39 +25,25 @@ textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: ve
 
 .input:disabled{ opacity: .6; cursor: not-allowed }
 
-/* Smooth cyan glow focus ring: fade in/out plus gentle pulse */
-@property --glow {
-	syntax: '<number>';
-	inherits: false;
-	initial-value: 0;
+/* Cyan glow focus effect with animation */
+@keyframes glowPulse {
+	0%, 100% { box-shadow: 0 0 0 2px rgba(0,255,255,.42), 0 0 10px rgba(0,255,255,.28) }
+	50% { box-shadow: 0 0 0 2px rgba(0,255,255,.54), 0 0 16px rgba(0,255,255,.38) }
 }
-@property --pulse {
-	syntax: '<number>';
-	inherits: false;
-	initial-value: 0;
-}
-@keyframes glowPulseVar {
-	0%, 100% { --pulse: 0 }
-	50% { --pulse: 1 }
-}
-
-/* Enable focus ring container and base transition */
-.input, .select, textarea, .button { --glow: 0; --pulse: 0; transition: --glow .18s ease, border-color .18s ease }
-.input::after, .select::after, textarea::after, .button::after{
-	content: ""; position: absolute; inset: -3px; border-radius: inherit; pointer-events: none;
-	/* Two-layer cyan ring; opacity controlled by custom properties */
-	box-shadow:
-		0 0 0 2px rgba(0,255,255, calc(.42 * var(--glow) + .14 * var(--pulse))),
-		0 0 14px rgba(0,255,255, calc(.22 * var(--glow) + .10 * var(--pulse)));
-	opacity: 1; /* actual strength is in rgba alphas; keep this at 1 for consistent blending */
-	transition: box-shadow .18s ease; /* smooth in/out of ring intensity */
-}
-.input:focus-visible, .select:focus-visible, textarea:focus-visible, .button:focus-visible,
-.input:focus, .select:focus, textarea:focus, .button:focus {
+.input:focus-visible,
+.select:focus-visible,
+textarea:focus-visible,
+.button:focus-visible,
+.input:focus,
+.select:focus,
+textarea:focus,
+.button:focus {
 	outline: none;
 	border-color: rgba(0,255,255,.5);
-	--glow: 1;
-	animation: glowPulseVar 1.6s ease-in-out infinite;
+	/* Keep pulse while active */
+	animation: glowPulse 1.6s ease-in-out infinite;
+	/* Smooth fade on entry/exit via filter */
+	filter: drop-shadow(0 0 12px rgba(0,255,255,.3));
 }
 @media (prefers-reduced-motion: reduce) {
 	.input:focus, .input:focus-visible,
@@ -76,6 +64,9 @@ textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: ve
 	border-radius: var(--radius-md);
 	box-shadow: var(--shadow-raised-1), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.5);
 	cursor: pointer;
+	/* Base off for smooth glow fade on buttons too */
+	filter: drop-shadow(0 0 0 rgba(0,255,255,0));
+	transition: filter .22s ease, box-shadow .18s ease, border-color .18s ease;
 }
 .button:hover{ filter: brightness(1.05) }
 .button:active{ box-shadow: var(--shadow-press-1) }
