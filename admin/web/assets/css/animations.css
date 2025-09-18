@@ -19,9 +19,7 @@ html[data-theme="light"] .sidebar[data-state="collapsed"] .nav-item__icon svg{fi
 [data-icon-theme] svg{transition:transform .4s ease;transform-origin:50% 50%}
 html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 
-/* Sidebar theme cross-fade layer */
-.sidebar-fade-layer{position:absolute;inset:0;opacity:1;transition:opacity 1s ease-in,filter 1s ease-in;pointer-events:none;z-index:5;backdrop-filter:blur(0) saturate(140%)}
-.sidebar-fade-layer.is-fading{opacity:0;filter:blur(1px)}
+
 
 /* ----------------------------------------------------
 	 THEME TRANSITION
@@ -32,11 +30,11 @@ html[data-theme="light"] [data-icon-theme] svg{transform:rotate(180deg)}
 ----------------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
 	html, body, .layout, .content, .card, .sidebar, .nav-item, .menu-card, .progress, .badge, .input, .button {
-		transition: background-color 1s ease-in, color 1s ease-in, border-color 1s ease-in, box-shadow 1s ease-in;
+		transition: background-color 0.5s ease-in, color 0.5s ease-in, border-color 0.5s ease-in, box-shadow 0.5s ease-in;
 	}
 	/* Sidebar may have gradient/background token shifts; ensure its nested elements also fade smoothly */
 	.sidebar * {
-		transition: background-color 1s ease-in, color 1s ease-in, border-color 1s ease-in;
+		transition: background-color 0.5s ease-in, color 0.5s ease-in, border-color 0.5s ease-in;
 	}
 }
 
