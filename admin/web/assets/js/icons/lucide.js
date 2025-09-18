@@ -22,10 +22,4 @@ export async function refreshIcons(){
   } catch(e){ /* silent */ }
 }
 
-export function setThemeIcon(){
-  const holder = document.querySelector('[data-icon-theme]')
-  if(!holder) return
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light'
-  holder.setAttribute('data-lucide', isLight ? 'moon' : 'sun')
-  refreshIcons()
-}
+// Theme icon removed — single dark theme only

@@ -1,7 +1,6 @@
-import { initTheme } from './ui/theme.js'
 import { initSidebar } from './ui/sidebar.js'
 import { initAuth } from './auth/auth.js'
-import { loadIcons, setThemeIcon } from './icons/lucide.js'
+import { loadIcons } from './icons/lucide.js'
 import { render } from './router/router.js'
 import { state } from './core/state.js'
 
@@ -12,11 +11,10 @@ function bindNav(){
 }
 
 async function boot(){
-  initTheme()
   initSidebar()
   const { ensureAuth } = initAuth()
   bindNav()
-  await loadIcons(); setThemeIcon()
+  await loadIcons()
   render(state.view).then(ensureAuth)
 }
 

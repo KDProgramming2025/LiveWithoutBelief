@@ -19,7 +19,5 @@
 .sidebar__spacer{ flex:1 }
 .sidebar__footer{ padding: var(--space-12) }
 
-/* Theme toggle fade layer */
-.sidebar-fade-layer{ position:absolute; inset:0; opacity:1; transition: opacity 1s ease-in; border-right: inherit; border-radius: 0 }
-.sidebar-fade-layer.is-fading{ opacity:0 }
+/* Theme switching removed: fade layer not used */
 

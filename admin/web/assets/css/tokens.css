@@ -1,7 +1,7 @@
 /*
 	Direction B — Modern Analog Studio
 	Design tokens: palette, elevation, radii, spacing, typography, textures.
-	Dark theme is default. Light overrides under [data-theme="light"].
+	Single dark theme only (light removed).
 */
 
 :root {
@@ -84,27 +84,6 @@
 	--container-max: 1200px;
 }
 
-/* Light theme overrides */
-[data-theme="light"] {
-	--color-bg: #f4f2ee;            /* warm studio paper */
-	--color-surface-1: #ffffff;
-	--color-surface-2: #f5f3ef;
-	--color-surface-3: #ebe8e2;
-	--color-inset: #f1eee8;
-	--color-border: #e6e2da;
-	--color-border-strong: #d6d1c8;
-
-	--text-primary: #1d1f21;
-	--text-muted: #4a4f55;
-	--text-subdued: #6e747b;
-
-	--shadow-raised-1: 0 0.5px 0 rgba(0,0,0,0.05), 0 8px 18px rgba(0,0,0,0.12), 0 2px 5px rgba(0,0,0,0.08);
-	--shadow-raised-2: 0 1px 0 rgba(0,0,0,0.06), 0 14px 30px rgba(0,0,0,0.14), 0 6px 12px rgba(0,0,0,0.08);
-	--shadow-inset-1: inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.06), inset 0 8px 20px rgba(0,0,0,0.06);
-	--shadow-press-1: inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -2px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.05);
-
-	--focus: 0 0 0 2px rgba(0,0,0,0.06), 0 0 0 4px rgba(189,150,80,0.35);
-}
 
 /* Utility tokens */
 :root {

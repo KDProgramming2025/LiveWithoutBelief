@@ -1,7 +1,6 @@
 /* Direction B — minimal overrides */
 
-/* Provide a class to force light theme if needed (hook only) */
-.theme-light { --_force: 1 }
+/* Light theme removed — no hooks needed */
 
 /* Icon sizing utility */
 .icon{ display:inline-block; width: 18px; height: 18px }
