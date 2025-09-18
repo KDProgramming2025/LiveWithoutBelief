@@ -24,6 +24,17 @@
 				"-x",
 				"test"
 			]
+		},
+		{
+			"label": "Open admin index in default browser",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"start",
+				"\"\"",
+				"c:\\Users\\MDP\\Desktop\\AD\\LiveWithoutBelief\\admin\\web\\index.html"
+			]
 		}
 	]
 }

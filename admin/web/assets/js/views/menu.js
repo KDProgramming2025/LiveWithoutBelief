@@ -5,33 +5,24 @@ export async function viewMenu(){
   const el = document.createElement('div')
   el.innerHTML = `
       <section class="card">
-        <h2>Create Menu Item</h2>
-        <form id="menu-form" class="menu-form" autocomplete="off">
-          <div class="mf-grid">
-            <div class="mf-field">
-              <label class="label" for="mf-title">Title</label>
-              <input id="mf-title" class="input" name="title" placeholder="e.g., Articles" required />
+        <form id="menu-form" class="menu-compact" autocomplete="off">
+          <div class="mc-row">
+            <input class="input" name="title" placeholder="Title" required />
+            <input class="input" name="label" placeholder="Label" />
+            <input class="input" name="order" type="number" placeholder="#" min="0" />
+            <div class="mc-icon-slot">
+              <label class="mc-upload button secondary">
+                Icon<input class="mc-file" id="menu-icon-input" name="icon" type="file" accept="image/*" />
+              </label>
+              <div class="mc-thumb" id="menu-icon-thumb" hidden></div>
             </div>
-            <div class="mf-field">
-              <label class="label" for="mf-label">Label (optional)</label>
-              <input id="mf-label" class="input" name="label" placeholder="Shown under title" />
-            </div>
-            <div class="mf-field">
-              <label class="label" for="mf-order">Order</label>
-              <input id="mf-order" class="input" name="order" type="number" placeholder="0" min="0" />
-            </div>
-            <div class="mf-field mf-icon">
-              <label class="label">Icon</label>
-              <div class="mf-icon-row">
-                <label class="button secondary mf-upload">
-                  Choose Icon<input class="mf-file" id="menu-icon-input" name="icon" type="file" accept="image/*" />
-                </label>
-                <div class="mf-thumb" id="menu-icon-thumb" hidden></div>
-              </div>
-            </div>
-          </div>
-          <div class="mf-actions">
-            <button class="button" type="submit" id="menu-submit">Add item</button>
+            <button class="button mc-add" type="submit">Add</button>
+            <span id="menu-uploading" class="loader-badge" hidden>
+              <span class="loader-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </span>
+              <span class="loader-text">Uploading</span>
+            </span>
           </div>
         </form>
       </section>
@@ -41,7 +32,7 @@ export async function viewMenu(){
       </section>`
   const grid = el.querySelector('#menu-grid')
   const form = el.querySelector('#menu-form')
-  const submitBtn = el.querySelector('#menu-submit')
+  const uploading = el.querySelector('#menu-uploading')
   const iconInput = el.querySelector('#menu-icon-input')
   const iconThumb = el.querySelector('#menu-icon-thumb')
   function iconUrl(m){ return m.iconPath ? `/LWB/Admin/uploads${m.iconPath.replace('/uploads','')}` : '' }
@@ -143,7 +134,7 @@ export async function viewMenu(){
     const fd = new FormData(form)
     const headers = {}
     if (state.token) headers['Authorization'] = `Bearer ${state.token}`
-    if(submitBtn){ submitBtn.disabled = true; submitBtn.classList.add('loading') }
+  uploading.hidden = false
     try{
       const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
       if(res.ok){
@@ -152,7 +143,7 @@ export async function viewMenu(){
         await loadMenu()
       }
     } finally {
-      if(submitBtn){ submitBtn.disabled = false; submitBtn.classList.remove('loading') }
+  uploading.hidden = true
     }
   })
   iconInput?.addEventListener('change', () => {

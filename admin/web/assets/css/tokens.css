@@ -1,3 +1,73 @@
-/* tokens.css - design system tokens */
-:root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#9ca3af;--brand:#22c55e;--danger:#ef4444;--accent:#38bdf8;--border:#1f2937;--inset:#0b1220;--inset-border:color-mix(in oklab,var(--border),#ffffff 8%);--bg-alt:#091021;--panel-alt:#0d1424;--panel-glow:rgba(56,189,248,0.12);--text-dim:#cbd5e1;--brand-accent:#16a34a;--accent-rgb:56 189 248;--radius-sm:6px;--radius:10px;--radius-lg:18px;--shadow-xs:0 1px 2px rgba(0,0,0,.4);--shadow:0 4px 20px -4px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.02);--grad-accent:linear-gradient(135deg,#38bdf8 0%,#818cf8 40%,#22c55e 85%);--focus-ring:0 0 0 2px #0f172a,0 0 0 4px var(--accent);--transition-fast:.18s cubic-bezier(.4,.0,.2,1);--transition-slow:.35s cubic-bezier(.4,0,.2,1);--sidebar-width:260px;--sidebar-collapsed:68px;--elevated-ring:0 0 0 1px rgba(255,255,255,.04);--sidebar-anim-duration:1s}
-html[data-theme="light"]{--bg:#edf2f6;--panel:#f8fafc;--panel-alt:#f2f6fa;--panel-glow:rgba(56,189,248,0.12);--text:#182230;--text-dim:#475569;--muted:#5b6675;--border:#d3dbe3;--inset:#e6ecf1;--inset-border:#c8d1d9;--shadow:0 2px 8px -2px rgba(15,23,42,.08),0 0 0 1px rgba(0,0,0,.04);--focus-ring:0 0 0 2px #ffffff,0 0 0 4px var(--accent)}
+/* tokens.css - design system tokens (skeuomorphic) */
+:root{
+	/* Core palette */
+	--bg:#0f172a;               /* page background */
+	--bg-alt:#0c1428;           /* soft alt background */
+	--panel:#121a2f;            /* surface cards */
+	--panel-alt:#0e1931;        /* subtle gradient partner */
+	--text:#e5e7eb;             /* primary text */
+	--text-dim:#cbd5e1;         /* secondary text */
+	--muted:#94a3b8;            /* muted ui text */
+	--brand:#22c55e;            /* brand */
+	--brand-accent:#16a34a;     /* brand dark */
+	--accent:#38bdf8;           /* accent */
+	--accent-rgb:56 189 248;    /* accent as rgb for alpha */
+	--danger:#ef4444;
+	--border:#1f2937;           /* legacy border token */
+	--inset:#0b1220;            /* legacy inset surface */
+	--inset-border:color-mix(in oklab,var(--border),#ffffff 8%);
+
+	/* Radii */
+	--radius-sm:8px;
+	--radius:14px;
+	--radius-lg:22px;
+
+	/* Transitions */
+	--transition-fast:.18s cubic-bezier(.4,.0,.2,1);
+	--transition-slow:.35s cubic-bezier(.4,0,.2,1);
+	--sidebar-anim-duration:1s;
+
+	/* Focus ring */
+	--focus-ring:0 0 0 2px #0f172a,0 0 0 4px var(--accent);
+
+	/* Skeuomorphic (neumorphic) shadows */
+	/* Raised: opposing dark/light shadows to create soft elevation */
+	--neu-raise: 10px 10px 22px rgba(0,0,0,.55),
+							 -10px -10px 22px rgba(255,255,255,.04),
+							 0 0 0 1px rgba(255,255,255,.03);
+	/* Inset: internal shadows for pressed surfaces */
+	--neu-inset: inset 10px 10px 22px rgba(0,0,0,.65),
+							 inset -10px -10px 22px rgba(255,255,255,.04),
+							 0 0 0 1px rgba(255,255,255,.02);
+	/* Subtle shadow for small elements */
+	--shadow-xs: 0 1px 2px rgba(0,0,0,.35);
+
+	/* Fancy gradient used sparingly */
+	--panel-glow: rgba(56,189,248,0.10);
+	--grad-accent: linear-gradient(135deg,#38bdf8 0%,#818cf8 40%,#22c55e 85%);
+	--elevated-ring: 0 0 0 1px rgba(255,255,255,.04);
+	--sidebar-width:260px;
+	--sidebar-collapsed:68px;
+}
+
+html[data-theme="light"]{
+	--bg:#edf2f6;
+	--bg-alt:#eaf0f6;
+	--panel:#f7fafc;
+	--panel-alt:#eef5fb;
+	--text:#182230;
+	--text-dim:#475569;
+	--muted:#5b6675;
+	--border:#d3dbe3;
+	--inset:#eef4f9;
+	--inset-border:#cfd7e0;
+	--panel-glow:rgba(56,189,248,0.10);
+	--focus-ring:0 0 0 2px #ffffff,0 0 0 4px var(--accent);
+	/* Adjusted light skeuomorphic shadows */
+	--neu-raise: 10px 10px 24px rgba(15,23,42,.14),
+							 -10px -10px 24px rgba(255,255,255,.90),
+							 0 0 0 1px rgba(0,0,0,.04);
+	--neu-inset: inset 10px 10px 20px rgba(15,23,42,.10),
+							 inset -10px -10px 20px rgba(255,255,255,.90),
+							 0 0 0 1px rgba(0,0,0,.05);
+}

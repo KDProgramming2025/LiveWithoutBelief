@@ -1,12 +1,30 @@
-/* base.css - resets & generic elements */
+/* base.css - resets & generic elements (skeuomorphic) */
 *{box-sizing:border-box}
 html,body,#app{height:100%}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+body{
+	margin:0;
+	background: radial-gradient(1200px 800px at 10% 0%, var(--bg-alt), transparent 60%),
+							radial-gradient(1400px 900px at 100% 0%, rgba(var(--accent-rgb)/0.08), transparent 60%),
+							var(--bg);
+	color:var(--text);
+	font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif
+}
 .content{padding:20px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
-.table{width:100%;border-collapse:collapse}
-.table th,.table td{border-bottom:1px solid var(--border);padding:10px;text-align:left}
+.card{
+	background: linear-gradient(160deg, var(--panel) 0%, var(--panel-alt) 120%);
+	border-radius: var(--radius);
+	padding:16px;
+	margin-bottom:16px;
+	box-shadow: var(--neu-raise);
+}
+.table{width:100%;border-collapse:separate;border-spacing:0 8px}
+.table th,.table td{padding:10px;text-align:left}
+.table tr{
+	background: linear-gradient(160deg, var(--panel) 0%, var(--panel-alt) 120%);
+	box-shadow: var(--neu-raise);
+}
+.table tr th{color:var(--text-dim);font-weight:600}
 .row{display:flex;gap:12px}
 .row>*{flex:1}
 .form-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
