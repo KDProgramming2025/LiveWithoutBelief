@@ -10,23 +10,18 @@ export function initTheme(){
   else html.removeAttribute('data-theme')
   if(themeToggle) themeToggle.setAttribute('aria-pressed', storedTheme === 'light')
   themeToggle?.addEventListener('click', () => {
-    // Create a fading overlay layer inside sidebar using the CURRENT theme token values
-    // so that when we switch the underlying tokens, the old appearance gently fades out.
+    // Create a fading overlay layer inside sidebar for cross-fade of background
     let fadeLayer
     if(sidebar){
-      const rootStyles = getComputedStyle(document.documentElement)
-      const panel = rootStyles.getPropertyValue('--panel').trim()
-      const panelAlt = rootStyles.getPropertyValue('--panel-alt').trim() || panel
-      const accentRgb = rootStyles.getPropertyValue('--accent-rgb').trim() || '56 189 248'
-      const gradient = `linear-gradient(180deg, ${panel} 0%, ${panelAlt} 120%), radial-gradient(circle at 40% 0%, rgba(${accentRgb}/0.18), transparent 60%)`
       fadeLayer = document.createElement('div')
       fadeLayer.className = 'sidebar-fade-layer'
-      fadeLayer.style.backgroundImage = gradient
-      fadeLayer.style.backgroundColor = panel
+      // snapshot current computed gradient/color using existing ::before by cloning sidebar before change
+      // Instead of cloning pseudo, we approximate by using getComputedStyle for background-image
+      const cs = getComputedStyle(sidebar)
+      fadeLayer.style.backgroundImage = cs.backgroundImage || ''
+      fadeLayer.style.backgroundColor = cs.backgroundColor || 'transparent'
       sidebar.appendChild(fadeLayer)
-      // Force a reflow so the browser registers initial opacity before we start fading
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      fadeLayer.offsetHeight
+      // Force reflow then animate opacity to 0 after theme switch
     }
     const isLight = html.getAttribute('data-theme') === 'light'
     if(isLight){ html.removeAttribute('data-theme'); savePref(PREF_KEYS.theme,'dark'); themeToggle.setAttribute('aria-pressed','false') }
