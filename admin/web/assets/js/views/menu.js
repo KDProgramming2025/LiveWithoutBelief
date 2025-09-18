@@ -5,14 +5,38 @@ export async function viewMenu(){
   const el = document.createElement('div')
   el.innerHTML = `
       <section class="card">
-        <h3>Add Menu Item</h3>
-        <form id="menu-form" class="form-grid">
-          <input class="input" name="title" placeholder="Title" required />
-          <input class="input" name="label" placeholder="Label" />
-          <input class="input" name="order" type="number" placeholder="Order" min="0" />
-          <input class="input" name="icon" type="file" accept="image/*" />
-          <div class="row">
-            <button class="button" type="submit">Add</button>
+        <div class="card__header">
+          <h3 style="margin:0">Add Menu Item</h3>
+          <p class="text-muted" style="font-size:12.5px;margin:4px 0 0">Create a new navigation entry. Title is required; label is optional subtitle.</p>
+        </div>
+        <form id="menu-form" class="menu-form" autocomplete="off">
+          <div class="menu-form__grid">
+            <div class="field">
+              <label class="field__label" for="mf-title">Title <span aria-hidden="true" style="color:var(--accent)">*</span></label>
+              <input id="mf-title" class="input" name="title" placeholder="e.g. Articles" required />
+              <p class="field__hint">Primary text shown in sidebar.</p>
+            </div>
+            <div class="field">
+              <label class="field__label" for="mf-label">Label</label>
+              <input id="mf-label" class="input" name="label" placeholder="Short label" />
+              <p class="field__hint">Optional secondary descriptor.</p>
+            </div>
+            <div class="field">
+              <label class="field__label" for="mf-order">Order</label>
+              <input id="mf-order" class="input" name="order" type="number" placeholder="0" min="0" />
+              <p class="field__hint">Lower numbers appear first.</p>
+            </div>
+            <div class="field">
+              <label class="field__label" for="mf-icon">Icon</label>
+              <div class="file-input-row">
+                <input id="mf-icon" class="input" name="icon" type="file" accept="image/*" />
+                <div class="icon-preview" id="menu-icon-preview" hidden></div>
+              </div>
+              <p class="field__hint">PNG / SVG / JPG. Square works best.</p>
+            </div>
+          </div>
+          <div class="menu-form__actions">
+            <button class="button" type="submit">Add Item</button>
             <span id="menu-uploading" class="badge" style="display:none">Uploading…</span>
           </div>
         </form>
@@ -23,6 +47,8 @@ export async function viewMenu(){
       </section>`
   const grid = el.querySelector('#menu-grid')
   const form = el.querySelector('#menu-form')
+  const iconInput = form.querySelector('#mf-icon')
+  const iconPreview = form.querySelector('#menu-icon-preview')
   const uploading = el.querySelector('#menu-uploading')
   function iconUrl(m){ return m.iconPath ? `/LWB/Admin/uploads${m.iconPath.replace('/uploads','')}` : '' }
   function renderCard(m){
@@ -118,6 +144,15 @@ export async function viewMenu(){
       iconBox.style.display = 'none'
     }
   })
+  // Live icon preview
+  iconInput?.addEventListener('change', () => {
+    if(!iconInput.files || !iconInput.files[0]){ iconPreview.hidden = true; iconPreview.innerHTML = ''; return }
+    const file = iconInput.files[0]
+    const url = URL.createObjectURL(file)
+    iconPreview.hidden = false
+    iconPreview.innerHTML = `<img src="${url}" alt="icon preview" />`
+  })
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const fd = new FormData(form)
@@ -126,7 +161,9 @@ export async function viewMenu(){
     uploading.style.display = 'inline-block'
     try{
       const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
-      if(res.ok){ form.reset(); await loadMenu() }
+      if(res.ok){
+        form.reset(); iconPreview.hidden = true; iconPreview.innerHTML=''; await loadMenu()
+      }
     } finally {
       uploading.style.display = 'none'
     }
