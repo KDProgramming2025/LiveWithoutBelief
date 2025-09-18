@@ -4,27 +4,29 @@ html,body,#app{height:100%}
 body{
 	margin:0;
 	background:
-		linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%),
+		linear-gradient(180deg, var(--tone-0) 0%, var(--bg-2) 100%),
 		var(--texture-body);
 	color:var(--text);
 	font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif
 }
-.content{padding:20px;position:relative}
-.content::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.25;mix-blend-mode:soft-light;background:
-	radial-gradient(70% 60% at 10% 0%, rgba(255,255,255,.08), transparent 60%),
-	radial-gradient(60% 50% at 90% 100%, rgba(255,255,255,.06), transparent 60%)}
+.content{padding:20px;position:relative;background:var(--surface-matte-1);border-radius:0}
+.content::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.32;mix-blend-mode:soft-light;background:
+	radial-gradient(70% 60% at 10% 0%, rgba(255,255,255,.10), transparent 60%),
+	radial-gradient(60% 50% at 90% 100%, rgba(255,255,255,.08), transparent 60%),
+	url("../textures/matte-medium.svg") repeat; background-size:var(--grain-size-body)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center}
 .card{
-	background:var(--surface-matte);
+	background:var(--surface-matte-2);
 	border-radius:var(--radius-lg);
 	padding:16px;
 	margin-bottom:16px;
 	box-shadow:var(--shadow-sm);
 	position:relative
 }
-.card::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:.22;mix-blend-mode:soft-light;background:
+.card::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:.26;mix-blend-mode:soft-light;background:
 	linear-gradient(180deg, rgba(255,255,255,.07), transparent 25%),
-	radial-gradient(80% 80% at 0% 0%, rgba(255,255,255,.06), transparent 50%)}
+	radial-gradient(80% 80% at 0% 0%, rgba(255,255,255,.07), transparent 50%),
+	url("../textures/matte-fine.svg") repeat; background-size:var(--grain-size-surface)}
 .table{width:100%;border-collapse:separate;border-spacing:0}
 .table th,.table td{border-bottom:1px solid var(--border);padding:10px;text-align:left}
 .table thead th{
