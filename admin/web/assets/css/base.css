@@ -75,7 +75,19 @@ p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
 	display: none;
 }
 #login-overlay[hidden], #modal-overlay[hidden]{ display: none }
-#login-overlay:not([hidden]), #modal-overlay:not([hidden]){ display: block }
+#login-overlay:not([hidden]){ display: block }
+#modal-overlay:not([hidden]){ display: grid; place-items: center; padding: 24px; }
+
+/* Modal card layout: center, avoid close overlap, and allow scroll if tall */
+#modal-card{
+	max-width: 520px;
+	width: min(520px, calc(100vw - 48px));
+	max-height: calc(100vh - 48px);
+	overflow: auto;
+	position: relative;
+	padding-top: 48px; /* reserve space for close button */
+}
+#modal-close{ position: absolute; top: 8px; right: 8px }
 
 :focus-visible{ outline: none; box-shadow: var(--focus) }
 
