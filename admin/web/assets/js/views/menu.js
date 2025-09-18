@@ -10,9 +10,12 @@ export async function viewMenu(){
             <input class="input" name="title" placeholder="Title" required />
             <input class="input" name="label" placeholder="Label" />
             <input class="input" name="order" type="number" placeholder="#" min="0" />
-            <label class="mc-upload button secondary">
-              Icon<input class="mc-file" name="icon" type="file" accept="image/*" />
-            </label>
+            <div class="mc-icon-slot">
+              <label class="mc-upload button secondary">
+                Icon<input class="mc-file" id="menu-icon-input" name="icon" type="file" accept="image/*" />
+              </label>
+              <div class="mc-thumb" id="menu-icon-thumb" hidden></div>
+            </div>
             <button class="button mc-add" type="submit">Add</button>
             <span id="menu-uploading" class="badge" style="display:none">Uploading…</span>
           </div>
@@ -25,6 +28,8 @@ export async function viewMenu(){
   const grid = el.querySelector('#menu-grid')
   const form = el.querySelector('#menu-form')
   const uploading = el.querySelector('#menu-uploading')
+  const iconInput = el.querySelector('#menu-icon-input')
+  const iconThumb = el.querySelector('#menu-icon-thumb')
   function iconUrl(m){ return m.iconPath ? `/LWB/Admin/uploads${m.iconPath.replace('/uploads','')}` : '' }
   function renderCard(m){
     const card = document.createElement('div')
@@ -127,10 +132,27 @@ export async function viewMenu(){
     uploading.style.display = 'inline-block'
     try{
       const res = await fetch('/v1/admin/menu', { method: 'POST', body: fd, headers })
-      if(res.ok){ form.reset(); await loadMenu() }
+      if(res.ok){
+        form.reset();
+        if(iconThumb){ iconThumb.innerHTML=''; iconThumb.hidden = true }
+        await loadMenu()
+      }
     } finally {
       uploading.style.display = 'none'
     }
+  })
+  iconInput?.addEventListener('change', () => {
+    if(!iconInput.files || !iconInput.files[0]){ iconThumb.hidden = true; iconThumb.innerHTML=''; return }
+    const file = iconInput.files[0]
+    const url = URL.createObjectURL(file)
+    iconThumb.innerHTML = `<img src="${url}" alt="preview" /> <button type="button" class="mc-clear" aria-label="Clear icon">×</button>`
+    iconThumb.hidden = false
+    const clearBtn = iconThumb.querySelector('.mc-clear')
+    clearBtn.addEventListener('click', () => {
+      iconInput.value = ''
+      iconThumb.innerHTML = ''
+      iconThumb.hidden = true
+    })
   })
   await loadMenu()
   return el
