@@ -1,15 +1,18 @@
 import { PREF_KEYS, loadPref, savePref } from '../core/state.js'
+import { refreshIcons } from '../icons/lucide.js'
 
 export function initSidebar(){
   const sidebar = document.getElementById('sidebar')
   const collapseBtn = document.getElementById('sidebar-collapse')
   const layoutRoot = document.querySelector('.layout')
+  const iconEl = collapseBtn?.querySelector('[data-lucide]')
 
   const storedSidebar = loadPref(PREF_KEYS.sidebar, 'expanded')
   if(storedSidebar === 'collapsed'){
     sidebar?.setAttribute('data-state','collapsed')
     collapseBtn?.setAttribute('aria-expanded','false')
     layoutRoot?.classList.add('sidebar--collapsed')
+  if(iconEl){ iconEl.setAttribute('data-lucide','chevrons-right'); refreshIcons() }
   }
 
   collapseBtn?.addEventListener('click', () => {
@@ -20,6 +23,7 @@ export function initSidebar(){
       collapseBtn.setAttribute('aria-expanded','true')
       layoutRoot?.classList.remove('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'expanded')
+  if(iconEl){ iconEl.setAttribute('data-lucide','chevrons-left'); refreshIcons() }
       const onEnd = (e) => {
         if(e.propertyName === 'width'){
           sidebar?.classList.remove('is-expanding')
@@ -33,6 +37,7 @@ export function initSidebar(){
       collapseBtn.setAttribute('aria-expanded','false')
       layoutRoot?.classList.add('sidebar--collapsed')
       savePref(PREF_KEYS.sidebar,'collapsed')
+  if(iconEl){ iconEl.setAttribute('data-lucide','chevrons-right'); refreshIcons() }
       const onEnd = (e) => {
         if(e.propertyName === 'width'){
           sidebar?.classList.remove('is-collapsing')
