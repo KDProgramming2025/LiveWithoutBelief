@@ -15,11 +15,19 @@ export function initTheme(){
     if(sidebar){
       fadeLayer = document.createElement('div')
       fadeLayer.className = 'sidebar-fade-layer'
-      // snapshot current computed gradient/color using existing ::before by cloning sidebar before change
-      // Instead of cloning pseudo, we approximate by using getComputedStyle for background-image
-      const cs = getComputedStyle(sidebar)
-      fadeLayer.style.backgroundImage = cs.backgroundImage || ''
-      fadeLayer.style.backgroundColor = cs.backgroundColor || 'transparent'
+      // Snapshot current computed background styles (including ::before gradient) before theme flip
+      const csSidebar = getComputedStyle(sidebar)
+      const csBefore = getComputedStyle(sidebar, '::before')
+      const bgColor = csSidebar.backgroundColor || 'transparent'
+      const beforeImg = csBefore.backgroundImage && csBefore.backgroundImage !== 'none' ? csBefore.backgroundImage : ''
+      // Combine gradient(s) + base color for the layer
+      // If multiple gradients exist they are comma separated already.
+      if(beforeImg){
+        fadeLayer.style.backgroundImage = beforeImg
+      }
+      fadeLayer.style.backgroundColor = bgColor
+      // Match blend/opacity feel of ::before
+      fadeLayer.style.opacity = csBefore.opacity || '1'
       sidebar.appendChild(fadeLayer)
       // Force reflow then animate opacity to 0 after theme switch
     }
