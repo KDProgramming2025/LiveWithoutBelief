@@ -14,8 +14,8 @@
 .input:focus,select:focus{box-shadow:var(--shadow-pressed), var(--focus-ring)}
 
 .button{
-	background:linear-gradient(180deg, color-mix(in oklab, var(--accent), #fff 10%), var(--accent));
-	color:#051019;
+	background:linear-gradient(180deg, color-mix(in oklab, var(--accent), #fff 12%), color-mix(in oklab, var(--accent), #000 6%));
+	color:#0b0f14;
 	border:none;
 	border-radius:var(--radius);
 	padding:10px 12px;
@@ -23,8 +23,6 @@
 	box-shadow:var(--shadow-raised);
 	transition:transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast)
 }
-.button::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;border-radius:inherit;background:var(--led-strip-accent);filter:blur(2px);opacity:.9;pointer-events:none}
-.button{position:relative}
 .button:hover{filter:saturate(1.05)}
 .button:active{transform:translateY(1px);box-shadow:var(--shadow-sm)}
 .button:focus-visible{outline:none;box-shadow:var(--shadow-raised), var(--focus-ring)}

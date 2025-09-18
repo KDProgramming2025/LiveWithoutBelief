@@ -4,60 +4,50 @@
 	bevel highlights, hidden light bands, and realistic raised/pressed shadows.
 */
 :root{
-	/* Base palettes (dark theme default) - brighter for visible depth */
-	--bg:#141b2c; /* brighter ink */
-	--bg-2:#111a29;
-	--panel:#1a2336; /* lifted charcoal */
-	--panel-alt:#202a40;
-	--text:#edf1f7;
-	--text-dim:#cfd7e4;
-	--muted:#a2adbb;
-	--border:#28354a;
-	--inset:#0f1a2c; /* cavity */
-	--inset-border:color-mix(in oklab,var(--border),#ffffff 12%);
-	--brand:#22c55e;
+	/* Brighter graphite dark theme */
+	--bg:#1f252e;           /* graphite */
+	--bg-2:#262d38;         /* deeper graphite */
+	--panel:#262e3a;        /* panel surface */
+	--panel-alt:#2c3442;    /* alternate panel */
+	--text:#f2f4f7;         /* high contrast text */
+	--text-dim:#d3d9e2;     /* secondary text */
+	--muted:#aab4c0;        /* captions */
+	--border:#3a4252;       /* visible on graphite */
+	--inset:#1b212b;        /* cavity */
+	--inset-border:#333b49;
+	--brand:#22c55e;        /* used sparingly */
 	--brand-accent:#16a34a;
-	--accent:#3ac6f2; /* softer cyan */
+	--accent:#8aa3c2;       /* neutral steel-blue */
 	--danger:#ef4444;
-	--accent-rgb:58 198 242;
+	--accent-rgb:138 163 194;
 
 	/* Radii */
 	--radius-sm:6px;--radius:12px;--radius-lg:18px;--radius-xl:22px;
 
-	/* Texture: subtle monochrome noise using SVG fractal noise (tileable) */
-		--texture-noise:url("data:image/svg+xml;utf8,\
-	<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'>\
-		<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/>\
-		<feColorMatrix type='saturate' values='0'/>\
-			<feComponentTransfer><feFuncA type='table' tableValues='0 0.06 0.12 0.06 0'/></feComponentTransfer></filter>\
-		<rect width='100%' height='100%' filter='url(%23n)'/>\
-	</svg>");
+	/* External SVG textures */
+	--texture-fine:url("../textures/matte-fine.svg");
+	--texture-medium:url("../textures/matte-medium.svg");
+	--texture-coarse:url("../textures/matte-coarse.svg");
+	--texture-body:var(--texture-coarse);
 
 	/* Bevel edges (dark) */
-		--edge-hi:rgba(255,255,255,.14); /* top/left highlight stronger */
-		--edge-lo:rgba(0,0,0,.5);        /* bottom/right shadow lighter for visibility */
+	--edge-hi:rgba(255,255,255,.09); /* top/left highlight */
+	--edge-lo:rgba(0,0,0,.65);       /* bottom/right shadow */
 
-	/* Elevation presets */
-		--shadow-xs:0 1px 2px rgba(0,0,0,.35);
-		--shadow-sm:0 2px 8px rgba(0,0,0,.38), 0 0 0 1px rgba(255,255,255,.05);
-		--shadow-raised:0 10px 22px -8px rgba(0,0,0,.5), 0 2px 0 0 var(--edge-hi), 0 0 0 1px rgba(255,255,255,.05);
-		--shadow-raised-lg:0 18px 40px -14px rgba(0,0,0,.55), 0 2px 0 0 var(--edge-hi), 0 0 0 1px rgba(255,255,255,.06);
-		--shadow-pressed:inset 2px 2px 4px rgba(0,0,0,.45), inset -1px -1px 1px var(--edge-hi), 0 0 0 1px rgba(255,255,255,.04);
+	/* Elevation presets: stronger to show on graphite */
+	--shadow-xs:0 1.5px 2.5px rgba(0,0,0,.45);
+	--shadow-sm:0 3px 8px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.05);
+	--shadow-raised:0 10px 24px -6px rgba(0,0,0,.6), 0 2px 0 0 var(--edge-hi), 0 0 0 1px rgba(255,255,255,.04);
+	--shadow-raised-lg:0 18px 36px -10px rgba(0,0,0,.65), 0 2px 0 0 var(--edge-hi), 0 0 0 1px rgba(255,255,255,.04);
+	--shadow-pressed:inset 2px 3px 5px rgba(0,0,0,.62), inset -1px -1px 1px var(--edge-hi), 0 0 0 1px rgba(255,255,255,.03);
 
-		/* Hidden light bands + architectural LED options */
-		--hidden-lights: radial-gradient(60% 80% at 20% 0%, rgba(var(--accent-rgb)/0.18), transparent 60%),
-										 radial-gradient(70% 90% at 80% 100%, rgba(34,197,94,.16), transparent 65%);
-		--led-cool-rgb: 206 229 255; /* cool white */
-		--led-blue-rgb:  92 178 255; /* architectural blue */
-		--led-amber-rgb: 255 196  87; /* warm accent */
-		--led-strip-accent: linear-gradient(90deg, transparent, rgba(var(--led-blue-rgb)/.55) 25%, rgba(var(--led-cool-rgb)/.6) 50%, rgba(var(--led-blue-rgb)/.55) 75%, transparent);
-		--led-edge-accent: linear-gradient(180deg, rgba(var(--led-cool-rgb)/.4), rgba(var(--led-blue-rgb)/.15) 60%, transparent 100%);
-
-	/* Accent gradient for controls */
-	--grad-accent:linear-gradient(135deg,#3ac6f2 0%,#7aa7ff 45%,#2bd188 95%);
+	/* Neutral hidden light bands (achromatic) */
+	--hidden-lights:
+		radial-gradient(60% 80% at 20% 0%, rgba(255,255,255,.10), transparent 60%),
+		radial-gradient(70% 90% at 80% 100%, rgba(255,255,255,.08), transparent 65%);
 
 	/* Focus ring */
-	--focus-ring:0 0 0 2px color-mix(in oklab, var(--panel), #ffffff 10%), 0 0 0 5px rgba(var(--accent-rgb)/.45);
+	--focus-ring:0 0 0 2px color-mix(in oklab, var(--panel), #ffffff 12%), 0 0 0 5px rgba(138,163,194,.45);
 
 	/* Motion */
 	--transition-fast:.18s cubic-bezier(.4,0,.2,1);
@@ -72,21 +62,21 @@
 html[data-theme="light"]{
 	--bg:#edf1f6; --bg-2:#e7ecf3; --panel:#f8fafc; --panel-alt:#f1f5f9;
 	--text:#1a2433; --text-dim:#485669; --muted:#5b6675; --border:#d1d9e3;
-	--inset:#e8eef3; --inset-border:#c8d1d9; --accent:#36b9ee; --accent-rgb:54 185 238;
+	--inset:#e8eef3; --inset-border:#c8d1d9; --accent:#7c8ea8; --accent-rgb:124 142 168;
 	--edge-hi:rgba(255,255,255,.9);
 	--edge-lo:rgba(15,23,42,.16);
-	--shadow-xs:0 1px 2px rgba(15,23,42,.08);
-	--shadow-sm:0 2px 6px rgba(15,23,42,.12), 0 0 0 1px rgba(0,0,0,.04);
+	--shadow-xs:0 1px 2px rgba(15,23,42,.10);
+	--shadow-sm:0 2px 8px rgba(15,23,42,.12), 0 0 0 1px rgba(0,0,0,.04);
 	--shadow-raised:0 6px 14px -6px rgba(15,23,42,.18), 0 1px 0 0 var(--edge-hi), 0 0 0 1px rgba(0,0,0,.04);
 	--shadow-raised-lg:0 16px 32px -12px rgba(15,23,42,.22), 0 1px 0 0 var(--edge-hi), 0 0 0 1px rgba(0,0,0,.05);
 	--shadow-pressed:inset 2px 2px 4px rgba(15,23,42,.12), inset -1px -1px 1px var(--edge-hi), 0 0 0 1px rgba(0,0,0,.04);
-	--hidden-lights: radial-gradient(60% 80% at 20% 0%, rgba(54,185,238,.18), transparent 60%),
-									 radial-gradient(70% 90% at 80% 100%, rgba(34,197,94,.12), transparent 65%);
-	--focus-ring:0 0 0 2px #ffffff,0 0 0 5px rgba(var(--accent-rgb)/.45);
+	--hidden-lights: radial-gradient(60% 80% at 20% 0%, rgba(255,255,255,.22), transparent 60%),
+									 radial-gradient(70% 90% at 80% 100%, rgba(255,255,255,.16), transparent 65%);
+	--focus-ring:0 0 0 2px #ffffff,0 0 0 5px rgba(124,142,168,.35);
 }
 
 /* Utility surface backgrounds */
 :root{
-	--surface-matte: linear-gradient(180deg, color-mix(in oklab, var(--panel), #000 1%) 0%, var(--panel) 100%), var(--texture-noise), var(--hidden-lights);
-	--surface-inset: linear-gradient(180deg, color-mix(in oklab, var(--inset), #000 1%) 0%, var(--inset) 100%), var(--texture-noise);
+	--surface-matte: linear-gradient(180deg, color-mix(in oklab, var(--panel), #000 1.5%) 0%, var(--panel) 100%), var(--texture-fine), var(--hidden-lights);
+	--surface-inset: linear-gradient(180deg, color-mix(in oklab, var(--inset), #000 2%) 0%, var(--inset) 100%), var(--texture-medium);
 }

@@ -4,10 +4,6 @@
 	background:var(--surface-inset);
 	box-shadow:var(--shadow-pressed)
 }
-.progress__bar{
-	height:100%;width:0;
-	background:linear-gradient(90deg, color-mix(in oklab, var(--accent), #fff 12%), var(--brand));
-	transition:width .15s ease; position:relative
-}
-.progress__bar::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg, rgba(255,255,255,.25), transparent 60%), var(--led-strip-accent);mix-blend-mode:screen;pointer-events:none}
+.progress__bar{height:100%;width:0;background:linear-gradient(90deg, color-mix(in oklab, var(--accent), #fff 12%), color-mix(in oklab, var(--accent), #000 8%));transition:width .15s ease;position:relative}
+.progress__bar::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg, rgba(255,255,255,.18), transparent 60%);mix-blend-mode:screen;pointer-events:none}
 .progress__text{font-size:12px;color:var(--muted)}
