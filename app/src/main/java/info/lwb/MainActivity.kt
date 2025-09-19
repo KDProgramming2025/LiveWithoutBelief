@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-    val link = intent.dataString
+        val link = intent.dataString
         setContent { appRoot(authFacade, altchaProvider, link) }
     }
 }
