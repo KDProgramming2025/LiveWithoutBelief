@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "vitest run tests/services/AuthService.test.ts"
+  "test": "vitest run --config .vitest.config.mjs --coverage"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

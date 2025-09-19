@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import crypto from 'crypto'
-import { AltchaService } from '../../src/services/AltchaService'
+import { createChallenge, verifySolution } from 'altcha-lib'
+import { env } from '../../src/server/config/env'
 
 // Mirror client-side solver logic used by the Android app
 function solveAltcha(algorithm: string, challenge: string, salt: string, max: number): number {
@@ -12,12 +13,10 @@ function solveAltcha(algorithm: string, challenge: string, salt: string, max: nu
   throw new Error(`not found up to ${max}`)
 }
 
-describe('AltchaService', () => {
-  it('creates a challenge and verifies a valid solution payload', () => {
-    const svc = new AltchaService()
-    const ch = svc.createChallenge()
-    // Find a solution like the app would
-    const n = solveAltcha(ch.algorithm, ch.challenge, ch.salt, ch.maxnumber)
+describe('ALTCHA integration (official lib)', () => {
+  it('creates a challenge and verifies a valid solution payload', async () => {
+    const ch = await createChallenge({ hmacKey: env.ALTCHA_SECRET, maxnumber: 50_000 })
+    const n = solveAltcha(ch.algorithm, ch.challenge, ch.salt, ch.maxnumber ?? 1_000_000)
     const payload = Buffer.from(JSON.stringify({
       algorithm: ch.algorithm,
       challenge: ch.challenge,
@@ -25,13 +24,12 @@ describe('AltchaService', () => {
       number: n,
       signature: ch.signature,
     }), 'utf8').toString('base64')
-    const res = svc.verifyPayload(payload)
-    expect(res.ok).toBe(true)
+    const ok = await verifySolution(payload, env.ALTCHA_SECRET)
+    expect(ok).toBe(true)
   })
 
-  it('rejects tampered signature', () => {
-    const svc = new AltchaService()
-    const ch = svc.createChallenge()
+  it('rejects tampered signature', async () => {
+    const ch = await createChallenge({ hmacKey: env.ALTCHA_SECRET, maxnumber: 50_000 })
     const payload = Buffer.from(JSON.stringify({
       algorithm: ch.algorithm,
       challenge: ch.challenge,
@@ -39,7 +37,7 @@ describe('AltchaService', () => {
       number: 0,
       signature: 'deadbeef',
     }), 'utf8').toString('base64')
-    const res = svc.verifyPayload(payload)
-    expect(res.ok).toBe(false)
+    const ok = await verifySolution(payload, env.ALTCHA_SECRET)
+    expect(ok).toBe(false)
   })
 })
