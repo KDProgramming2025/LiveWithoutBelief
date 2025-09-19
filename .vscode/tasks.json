@@ -35,6 +35,16 @@
 				"\"\"",
 				"c:\\Users\\MDP\\Desktop\\AD\\LiveWithoutBelief\\admin\\web\\index.html"
 			]
+		},
+		{
+			"label": "Deploy LWB server",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"type",
+				"c:\\Users\\MDP\\Desktop\\AD\\LiveWithoutBelief\\linux_commands.sh"
+			]
 		}
 	]
 }
