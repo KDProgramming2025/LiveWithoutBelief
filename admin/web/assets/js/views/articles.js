@@ -14,19 +14,28 @@ export async function viewArticles(){
             <input class="input" name="label" placeholder="Label" required />
             <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
           </div>
-          <div class="row row--center file-tiles">
-            <label class="file-tile file-button" data-kind="cover">
-              <span class="tile-icon" data-lucide="image"></span>
-              <input class="input" name="cover" type="file" accept="image/*" />
-            </label>
-            <label class="file-tile file-button" data-kind="icon">
-              <span class="tile-icon" data-lucide="image"></span>
-              <input class="input" name="icon" type="file" accept="image/*" />
-            </label>
-            <label class="file-tile file-button" data-kind="docx">
-              <span class="tile-icon" data-lucide="file-text"></span>
-              <input class="input" name="docx" type="file" accept=".docx" required />
-            </label>
+          <div class="row row--center file-tiles" role="group" aria-label="Article files">
+            <div class="file-tile-wrap">
+              <label class="file-tile file-button" data-kind="icon" aria-label="Icon image">
+                <span class="tile-icon" data-lucide="image"></span>
+                <input class="input" name="icon" type="file" accept="image/*" aria-label="Select icon image" />
+              </label>
+              <div class="tile-caption">Icon</div>
+            </div>
+            <div class="file-tile-wrap">
+              <label class="file-tile file-button" data-kind="cover" aria-label="Cover image">
+                <span class="tile-icon" data-lucide="image"></span>
+                <input class="input" name="cover" type="file" accept="image/*" aria-label="Select cover image" />
+              </label>
+              <div class="tile-caption">Cover</div>
+            </div>
+            <div class="file-tile-wrap">
+              <label class="file-tile file-button" data-kind="docx" aria-label="Article DOCX">
+                <span class="tile-icon" data-lucide="file-text"></span>
+                <input class="input" name="docx" type="file" accept=".docx" required aria-label="Select DOCX file" />
+              </label>
+              <div class="tile-caption">DOCX</div>
+            </div>
           </div>
           <button class="button button--block" id="article-submit" type="submit">Upload</button>
           <div class="row row--center">
@@ -51,14 +60,21 @@ export async function viewArticles(){
   const res = await api('/articles')
     const json = await res.json()
     listEl.innerHTML = ''
-    for(const a of json.items){
+    let items = json.items.slice()
+    for(const a of items){
       const card = document.createElement('div')
       card.className = 'menu-card'
       card.innerHTML = `
           <div class="menu-card__icon">${a.iconUrl ? `<img src="${a.iconUrl}" alt="icon"/>` : '<div class="placeholder">No Icon</div>'}</div>
           <div class="menu-card__body">
             <div class="menu-card__title">${a.title}</div>
-            <div class="menu-card__label">${a.label ?? ''}</div>
+            <div class="menu-card__label-row">
+              <div class="menu-card__label">${a.label ?? ''}</div>
+              <div class="menu-card__move">
+                <button class="button secondary btn-move btn-move--up" data-article-move="up" data-id="${a.id}">↑</button>
+                <button class="button secondary btn-move btn-move--down" data-article-move="down" data-id="${a.id}">↓</button>
+              </div>
+            </div>
           </div>
           <div class="menu-card__actions">
             <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
@@ -68,6 +84,27 @@ export async function viewArticles(){
     }
   }
   listEl.addEventListener('click', async (e) => {
+    // Move up/down with optimistic local reorder (fallback when API isn't available)
+    const mv = e.target.closest('button[data-article-move]')
+    if(mv){
+      const id = mv.getAttribute('data-id')
+      const dir = mv.getAttribute('data-article-move')
+      try{
+        // Try API first if implemented later
+        const headers = { 'Content-Type': 'application/json' }
+        if (state.token) headers['Authorization'] = `Bearer ${state.token}`
+        const res = await fetch(`/v1/admin/articles/${encodeURIComponent(id)}/move`, { method:'POST', headers, body: JSON.stringify({ direction: dir }) })
+        if(res.status === 204){ await fetchList(); return }
+      }catch{}
+      // Fallback: local reorder in DOM
+      const cards = Array.from(listEl.children)
+      const idx = cards.findIndex(c => c.querySelector(`button[data-id="${CSS.escape(id||'')}"]`))
+      if(idx >= 0){
+        if(dir === 'up' && idx > 0){ listEl.insertBefore(cards[idx], cards[idx-1]) }
+        if(dir === 'down' && idx < cards.length - 1){ listEl.insertBefore(cards[idx+1], cards[idx]) }
+      }
+      return
+    }
     const btn = e.target.closest('button[data-article-del]')
     if(!btn) return
     const id = btn.getAttribute('data-article-del')
