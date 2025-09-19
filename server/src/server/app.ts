@@ -26,7 +26,8 @@ export function createServer() {
     res.sendFile(path.join(adminRoot, 'index.html'))
   })
   app.use('/admin/ui', express.static(adminRoot, { etag: false, lastModified: false, maxAge: '1h' }))
-  app.use('/admin/ui/uploads', express.static(uploadDir, { etag: false, lastModified: false, maxAge: '1y' }))
+  // Use regular cache control for admin-uploaded images/icons (no excessively long caching)
+  app.use('/admin/ui/uploads', express.static(uploadDir, { etag: false, lastModified: false, maxAge: '1h' }))
   app.use('/admin/ui/web/articles', express.static(adminArticlesDir, { etag: false, lastModified: false, maxAge: '1h' }))
   app.use('/admin', createWebRouter())
 
