@@ -14,6 +14,25 @@ interface ArticleApi {
     suspend fun getArticle(@retrofit2.http.Path("id") id: String): ArticleDto
 }
 
+// Public Menu API
+interface MenuApi {
+    @GET("v1/menu")
+    suspend fun getMenu(): MenuResponse
+}
+
+@kotlinx.serialization.Serializable
+data class MenuItemDto(
+    val id: String,
+    val title: String,
+    val label: String? = null,
+    val order: Int = 0,
+    val iconPath: String? = null,
+    val createdAt: String = "",
+)
+
+@kotlinx.serialization.Serializable
+data class MenuResponse(val items: List<MenuItemDto>)
+
 data class ManifestItemDto(
     val id: String,
     val title: String,

@@ -86,6 +86,12 @@ android {
                 ?: (project.findProperty("AUTH_BASE_URL") as String?)
         ?: "https://aparat.feezor.net/LWB/API"
         buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
+        // Central API base URL for all endpoints
+        val apiBase =
+            System.getenv("API_BASE_URL")
+                ?: (project.findProperty("API_BASE_URL") as String?)
+                ?: "https://aparat.feezor.net/LWB/"
+        buildConfigField("String", "API_BASE_URL", '"' + apiBase + '"')
     // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
 
         // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)
@@ -179,6 +185,7 @@ dependencies {
     implementation(project(":feature:search"))
     implementation(project(":feature:bookmarks"))
     implementation(project(":feature:annotations"))
+    implementation(project(":feature:home"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

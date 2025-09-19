@@ -11,6 +11,7 @@ import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
 import info.lwb.core.model.ThreadMessage
+import info.lwb.core.model.MenuItem
 import kotlinx.coroutines.flow.Flow
 
 class GetArticlesUseCase(private val articleRepository: ArticleRepository) {
@@ -80,4 +81,12 @@ class GetThreadMessagesUseCase(private val annotationRepository: AnnotationRepos
 class AddThreadMessageUseCase(private val annotationRepository: AnnotationRepository) {
     suspend operator fun invoke(annotationId: String, type: String, contentRef: String) =
         annotationRepository.addThreadMessage(annotationId, type, contentRef)
+}
+
+class GetMenuUseCase(private val menuRepository: MenuRepository) {
+    operator fun invoke(): Flow<Result<List<MenuItem>>> = menuRepository.getMenuItems()
+}
+
+class RefreshMenuUseCase(private val menuRepository: MenuRepository) {
+    suspend operator fun invoke() = menuRepository.refreshMenu()
 }

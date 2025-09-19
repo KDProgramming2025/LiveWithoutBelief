@@ -16,9 +16,14 @@ import dagger.hilt.components.SingletonComponent
 import info.lwb.core.domain.AnnotationRepository
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.domain.BookmarkRepository
+import info.lwb.core.domain.GetMenuUseCase
+import info.lwb.core.domain.RefreshMenuUseCase
 import info.lwb.core.domain.ReadingProgressRepository
+import info.lwb.core.domain.MenuRepository
 import info.lwb.data.network.ArticleApi
 import info.lwb.data.repo.db.AppDatabase
+import info.lwb.data.network.MenuApi
+import info.lwb.data.repo.repositories.menu.MenuRepositoryImpl
 import info.lwb.data.repo.repositories.AnnotationRepositoryImpl
 import info.lwb.data.repo.repositories.ArticleRepositoryImpl
 import info.lwb.data.repo.repositories.BookmarkRepositoryImpl
@@ -81,4 +86,11 @@ object DatabaseModule {
     @Provides
     fun provideAnnotationRepository(db: AppDatabase, session: info.lwb.core.domain.UserSession): AnnotationRepository =
         AnnotationRepositoryImpl(db.annotationDao(), db.threadMessageDao(), session)
+
+    @Provides
+    @Singleton
+    fun provideMenuRepository(api: MenuApi): MenuRepository = MenuRepositoryImpl(api)
+
+    @Provides fun provideGetMenuUseCase(repo: MenuRepository) = GetMenuUseCase(repo)
+    @Provides fun provideRefreshMenuUseCase(repo: MenuRepository) = RefreshMenuUseCase(repo)
 }

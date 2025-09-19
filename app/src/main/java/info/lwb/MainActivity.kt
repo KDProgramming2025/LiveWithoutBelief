@@ -41,6 +41,7 @@ import info.lwb.auth.AuthUiState
 import info.lwb.auth.AuthViewModel
 import info.lwb.auth.AltchaTokenProvider
 import info.lwb.feature.bookmarks.BookmarksRoute
+import info.lwb.feature.home.HomeRoute
 import info.lwb.feature.reader.ReaderRoute
 import info.lwb.feature.search.SearchRoute
 import javax.inject.Inject
@@ -78,36 +79,8 @@ private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider,
             )
             val state = vm.state.collectAsState()
             val activity = LocalContext.current as android.app.Activity
-            // No email link flow anymore
-            Column {
-                when (val s = state.value) {
-                    is AuthUiState.SignedOut -> {
-                        Button(onClick = { vm.signIn { activity } }) { Text("Google Sign In") }
-                        Spacer(Modifier.height(16.dp))
-                        PasswordAuthSection(onRegister = { u, p -> vm.passwordRegister({ activity }, u, p) }, onLogin = { u, p -> vm.passwordLogin(u, p) })
-                    }
-                    is AuthUiState.Loading -> Text("Loading...")
-                    is AuthUiState.Error -> {
-                        Text("Error: ${s.message}")
-                        Spacer(Modifier.height(8.dp))
-                        Button(onClick = { vm.signIn { activity } }) { Text("Google Sign In") }
-                        Spacer(Modifier.height(16.dp))
-                        PasswordAuthSection(onRegister = { u, p -> vm.passwordRegister({ activity }, u, p) }, onLogin = { u, p -> vm.passwordLogin(u, p) })
-                    }
-                    is AuthUiState.RegionBlocked -> {
-                        RegionBlockedBanner(message = s.message)
-                    }
-                    is AuthUiState.SignedIn -> {
-                        Text("Hello ${s.user.displayName ?: s.user.email}")
-                        Button(onClick = { vm.signOut() }) { Text("Sign Out") }
-                        Spacer(Modifier.height(8.dp))
-                        Button(onClick = { navController.navigate(Destinations.SEARCH) }) { Text("Search") }
-                        Spacer(Modifier.height(8.dp))
-                        Button(onClick = { navController.navigate(Destinations.BOOKMARKS) }) { Text("Bookmarks") }
-                        appNavHost(navController)
-                    }
-                }
-            }
+            // Temporarily hide authentication; always show Home main page
+            appNavHost(navController)
         }
     }
 }
@@ -165,6 +138,7 @@ private fun PasswordAuthSection(
 }
 
 private object Destinations {
+    const val HOME = "home"
     const val READER = "reader"
     const val SEARCH = "search"
     const val BOOKMARKS = "bookmarks"
@@ -172,7 +146,10 @@ private object Destinations {
 
 @Composable
 private fun appNavHost(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Destinations.READER) {
+    NavHost(navController = navController, startDestination = Destinations.HOME) {
+        composable(Destinations.HOME) { HomeRoute(onItemClick = { id ->
+            // TODO: Navigate to reader/search depending on type when available
+        }) }
         composable(Destinations.READER) { ReaderRoute() }
         composable(Destinations.SEARCH) { SearchRoute() }
         composable(Destinations.BOOKMARKS) { BookmarksRoute() }

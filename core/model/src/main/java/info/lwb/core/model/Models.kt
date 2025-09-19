@@ -87,3 +87,13 @@ data class ReadingProgress(
     val progress: Double,
     val updatedAt: String,
 )
+
+@Serializable
+data class MenuItem(
+    val id: String,
+    val title: String,
+    val label: String? = null,
+    val order: Int = 0,
+    val iconPath: String? = null,
+    val createdAt: String = "",
+)

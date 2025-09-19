@@ -21,7 +21,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-    private const val BASE_URL = "http://10.0.2.2:4433/" // emulator to host (port updated from 8080)
 
     @Provides
     @Singleton
@@ -35,8 +34,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(json: Json, client: OkHttpClient): Retrofit = Retrofit.Builder()
-        .baseUrl(BASE_URL)
+    fun provideRetrofit(json: Json, client: OkHttpClient, @javax.inject.Named("apiBaseUrl") baseUrl: String): Retrofit = Retrofit.Builder()
+        .baseUrl(baseUrl)
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .client(client)
         .build()
@@ -44,4 +43,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideArticleApi(retrofit: Retrofit): ArticleApi = retrofit.create(ArticleApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMenuApi(retrofit: Retrofit): MenuApi = retrofit.create(MenuApi::class.java)
 }

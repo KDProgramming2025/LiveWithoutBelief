@@ -3,6 +3,7 @@ import { articleRouter } from './routes/articles.js'
 import { authRouter } from './routes/auth.js'
 import { altchaRouter } from './routes/altcha.js'
 import { createWebRouter } from './routes/web.js'
+import { menuRouter } from './routes/menu.js'
 import { adminRouter } from './routes/admin.js'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -13,6 +14,7 @@ export function createServer() {
 
   app.get('/health', (_req: express.Request, res: express.Response) => res.json({ ok: true }))
   app.use('/v1/articles', articleRouter)
+  app.use('/v1/menu', menuRouter)
   app.use('/v1/auth', authRouter)
   app.use('/v1/altcha', altchaRouter)
   app.use('/v1/admin', adminRouter)
@@ -28,6 +30,8 @@ export function createServer() {
   app.use('/admin/ui', express.static(adminRoot, { maxAge: '1h' }))
   // Use regular cache control for admin-uploaded images/icons (allow validators for 304 revalidation)
   app.use('/admin/ui/uploads', express.static(uploadDir, { maxAge: '1h' }))
+  // Public uploads for the client app (icons referenced by iconPath)
+  app.use('/uploads', express.static(uploadDir, { maxAge: '7d' }))
   app.use('/admin/ui/web/articles', express.static(adminArticlesDir, { maxAge: '1h' }))
   app.use('/admin', createWebRouter())
 
