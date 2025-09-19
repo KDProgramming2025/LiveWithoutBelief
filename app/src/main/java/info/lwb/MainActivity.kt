@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -30,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -45,6 +49,11 @@ import info.lwb.feature.home.HomeRoute
 import info.lwb.feature.reader.ReaderRoute
 import info.lwb.feature.search.SearchRoute
 import javax.inject.Inject
+import info.lwb.feature.settings.SettingsRoute
+import info.lwb.feature.settings.SettingsViewModel
+import info.lwb.feature.settings.ThemeMode
+import info.lwb.feature.settings.ThemePreferenceRepository
+import info.lwb.ui.designsystem.LwbTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -67,7 +76,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider, maybeLink: String?) {
     val navController = rememberNavController()
-    MaterialTheme {
+    // Observe theme preference using a lightweight VM scoped at root
+    val settingsVm: SettingsViewModel = hiltViewModel()
+    val theme by settingsVm.themeMode.collectAsState()
+    val dark = when (theme) {
+        ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    LwbTheme(darkTheme = dark) {
         Surface(color = MaterialTheme.colorScheme.background) {
             val vm: AuthViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -142,16 +159,30 @@ private object Destinations {
     const val READER = "reader"
     const val SEARCH = "search"
     const val BOOKMARKS = "bookmarks"
+    const val SETTINGS = "settings"
 }
 
 @Composable
 private fun appNavHost(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Destinations.HOME) {
-        composable(Destinations.HOME) { HomeRoute(onItemClick = { id ->
-            // TODO: Navigate to reader/search depending on type when available
-        }) }
+        composable(Destinations.HOME) {
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
+                HomeRoute(onItemClick = { id ->
+                    // TODO: Navigate to reader/search depending on type when available
+                })
+                FloatingActionButton(
+                    onClick = { navController.navigate(Destinations.SETTINGS) },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp),
+                ) {
+                    androidx.compose.material3.Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                }
+            }
+        }
         composable(Destinations.READER) { ReaderRoute() }
         composable(Destinations.SEARCH) { SearchRoute() }
         composable(Destinations.BOOKMARKS) { BookmarksRoute() }
+        composable(Destinations.SETTINGS) { SettingsRoute() }
     }
 }

@@ -17,4 +17,9 @@ object AppConfigModule {
     @Singleton
     @Named("apiBaseUrl")
     fun provideApiBaseUrl(): String = info.lwb.BuildConfig.API_BASE_URL
+
+    @Provides
+    @Singleton
+    @Named("uploadsBaseUrl")
+    fun provideUploadsBaseUrl(): String = info.lwb.BuildConfig.UPLOADS_BASE_URL
 }

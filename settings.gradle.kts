@@ -41,6 +41,7 @@ include(":feature:search")
 include(":feature:bookmarks")
 include(":feature:annotations")
 include(":feature:home")
+include(":feature:settings")
 
 // Benchmark module (macrobenchmark + baseline profile)
 include(":benchmark")

@@ -87,11 +87,16 @@ android {
         ?: "https://aparat.feezor.net/LWB/API"
         buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
         // Central API base URL for all endpoints
-        val apiBase =
+    val apiBase =
             System.getenv("API_BASE_URL")
                 ?: (project.findProperty("API_BASE_URL") as String?)
-                ?: "https://aparat.feezor.net/LWB/"
+        ?: "https://aparat.feezor.net/LWB/API/"
         buildConfigField("String", "API_BASE_URL", '"' + apiBase + '"')
+    val uploadsBase =
+        System.getenv("UPLOADS_BASE_URL")
+        ?: (project.findProperty("UPLOADS_BASE_URL") as String?)
+        ?: "https://aparat.feezor.net/LWB/Admin/uploads/"
+    buildConfigField("String", "UPLOADS_BASE_URL", '"' + uploadsBase + '"')
     // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
 
         // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)
@@ -176,6 +181,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":ui:design-system"))
     implementation(project(":core:model"))
     implementation(project(":core:common"))
     implementation(project(":core:domain"))
@@ -186,6 +192,7 @@ dependencies {
     implementation(project(":feature:bookmarks"))
     implementation(project(":feature:annotations"))
     implementation(project(":feature:home"))
+    implementation(project(":feature:settings"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -197,6 +204,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     kapt(libs.hilt.android.compiler)
+    implementation(libs.hilt.navigation.compose)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

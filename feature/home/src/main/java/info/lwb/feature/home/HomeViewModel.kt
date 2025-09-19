@@ -22,6 +22,7 @@ class HomeViewModel @Inject constructor(
     private val getMenu: GetMenuUseCase,
     private val refreshMenu: RefreshMenuUseCase,
     @Named("apiBaseUrl") val apiBaseUrl: String,
+    @Named("uploadsBaseUrl") val uploadsBaseUrl: String,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
