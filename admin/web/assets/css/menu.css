@@ -1,6 +1,15 @@
+/* Override global button hover/focus glow for stacked move buttons */
+.menu-card__move .btn-move:hover,
+.menu-card__move .btn-move:focus,
+.menu-card__move .btn-move:focus-visible{ animation: none !important; filter: none !important }
 .btn-move:hover{ box-shadow: var(--shadow-raised-1) }
-.btn-move--up:hover{ box-shadow: 0 0 0 1px rgba(0,255,255,.25), 0 -2px 10px rgba(0,255,255,.22), inset 0 -1px 0 rgba(0,0,0,.35) }
-.btn-move--down:hover{ box-shadow: 0 0 0 1px rgba(0,255,255,.25), 0 2px 10px rgba(0,255,255,.22), inset 0 1px 0 rgba(0,0,0,.35) }
+/* Directional glow: up glows upward only; down glows downward only */
+.btn-move--up:hover{ box-shadow: 0 -2px 10px rgba(0,255,255,.22), inset 0 -1px 0 rgba(0,0,0,.35) ; border-bottom-color: var(--color-border-strong) }
+.btn-move--down:hover{ box-shadow: 0 2px 10px rgba(0,255,255,.22), inset 0 1px 0 rgba(0,0,0,.35) ; border-top-color: var(--color-border-strong) }
+
+/* Keep action buttons on a single line with truncation if needed */
+.menu-card__actions .button,
+.menu-card__actions .file-button{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .menu-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-12); align-items: start }
 .menu-grid{ margin-top: var(--space-16) }
 
