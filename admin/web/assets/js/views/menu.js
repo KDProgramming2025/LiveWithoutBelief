@@ -49,7 +49,13 @@ export async function viewMenu(){
             <button class="button secondary btn-move btn-move--down" data-move="down" data-id="${m.id}">↓</button>
           </div>
         </div>
-        <div class="menu-card__label">${m.label ?? ''}</div>
+        <div class="menu-card__sub">
+          <div class="menu-card__label">${m.label ?? ''}</div>
+          <div class="menu-card__move">
+            <button class="button secondary btn-move btn-move--up" data-move="up" data-id="${m.id}">↑</button>
+            <button class="button secondary btn-move btn-move--down" data-move="down" data-id="${m.id}">↓</button>
+          </div>
+        </div>
         <div class="menu-card__actions actions-equal">
           <button class="button danger" data-del="${m.id}">Delete</button>
           <button class="button secondary" data-edit="item" data-id="${m.id}" data-title="${m.title ?? ''}" data-label="${m.label ?? ''}">Edit</button>

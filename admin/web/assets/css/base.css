@@ -30,7 +30,7 @@ img, svg, video { max-width: 100%; height: auto; display: block }
 .content { max-width: var(--container-max); margin: 50px }
 .content.content--wide { max-width: none }
 
-.grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 280px)); justify-content: center; gap: var(--space-12); align-items: start }
+.grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); justify-content: stretch; gap: var(--space-12); align-items: start }
 
 .button--block{ width: 100% }
 
