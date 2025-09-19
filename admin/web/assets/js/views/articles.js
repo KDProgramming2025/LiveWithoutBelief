@@ -109,9 +109,9 @@ export async function viewArticles(){
           </div>
           <div class="article-card__footer">
             <div class="article-card__label">${a.label ?? ''}</div>
-            <div class="menu-card__actions actions-equal">
+            <div class="menu-card__actions article-card__actions">
               <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
-              <button class=\"button secondary\" data-article-edit=\"${a.id}\" data-title=\"${(a.title||'').replaceAll('\\"','&quot;')}\" data-label=\"${a.label ?? ''}\" data-order=\"${a.order ?? 0}\">Edit</button>
+              <button class="button secondary" data-article-edit="${a.id}" data-title="${(a.title||'').replaceAll('\\"','&quot;')}" data-label="${a.label ?? ''}" data-order="${a.order ?? 0}">Edit</button>
               <button class="button danger" data-article-del="${a.id}">Delete</button>
             </div>
           </div>
