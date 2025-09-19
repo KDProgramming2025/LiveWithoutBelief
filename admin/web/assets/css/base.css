@@ -82,6 +82,13 @@ p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
 	box-shadow: none;
 }
 
+/* Subtle tag style for user stats badge */
+#user-stats{
+	background: var(--color-surface-1);
+	border-color: var(--color-border);
+	box-shadow: none;
+}
+
 .row--search > input{ flex:1 1 auto }
 
 .stack-8 > * + * { margin-top: var(--space-8) }
