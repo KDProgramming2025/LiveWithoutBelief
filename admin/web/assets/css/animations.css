@@ -1,0 +1,5 @@
+@keyframes overlayFadeIn{ from{ opacity: 0 } to{ opacity: 1 } }
+@keyframes modalPop{ from{ transform: translateY(6px) scale(.98); opacity: 0 } to{ transform: translateY(0) scale(1); opacity: 1 } }
+
+#modal-overlay.overlay{ animation: overlayFadeIn .18s ease-out }
+#modal-overlay.overlay #modal-card{ animation: modalPop .18s ease-out }

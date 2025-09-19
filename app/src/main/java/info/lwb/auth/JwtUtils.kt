@@ -37,4 +37,37 @@ object JwtUtils {
             null
         }
     }
+
+    fun extractSubject(token: String): String? {
+        return try {
+            val parts = token.split('.')
+            if (parts.size < 2) return null
+            val payloadB64 = parts[1]
+            val rem = payloadB64.length % 4
+            val padded = if (rem == 0) payloadB64 else payloadB64 + "=".repeat(4 - rem)
+            val decoded = JvmB64.decoder.decode(padded)
+            val jsonStr = String(decoded, Charsets.UTF_8)
+            val key = "\"sub\""
+            val idx = jsonStr.indexOf(key)
+            if (idx == -1) return null
+            val colon = jsonStr.indexOf(':', idx)
+            if (colon == -1) return null
+            var i = colon + 1
+            while (i < jsonStr.length && jsonStr[i].isWhitespace()) i++
+            if (i >= jsonStr.length) return null
+            // subject may be quoted string
+            return if (jsonStr[i] == '"') {
+                i++
+                val start = i
+                while (i < jsonStr.length && jsonStr[i] != '"') i++
+                if (i >= jsonStr.length) null else jsonStr.substring(start, i)
+            } else {
+                val start = i
+                while (i < jsonStr.length && !jsonStr[i].isWhitespace() && jsonStr[i] != ',' && jsonStr[i] != '}') i++
+                jsonStr.substring(start, i)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 }

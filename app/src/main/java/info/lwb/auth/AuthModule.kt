@@ -58,7 +58,16 @@ abstract class AuthBindingsModule {
 
     @Binds
     @Singleton
-    abstract fun bindRecaptchaProvider(impl: GoogleRecaptchaTokenProvider): RecaptchaTokenProvider
+    abstract fun bindRegistrationApi(impl: RemoteRegistrationApi): RegistrationApi
+
+    @Binds
+    @Singleton
+    abstract fun bindPasswordAuthApi(impl: RemotePasswordAuthApi): PasswordAuthApi
+
+    @Binds
+    @Singleton
+    abstract fun bindAltchaProvider(impl: WebViewAltchaProvider): AltchaTokenProvider
+
 }
 
 @Module
@@ -119,9 +128,10 @@ object AuthProvisionModule {
     fun provideAutoTokenRefresher(
         storage: SecureStorage,
         authFacade: AuthFacade,
+        sessionValidator: SessionValidator,
         appScope: CoroutineScope,
         refreshConfig: TokenRefreshConfig,
-    ): AutoTokenRefresher = AutoTokenRefresher(storage, authFacade, appScope, refreshConfig).apply { start() }
+    ): AutoTokenRefresher = AutoTokenRefresher(storage, authFacade, sessionValidator, appScope, refreshConfig).apply { start() }
 
     @Provides
     @Singleton
@@ -183,7 +193,11 @@ class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
 ) : OneTapCredentialProvider {
     override suspend fun getIdToken(activity: android.app.Activity): String? = try {
         if (info.lwb.BuildConfig.DEBUG) {
-            android.util.Log.d("AuthFlow", "CredentialManager:getIdToken:start")
+            android.util.Log.d(
+                "AuthFlow",
+                "CredentialManager:getIdToken:start serverClientId=" +
+                    info.lwb.BuildConfig.GOOGLE_SERVER_CLIENT_ID.take(16) + "…",
+            )
         }
         val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
             .setServerClientId(info.lwb.BuildConfig.GOOGLE_SERVER_CLIENT_ID)
@@ -218,7 +232,13 @@ class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
         }
     } catch (e: Exception) {
         if (info.lwb.BuildConfig.DEBUG) {
-            runCatching { android.util.Log.w("AuthFlow", "CredentialManager:failure", e) }
+            runCatching {
+                android.util.Log.w(
+                    "AuthFlow",
+                    "CredentialManager:failure ${e.message}",
+                    e,
+                )
+            }
         }
         null
     }

@@ -168,7 +168,7 @@ jobs:
 
       - name: Lint
         working-directory: server
-        run: npx eslint . --ext .ts
+        run: npx eslint@8 . --ext .ts
 
       - name: Test with Coverage
         working-directory: server

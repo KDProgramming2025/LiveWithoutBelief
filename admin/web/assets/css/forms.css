@@ -1,0 +1,141 @@
+.form-grid{ display: grid; gap: var(--space-8) }
+
+.menu-compact .mc-row{ display:grid; grid-template-columns: 1.2fr 1fr 80px auto auto; gap: var(--space-8); align-items: center }
+.menu-compact .mc-icon-slot{ display:flex; align-items:center; gap: var(--space-8) }
+.menu-compact .mc-thumb{ display:flex; align-items:center; gap: 6px }
+.menu-compact .mc-thumb img{ width: 32px; height: 32px; object-fit: contain; border-radius: 6px; border: 1px solid var(--color-border) }
+.menu-compact .mc-clear{ height: 24px; width: 24px; line-height: 0; display:inline-grid; place-items:center; border-radius: 50%; border: 1px solid var(--color-border); background: var(--color-surface-2) }
+
+.input, .select, textarea {
+	height: var(--control-height);
+	width: 100%;
+	padding: 0 var(--control-padding-x);
+	color: var(--text-primary);
+	background: var(--color-inset);
+	border: 1px solid var(--color-border-strong);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-inset-1);
+	/* Base glow off; we'll fade this in/out for smooth appearance */
+	filter: drop-shadow(0 0 0 rgba(0,255,255,0));
+	transition: filter .22s ease, box-shadow .18s ease, border-color .18s ease;
+}
+textarea{ min-height: 120px; padding-top: 10px; padding-bottom: 10px; resize: vertical }
+
+.input::placeholder, textarea::placeholder{ color: var(--text-subdued) }
+
+.input:disabled{ opacity: .6; cursor: not-allowed }
+
+/* Cyan glow focus effect with animation */
+@keyframes glowPulse {
+	0%, 100% { box-shadow: 0 0 0 2px rgba(0,255,255,.42), 0 0 10px rgba(0,255,255,.28) }
+	50% { box-shadow: 0 0 0 2px rgba(0,255,255,.54), 0 0 16px rgba(0,255,255,.38) }
+}
+.input:focus-visible,
+.select:focus-visible,
+textarea:focus-visible,
+.button:focus-visible,
+.input:focus,
+.select:focus,
+textarea:focus,
+.button:focus {
+	outline: none;
+	border-color: rgba(0,255,255,.5);
+	/* Keep pulse while active */
+	animation: glowPulse 1.6s ease-in-out infinite;
+	/* Smooth fade on entry/exit via filter */
+	filter: drop-shadow(0 0 12px rgba(0,255,255,.3));
+}
+@media (prefers-reduced-motion: reduce) {
+	.input:focus, .input:focus-visible,
+	.select:focus, .select:focus-visible,
+	textarea:focus, textarea:focus-visible,
+	.button:focus, .button:focus-visible,
+	.button:hover { animation: none }
+}
+
+.button{
+	--btn-bg-top: #2d2f34;
+	--btn-bg-bot: #24272b;
+	display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+	height: var(--control-height);
+	padding: 0 14px;
+	color: var(--text-primary);
+	background: linear-gradient(var(--btn-bg-top), var(--btn-bg-bot));
+	border: 1px solid var(--color-border-strong);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-raised-1), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.5);
+	cursor: pointer;
+	/* Base off for smooth glow fade on buttons too */
+	filter: drop-shadow(0 0 0 rgba(0,255,255,0));
+	transition: filter .22s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.button:hover{ outline:none; border-color: rgba(0,255,255,.5); animation: glowPulse 1.6s ease-in-out infinite; filter: drop-shadow(0 0 12px rgba(0,255,255,.3)) }
+.button:active{ box-shadow: var(--shadow-press-1) }
+.button.secondary{ --btn-bg-top:#3a3c41; --btn-bg-bot:#2d2f34 }
+.button.danger{ --btn-bg-top:#4d2b2b; --btn-bg-bot:#3a2323; border-color: rgba(227,107,107,.5) }
+.button[disabled]{ opacity:.6; cursor:not-allowed }
+
+.select{ appearance: none; background-image: linear-gradient(transparent,transparent), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M6 8l4 4 4-4" stroke="%23bbb8b2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'); background-repeat: no-repeat; background-position: right 10px center; background-size: 18px }
+
+.check{ display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-size-sm) }
+.check input[type="checkbox"]{ appearance: none; width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--color-border-strong); background: var(--color-inset); box-shadow: var(--shadow-inset-1); position: relative }
+.check input[type="checkbox"]:checked{ background: linear-gradient(#3b4035,#2a2e27); border-color: rgba(111,191,139,.5) }
+.check input[type="checkbox"]:checked::after{ content:""; position:absolute; inset: 3px; background: #6fbf8b; border-radius: 2px; box-shadow: inset 0 1px 0 rgba(255,255,255,.35) }
+
+.switch{ position: relative; width: 44px; height: 24px; display: inline-block }
+.switch input{ appearance: none; width: 100%; height: 100%; background: var(--color-inset); border:1px solid var(--color-border-strong); border-radius: 999px; box-shadow: var(--shadow-inset-1) }
+.switch input::after{ content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background: linear-gradient(#2f3136,#26282c); box-shadow: var(--shadow-raised-1) }
+.switch input:checked{ background: linear-gradient(#37392e,#2e3027); border-color: rgba(111,191,139,.45) }
+.switch input:checked::after{ left: calc(100% - 21px); background: linear-gradient(#485242,#374036) }
+
+/* Global file chooser button pattern */
+.file-button{ position: relative; overflow: hidden }
+.file-button input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer }
+
+/* Square file tiles */
+.file-tiles{ gap: 12px }
+.file-tile-wrap{ display: grid; justify-items: center; gap: 6px }
+.file-tile{
+	width: 112px; height: 112px;
+	border-radius: var(--radius-lg);
+	background: var(--color-inset);
+	border: 1px solid var(--color-border-strong);
+	box-shadow: var(--shadow-inset-1);
+	display: grid; place-items: center;
+	position: relative;
+}
+.file-tile .tile-icon{ width: 32px; height: 32px; color: var(--text-muted) }
+.file-tile .tile-icon svg{ width: 32px; height: 32px }
+.file-tile svg.lucide{ width: 32px; height: 32px }
+.file-tile:hover{ box-shadow: 0 0 0 1px rgba(0,255,255,.25), 0 0 14px rgba(0,255,255,.2) }
+/* Visible captions under tiles (Icon, Cover, DOCX) */
+.tile-caption{ font-size: 12px; color: var(--text-muted); text-align: center }
+/* Filename overlay for docx tile */
+.file-tile .tile-filename{
+	position: absolute;
+	left: 8px; right: 8px; bottom: 8px;
+	max-width: calc(100% - 16px);
+	padding: 4px 6px;
+	font-size: 12px;
+	line-height: 1.2;
+	text-align: center;
+	color: var(--text-primary);
+	background: rgba(12,14,16,.75);
+	border-radius: 6px;
+	border: 1px solid var(--color-border);
+	backdrop-filter: blur(2px);
+	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Compact size for menu form icon tile */
+.menu-compact #menu-icon-tile{
+	width: var(--control-height);
+	height: var(--control-height);
+	border-radius: var(--radius-md);
+}
+.menu-compact #menu-icon-tile .tile-icon,
+.menu-compact #menu-icon-tile .tile-icon svg,
+.menu-compact #menu-icon-tile svg.lucide{
+	width: 18px; height: 18px;
+}
+

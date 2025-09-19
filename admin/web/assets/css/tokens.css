@@ -1,0 +1,71 @@
+ 
+
+:root {
+	--font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+	--text-size-xs: 12px;
+	--text-size-sm: 13px;
+	--text-size-md: 14px;
+	--text-size-lg: 16px;
+	--text-size-xl: 18px;
+
+	--space-1: 2px;
+	--space-2: 4px;
+	--space-3: 6px;
+	--space-4: 8px;
+	--space-6: 12px;
+	--space-8: 16px;
+	--space-10: 20px;
+	--space-12: 24px;
+	--space-16: 32px;
+	--space-20: 40px;
+
+	--radius-xs: 6px;
+	--radius-sm: 10px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+	--radius-pill: 999px;
+
+	--color-bg: #161718;
+	--color-surface-1: #1c1e20;
+	--color-surface-2: #232529;
+	--color-surface-3: #2a2d31;
+	--color-inset: #131415;
+	--color-border: #2c2f33;
+	--color-border-strong: #383c41;
+
+	--text-primary: #eae7e0;
+	--text-muted: #bbb8b2;
+	--text-subdued: #95928e;
+
+	--accent-50: #f3ead7;
+	--accent-200: #e7d5ac;
+	--accent-400: #d6bb7a;
+	--accent-500: #cfae67;
+	--accent-600: #bd9650;
+	--accent-700: #a5793a;
+	--accent: var(--accent-500);
+
+	--success-500: #6fbf8b;
+	--warning-500: #d9b45a;
+	--danger-500: #e36b6b;
+
+	--shadow-raised-1: 0 0.5px 0 rgba(255,255,255,0.04), 0 6px 14px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.6);
+	--shadow-raised-2: 0 1px 0 rgba(255,255,255,0.05), 0 10px 24px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.65);
+	--shadow-inset-1: inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.7), inset 0 8px 20px rgba(0,0,0,0.65);
+	--shadow-press-1: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -2px 4px rgba(0,0,0,0.75), 0 0 0 1px rgba(0,0,0,0.3);
+
+	--focus: 0 0 0 2px rgba(255,255,255,0.07), 0 0 0 4px rgba(207,174,103,0.35);
+
+	--texture-metal: url('../textures/brushed-metal.svg');
+
+	--control-height: 36px;
+	--control-padding-x: 12px;
+	--container-max: 1200px;
+}
+
+:root {
+	--ring: 0 0 0 1px var(--color-border-strong) inset;
+	--hairline: 1px solid var(--color-border);
+}
+

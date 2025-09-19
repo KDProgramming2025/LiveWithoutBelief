@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ALTCHA Solver</title>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
+    .root { display: flex; height: 100%; align-items: center; justify-content: center; }
+    .card { max-width: 480px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    button { padding: 10px 16px; }
+    .log { font-size: 12px; color: #555; margin-top: 8px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="root">
+    <div class="card">
+      <h3>ALTCHA</h3>
+      <p>Tap Solve to compute a challenge.</p>
+      <button id="solveBtn">Solve</button>
+      <div id="status" class="log"></div>
+    </div>
+  </div>
+  <script type="module">
+    // Simple local ALTCHA solver: finds a number n such that
+    // hex(digest(algorithm, `${salt}-${n}`)).startsWith(challengePrefix)
+    const log = (m) => { const s = document.getElementById('status'); s.textContent = m; };
+    const post = (payload) => { try { window.Android?.postSolution?.(payload); } catch {} };
+    const base = new URLSearchParams(location.search).get('base');
+    const challengeUrl = (base || '').replace(/\/$/, '') + '/v1/altcha/challenge';
+
+    async function toHex(buf) {
+      const bytes = new Uint8Array(buf);
+      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      return hex;
+    }
+
+    async function digest(algorithm, data) {
+      // Map ALTCHA algorithms to SubtleCrypto names
+      const algo = algorithm && algorithm.toUpperCase().includes('1') ? 'SHA-1' : 'SHA-256';
+      const enc = new TextEncoder();
+      return crypto.subtle.digest(algo, enc.encode(data));
+    }
+
+    async function solveLocal({ algorithm, challenge, maxnumber, salt, signature }) {
+      const prefix = challenge; // ALTCHA uses `challenge` as the required hex prefix
+      const max = Number(maxnumber || 100000);
+      for (let n = 0; n <= max; n++) {
+        const h = await digest(algorithm, `${salt}-${n}`);
+        const hex = await toHex(h);
+        if (hex.startsWith(prefix)) {
+          // Match altcha-lib verifySolution expected field names
+          return { algorithm, challenge: prefix, salt, number: n, signature };
+        }
+      }
+      throw new Error('Solution not found up to max=' + max);
+    }
+
+    const btn = document.getElementById('solveBtn');
+    btn.addEventListener('click', async () => {
+      try {
+        log('Fetching challenge…');
+        const res = await fetch(challengeUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Challenge HTTP ' + res.status);
+        const challenge = await res.json();
+        log('Solving…');
+        const solved = await solveLocal(challenge);
+        const payload = btoa(unescape(encodeURIComponent(JSON.stringify(solved))));
+        log('Solved');
+        post(payload);
+      } catch (e) {
+        log('Failed: ' + (e?.message || e));
+        // Explicitly inform host app that no solution is available
+        post('');
+      }
+    });
+  </script>
+</body>
+</html>

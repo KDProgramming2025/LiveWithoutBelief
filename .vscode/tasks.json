@@ -2,215 +2,49 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "gradle-test-app",
-			"type": "shell",
-			"command": "./gradlew.bat :app:testDebugUnitTest",
-			"isBackground": false,
-			"group": "build"
-		},
-		{
-			"label": "gradle-test-app",
-			"type": "shell",
-			"command": "./gradlew.bat :app:testDebugUnitTest",
-			"isBackground": false,
-			"group": "build"
-		},
-		{
-			"label": "gradle-install-app",
-			"type": "shell",
-			"command": "./gradlew.bat :app:installDebug",
-			"isBackground": false,
-			"group": "build"
-		},
-		{
-			"label": "gradle-install-app",
-			"type": "shell",
-			"command": "./gradlew.bat :app:installDebug",
-			"isBackground": false,
-			"group": "build"
-		},
-		{
-			"label": "gradle-install-app",
-			"type": "shell",
-			"command": "./gradlew.bat :app:installDebug",
-			"isBackground": false,
-			"group": "build"
-		},
-		{
-			"label": "gradle-install-app",
-			"type": "shell",
-			"command": "./gradlew.bat :app:installDebug",
-			"isBackground": false,
-			"group": "build"
-		},
-		{
-			"label": "assemble and install debug",
+			"label": "Install Android app (debug)",
 			"type": "shell",
 			"command": "gradlew.bat",
 			"args": [
-				":app:installDebug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
+				"app:installDebug",
+				"-x",
+				"lint",
+				"-x",
+				"test"
+			]
 		},
 		{
-			"label": "install debug (after network fix)",
+			"label": "Install Android app (debug)",
 			"type": "shell",
-			"command": "./gradlew.bat",
+			"command": ".\\gradlew.bat",
 			"args": [
-				":app:installDebug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
+				"app:installDebug",
+				"-x",
+				"lint",
+				"-x",
+				"test"
+			]
 		},
 		{
-			"label": "gradle-install-app (on demand)",
+			"label": "Open admin index in default browser",
 			"type": "shell",
-			"command": "./gradlew.bat",
+			"command": "cmd",
 			"args": [
-				":app:installDebug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
+				"/c",
+				"start",
+				"\"\"",
+				"c:\\Users\\MDP\\Desktop\\AD\\LiveWithoutBelief\\admin\\web\\index.html"
+			]
 		},
 		{
-			"label": "assemble and install debug (post-altcha)",
+			"label": "Deploy LWB server",
 			"type": "shell",
-			"command": "./gradlew.bat",
+			"command": "cmd",
 			"args": [
-				":app:installDebug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
-		},
-		{
-			"label": "install debug (altcha client)",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":app:installDebug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
-		},
-		{
-			"label": "gradle-test-app (on demand)",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":app:testDebugUnitTest"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
-		},
-		{
-			"label": "gradle-test-app (after fixes)",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":app:testDebugUnitTest"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
-		},
-		{
-			"label": "gradle test app (confirm green)",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":app:testDebugUnitTest"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
-		},
-		{
-			"label": "gradle lint app (to reproduce CI lint error)",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":app:lintDebug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
-		},
-		{
-			"label": "gradle lint app (verify fix)",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":app:lintDebug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
-		},
-		{
-			"label": "gradle lint app (verify plugin fix)",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":app:lintDebug"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle-worker"
-			],
-			"group": "build"
-		},
-		{
-			"label": "gradle-test-reader",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":feature:reader:testDebugUnitTest"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gradle"
-			],
-			"group": "build"
-		},
-		{
-			"label": "gradle-test-app",
-			"type": "shell",
-			"command": "./gradlew.bat",
-			"args": [
-				":app:testDebugUnitTest"
-			],
-			"isBackground": false,
-			"problemMatcher": [
-				"$gcc"
-			],
-			"group": "build"
+				"/c",
+				"type",
+				"c:\\Users\\MDP\\Desktop\\AD\\LiveWithoutBelief\\linux_commands.sh"
+			]
 		}
 	]
 }

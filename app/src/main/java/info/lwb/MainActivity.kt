@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -30,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -39,82 +43,61 @@ import dagger.hilt.android.AndroidEntryPoint
 import info.lwb.auth.AuthFacade
 import info.lwb.auth.AuthUiState
 import info.lwb.auth.AuthViewModel
-import info.lwb.auth.CachingRecaptchaProvider
-import info.lwb.auth.RecaptchaTokenProvider
+import info.lwb.auth.AltchaTokenProvider
 import info.lwb.feature.bookmarks.BookmarksRoute
+import info.lwb.feature.home.HomeRoute
 import info.lwb.feature.reader.ReaderRoute
 import info.lwb.feature.search.SearchRoute
 import javax.inject.Inject
+import info.lwb.feature.settings.SettingsRoute
+import info.lwb.feature.settings.SettingsViewModel
+import info.lwb.feature.settings.ThemeMode
+import info.lwb.feature.settings.ThemePreferenceRepository
+import info.lwb.ui.designsystem.LwbTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var authFacade: AuthFacade
-
-    @Inject lateinit var recaptchaProvider: RecaptchaTokenProvider
+    @Inject lateinit var altchaProvider: AltchaTokenProvider
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val initialLink = intent?.dataString
-        // Wrap provider with a short-lived cache (60s) to reduce repeated network calls.
-        val cachedProvider = CachingRecaptchaProvider(recaptchaProvider, ttlMillis = 60_000L)
-        setContent { appRoot(authFacade, cachedProvider, initialLink) }
+        setContent { appRoot(authFacade, altchaProvider, initialLink) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         val link = intent.dataString
-        val cachedProvider = CachingRecaptchaProvider(recaptchaProvider, ttlMillis = 60_000L)
-        setContent { appRoot(authFacade, cachedProvider, link) }
+        setContent { appRoot(authFacade, altchaProvider, link) }
     }
 }
 
 @Composable
-private fun appRoot(authFacade: AuthFacade, recaptchaProvider: RecaptchaTokenProvider, maybeLink: String?) {
+private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider, maybeLink: String?) {
     val navController = rememberNavController()
-    MaterialTheme {
+    // Observe theme preference using a lightweight VM scoped at root
+    val settingsVm: SettingsViewModel = hiltViewModel()
+    val theme by settingsVm.themeMode.collectAsState()
+    val dark = when (theme) {
+        ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    LwbTheme(darkTheme = dark) {
         Surface(color = MaterialTheme.colorScheme.background) {
             val vm: AuthViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                         @Suppress("UNCHECKED_CAST")
-                        return AuthViewModel(authFacade, recaptchaProvider) as T
+                        return AuthViewModel(authFacade, altchaProvider) as T
                     }
                 },
             )
             val state = vm.state.collectAsState()
             val activity = LocalContext.current as android.app.Activity
-            // No email link flow anymore
-            Column {
-                when (val s = state.value) {
-                    is AuthUiState.SignedOut -> {
-                        PasswordAuthSection(vm = vm)
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = { vm.signIn { activity } }) { Text("Google Sign In") }
-                    }
-                    is AuthUiState.Loading -> Text("Loading...")
-                    is AuthUiState.Error -> {
-                        Text("Error: ${s.message}")
-                        Spacer(Modifier.height(8.dp))
-                        PasswordAuthSection(vm = vm)
-                        Spacer(Modifier.height(8.dp))
-                        Button(onClick = { vm.signIn { activity } }) { Text("Google Sign In") }
-                    }
-                    is AuthUiState.RegionBlocked -> {
-                        RegionBlockedBanner(message = s.message)
-                        Spacer(Modifier.height(12.dp))
-                        PasswordAuthSection(vm = vm)
-                    }
-                    is AuthUiState.SignedIn -> {
-                        Text("Hello ${s.user.displayName ?: s.user.email}")
-                        Button(onClick = { vm.signOut() }) { Text("Sign Out") }
-                        Spacer(Modifier.height(8.dp))
-                        Button(onClick = { navController.navigate(Destinations.SEARCH) }) { Text("Search") }
-                        Spacer(Modifier.height(8.dp))
-                        Button(onClick = { navController.navigate(Destinations.BOOKMARKS) }) { Text("Bookmarks") }
-                        appNavHost(navController)
-                    }
-                }
-            }
+            // Temporarily hide authentication; always show Home main page
+            appNavHost(navController)
         }
     }
 }
@@ -134,7 +117,7 @@ private fun EmailPromptView(onCancel: () -> Unit, onSubmit: (String) -> Unit) {
 }
 
 @Composable
-private fun RegionBlockedBanner(message: String = "Google sign-in blocked here. Use username & password instead.") {
+private fun RegionBlockedBanner(message: String = "Google sign-in blocked here.") {
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         tonalElevation = 2.dp,
@@ -150,50 +133,56 @@ private fun RegionBlockedBanner(message: String = "Google sign-in blocked here. 
     }
 }
 
+// Password auth UI removed.
 @Composable
-private fun PasswordAuthSection(vm: AuthViewModel) {
+private fun PasswordAuthSection(
+    onRegister: (String, String) -> Unit,
+    onLogin: (String, String) -> Unit,
+) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    Column(horizontalAlignment = Alignment.Start) {
-        Text("Username / Password Access")
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") })
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password (min 8 chars)") },
-        )
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = {
-            if (username.isNotBlank() && password.length >= 8) {
-                vm.passwordLogin(username.trim(), password)
-            }
-        }) {
-            Text("Login")
-        }
-        Spacer(Modifier.height(4.dp))
-        Button(onClick = {
-            if (username.isNotBlank() && password.length >= 8) {
-                vm.passwordRegister(username.trim(), password)
-            }
-        }) {
-            Text("Register")
-        }
+    Text("Or use username & password:")
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username or email") })
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") })
+    Spacer(Modifier.height(8.dp))
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Button(onClick = { if (username.isNotBlank() && password.isNotBlank()) onRegister(username.trim(), password) }) { Text("Register") }
+        Spacer(Modifier.height(6.dp))
+        Button(onClick = { if (username.isNotBlank() && password.isNotBlank()) onLogin(username.trim(), password) }) { Text("Login") }
     }
 }
 
 private object Destinations {
+    const val HOME = "home"
     const val READER = "reader"
     const val SEARCH = "search"
     const val BOOKMARKS = "bookmarks"
+    const val SETTINGS = "settings"
 }
 
 @Composable
 private fun appNavHost(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Destinations.READER) {
+    NavHost(navController = navController, startDestination = Destinations.HOME) {
+        composable(Destinations.HOME) {
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
+                HomeRoute(onItemClick = { id ->
+                    // TODO: Navigate to reader/search depending on type when available
+                })
+                FloatingActionButton(
+                    onClick = { navController.navigate(Destinations.SETTINGS) },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp),
+                ) {
+                    androidx.compose.material3.Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                }
+            }
+        }
         composable(Destinations.READER) { ReaderRoute() }
         composable(Destinations.SEARCH) { SearchRoute() }
         composable(Destinations.BOOKMARKS) { BookmarksRoute() }
+        composable(Destinations.SETTINGS) { SettingsRoute() }
     }
 }

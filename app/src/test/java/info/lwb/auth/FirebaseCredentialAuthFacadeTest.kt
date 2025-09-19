@@ -29,8 +29,9 @@ class FirebaseCredentialAuthFacadeTest {
     private val tokenRefresher: TokenRefresher = mockk(relaxed = true)
     private val signInExecutor: SignInExecutor = mockk(relaxed = true)
     private val oneTap: OneTapCredentialProvider = mockk(relaxed = true)
-    private val http: OkHttpClient = mockk(relaxed = true)
-    private val authBaseUrl: String = "https://example.invalid"
+    private val registrationApi: RegistrationApi = mockk(relaxed = true)
+    private val passwordApi: PasswordAuthApi = mockk(relaxed = true)
+    private val altcha: AltchaTokenProvider = mockk(relaxed = true)
 
     private lateinit var facade: FirebaseCredentialAuthFacade
 
@@ -46,8 +47,9 @@ class FirebaseCredentialAuthFacadeTest {
             tokenRefresher,
             signInExecutor,
             oneTap,
-            http,
-            authBaseUrl,
+            registrationApi,
+            passwordApi,
+            altcha,
         )
     }
 
@@ -58,6 +60,7 @@ class FirebaseCredentialAuthFacadeTest {
         }
         every { signInClient.getLastSignedInAccount(any()) } returns acct
         mockFirebaseSignIn("uid1", "User", "user@example.com")
+    coEvery { registrationApi.register(any()) } returns (AuthUser("serverUid","User","user@example.com",null) to true)
 
         coEvery { oneTap.getIdToken(any()) } returns null
         val result = facade.oneTapSignIn(mockk<Activity>(relaxed = true))
@@ -70,6 +73,7 @@ class FirebaseCredentialAuthFacadeTest {
         every { signInClient.getLastSignedInAccount(any()) } returns null
         coEvery { oneTap.getIdToken(any()) } returns "onetapToken"
         mockFirebaseSignIn("uidOneTap", "TapUser", "tap@example.com")
+    coEvery { registrationApi.register(any()) } returns (AuthUser("serverUid","TapUser","tap@example.com",null) to false)
         val result = facade.oneTapSignIn(mockk<Activity>(relaxed = true))
         assertTrue(result.isSuccess)
         coVerify { signInExecutor.signIn("onetapToken") }
@@ -84,6 +88,7 @@ class FirebaseCredentialAuthFacadeTest {
         coEvery { executor.launch(any(), any()) } returns acct
         every { signInClient.buildSignInIntent(any()) } returns mockk(relaxed = true)
         mockFirebaseSignIn("uidInteractive", "InterUser", "inter@example.com")
+    coEvery { registrationApi.register(any()) } returns (AuthUser("serverUid","InterUser","inter@example.com",null) to false)
         val activity: Activity = mockk<androidx.activity.ComponentActivity>(relaxed = true)
         val result = facade.oneTapSignIn(activity)
         assertTrue(result.isSuccess)

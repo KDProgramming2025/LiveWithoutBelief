@@ -12,6 +12,7 @@ import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
 import info.lwb.core.model.ReadingProgress
 import info.lwb.core.model.ThreadMessage
+import info.lwb.core.model.MenuItem
 import kotlinx.coroutines.flow.Flow
 
 interface ArticleRepository {
@@ -46,4 +47,9 @@ interface ReadingProgressRepository {
 /** Lightweight user identity provider for repositories. Implemented in app layer via AuthFacade. */
 interface UserSession {
     fun currentUserId(): String?
+}
+
+interface MenuRepository {
+    fun getMenuItems(): Flow<Result<List<MenuItem>>>
+    suspend fun refreshMenu()
 }

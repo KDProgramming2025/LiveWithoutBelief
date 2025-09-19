@@ -23,6 +23,7 @@ data class TokenRefreshConfig(
 class AutoTokenRefresher(
     private val storage: SecureStorage,
     private val authFacade: AuthFacade,
+    private val sessionValidator: SessionValidator,
     private val scope: CoroutineScope,
     private val config: TokenRefreshConfig = TokenRefreshConfig(),
 ) {
@@ -31,8 +32,17 @@ class AutoTokenRefresher(
     fun start() {
         if (job != null) return
         job = scope.launch {
+            var didInitialValidation = false
             while (isActive) {
                 try {
+                    // On app start, if a token exists from a previous session, validate it once.
+                    if (!didInitialValidation) {
+                        val existing = storage.getIdToken()
+                        if (!existing.isNullOrEmpty()) {
+                            runCatching { sessionValidator.validate(existing) }
+                        }
+                        didInitialValidation = true
+                    }
                     val exp = storage.getTokenExpiry()
                     val now = System.currentTimeMillis() / 1000L
                     if (exp != null && exp - now <= config.refreshLeadTimeSeconds) {

@@ -1,0 +1,119 @@
+* { box-sizing: border-box }
+html, body { height: 100% }
+html { color-scheme: dark }
+
+body {
+	margin: 0;
+	font-family: var(--font-sans);
+	font-size: var(--text-size-md);
+	line-height: 1.45;
+	color: var(--text-primary);
+	background-color: var(--color-bg);
+	background-image: var(--texture-metal);
+	background-repeat: repeat;
+	background-size: 400px 400px;
+}
+
+.layout { display: grid; grid-template-columns: auto 1fr; min-height: 100vh }
+.layout.sidebar--collapsed { grid-template-columns: 64px 1fr }
+.content > .card + .card { margin-top: var(--space-16) }
+
+img, svg, video { max-width: 100%; height: auto; display: block }
+
+.row{ display:flex; gap: var(--space-8); align-items: center; flex-wrap: wrap }
+.row--search{ flex-wrap: nowrap }
+.row--center{ justify-content: center }
+.row--two{ display:grid; grid-template-columns: 1fr 160px; gap: var(--space-8); align-items: center }
+
+.layout--with-sidebar .content { padding: var(--space-16) }
+
+.content { max-width: var(--container-max); margin: 50px }
+.content.content--wide { max-width: none }
+
+.grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 280px)); justify-content: center; gap: var(--space-12); align-items: start }
+
+.button--block{ width: 100% }
+
+.card {
+	background: var(--color-surface-2);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-raised-1);
+	border: 1px solid var(--color-border);
+	padding: var(--space-12);
+	position: relative;
+}
+.card::before{ content: none }
+.card.card--edit{ border-color: rgba(207,174,103,.5); box-shadow: 0 0 0 1px rgba(207,174,103,.25), var(--shadow-raised-1) }
+
+h1,h2,h3{ margin: 0 0 var(--space-8) 0; line-height: 1.2 }
+h1{ font-size: 28px }
+h2{ font-size: 22px }
+h3{ font-size: 18px }
+p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
+
+.table{ width: 100%; border-collapse: collapse; font-size: var(--text-size-sm) }
+.table th, .table td{ padding: 10px 12px; border-bottom: 1px solid var(--color-border) }
+.table thead th{ text-align: left; color: var(--text-muted); font-weight: 600 }
+.table tbody tr:hover{ background: var(--color-surface-1) }
+
+.badge{
+	display: inline-flex; align-items: center; gap: 6px;
+	padding: 2px 8px; border-radius: var(--radius-pill);
+	font-size: var(--text-size-sm);
+	color: var(--text-primary);
+	background: linear-gradient(#2f3134, #272a2e);
+	border: 1px solid var(--color-border-strong);
+	box-shadow: var(--shadow-raised-1);
+}
+.badge:empty{ display: none }
+
+/* Subtle tag style for mode badge */
+#article-mode-badge{
+	background: var(--color-surface-1);
+	border-color: var(--color-border);
+	box-shadow: none;
+	opacity: .9;
+}
+
+/* Subtle tag style for uploading status */
+#article-uploading{
+	background: var(--color-surface-1);
+	border-color: var(--color-border);
+	box-shadow: none;
+}
+
+/* Subtle tag style for user stats badge */
+#user-stats{
+	background: var(--color-surface-1);
+	border-color: var(--color-border);
+	box-shadow: none;
+}
+
+.row--search > input{ flex:1 1 auto }
+
+.stack-8 > * + * { margin-top: var(--space-8) }
+.stack-12 > * + * { margin-top: var(--space-12) }
+
+#login-overlay, #modal-overlay{
+	position: fixed; inset: 0; background: rgba(0,0,0,.5);
+	display: none;
+	z-index: 1000; /* ensure overlay sits above all content */
+}
+#login-overlay[hidden], #modal-overlay[hidden]{ display: none }
+#login-overlay:not([hidden]){ display: block }
+#modal-overlay:not([hidden]){ display: grid; place-items: center; padding: 24px; }
+
+/* Modal card layout: center, avoid close overlap, and allow scroll if tall */
+#modal-card{
+	max-width: 520px;
+	width: min(520px, calc(100vw - 48px));
+	max-height: calc(100vh - 48px);
+	overflow: auto;
+	position: relative;
+	padding-top: 48px; /* reserve space for close button */
+}
+#modal-close{ position: absolute; top: 8px; right: 8px; width: calc(var(--control-height) * .5); height: calc(var(--control-height) * .5); padding: 0; display: inline-grid; place-items: center }
+#modal-close .lucide,[data-lucide]{ width: 14px; height: 14px }
+
+:focus-visible{ outline: none; box-shadow: var(--focus) }
+

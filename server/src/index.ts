@@ -1,15 +1,10 @@
-import 'dotenv/config';
-import { buildServer } from './buildServer.js';
+import { createServer } from './server/app.js'
+import { env } from './server/config/env.js'
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'CHANGE_ME';
-const PORT = Number(process.env.PORT || process.env.SERVER_API_PORT || 8080);
-const HOST = process.env.HOST || '0.0.0.0';
+const app = createServer()
+const port = env.PORT
 
-const app = buildServer({ googleClientId: GOOGLE_CLIENT_ID });
-
-app.listen({ port: PORT, host: HOST }).then(() => {
-  app.log.info({ port: PORT }, 'server started');
-}).catch((err) => {
-  app.log.error({ err }, 'failed to start');
-  process.exit(1);
-});
+app.listen(port, () => {
+  // eslint-disable-next-line no-console
+  console.log(`LWB server listening on http://0.0.0.0:${port}`)
+})
