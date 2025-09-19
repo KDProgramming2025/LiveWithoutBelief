@@ -41,24 +41,19 @@ export async function viewMenu(){
     const card = document.createElement('div')
     card.className = 'menu-card'
     card.innerHTML = `
-        <div class="menu-card__body">
-          <div class="menu-card__title">
-            <span class="menu-card__icon">${m.iconPath ? `<img src="${iconUrl(m)}" alt="icon"/>` : '<div class="placeholder">—</div>'}<span class="uploading" style="display:none">Uploading…</span></span>
-            <span>${m.title}</span>
+        <div class="menu-card__header">
+          <span class="menu-card__icon">${m.iconPath ? `<img src="${iconUrl(m)}" alt="icon"/>` : '<div class="placeholder">—</div>'}<span class="uploading" style="display:none">Uploading…</span></span>
+          <div class="menu-card__title" title="${(m.title||'').replaceAll('"','&quot;')}">${m.title}</div>
+          <div class="menu-card__move">
+            <button class="button secondary btn-move btn-move--up" data-move="up" data-id="${m.id}">↑</button>
+            <button class="button secondary btn-move btn-move--down" data-move="down" data-id="${m.id}">↓</button>
           </div>
-          <div class="menu-card__label">${m.label ?? ''}</div>
         </div>
-        <div class="menu-card__actions">
-          <div class="actions-row actions-row--move">
-            <button class="button secondary left" data-move="up" data-id="${m.id}">↑</button>
-            <span></span>
-            <button class="button secondary right" data-move="down" data-id="${m.id}">↓</button>
-          </div>
-          <div class="actions-row actions-row--ops">
-            <button class="button danger left" data-del="${m.id}">Delete</button>
-            <button class="button secondary center" data-edit="item" data-id="${m.id}" data-title="${m.title ?? ''}" data-label="${m.label ?? ''}">Edit</button>
-            <label class="button secondary right file-button">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}"></label>
-          </div>
+        <div class="menu-card__label">${m.label ?? ''}</div>
+        <div class="menu-card__actions actions-equal">
+          <button class="button danger" data-del="${m.id}">Delete</button>
+          <button class="button secondary" data-edit="item" data-id="${m.id}" data-title="${m.title ?? ''}" data-label="${m.label ?? ''}">Edit</button>
+          <label class="button secondary file-button">Edit Icon<input type="file" accept="image/*" data-edit-icon="${m.id}"></label>
         </div>`
     return card
   }
