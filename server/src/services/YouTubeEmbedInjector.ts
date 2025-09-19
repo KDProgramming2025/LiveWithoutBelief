@@ -24,7 +24,6 @@ function deriveVideoId(url: string): string | null {
   } catch { return null }
 }
 
-function escapeRegExp(s: string){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') }
 
 /**
  * Inject placeholders after drawing blocks that reference YouTube embed relationships.

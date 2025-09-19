@@ -29,7 +29,7 @@ export class InMemoryUserRepository implements UserRepository {
   private seq = 1
 
   async upsertByEmail(email: string): Promise<{ user: ServerUser; created: boolean }> {
-    let existing = [...this.users.values()].find(u => (u as any).email === email)
+    const existing = [...this.users.values()].find(u => (u as any).email === email)
     if (existing) {
       // Ensure username equals the full email going forward
       existing.username = email

@@ -122,8 +122,8 @@ export class ArticleService {
     // Replace media placeholders
     for (const m of mediaResult.inline) {
       const tag = m.type === 'video'
-        ? `<figure class=\"media__item\"><video controls src=\"./media/${m.filename}\"></video></figure>`
-        : `<figure class=\"media__item\"><audio controls src=\"./media/${m.filename}\"></audio></figure>`
+        ? `<figure class="media__item"><video controls src="./media/${m.filename}"></video></figure>`
+        : `<figure class="media__item"><audio controls src="./media/${m.filename}"></audio></figure>`
       const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
       html = html.replace(pattern, tag)
     }
@@ -132,8 +132,8 @@ export class ArticleService {
       for (const yt of ytResult.embeds) {
         const id = yt.videoId || yt.videoId || ''
         const iframe = id
-          ? `<div class=\"media__item youtube\"><iframe src=\"https://www.youtube.com/embed/${id}\" title=\"YouTube video\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" allowfullscreen></iframe></div>`
-          : `<div class=\"media__item youtube\"><a href=\"${yt.url}\">YouTube Video</a></div>`
+          ? `<div class="media__item youtube"><iframe src="https://www.youtube.com/embed/${id}" title="YouTube video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`
+          : `<div class="media__item youtube"><a href="${yt.url}">YouTube Video</a></div>`
         const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
         html = html.replace(pattern, iframe)
       }
@@ -155,26 +155,26 @@ export class ArticleService {
         attrs: string,
         inner: string
       ) => {
-        if (!/class=\"media__item youtube\"/i.test(inner)) return full
+        if (!/class="media__item youtube"/i.test(inner)) return full
         // Remove base64 images
-        let updated = inner.replace(/<img[^>]+src=\"data:image\/[a-zA-Z0-9+]+;base64,[^\"]+\"[^>]*>/gi, '')
+        let updated = inner.replace(/<img[^>]+src="data:image\/[a-zA-Z0-9+]+;base64,[^"]+"[^>]*>/gi, '')
         // Remove empty paragraphs/spans created by image removal
         updated = updated.replace(/<(p|span|strong|em)[^>]*>\s*<\/\1>/gi, '')
         // If youtube div wrapped inside trivial single wrapper(s), unwrap them
         // Repeat a few times to collapse nesting
         for (let i = 0; i < 5; i++) {
-          updated = updated.replace(/^(?:\s*<(p|span|strong|em)[^>]*>\s*)+(<div class=\"media__item youtube\">[\s\S]*?<\/div>)(?:\s*<\/(?:p|span|strong|em)>\s*)+$/i, '$2')
+          updated = updated.replace(/^(?:\s*<(p|span|strong|em)[^>]*>\s*)+(<div class="media__item youtube">[\s\S]*?<\/div>)(?:\s*<\/(?:p|span|strong|em)>\s*)+$/i, '$2')
           // Also unwrap when extra <p> ... </p> only contains whitespace + youtube div
-          updated = updated.replace(/^\s*<p[^>]*>\s*(<div class=\"media__item youtube\">[\s\S]*?<\/div>)\s*<\/p>\s*$/i, '$1')
+          updated = updated.replace(/^\s*<p[^>]*>\s*(<div class="media__item youtube">[\s\S]*?<\/div>)\s*<\/p>\s*$/i, '$1')
         }
         const textContent = updated
-          .replace(/<div class=\"media__item youtube\">[\s\S]*?<\/div>/gi, '')
+          .replace(/<div class="media__item youtube">[\s\S]*?<\/div>/gi, '')
           .replace(/<[^>]+>/g, '')
           .replace(/&nbsp;/g, ' ')
           .trim()
         // If no remaining textual content besides the video, drop the heading semantics
         if (textContent === '') {
-          return `<div class=\"youtube-heading-wrap h${level}\">${updated}</div>`
+          return `<div class="youtube-heading-wrap h${level}">${updated}</div>`
         }
         return `<h${level}${attrs}>${updated}</h${level}>`
       })
@@ -186,12 +186,12 @@ export class ArticleService {
       const items = remaining.map((m: ExtractedMedia) => {
         const src = `./media/${m.filename}`
         return m.type === 'video'
-          ? `<figure class=\"media__item\"><video controls src=\"${src}\"></video></figure>`
-          : `<figure class=\"media__item\"><audio controls src=\"${src}\"></audio></figure>`
+          ? `<figure class="media__item"><video controls src="${src}"></video></figure>`
+          : `<figure class="media__item"><audio controls src="${src}"></audio></figure>`
       }).join('')
-      bodyHtml += `<section class=\"media\"><h2>Media</h2>${items}</section>`
+      bodyHtml += `<section class="media"><h2>Media</h2>${items}</section>`
     }
-    const indexHtml = `<!doctype html><html><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><title>${escapeHtml(input.title)}</title><link rel=\"stylesheet\" href=\"./styles.css\"/></head><body><main class=\"article\">${bodyHtml}</main><script src=\"./script.js\" defer></script></body></html>`
+    const indexHtml = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>${escapeHtml(input.title)}</title><link rel="stylesheet" href="./styles.css"/></head><body><main class="article">${bodyHtml}</main><script src="./script.js" defer></script></body></html>`
     await fs.writeFile(path.join(articleDir, 'index.html'), indexHtml, 'utf8')
     await fs.writeFile(path.join(articleDir, 'styles.css'), defaultArticleCss, 'utf8')
     await fs.writeFile(path.join(articleDir, 'script.js'), defaultArticleJs, 'utf8')
@@ -232,12 +232,12 @@ export class ArticleService {
     // Remove docx file if present
     try {
       if (rec.docxPath) await fs.rm(rec.docxPath, { force: true })
-    } catch {}
+    } catch { void 0 }
     // Remove article directory recursively
     const articleDir = path.join(this.webArticlesDir, rec.slug)
     try {
       await fs.rm(articleDir, { recursive: true, force: true })
-    } catch {}
+    } catch { void 0 }
     // Remove record and save
     items.splice(idx, 1)
     await this.saveAll(items)
@@ -289,7 +289,7 @@ export class ArticleService {
     const items = JSON.parse(raw) as ArticleRecord[]
     const idx = items.findIndex(a => a.id === idOrSlug || a.slug === idOrSlug)
     if (idx < 0) return null
-    let rec = items[idx]
+  const rec = items[idx]
     let slug = rec.slug
     const now = new Date().toISOString()
 
@@ -300,15 +300,15 @@ export class ArticleService {
         // Move articleDir and docx file
         const oldDir = path.join(this.webArticlesDir, rec.slug)
         const newDir = path.join(this.webArticlesDir, newSlug)
-        try { await fs.mkdir(newDir, { recursive: true }) } catch {}
-        try { await fs.rename(oldDir, newDir) } catch {}
+  try { await fs.mkdir(newDir, { recursive: true }) } catch { void 0 }
+  try { await fs.rename(oldDir, newDir) } catch { void 0 }
         // Move docx path to new slug filename (keep extension)
         try {
           const ext = path.extname(rec.docxPath) || '.docx'
           const newDocx = path.join(this.docxDir, `${newSlug}${ext}`)
           await fs.rename(rec.docxPath, newDocx)
           rec.docxPath = newDocx
-        } catch {}
+        } catch { void 0 }
         slug = newSlug
       }
       rec.title = input.title
@@ -362,8 +362,8 @@ export class ArticleService {
       }
       for (const m of mediaResult.inline) {
         const tag = m.type === 'video'
-          ? `<figure class=\"media__item\"><video controls src=\"./media/${m.filename}\"></video></figure>`
-          : `<figure class=\"media__item\"><audio controls src=\"./media/${m.filename}\"></audio></figure>`
+          ? `<figure class="media__item"><video controls src="./media/${m.filename}"></video></figure>`
+          : `<figure class="media__item"><audio controls src="./media/${m.filename}"></audio></figure>`
         const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
         html = html.replace(pattern, tag)
       }
@@ -371,8 +371,8 @@ export class ArticleService {
         for (const yt of ytResult.embeds) {
           const id = yt.videoId || yt.videoId || ''
           const iframe = id
-            ? `<div class=\"media__item youtube\"><iframe src=\"https://www.youtube.com/embed/${id}\" title=\"YouTube video\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" allowfullscreen></iframe></div>`
-            : `<div class=\"media__item youtube\"><a href=\"${yt.url}\">YouTube Video</a></div>`
+            ? `<div class="media__item youtube"><iframe src="https://www.youtube.com/embed/${id}" title="YouTube video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`
+            : `<div class="media__item youtube"><a href="${yt.url}">YouTube Video</a></div>`
           const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
           html = html.replace(pattern, iframe)
         }
@@ -382,12 +382,12 @@ export class ArticleService {
         const itemsHtml = remaining.map((m: ExtractedMedia) => {
           const src = `./media/${m.filename}`
           return m.type === 'video'
-            ? `<figure class=\"media__item\"><video controls src=\"${src}\"></video></figure>`
-            : `<figure class=\"media__item\"><audio controls src=\"${src}\"></audio></figure>`
+            ? `<figure class="media__item"><video controls src="${src}"></video></figure>`
+            : `<figure class="media__item"><audio controls src="${src}"></audio></figure>`
         }).join('')
-        html += `<section class=\"media\"><h2>Media</h2>${itemsHtml}</section>`
+        html += `<section class="media"><h2>Media</h2>${itemsHtml}</section>`
       }
-      const indexHtml = `<!doctype html><html><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><title>${escapeHtml(rec.title)}</title><link rel=\"stylesheet\" href=\"./styles.css\"/></head><body><main class=\"article\">${html}</main><script src=\"./script.js\" defer></script></body></html>`
+      const indexHtml = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>${escapeHtml(rec.title)}</title><link rel="stylesheet" href="./styles.css"/></head><body><main class="article">${html}</main><script src="./script.js" defer></script></body></html>`
       await fs.writeFile(path.join(articleDir, 'index.html'), indexHtml, 'utf8')
       await fs.writeFile(path.join(articleDir, 'styles.css'), defaultArticleCss, 'utf8')
       await fs.writeFile(path.join(articleDir, 'script.js'), defaultArticleJs, 'utf8')
@@ -413,7 +413,7 @@ export class ArticleService {
     const zip = await JSZip.loadAsync(data)
 
     // 1) Direct media under word/media
-    const direct = Object.keys(zip.files).filter(p => p.startsWith('word/media/'))
+  const direct = Object.keys(zip.files).filter(p => p.startsWith('word/media/'))
     for (const p of direct) {
       const ext = path.extname(p).toLowerCase()
       const base = path.basename(p)
@@ -449,7 +449,7 @@ export class ArticleService {
       if (docXml && relsXml) {
         // Map rId -> Target
         const relMap = new Map<string, string>()
-        const relRe = /<Relationship[^>]*Id=\"([^\"]+)\"[^>]*Target=\"([^\"]+)\"[^>]*\/>/g
+  const relRe = /<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"[^>]*\/>/g
         let m: RegExpExecArray | null
         while ((m = relRe.exec(relsXml)) !== null) relMap.set(m[1], m[2])
 
@@ -462,9 +462,8 @@ export class ArticleService {
           const marker = `[[LWB_MEDIA:${normTarget}]]`
           // find usage(s) of r:id="rId"
           let from = 0
-          while (true) {
-            const idx = newDocXml.indexOf(`r:id=\"${rId}\"`, from)
-            if (idx === -1) break
+          let idx = -1
+          while ((idx = newDocXml.indexOf(`r:id="${rId}"`, from)) !== -1) {
             const closeObj = newDocXml.indexOf('</w:object>', idx)
             const inject = `<w:p><w:r><w:t>${marker}</w:t></w:r></w:p>`
             if (closeObj !== -1) {
@@ -536,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try{
       const url = new URL(u)
       if(url.hostname.includes('youtube.com')) return url.searchParams.get('v')
-      if(url.hostname.includes('youtu.be')) return url.pathname.replace(/^\//,'')
+  if(url.hostname.includes('youtu.be')) return url.pathname.replace(/^[/]/,'')
     }catch{}
     return null
   }
