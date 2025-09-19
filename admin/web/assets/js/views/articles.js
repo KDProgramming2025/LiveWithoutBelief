@@ -102,7 +102,7 @@ export async function viewArticles(){
       const card = document.createElement('div')
       card.className = 'menu-card article-card'
       card.innerHTML = `
-          ${a.coverUrl ? `<div class="article-card__cover"><img src="${a.coverUrl}" alt="cover"/></div>` : ''}
+          <div class="article-card__cover">${a.coverUrl ? `<img src="${a.coverUrl}" alt="cover"/>` : ''}</div>
           <div class="article-card__meta">
             <div class="menu-card__icon">${a.iconUrl ? `<img src="${a.iconUrl}" alt="icon"/>` : '<div class="placeholder">—</div>'}</div>
             <div class="article-card__title" title="${(a.title||'').replaceAll('"','&quot;')}">${a.title}</div>
