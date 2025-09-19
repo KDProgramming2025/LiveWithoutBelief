@@ -97,6 +97,7 @@ p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
 #login-overlay, #modal-overlay{
 	position: fixed; inset: 0; background: rgba(0,0,0,.5);
 	display: none;
+	z-index: 1000; /* ensure overlay sits above all content */
 }
 #login-overlay[hidden], #modal-overlay[hidden]{ display: none }
 #login-overlay:not([hidden]){ display: block }
