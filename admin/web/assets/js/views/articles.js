@@ -7,8 +7,11 @@ export async function viewArticles(){
   const el = document.createElement('div')
   el.innerHTML = `
       <section class="card">
-        <h3>Upload Article (.docx)</h3>
-        <form id="article-form" class="form-grid">
+        <div class="row" style="justify-content: space-between; align-items: center">
+          <h3>Upload Article (.docx)</h3>
+          <span id="article-mode-badge" class="badge">Create</span>
+        </div>
+        <form id="article-form" class="form-grid" autocomplete="off">
           <input class="input" name="title" placeholder="Title" required />
           <div class="row row--two">
             <input class="input" name="label" placeholder="Label" required />
@@ -37,7 +40,10 @@ export async function viewArticles(){
               <div class="tile-caption">DOCX</div>
             </div>
           </div>
-          <button class="button button--block" id="article-submit" type="submit">Upload</button>
+          <div class="row" style="justify-content: space-between">
+            <button class="button" id="article-cancel-edit" type="button" style="display:none">Cancel Edit</button>
+            <button class="button" id="article-submit" type="submit">Upload</button>
+          </div>
           <div class="row row--center">
             <span id="article-uploading" class="badge" style="display:none">Uploading…</span>
           </div>
@@ -56,6 +62,37 @@ export async function viewArticles(){
   const form = el.querySelector('#article-form')
   const fileTiles = el.querySelector('.file-tiles')
   const uploading = el.querySelector('#article-uploading')
+  const modeBadge = el.querySelector('#article-mode-badge')
+  const cancelEditBtn = el.querySelector('#article-cancel-edit')
+  const submitBtn = el.querySelector('#article-submit')
+  const formCard = el.querySelector('section.card')
+  let editId = null
+  function setMode(mode){
+    if(mode==='create'){
+      modeBadge.textContent = 'Create'
+      submitBtn.textContent = 'Upload'
+      form.querySelector('input[name="title"]').required = true
+      form.querySelector('input[name="label"]').required = true
+      form.querySelector('input[name="order"]').required = true
+      form.querySelector('input[name="docx"]').required = true
+      cancelEditBtn.style.display = 'none'
+      editId = null
+      if(formCard) formCard.classList.remove('card--edit')
+      form.reset()
+      // trigger tile reset
+      const evt = new Event('reset'); form.dispatchEvent(evt)
+    } else {
+      modeBadge.textContent = 'Edit'
+      submitBtn.textContent = 'Save Changes'
+      form.querySelector('input[name="title"]').required = false
+      form.querySelector('input[name="label"]').required = false
+      form.querySelector('input[name="order"]').required = false
+      form.querySelector('input[name="docx"]').required = false
+      cancelEditBtn.style.display = 'inline-flex'
+      if(formCard) formCard.classList.add('card--edit')
+    }
+  }
+  cancelEditBtn?.addEventListener('click', () => setMode('create'))
   const fetchList = async () => {
   const res = await api('/articles')
     const json = await res.json()
@@ -74,6 +111,7 @@ export async function viewArticles(){
             <div class="article-card__label">${a.label ?? ''}</div>
             <div class="menu-card__actions actions-equal">
               <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
+              <button class=\"button secondary\" data-article-edit=\"${a.id}\" data-title=\"${(a.title||'').replaceAll('\\"','&quot;')}\" data-label=\"${a.label ?? ''}\" data-order=\"${a.order ?? 0}\">Edit</button>
               <button class="button danger" data-article-del="${a.id}">Delete</button>
             </div>
           </div>
@@ -108,6 +146,25 @@ export async function viewArticles(){
       }
       return
     }
+    const edt = e.target.closest('button[data-article-edit]')
+    if(edt){
+      const id = edt.getAttribute('data-article-edit')
+      const title = edt.getAttribute('data-title') || ''
+      const label = edt.getAttribute('data-label') || ''
+      const order = edt.getAttribute('data-order') || ''
+      setMode('edit')
+      editId = id
+      form.querySelector('input[name="title"]').value = title
+      form.querySelector('input[name="label"]').value = label
+      form.querySelector('input[name="order"]').value = order
+      // Clear file inputs; keep existing previews empty (we don't preview current assets here)
+      for(const input of form.querySelectorAll('input[type=file]')){ input.value = '' }
+      // Reset tiles visuals
+      const evt = new Event('reset'); form.dispatchEvent(evt)
+      // Scroll to top where the form is
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
     const btn = e.target.closest('button[data-article-del]')
     if(!btn) return
     const id = btn.getAttribute('data-article-del')
@@ -125,11 +182,22 @@ export async function viewArticles(){
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const fd = new FormData(form)
+    const isEdit = !!editId
     const title = String(fd.get('title') || '').trim()
-    const current = Array.from(listEl.querySelectorAll('.menu-card .menu-card__title')).map(n => n.textContent?.trim().toLowerCase())
-    if(current.includes(title.toLowerCase())){
-      const ok = await modalConfirm('An article with the same title exists. Uploading will replace it. Continue?', { confirmText: 'Continue' })
-      if(!ok) return
+    if(!isEdit){
+      const current = Array.from(listEl.querySelectorAll('.menu-card .menu-card__title')).map(n => n.textContent?.trim().toLowerCase())
+      if(title && current.includes(title.toLowerCase())){
+        const ok = await modalConfirm('An article with the same title exists. Uploading will replace it. Continue?', { confirmText: 'Continue' })
+        if(!ok) return
+      }
+    }
+    // In edit mode, drop empty text fields so server "unchanged" behavior applies
+    if(isEdit){
+      if(!title) fd.delete('title')
+      const labelVal = String(fd.get('label') || '')
+      if(labelVal === '') fd.delete('label')
+      const orderVal = String(fd.get('order') || '')
+      if(orderVal === '') fd.delete('order')
     }
     const xhr = new XMLHttpRequest()
     const progWrap = el.querySelector('#article-progress')
@@ -146,7 +214,7 @@ export async function viewArticles(){
     const startedAt = Date.now()
     let lastLoaded = 0
     let lastAt = startedAt
-    xhr.open('POST', '/v1/admin/articles')
+  xhr.open(isEdit ? 'PATCH' : 'POST', isEdit ? `/v1/admin/articles/${encodeURIComponent(editId)}` : '/v1/admin/articles')
     if (state.token) xhr.setRequestHeader('Authorization', `Bearer ${state.token}`)
     xhr.upload.onprogress = (ev) => {
       if(!ev.lengthComputable) return
@@ -169,7 +237,8 @@ export async function viewArticles(){
       submitBtn.disabled = false
       cancelBtn.style.display = 'none'
       if(xhr.status >= 200 && xhr.status < 300){
-        form.reset(); await fetchList()
+        if(isEdit){ setMode('create') } else { form.reset() }
+        await fetchList()
       } else if (xhr.status === 401) {
         clearToken(); document.getElementById('login-overlay').hidden = false; document.getElementById('login-overlay').className = 'overlay'
       } else {
@@ -227,5 +296,6 @@ export async function viewArticles(){
     }
   })
   await fetchList()
+  setMode('create')
   return el
 }
