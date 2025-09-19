@@ -172,6 +172,32 @@ adminRouter.post('/articles/:id/move', (req, res) => {
   return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
 })
 
+// Articles: partial update (multipart fields optional)
+adminRouter.patch('/articles/:id', articleUpload.fields([
+  { name: 'docx', maxCount: 1 },
+  { name: 'cover', maxCount: 1 },
+  { name: 'icon', maxCount: 1 },
+]), (req, res) => {
+  const handler = async () => {
+    const { title, label, order } = req.body || {}
+    const anyReq: any = req
+    const docxTmpPath = anyReq.files?.docx?.[0]?.path
+    const coverPath = anyReq.files?.cover?.[0]?.path
+    const iconPath = anyReq.files?.icon?.[0]?.path
+    const payload: any = {}
+    if (typeof title === 'string' && title.trim() !== '') payload.title = title
+    if (typeof label === 'string') payload.label = label
+    if (order !== undefined && order !== null && order !== '' && Number.isFinite(Number(order))) payload.order = Number(order)
+    if (docxTmpPath) payload.docxTmpPath = docxTmpPath
+    if (coverPath) payload.coverPath = coverPath
+    if (iconPath) payload.iconPath = iconPath
+    const updated = await articleSvc.update(req.params.id, payload)
+    if (!updated) return res.status(404).json({ error: 'not_found' })
+    res.json({ item: updated })
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
 // Menu: update title/label/order (JSON)
 adminRouter.patch('/menu/:id', (req, res) => {
   const handler = async () => {

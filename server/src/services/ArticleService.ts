@@ -277,6 +277,131 @@ export class ArticleService {
     return true
   }
 
+  /**
+   * Partial update for an article. Only provided fields are applied.
+   * Supports: title (may change slug and move folder/docx), label, order,
+   * coverPath/iconPath replacements, and docxTmpPath reprocessing.
+   */
+  async update(idOrSlug: string, input: { title?: string; label?: string | null; order?: number; coverPath?: string; iconPath?: string; docxTmpPath?: string }): Promise<ArticleRecord | null> {
+    await this.ensure()
+    // Load current records unsorted; find by id or slug
+    const raw = await fs.readFile(this.jsonPath, 'utf8')
+    const items = JSON.parse(raw) as ArticleRecord[]
+    const idx = items.findIndex(a => a.id === idOrSlug || a.slug === idOrSlug)
+    if (idx < 0) return null
+    let rec = items[idx]
+    let slug = rec.slug
+    const now = new Date().toISOString()
+
+    // Handle title change (may require slug change and moving folders/files)
+    if (typeof input.title === 'string' && input.title.trim() !== '' && input.title !== rec.title) {
+      const newSlug = this.slugify(input.title)
+      if (newSlug !== rec.slug) {
+        // Move articleDir and docx file
+        const oldDir = path.join(this.webArticlesDir, rec.slug)
+        const newDir = path.join(this.webArticlesDir, newSlug)
+        try { await fs.mkdir(newDir, { recursive: true }) } catch {}
+        try { await fs.rename(oldDir, newDir) } catch {}
+        // Move docx path to new slug filename (keep extension)
+        try {
+          const ext = path.extname(rec.docxPath) || '.docx'
+          const newDocx = path.join(this.docxDir, `${newSlug}${ext}`)
+          await fs.rename(rec.docxPath, newDocx)
+          rec.docxPath = newDocx
+        } catch {}
+        slug = newSlug
+      }
+      rec.title = input.title
+    }
+
+    // Optional label/order
+    if (input.label !== undefined) rec.label = input.label
+    if (Number.isFinite(input.order)) rec.order = Number(input.order)
+
+    // Replace cover/icon if provided (place into articleDir)
+    const articleDir = path.join(this.webArticlesDir, slug)
+    if (input.coverPath) {
+      const ext = path.extname(input.coverPath) || '.jpg'
+      const dest = path.join(articleDir, `cover${ext}`)
+      await fs.rename(input.coverPath, dest)
+      rec.coverUrl = `${this.baseUrl}/web/articles/${slug}/cover${ext}`
+    }
+    if (input.iconPath) {
+      const ext = path.extname(input.iconPath) || '.png'
+      const dest = path.join(articleDir, `icon${ext}`)
+      await fs.rename(input.iconPath, dest)
+      rec.iconUrl = `${this.baseUrl}/web/articles/${slug}/icon${ext}`
+    }
+
+    // Reprocess DOCX if a new one was provided
+    if (input.docxTmpPath) {
+      // Move temp docx to protected dir with current slug
+      const ext = path.extname(input.docxTmpPath) || '.docx'
+      const docxFinal = path.join(this.docxDir, `${slug}${ext}`)
+      await fs.rename(input.docxTmpPath, docxFinal)
+      rec.docxPath = docxFinal
+      // Re-run media extraction and HTML generation similar to createOrReplace
+      const mediaResult = await this.extractMediaFromDocx(docxFinal, articleDir)
+      let workingBuffer: Buffer | undefined = mediaResult.modifiedDocxBuffer
+      if (!workingBuffer) { workingBuffer = await fs.readFile(docxFinal) }
+      const ytResult = await injectYouTubePlaceholders(workingBuffer)
+      if (ytResult.modifiedBuffer) workingBuffer = ytResult.modifiedBuffer
+      const mammothInput: any = workingBuffer ? { buffer: workingBuffer } : { path: docxFinal }
+      const { value: initialHtml } = await mammoth.convertToHtml(mammothInput, {
+        styleMap: [
+          "p[style-name='Title'] => h1:fresh",
+          "p[style-name='Subtitle'] => h2:fresh",
+        ]
+      })
+      let html = removeOleIconDataImages(initialHtml)
+      const mediaPlaceholders = mediaResult.inline.map(i => i.placeholder)
+      const ytPlaceholders = (ytResult?.embeds || []).map(e => e.placeholder)
+      const allPlaceholders = [...mediaPlaceholders, ...ytPlaceholders]
+      if (allPlaceholders.length > 0) {
+        html = removeOleIconBlocksBeforePlaceholders(html, allPlaceholders)
+      }
+      for (const m of mediaResult.inline) {
+        const tag = m.type === 'video'
+          ? `<figure class=\"media__item\"><video controls src=\"./media/${m.filename}\"></video></figure>`
+          : `<figure class=\"media__item\"><audio controls src=\"./media/${m.filename}\"></audio></figure>`
+        const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
+        html = html.replace(pattern, tag)
+      }
+      if (ytResult && ytResult.embeds.length > 0) {
+        for (const yt of ytResult.embeds) {
+          const id = yt.videoId || yt.videoId || ''
+          const iframe = id
+            ? `<div class=\"media__item youtube\"><iframe src=\"https://www.youtube.com/embed/${id}\" title=\"YouTube video\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" allowfullscreen></iframe></div>`
+            : `<div class=\"media__item youtube\"><a href=\"${yt.url}\">YouTube Video</a></div>`
+          const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
+          html = html.replace(pattern, iframe)
+        }
+      }
+      const remaining = mediaResult.items.filter(x => !mediaResult.inline.some(i => i.filename === x.filename))
+      if (remaining.length > 0) {
+        const itemsHtml = remaining.map((m: ExtractedMedia) => {
+          const src = `./media/${m.filename}`
+          return m.type === 'video'
+            ? `<figure class=\"media__item\"><video controls src=\"${src}\"></video></figure>`
+            : `<figure class=\"media__item\"><audio controls src=\"${src}\"></audio></figure>`
+        }).join('')
+        html += `<section class=\"media\"><h2>Media</h2>${itemsHtml}</section>`
+      }
+      const indexHtml = `<!doctype html><html><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><title>${escapeHtml(rec.title)}</title><link rel=\"stylesheet\" href=\"./styles.css\"/></head><body><main class=\"article\">${html}</main><script src=\"./script.js\" defer></script></body></html>`
+      await fs.writeFile(path.join(articleDir, 'index.html'), indexHtml, 'utf8')
+      await fs.writeFile(path.join(articleDir, 'styles.css'), defaultArticleCss, 'utf8')
+      await fs.writeFile(path.join(articleDir, 'script.js'), defaultArticleJs, 'utf8')
+    }
+
+    // Update slug-related fields if changed
+    rec.slug = slug
+    rec.indexUrl = `${this.baseUrl}/web/articles/${slug}/`
+    rec.updatedAt = now
+    items[idx] = rec
+    await this.saveAll(items)
+    return rec
+  }
+
   // Extract embedded media (mp4/mp3) from DOCX into ./media
   // Returns: list of media items, inline placeholder mapping, and an optional modified docx buffer
   private async extractMediaFromDocx(docxPath: string, articleDir: string): Promise<{ items: ExtractedMedia[]; inline: Array<{ placeholder: string; filename: string; type: 'audio'|'video' }>; modifiedDocxBuffer?: Buffer }> {
