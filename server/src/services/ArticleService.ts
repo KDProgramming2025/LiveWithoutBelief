@@ -244,6 +244,39 @@ export class ArticleService {
     return true
   }
 
+  /**
+   * Move an article up or down by swapping its order with the closest neighbor.
+   * Accepts id or slug.
+   */
+  async move(idOrSlug: string, direction: 'up' | 'down'): Promise<boolean> {
+    await this.ensure()
+    const items = await this.list()
+    const idx = items.findIndex(a => a.id === idOrSlug || a.slug === idOrSlug)
+    if (idx < 0) return false
+    // Determine neighbor based on desired direction and ordering rules
+    // The list() result is already sorted by order then title, but we'll compute neighbors by order fields.
+    const current = items[idx]
+    // Find candidate neighbor indices among all items
+    let neighborIndex = -1
+    if (direction === 'up') {
+      // Prefer previous item with <= order (closest above)
+      for (let i = idx - 1; i >= 0; i--) { neighborIndex = i; break }
+    } else {
+      for (let i = idx + 1; i < items.length; i++) { neighborIndex = i; break }
+    }
+    if (neighborIndex < 0) return false
+    const neighbor = items[neighborIndex]
+    // Swap order values
+    const aOrder = Number.isFinite(current.order) ? current.order : 0
+    const bOrder = Number.isFinite(neighbor.order) ? neighbor.order : 0
+    const newItems = items.slice()
+    newItems[idx] = { ...current, order: bOrder, updatedAt: new Date().toISOString() }
+    newItems[neighborIndex] = { ...neighbor, order: aOrder, updatedAt: new Date().toISOString() }
+    // Persist exactly as stored (unsorted), then rely on list() to sort on read
+    await this.saveAll(newItems)
+    return true
+  }
+
   // Extract embedded media (mp4/mp3) from DOCX into ./media
   // Returns: list of media items, inline placeholder mapping, and an optional modified docx buffer
   private async extractMediaFromDocx(docxPath: string, articleDir: string): Promise<{ items: ExtractedMedia[]; inline: Array<{ placeholder: string; filename: string; type: 'audio'|'video' }>; modifiedDocxBuffer?: Buffer }> {

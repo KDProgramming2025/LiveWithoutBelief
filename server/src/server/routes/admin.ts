@@ -161,6 +161,17 @@ adminRouter.delete('/articles/:id', (req, res) => {
   return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
 })
 
+// Articles: move up/down
+adminRouter.post('/articles/:id/move', (req, res) => {
+  const handler = async () => {
+    const dir = (req.body?.direction === 'up' || req.body?.direction === 'down') ? req.body.direction : undefined
+    if (!dir) return res.status(400).json({ error: 'bad_request' })
+    const ok = await articleSvc.move(req.params.id, dir)
+    res.status(ok ? 204 : 404).end()
+  }
+  return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
+})
+
 // Menu: update title/label/order (JSON)
 adminRouter.patch('/menu/:id', (req, res) => {
   const handler = async () => {
