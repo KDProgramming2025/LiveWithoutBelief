@@ -16,7 +16,7 @@ jobs:
     name: Release Please
     runs-on: ubuntu-latest
     # Only run automatically on main when the merge commit message is from release-please, or when manually dispatched
-  if: ${{ github.event_name == 'workflow_dispatch' || (contains(github.event.head_commit.message, 'chore(main)') && contains(github.event.head_commit.message, 'release')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (contains(github.event.head_commit.message, 'chore(main)') && contains(github.event.head_commit.message, 'release')) }}
     steps:
       - name: Release Please
         uses: google-github-actions/release-please-action@v4
