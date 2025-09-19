@@ -45,8 +45,8 @@ export async function viewMenu(){
           <span class="menu-card__icon">${m.iconPath ? `<img src="${iconUrl(m)}" alt="icon"/>` : '<div class="placeholder">—</div>'}<span class="uploading" style="display:none">Uploading…</span></span>
           <div class="menu-card__title" title="${(m.title||'').replaceAll('"','&quot;')}">${m.title}</div>
           <div class="menu-card__move">
-            <button class="button secondary btn-move btn-move--up" data-move="up" data-id="${m.id}" aria-label="Move up"><span aria-hidden="true" data-lucide="chevron-up"></span></button>
-            <button class="button secondary btn-move btn-move--down" data-move="down" data-id="${m.id}" aria-label="Move down"><span aria-hidden="true" data-lucide="chevron-down"></span></button>
+            <button class="button secondary btn-move btn-move--up" data-move="up" data-id="${m.id}">↑</button>
+            <button class="button secondary btn-move btn-move--down" data-move="down" data-id="${m.id}">↓</button>
           </div>
         </div>
         <div class="menu-card__label">${m.label ?? ''}</div>
