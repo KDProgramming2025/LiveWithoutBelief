@@ -25,10 +25,10 @@ export function createServer() {
     res.set('Cache-Control', 'no-store')
     res.sendFile(path.join(adminRoot, 'index.html'))
   })
-  app.use('/admin/ui', express.static(adminRoot, { etag: false, lastModified: false, maxAge: '1h' }))
-  // Use regular cache control for admin-uploaded images/icons (no excessively long caching)
-  app.use('/admin/ui/uploads', express.static(uploadDir, { etag: false, lastModified: false, maxAge: '1h' }))
-  app.use('/admin/ui/web/articles', express.static(adminArticlesDir, { etag: false, lastModified: false, maxAge: '1h' }))
+  app.use('/admin/ui', express.static(adminRoot, { maxAge: '1h' }))
+  // Use regular cache control for admin-uploaded images/icons (allow validators for 304 revalidation)
+  app.use('/admin/ui/uploads', express.static(uploadDir, { maxAge: '1h' }))
+  app.use('/admin/ui/web/articles', express.static(adminArticlesDir, { maxAge: '1h' }))
   app.use('/admin', createWebRouter())
 
   // 404
