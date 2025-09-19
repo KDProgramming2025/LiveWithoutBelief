@@ -53,3 +53,15 @@
 .article-card:hover{ transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(0,255,255,.25), 0 0 18px rgba(0,255,255,.25) }
 .article-card .menu-card__icon img{ max-height: 64px; max-width: 64px }
 
+/* Article card structure */
+.article-card{ display: grid; gap: 10px }
+.article-card__cover{ display: grid; place-items: center }
+.article-card__cover img{ width: 100%; height: auto; object-fit: cover; border-radius: var(--radius-md); border: 1px solid var(--color-border) }
+.article-card__meta{ display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start }
+.article-card__title{ font-weight: 600; line-height: 1.2; max-height: calc(1.2em * 3); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; line-clamp: 3 }
+.article-card__footer{ display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center }
+.article-card__label{ color: var(--text-muted); font-size: var(--text-size-sm) }
+.article-card__footer .menu-card__actions{ display: grid; grid-template-columns: auto auto; gap: 8px; align-items: center }
+.article-card__footer .button.danger{ justify-self: end }
+.article-card__move{ position: absolute; top: 8px; right: 8px }
+

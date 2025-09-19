@@ -63,22 +63,25 @@ export async function viewArticles(){
     let items = json.items.slice()
     for(const a of items){
       const card = document.createElement('div')
-      card.className = 'menu-card'
+      card.className = 'menu-card article-card'
       card.innerHTML = `
-          <div class="menu-card__icon">${a.iconUrl ? `<img src="${a.iconUrl}" alt="icon"/>` : '<div class="placeholder">No Icon</div>'}</div>
-          <div class="menu-card__body">
-            <div class="menu-card__title">${a.title}</div>
-            <div class="menu-card__label-row">
-              <div class="menu-card__label">${a.label ?? ''}</div>
-              <div class="menu-card__move">
-                <button class="button secondary btn-move btn-move--up" data-article-move="up" data-id="${a.id}">↑</button>
-                <button class="button secondary btn-move btn-move--down" data-article-move="down" data-id="${a.id}">↓</button>
-              </div>
+          ${a.coverUrl ? `<div class="article-card__cover"><img src="${a.coverUrl}" alt="cover"/></div>` : ''}
+          <div class="article-card__meta">
+            <div class="menu-card__icon">${a.iconUrl ? `<img src="${a.iconUrl}" alt="icon"/>` : '<div class="placeholder">—</div>'}</div>
+            <div class="article-card__title" title="${(a.title||'').replaceAll('"','&quot;')}">${a.title}</div>
+          </div>
+          <div class="article-card__footer">
+            <div class="article-card__label">${a.label ?? ''}</div>
+            <div class="menu-card__actions actions-equal">
+              <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
+              <button class="button danger" data-article-del="${a.id}">Delete</button>
             </div>
           </div>
-          <div class="menu-card__actions">
-            <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
-            <button class="button danger" data-article-del="${a.id}">Delete</button>
+          <div class="article-card__move">
+            <div class="menu-card__move">
+              <button class="button secondary btn-move btn-move--up" data-article-move="up" data-id="${a.id}">↑</button>
+              <button class="button secondary btn-move btn-move--down" data-article-move="down" data-id="${a.id}">↓</button>
+            </div>
           </div>`
       listEl.appendChild(card)
     }

@@ -88,7 +88,8 @@ p{ margin: 0 0 var(--space-8) 0; color: var(--text-muted) }
 	position: relative;
 	padding-top: 48px; /* reserve space for close button */
 }
-#modal-close{ position: absolute; top: 8px; right: 8px }
+#modal-close{ position: absolute; top: 8px; right: 8px; width: calc(var(--control-height) * .5); height: calc(var(--control-height) * .5); padding: 0; display: inline-grid; place-items: center }
+#modal-close .lucide,[data-lucide]{ width: 14px; height: 14px }
 
 :focus-visible{ outline: none; box-shadow: var(--focus) }
 
