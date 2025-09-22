@@ -7,11 +7,17 @@ import { loadTemplate, renderTemplate } from '../core/templates.js'
 export async function viewArticles(){
   const el = document.createElement('div')
   // Load page template instead of inline string
-  const pageTpl = await loadTemplate('/assets/templates/articles/articles-page.html')
+  // Use relative path so it works from file:// and when hosted under a subpath
+  const pageTpl = await loadTemplate('./assets/templates/articles/articles-page.html')
   el.innerHTML = pageTpl
   const listEl = el.querySelector('#article-list')
   const form = el.querySelector('#article-form')
   const fileTiles = el.querySelector('.file-tiles')
+  if(!listEl || !form || !fileTiles){
+    console.warn('[articles] Missing required template elements', { hasList: !!listEl, hasForm: !!form, hasTiles: !!fileTiles })
+    el.innerHTML = '<section class="card"><h3>Articles</h3><p>Failed to load the Articles UI template. Please ensure /assets/templates is reachable and reload.</p></section>'
+    return el
+  }
   const uploading = el.querySelector('#article-uploading')
   const modeBadge = el.querySelector('#article-mode-badge')
   const cancelEditBtn = el.querySelector('#article-cancel-edit')
@@ -45,11 +51,12 @@ export async function viewArticles(){
   }
   cancelEditBtn?.addEventListener('click', () => setMode('create'))
   const fetchList = async () => {
+    if(!listEl) return
   const res = await api('/articles')
     const json = await res.json()
     listEl.innerHTML = ''
     let items = json.items.slice()
-    const cardTpl = await loadTemplate('/assets/templates/articles/article-card.html')
+  const cardTpl = await loadTemplate('./assets/templates/articles/article-card.html')
     for(const a of items){
       const html = renderTemplate(cardTpl, {
         COVER: a.coverUrl ? `<img src="${a.coverUrl}" alt="cover"/>` : '',
@@ -66,7 +73,7 @@ export async function viewArticles(){
       listEl.appendChild(wrap.firstElementChild)
     }
   }
-  listEl.addEventListener('click', async (e) => {
+  listEl?.addEventListener('click', async (e) => {
     // Move up/down with optimistic local reorder (fallback when API isn't available)
     const mv = e.target.closest('button[data-article-move]')
     if(mv){
@@ -121,7 +128,7 @@ export async function viewArticles(){
       await modalConfirm('Delete failed', { confirmText: 'Close' })
     }
   })
-  form.addEventListener('submit', async (e) => {
+  form?.addEventListener('submit', async (e) => {
     e.preventDefault()
     const fd = new FormData(form)
     const isEdit = !!editId
@@ -191,7 +198,7 @@ export async function viewArticles(){
     xhr.send(fd)
   })
   // Reset tiles to default icons on form reset
-  form.addEventListener('reset', () => {
+  form?.addEventListener('reset', () => {
     for(const tile of fileTiles.querySelectorAll('.file-tile')){
       tile.style.backgroundImage = ''
       const icon = tile.querySelector('.tile-icon, svg.lucide')
@@ -201,7 +208,7 @@ export async function viewArticles(){
     }
   })
   // Preview selected files inside tiles (images get preview; docx shows filename)
-  fileTiles.addEventListener('change', (e) => {
+  fileTiles?.addEventListener('change', (e) => {
     const input = e.target.closest('input[type=file]')
     if(!input) return
     const tile = input.closest('.file-tile')
@@ -238,6 +245,6 @@ export async function viewArticles(){
     }
   })
   await fetchList()
-  setMode('create')
+  if(form) setMode('create')
   return el
 }
