@@ -82,6 +82,8 @@ fun ArticleWebView(
                 settings.javaScriptEnabled = true
                 // Storage & caching
                 settings.domStorageEnabled = true
+import android.content.Intent
+import android.net.Uri
                 settings.databaseEnabled = true
                 // Layout/scroll behavior
                 isHorizontalScrollBarEnabled = false
@@ -120,6 +122,29 @@ fun ArticleWebView(
                             } catch (_: Throwable) { }
                         }
                         return false
+                    }
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                        val u = request?.url?.toString() ?: return false
+                        if (isInlineContent && u.startsWith("lwb-assets://")) return false
+                        if (request?.isForMainFrame == true) {
+                            return openExternal(u)
+                        }
+                        return false
+                    }
+                    private fun openExternal(u: String): Boolean {
+                        return try {
+                            if (u.startsWith("intent://")) {
+                                val intent = Intent.parseUri(u, Intent.URI_INTENT_SCHEME)
+                                context.startActivity(intent)
+                                true
+                            } else {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
+                                context.startActivity(intent)
+                                true
+                            }
+                        } catch (_: Throwable) {
+                            false
+                        }
                     }
                     private fun intercept(u: String?): WebResourceResponse? {
                         val url = u ?: return null
@@ -559,6 +584,27 @@ private fun YouTubeBlock(videoId: String) {
                     settings.loadWithOverviewMode = true
                     settings.useWideViewPort = true
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
+                    webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                            val u = url ?: return false
+                            return try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
+                                context.startActivity(intent)
+                                true
+                            } catch (_: Throwable) { false }
+                        }
+                        override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                            val u = request?.url?.toString() ?: return false
+                            if (request?.isForMainFrame == true) {
+                                return try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
+                                    context.startActivity(intent)
+                                    true
+                                } catch (_: Throwable) { false }
+                            }
+                            return false
+                        }
+                    }
                     // Avoid inline HTML; load the embed URL directly.
                     loadUrl("https://www.youtube.com/embed/$videoId")
                 }
