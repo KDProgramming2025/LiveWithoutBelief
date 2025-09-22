@@ -32,6 +32,10 @@ class SearchArticlesUseCase(private val articleRepository: ArticleRepository) {
         articleRepository.searchLocal(query, limit, offset)
 }
 
+class GetArticlesByLabelUseCase(private val repo: LabelArticleRepository) {
+    suspend operator fun invoke(label: String): List<Article> = repo.listByLabel(label)
+}
+
 class GetBookmarksUseCase(private val bookmarkRepository: BookmarkRepository) {
     operator fun invoke(): Flow<Result<List<Bookmark>>> = bookmarkRepository.getBookmarks()
 }

@@ -26,6 +26,8 @@ data class ArticleContentEntity(
     val htmlBody: String,
     val plainText: String,
     val textHash: String,
+    // Optional canonical URL of the exported HTML index for this article
+    val indexUrl: String? = null,
 )
 
 @Entity(tableName = "article_assets")
@@ -100,7 +102,7 @@ data class ReadingProgressEntity(
         ThreadMessageEntity::class,
         ReadingProgressEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

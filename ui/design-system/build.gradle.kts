@@ -24,10 +24,16 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.foundation)
 
+    // Compose previews
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.androidx.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(project(":core:test-fixtures"))
+    debugImplementation(libs.androidx.ui.tooling)
 }
 
 // Run all tests, including Paparazzi, on CI

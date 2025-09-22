@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -157,19 +158,32 @@ private fun PasswordAuthSection(
 private object Destinations {
     const val HOME = "home"
     const val READER = "reader"
+    const val READER_BY_ID = "reader/{articleId}"
     const val SEARCH = "search"
     const val BOOKMARKS = "bookmarks"
     const val SETTINGS = "settings"
+    const val LABEL_LIST = "label_list/{label}"
 }
 
 @Composable
 private fun appNavHost(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Destinations.HOME) {
         composable(Destinations.HOME) {
-            androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
-                HomeRoute(onItemClick = { id ->
-                    // TODO: Navigate to reader/search depending on type when available
-                })
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                HomeRoute(
+                    onItemClick = { _, label ->
+                        if (!label.isNullOrBlank()) {
+                            val enc = java.net.URLEncoder.encode(label, Charsets.UTF_8.name())
+                            navController.navigate("label_list/$enc")
+                        } else {
+                            // Fallback: no label mapping yet
+                        }
+                    },
+                    onContinueReading = {
+                        // Placeholder: navigate to Reader screen (later, restore last position)
+                        navController.navigate(Destinations.READER)
+                    },
+                )
                 FloatingActionButton(
                     onClick = { navController.navigate(Destinations.SETTINGS) },
                     modifier = Modifier
@@ -181,8 +195,25 @@ private fun appNavHost(navController: NavHostController) {
             }
         }
         composable(Destinations.READER) { ReaderRoute() }
+        composable(Destinations.READER_BY_ID) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("articleId") ?: return@composable
+            info.lwb.feature.reader.ReaderByIdRoute(articleId = id)
+        }
         composable(Destinations.SEARCH) { SearchRoute() }
         composable(Destinations.BOOKMARKS) { BookmarksRoute() }
         composable(Destinations.SETTINGS) { SettingsRoute() }
+        composable(Destinations.LABEL_LIST) { backStackEntry ->
+            val label = backStackEntry.arguments?.getString("label") ?: ""
+            info.lwb.feature.reader.ArticleListByLabelRoute(
+                label = java.net.URLDecoder.decode(label, Charsets.UTF_8.name()),
+                onArticleClick = { article ->
+                    // Prefer slug if stable; else id
+                    val id = article.id.ifBlank { article.slug }
+                    navController.navigate("reader/$id")
+                },
+                onNavigateHome = { navController.popBackStack(Destinations.HOME, inclusive = false) },
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
     }
 }

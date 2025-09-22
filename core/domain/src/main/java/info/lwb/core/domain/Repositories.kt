@@ -22,6 +22,12 @@ interface ArticleRepository {
     suspend fun searchLocal(query: String, limit: Int = 25, offset: Int = 0): List<Article>
 }
 
+/** Read-only repository for fetching articles filtered by menu label. Backed by admin manifest. */
+interface LabelArticleRepository {
+    /** Returns articles whose label equals the given label (case-insensitive match). */
+    suspend fun listByLabel(label: String): List<Article>
+}
+
 interface BookmarkRepository {
     fun getBookmarks(): Flow<Result<List<Bookmark>>>
     fun getBookmarkFolders(): Flow<Result<List<BookmarkFolder>>>

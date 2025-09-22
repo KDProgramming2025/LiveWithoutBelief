@@ -27,11 +27,17 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
+kapt {
+    correctErrorTypes = true
+}
+
 dependencies {
     implementation(platform(libs.compose.bom))
     implementation(project(":core:model"))
     implementation(project(":core:common"))
     implementation(project(":core:domain"))
+    implementation(project(":ui:design-system"))
+    implementation(project(":feature:settings"))
 
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)
@@ -41,6 +47,10 @@ dependencies {
     kapt(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.coil)
+
+    // Compose tooling for @Preview
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.junit)
 }

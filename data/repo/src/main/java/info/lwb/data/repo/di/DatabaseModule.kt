@@ -20,6 +20,8 @@ import info.lwb.core.domain.GetMenuUseCase
 import info.lwb.core.domain.RefreshMenuUseCase
 import info.lwb.core.domain.ReadingProgressRepository
 import info.lwb.core.domain.MenuRepository
+import info.lwb.core.domain.LabelArticleRepository
+import info.lwb.core.domain.GetArticlesByLabelUseCase
 import info.lwb.data.network.ArticleApi
 import info.lwb.data.repo.db.AppDatabase
 import info.lwb.data.network.MenuApi
@@ -28,6 +30,7 @@ import info.lwb.data.repo.repositories.AnnotationRepositoryImpl
 import info.lwb.data.repo.repositories.ArticleRepositoryImpl
 import info.lwb.data.repo.repositories.BookmarkRepositoryImpl
 import info.lwb.data.repo.repositories.ReadingProgressRepositoryImpl
+import info.lwb.data.repo.repositories.LabelArticleRepositoryImpl
 import javax.inject.Singleton
 
 @Module
@@ -49,11 +52,18 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add nullable indexUrl column to article_contents
+            db.execSQL("ALTER TABLE article_contents ADD COLUMN indexUrl TEXT")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDb(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "lwb.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides fun provideArticleDao(db: AppDatabase): info.lwb.data.repo.db.ArticleDao = db.articleDao()
@@ -76,6 +86,11 @@ object DatabaseModule {
         ArticleRepositoryImpl(api, db.articleDao())
 
     @Provides
+    @Singleton
+    fun provideLabelArticleRepository(api: ArticleApi, db: AppDatabase): LabelArticleRepository =
+        LabelArticleRepositoryImpl(api, db.articleDao())
+
+    @Provides
     fun provideReadingProgressRepository(db: AppDatabase): ReadingProgressRepository =
         ReadingProgressRepositoryImpl(db.readingProgressDao())
 
@@ -93,4 +108,6 @@ object DatabaseModule {
 
     @Provides fun provideGetMenuUseCase(repo: MenuRepository) = GetMenuUseCase(repo)
     @Provides fun provideRefreshMenuUseCase(repo: MenuRepository) = RefreshMenuUseCase(repo)
+
+    @Provides fun provideGetArticlesByLabelUseCase(repo: LabelArticleRepository) = GetArticlesByLabelUseCase(repo)
 }

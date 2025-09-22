@@ -3,24 +3,23 @@
  */
 package info.lwb.feature.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,50 +33,197 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import info.lwb.ui.designsystem.IconWell
+import info.lwb.ui.designsystem.GrainyBackground
+import info.lwb.ui.designsystem.LocalSurfaceStyle
+import info.lwb.ui.designsystem.ProvideSurfaceStyle
+import info.lwb.ui.designsystem.RaisedSurface
+import info.lwb.ui.designsystem.RaisedButton
+import info.lwb.ui.designsystem.RaisedIconWell
+import androidx.compose.foundation.isSystemInDarkTheme
+import info.lwb.feature.settings.SettingsViewModel
+import info.lwb.feature.settings.ThemeMode
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import info.lwb.ui.designsystem.SurfaceStyleDefaults
 
 @Composable
-fun HomeRoute(onItemClick: (String) -> Unit = {}) {
+fun HomeRoute(onItemClick: (String, String?) -> Unit = { _, _ -> }, onContinueReading: (() -> Unit)? = null) {
     val vm: HomeViewModel = hiltViewModel()
+    val settingsVm: SettingsViewModel = hiltViewModel()
+    val themeMode by settingsVm.themeMode.collectAsState()
     val state by vm.state.collectAsState()
     LaunchedEffect(Unit) { vm.load() }
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    val dark = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+    ProvideSurfaceStyle(dark = dark) {
+    val neo = LocalSurfaceStyle.current
+    Surface(Modifier.fillMaxSize()) {
+        GrainyBackground(Modifier.fillMaxSize())
         when (val s = state) {
             is HomeUiState.Loading -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator()
             }
             is HomeUiState.Error -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Failed to load menu")
-                Text(s.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Failed to load menu", color = neo.textPrimary)
+                Text(s.message, style = MaterialTheme.typography.bodySmall, color = neo.textMuted)
             }
             is HomeUiState.Success -> {
                 val horizontalPadding = 16.dp
+                Column(Modifier.fillMaxSize()) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        if (onContinueReading != null) {
+                            RaisedButton(onClick = onContinueReading) {
+                                Text("Continue reading", color = neo.textPrimary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    val sorted = s.items.sortedWith(compareBy({ it.order }, { it.title }))
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 240.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            start = horizontalPadding - 4.dp, end = horizontalPadding - 4.dp, top = 4.dp, bottom = 16.dp
+                        ),
+                    ) {
+                        items(sorted, key = { it.id }) { item ->
+                            val iconPathVal = item.iconPath
+                            val normalized = if (!iconPathVal.isNullOrBlank() && iconPathVal.startsWith("/uploads")) {
+                                iconPathVal.removePrefix("/uploads")
+                            } else iconPathVal ?: ""
+                            val imageUrl = if (normalized.isNotBlank()) vm.uploadsBaseUrl.trimEnd('/') + "/" + normalized.trimStart('/') else null
+
+                            NeoMenuCard(
+                                title = item.title,
+                                imageUrl = imageUrl,
+                                onClick = { onItemClick(item.id, item.label) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    } }
+}
+
+@Composable
+private fun NeoMenuCard(
+    title: String,
+    imageUrl: String?,
+    onClick: () -> Unit,
+    minHeight: Dp = 112.dp,
+) {
+    val neo = LocalSurfaceStyle.current
+    RaisedSurface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .heightIn(min = minHeight),
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(14.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Make icon well 25% larger (56dp -> 70dp) and add small inner padding
+                RaisedIconWell(wellSize = 70.dp, innerPadding = 6.dp) {
+                    if (!imageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
+                        )
+                    } else {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(title.take(1).uppercase(), color = neo.textMuted, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium.copy(lineHeight = 20.sp),
+                        color = neo.textPrimary,
+                        maxLines = 3,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ----- Previews -----
+
+private data class PreviewItem(val id: String, val title: String, val iconUrl: String?)
+
+@Composable
+private fun HomeMenuPreviewContent(dark: Boolean) {
+    ProvideSurfaceStyle(dark = dark) {
+        val neo = LocalSurfaceStyle.current
+        val items = remember {
+            listOf(
+                PreviewItem("1", "Cosmology vs. Scripture", null),
+                PreviewItem("2", "Geology and Flood Myths", null),
+                PreviewItem("3", "Evolution and Design Claims", null),
+                PreviewItem("4", "Moral Philosophy without Dogma", null),
+                PreviewItem("5", "Historical Criticism of Texts", null),
+            )
+        }
+        Surface(Modifier.fillMaxSize()) {
+            GrainyBackground(Modifier.fillMaxSize())
+            Column(Modifier.fillMaxSize()) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    RaisedButton(onClick = {}) {
+                        Text("Continue reading", color = neo.textPrimary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 160.dp),
+                    columns = GridCells.Adaptive(minSize = 240.dp),
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = horizontalPadding, end = horizontalPadding, top = 16.dp, bottom = 24.dp
+                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp
                     ),
                 ) {
-                    items(s.items, key = { it.id }) { item ->
-                        val iconPathVal = item.iconPath
-                        val normalized = if (!iconPathVal.isNullOrBlank() && iconPathVal.startsWith("/uploads")) {
-                            iconPathVal.removePrefix("/uploads")
-                        } else iconPathVal ?: ""
-                        val imageUrl = if (normalized.isNotBlank()) vm.uploadsBaseUrl.trimEnd('/') + "/" + normalized.trimStart('/') else null
-
-                        MenuCard(
+                    itemsIndexed(items, key = { _, it -> it.id }) { _, item ->
+                        NeoMenuCard(
                             title = item.title,
-                            imageUrl = imageUrl,
-                            onClick = { onItemClick(item.id) },
+                            imageUrl = item.iconUrl,
+                            onClick = {},
                         )
                     }
                 }
@@ -86,71 +232,14 @@ fun HomeRoute(onItemClick: (String) -> Unit = {}) {
     }
 }
 
+@Preview(name = "Home Menu - Light", showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
-private fun MenuCard(
-    title: String,
-    imageUrl: String?,
-    onClick: () -> Unit,
-    height: Dp = 148.dp,
-) {
-    val container = MaterialTheme.colorScheme.surface
-    val onContainer = MaterialTheme.colorScheme.onSurface
-    val accent1 = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-    val accent2 = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f)
-    val gradient = Brush.linearGradient(listOf(accent1, Color.Transparent, accent2))
+private fun PreviewHomeMenuLight() {
+    HomeMenuPreviewContent(dark = false)
+}
 
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = container),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height),
-    ) {
-        Column(
-            modifier = Modifier
-                .background(gradient)
-                .padding(14.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            // Icon block
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!imageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Fit,
-                    )
-                } else {
-                    // Elegant fallback when icon is missing: colored square with initial
-                    val bg = MaterialTheme.colorScheme.primaryContainer
-                    val fg = MaterialTheme.colorScheme.onPrimaryContainer
-                    androidx.compose.foundation.Canvas(
-                        modifier = Modifier
-                            .height(48.dp)
-                            .width(48.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                    ) {
-                        drawRect(bg)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Text(title.take(1).uppercase(), color = fg, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            // Title
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = onContainer,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+@Preview(name = "Home Menu - Dark", showBackground = true, widthDp = 412, heightDp = 915)
+@Composable
+private fun PreviewHomeMenuDark() {
+    HomeMenuPreviewContent(dark = true)
 }

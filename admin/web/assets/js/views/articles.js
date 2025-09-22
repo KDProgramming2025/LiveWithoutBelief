@@ -2,62 +2,13 @@ import { api } from '../core/api.js'
 import { state, clearToken } from '../core/state.js'
 import { fmtBytes, fmtEta } from '../core/helpers.js'
 import { confirm as modalConfirm } from '../ui/modal.js'
+import { loadTemplate, renderTemplate } from '../core/templates.js'
 
 export async function viewArticles(){
   const el = document.createElement('div')
-  el.innerHTML = `
-      <section class="card">
-        <div class="row" style="justify-content: space-between; align-items: center">
-          <h3>Upload Article (.docx)</h3>
-          <span id="article-mode-badge" class="badge">Create</span>
-        </div>
-        <form id="article-form" class="form-grid" autocomplete="off">
-          <input class="input" name="title" placeholder="Title" required />
-          <div class="row row--two">
-            <input class="input" name="label" placeholder="Label" required />
-            <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
-          </div>
-          <div class="row row--center file-tiles" role="group" aria-label="Article files">
-            <div class="file-tile-wrap">
-              <label class="file-tile file-button" data-kind="icon" aria-label="Icon image">
-                <span class="tile-icon" data-lucide="image"></span>
-                <input class="input" name="icon" type="file" accept="image/*" aria-label="Select icon image" />
-              </label>
-              <div class="tile-caption">Icon</div>
-            </div>
-            <div class="file-tile-wrap">
-              <label class="file-tile file-button" data-kind="cover" aria-label="Cover image">
-                <span class="tile-icon" data-lucide="image"></span>
-                <input class="input" name="cover" type="file" accept="image/*" aria-label="Select cover image" />
-              </label>
-              <div class="tile-caption">Cover</div>
-            </div>
-            <div class="file-tile-wrap">
-              <label class="file-tile file-button" data-kind="docx" aria-label="Article DOCX">
-                <span class="tile-icon" data-lucide="file-text"></span>
-                <input class="input" name="docx" type="file" accept=".docx" required aria-label="Select DOCX file" />
-              </label>
-              <div class="tile-caption">DOCX</div>
-            </div>
-          </div>
-          <div class="row" style="justify-content: space-between">
-            <button class="button" id="article-cancel-edit" type="button" style="display:none">Cancel Edit</button>
-            <button class="button" id="article-submit" type="submit">Upload</button>
-          </div>
-          <div class="row row--center">
-            <span id="article-uploading" class="badge" style="display:none">Uploading…</span>
-          </div>
-        </form>
-        <div id="article-progress" style="display:none;gap:8px;align-items:center">
-          <div class="progress" style="flex:1"><div class="progress__bar" id="article-progress-bar"></div></div>
-          <div class="progress__text" id="article-progress-text">0%</div>
-          <button class="button secondary" id="article-cancel" type="button" style="display:none">Cancel</button>
-        </div>
-      </section>
-      <section class="card" style="margin-top: var(--space-16)">
-        <h2>Articles</h2>
-        <div id="article-list" class="grid"></div>
-      </section>`
+  // Load page template instead of inline string
+  const pageTpl = await loadTemplate('/assets/templates/articles/articles-page.html')
+  el.innerHTML = pageTpl
   const listEl = el.querySelector('#article-list')
   const form = el.querySelector('#article-form')
   const fileTiles = el.querySelector('.file-tiles')
@@ -98,30 +49,21 @@ export async function viewArticles(){
     const json = await res.json()
     listEl.innerHTML = ''
     let items = json.items.slice()
+    const cardTpl = await loadTemplate('/assets/templates/articles/article-card.html')
     for(const a of items){
-      const card = document.createElement('div')
-      card.className = 'menu-card article-card'
-      card.innerHTML = `
-          <div class="article-card__cover">${a.coverUrl ? `<img src="${a.coverUrl}" alt="cover"/>` : ''}</div>
-          <div class="article-card__meta">
-            <div class="menu-card__icon">${a.iconUrl ? `<img src="${a.iconUrl}" alt="icon"/>` : '<div class="placeholder">—</div>'}</div>
-            <div class="article-card__title" title="${(a.title||'').replaceAll('"','&quot;')}">${a.title}</div>
-          </div>
-          <div class="article-card__footer">
-            <div class="article-card__label">${a.label ?? ''}</div>
-            <div class="menu-card__actions article-card__actions">
-              <a class="button secondary" href="${a.indexUrl}" target="_blank" rel="noopener">Open</a>
-              <button class="button secondary" data-article-edit="${a.id}" data-title="${(a.title||'').replaceAll('\\"','&quot;')}" data-label="${a.label ?? ''}" data-order="${a.order ?? 0}">Edit</button>
-              <button class="button danger" data-article-del="${a.id}">Delete</button>
-            </div>
-          </div>
-          <div class="article-card__move">
-            <div class="menu-card__move">
-              <button class="button secondary btn-move btn-move--up" data-article-move="up" data-id="${a.id}">↑</button>
-              <button class="button secondary btn-move btn-move--down" data-article-move="down" data-id="${a.id}">↓</button>
-            </div>
-          </div>`
-      listEl.appendChild(card)
+      const html = renderTemplate(cardTpl, {
+        COVER: a.coverUrl ? `<img src="${a.coverUrl}" alt="cover"/>` : '',
+        ICON: a.iconUrl ? `<img src="${a.iconUrl}" alt="icon"/>` : '<div class="placeholder">—</div>',
+        TITLE_ESC: String(a.title||'').replaceAll('"','&quot;'),
+        TITLE: a.title,
+        LABEL: a.label ?? '',
+        INDEX_URL: a.indexUrl,
+        ID: a.id,
+        ORDER: a.order ?? 0,
+      })
+      const wrap = document.createElement('div')
+      wrap.innerHTML = html
+      listEl.appendChild(wrap.firstElementChild)
     }
   }
   listEl.addEventListener('click', async (e) => {

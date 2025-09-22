@@ -111,7 +111,7 @@ class FakeArticleDao : ArticleDao {
 class StubArticleApi : ArticleApi {
     var manifest: List<ManifestItemDto> = emptyList()
     var articles: MutableMap<String, ArticleDto> = mutableMapOf()
-    override suspend fun getManifest(): List<ManifestItemDto> = manifest
+    override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = info.lwb.data.network.ManifestResponse(manifest)
     override suspend fun getArticle(id: String): ArticleDto = articles[id] ?: error("not found")
 }
 
@@ -221,7 +221,7 @@ class ArticleRepositoryImplTest {
         api.manifest = listOf(ManifestItemDto("r1", "R1", "r1", 1, "2025-01-01", 10))
         var attempts = 0
         val retryingApi = object : ArticleApi {
-            override suspend fun getManifest(): List<ManifestItemDto> = api.manifest
+            override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = info.lwb.data.network.ManifestResponse(api.manifest)
             override suspend fun getArticle(id: String): ArticleDto {
                 attempts++
                 if (attempts == 1) error("transient")
@@ -245,7 +245,7 @@ class ArticleRepositoryImplTest {
     fun refreshArticles_onNetworkError_insertsNothing() = runTest {
         // Simulate failure API
         val failingApi = object : ArticleApi {
-            override suspend fun getManifest(): List<ManifestItemDto> = error("boom")
+            override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = error("boom")
             override suspend fun getArticle(id: String): ArticleDto = error("not used")
         }
         val failingRepo = ArticleRepositoryImpl(api = failingApi, articleDao = dao)

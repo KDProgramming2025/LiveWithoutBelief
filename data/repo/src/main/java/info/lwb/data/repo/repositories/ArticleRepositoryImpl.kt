@@ -45,10 +45,40 @@ class ArticleRepositoryImpl(
     override fun getArticleContent(articleId: String): Flow<Result<ArticleContent>> = flow {
         emit(Result.Loading)
         try {
-            val content = articleDao.getArticleContent(articleId)?.toDomain()
-            if (content != null) {
+            var contentEntity = articleDao.getArticleContent(articleId)
+            if (contentEntity == null) {
+                // On-demand fetch when content is missing locally
+                val dto = retryWithBackoff { api.getArticle(articleId) }
+                if (dto != null) {
+                    val plain = dto.text ?: ""
+                    val html = dto.html ?: ""
+                    val textHash = sha256(plain)
+                    val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
+                    if (checksumOk) {
+                        val articleEntity = ArticleEntity(
+                            id = dto.id,
+                            title = dto.title,
+                            slug = dto.slug,
+                            version = dto.version,
+                            updatedAt = dto.updatedAt,
+                            wordCount = dto.wordCount,
+                        )
+                        val newContent = ArticleContentEntity(
+                            articleId = dto.id,
+                            htmlBody = html,
+                            plainText = plain,
+                            textHash = textHash,
+                            indexUrl = dto.indexUrl,
+                        )
+                        articleDao.upsertArticleWithContent(articleEntity, newContent)
+                        contentEntity = newContent
+                    }
+                }
+            }
+            val domain = contentEntity?.toDomain()
+            if (domain != null) {
                 @Suppress("UNCHECKED_CAST")
-                emit(Result.Success(content) as Result<ArticleContent>)
+                emit(Result.Success(domain) as Result<ArticleContent>)
             } else {
                 emit(Result.Error(Exception("Content not found")))
             }
@@ -59,7 +89,7 @@ class ArticleRepositoryImpl(
 
     override suspend fun refreshArticles(): Unit = withContext(Dispatchers.IO) {
         // Fetch manifest with retry/backoff
-        val manifest = retryWithBackoff { api.getManifest() } ?: emptyList()
+    val manifest = retryWithBackoff { api.getManifest().items } ?: emptyList()
         if (manifest.isEmpty()) return@withContext
 
         // Snapshot local state to guide delta decisions
@@ -113,6 +143,7 @@ class ArticleRepositoryImpl(
                             htmlBody = html,
                             plainText = plain,
                             textHash = textHash,
+                            indexUrl = dto.indexUrl,
                         )
                         articleDao.upsertArticleWithContent(articleEntity, contentEntity)
                     } else {
@@ -150,7 +181,7 @@ class ArticleRepositoryImpl(
     }
 
     suspend fun syncManifest(): List<ManifestItemDto> = withContext(Dispatchers.IO) {
-        runCatching { api.getManifest() }.getOrElse { emptyList() }
+    runCatching { api.getManifest().items }.getOrElse { emptyList() }
     }
 
     override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> = withContext(
@@ -180,7 +211,8 @@ class ArticleRepositoryImpl(
 private const val KEEP_RECENT_COUNT = 4
 
 private fun ArticleEntity.toDomain() = Article(id, title, slug, version, updatedAt, wordCount)
-private fun ArticleContentEntity.toDomain() = ArticleContent(articleId, htmlBody, plainText, textHash)
+// Note: Manifest images are not persisted in ArticleEntity; domain mapping from repo-by-label uses DTO directly.
+private fun ArticleContentEntity.toDomain() = ArticleContent(articleId, htmlBody, plainText, textHash, indexUrl)
 
 private fun sha256(input: String): String {
     val md = MessageDigest.getInstance("SHA-256")

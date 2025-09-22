@@ -8,7 +8,7 @@ import retrofit2.http.GET
 
 interface ArticleApi {
     @GET("v1/articles/manifest")
-    suspend fun getManifest(): List<ManifestItemDto>
+    suspend fun getManifest(): ManifestResponse
 
     @GET("v1/articles/{id}")
     suspend fun getArticle(@retrofit2.http.Path("id") id: String): ArticleDto
@@ -33,13 +33,20 @@ data class MenuItemDto(
 @kotlinx.serialization.Serializable
 data class MenuResponse(val items: List<MenuItemDto>)
 
+@kotlinx.serialization.Serializable
+data class ManifestResponse(val items: List<ManifestItemDto>)
+
+@kotlinx.serialization.Serializable
 data class ManifestItemDto(
     val id: String,
     val title: String,
     val slug: String,
-    val version: Int,
+    val version: Int = 0,
     val updatedAt: String,
-    val wordCount: Int,
+    val wordCount: Int = 0,
+    val label: String? = null,
+    val coverUrl: String? = null,
+    val iconUrl: String? = null,
 )
 
 data class SectionDto(
@@ -71,6 +78,8 @@ data class ArticleDto(
     val signature: String? = null,
     val html: String? = null,
     val text: String? = null,
+    // Optional canonical URL of the exported HTML index for this article (server-provided)
+    val indexUrl: String? = null,
     val sections: List<SectionDto> = emptyList(),
     val media: List<MediaDto> = emptyList(),
 )

@@ -14,6 +14,8 @@ data class Article(
     val version: Int,
     val updatedAt: String,
     val wordCount: Int,
+    val coverUrl: String? = null,
+    val iconUrl: String? = null,
 )
 
 @Serializable
@@ -22,6 +24,7 @@ data class ArticleContent(
     val htmlBody: String,
     val plainText: String,
     val textHash: String,
+    val indexUrl: String? = null,
 )
 
 @Serializable

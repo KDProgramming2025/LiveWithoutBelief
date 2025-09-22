@@ -24,6 +24,8 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
     implementation(project(":core:domain"))
+    implementation(project(":ui:design-system"))
+    implementation(project(":feature:settings"))
     implementation(project(":data:repo"))
     implementation(project(":feature:annotations"))
     implementation(platform(libs.compose.bom))

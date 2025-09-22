@@ -8,6 +8,7 @@ package info.lwb.feature.reader
 
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +59,44 @@ data class ReaderSettingsState(
     val onFontScaleChange: (Double) -> Unit,
     val onLineHeightChange: (Double) -> Unit,
 )
+
+@Composable
+fun ArticleWebView(
+    htmlBody: String? = null,
+    baseUrl: String? = null,
+    url: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        factory = { ctx ->
+            WebView(ctx).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.cacheMode = WebSettings.LOAD_DEFAULT
+                webViewClient = WebViewClient()
+                if (!url.isNullOrBlank()) {
+                    loadUrl(url)
+                } else {
+                    loadDataWithBaseURL(
+                        baseUrl,
+                        htmlBody.orEmpty(),
+                        "text/html",
+                        "utf-8",
+                        null,
+                    )
+                }
+            }
+        },
+        update = { webView ->
+            if (!url.isNullOrBlank()) {
+                webView.loadUrl(url)
+            } else {
+                webView.loadDataWithBaseURL(baseUrl, htmlBody.orEmpty(), "text/html", "utf-8", null)
+            }
+        }
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -424,23 +463,8 @@ private fun YouTubeBlock(videoId: String) {
                 WebView(ctx).apply {
                     settings.javaScriptEnabled = true
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
-                    loadData(
-                        """
-                                                <html>
-                                                    <body style='margin:0;padding:0;'>
-                                                        <iframe
-                                                            width='100%'
-                                                            height='100%'
-                                                            src='https://www.youtube.com/embed/$videoId'
-                                                            frameborder='0'
-                                                            allowfullscreen
-                                                        ></iframe>
-                                                    </body>
-                                                </html>
-                        """.trimIndent(),
-                        "text/html",
-                        "utf-8",
-                    )
+                    // Avoid inline HTML; load the embed URL directly.
+                    loadUrl("https://www.youtube.com/embed/$videoId")
                 }
             },
         )
@@ -503,9 +527,6 @@ private fun SearchBar(
     }
 }
 
-// TODO(LWB-71): Reintroduce @Preview composables for light/dark themes once ui-tooling-preview
-// dependency is added and kapt NonExistentClass issue resolved. Removed temporarily to restore
-// successful build.
 @Preview(name = "Reader Light", showBackground = true)
 @Composable
 private fun PreviewReaderLight() {
