@@ -7,3 +7,14 @@ body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto
 .media__item{margin:8px 0}
 video{max-width:100%;height:auto;background:#000}
 audio{width:100%}
+
+/* Responsive YouTube embeds */
+.media__item.youtube{position:relative}
+.media__item.youtube .yt-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+.media__item.youtube .yt-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+/* Optional overlay for sign-in required */
+.yt-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:2}
+.yt-overlay.show{display:flex}
+.yt-overlay .yt-card{background:#111;color:#fff;padding:10px 14px;border-radius:8px;max-width:90%;text-align:center}
+.yt-overlay .yt-card button{appearance:none;border:0;border-radius:6px;padding:8px 12px;background:#f00;color:#fff;font-weight:600;cursor:pointer}

@@ -26,4 +26,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }catch{}
     return null
   }
+
+  // Minimal YouTube overlay handler for embedded iframes in template
+  const ytEmbeds = Array.from(document.querySelectorAll('.media__item.youtube .yt-wrap'))
+  ytEmbeds.forEach(wrap => {
+    const iframe = wrap.querySelector('iframe')
+    const overlay = wrap.querySelector('.yt-overlay')
+    const btn = overlay && overlay.querySelector('[data-yt-open]')
+    if(!iframe) return
+    // Open on YouTube button
+    if(btn){
+      const id = (iframe.src.match(/[?&]v=([^&]+)/) || iframe.src.match(/embed\/([^?&]+)/))?.[1]
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        const target = id ? `https://www.youtube.com/watch?v=${id}` : iframe.src
+        window.location.href = target
+      })
+    }
+    // Fallback: if user taps and playback doesn't start soon, show overlay
+    let tapTs = 0
+    wrap.addEventListener('click', () => { tapTs = Date.now(); setTimeout(() => {
+      if(!overlay) return
+      // If still no activity after 1500ms since tap, show overlay
+      if(Date.now() - tapTs >= 1400) overlay.classList.add('show')
+    }, 1500) }, {passive:true})
+  })
 })

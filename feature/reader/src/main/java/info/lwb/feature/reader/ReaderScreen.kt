@@ -6,9 +6,15 @@
 
 package info.lwb.feature.reader
 
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.view.View
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -72,9 +78,71 @@ fun ArticleWebView(
         factory = { ctx ->
             WebView(ctx).apply {
                 settings.javaScriptEnabled = true
+                // Storage & caching
                 settings.domStorageEnabled = true
+                settings.databaseEnabled = true
+                // Layout/scroll behavior
+                isHorizontalScrollBarEnabled = false
+                overScrollMode = View.OVER_SCROLL_NEVER
+                setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
+                    if (scrollX != 0) v.scrollTo(0, scrollY)
+                }
+                // Viewport and width-fit
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
+                // Default caching
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
-                webViewClient = WebViewClient()
+                // Load clamp script from assets to adjust viewport, CSS and responsive iframes
+                fun loadClampJs(): String {
+                    val am = context.assets
+                    am.open("webview/inject_clamp.js").use { input ->
+                        return BufferedReader(InputStreamReader(input)).readText()
+                    }
+                }
+                val clampJs by lazy { loadClampJs() }
+                val isInlineContent = url.isNullOrBlank() && !htmlBody.isNullOrBlank()
+                // Disable long-click to avoid "Save video" or "Save audio" menus
+                isLongClickable = false
+                setOnLongClickListener { true }
+                setDownloadListener { _, _, _, _, _ ->
+                    // Block default download handling inside WebView
+                }
+                webViewClient = object : WebViewClient() {
+                    private fun intercept(u: String?): WebResourceResponse? {
+                        val url = u ?: return null
+                        if (isInlineContent && url.startsWith("lwb-assets://")) {
+                            val path = url.removePrefix("lwb-assets://")
+                            return try {
+                                val mime = when {
+                                    path.endsWith(".js") -> "application/javascript"
+                                    path.endsWith(".css") -> "text/css"
+                                    else -> "application/octet-stream"
+                                }
+                                val stream = context.assets.open(path)
+                                WebResourceResponse(mime, "utf-8", stream)
+                            } catch (_: Throwable) {
+                                null
+                            }
+                        }
+                        return null
+                    }
+                    override fun shouldInterceptRequest(view: WebView?, url: String?): WebResourceResponse? {
+                        return intercept(url) ?: super.shouldInterceptRequest(view, url)
+                    }
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: android.webkit.WebResourceRequest?
+                    ): WebResourceResponse? {
+                        val u = request?.url?.toString()
+                        return intercept(u) ?: super.shouldInterceptRequest(view, request)
+                    }
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        if (isInlineContent) {
+                            evaluateJavascript(clampJs, null)
+                        }
+                    }
+                }
                 if (!url.isNullOrBlank()) {
                     loadUrl(url)
                 } else {
@@ -462,6 +530,20 @@ private fun YouTubeBlock(videoId: String) {
             factory = { ctx ->
                 WebView(ctx).apply {
                     settings.javaScriptEnabled = true
+                    // Storage & caching
+                    settings.domStorageEnabled = true
+                    settings.databaseEnabled = true
+                    isLongClickable = false
+                    setOnLongClickListener { true }
+                    setDownloadListener { _, _, _, _, _ -> }
+                    // Prevent sideways panning inside the embedded frame
+                    isHorizontalScrollBarEnabled = false
+                    overScrollMode = View.OVER_SCROLL_NEVER
+                    setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
+                        if (scrollX != 0) v.scrollTo(0, scrollY)
+                    }
+                    settings.loadWithOverviewMode = true
+                    settings.useWideViewPort = true
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
                     // Avoid inline HTML; load the embed URL directly.
                     loadUrl("https://www.youtube.com/embed/$videoId")
