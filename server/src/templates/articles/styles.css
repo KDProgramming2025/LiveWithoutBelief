@@ -18,3 +18,24 @@ audio{width:100%}
 .yt-overlay.show{display:flex}
 .yt-overlay .yt-card{background:#111;color:#fff;padding:10px 14px;border-radius:8px;max-width:90%;text-align:center}
 .yt-overlay .yt-card button{appearance:none;border:0;border-radius:6px;padding:8px 12px;background:#f00;color:#fff;font-weight:600;cursor:pointer}
+
+/* Below-video deep link rectangle */
+.media__item.youtube .yt-deeplink{margin:8px 0 0;}
+.media__item.youtube .yt-deeplink .yt-open-btn{
+	width:100%;
+	display:block;
+	padding:10px 14px;
+	border-radius:8px;
+	border:1px solid #ddd;
+	background:linear-gradient(#fafafa,#f0f0f0);
+	color:#111;
+	font-weight:600;
+	cursor:pointer;
+}
+@media (prefers-color-scheme: dark){
+	.media__item.youtube .yt-deeplink .yt-open-btn{
+		border-color:#333;
+		background:linear-gradient(#1a1a1a,#111);
+		color:#fff;
+	}
+}

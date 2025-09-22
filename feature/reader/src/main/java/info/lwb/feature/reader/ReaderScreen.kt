@@ -6,6 +6,8 @@
 
 package info.lwb.feature.reader
 
+import android.content.Intent
+import android.net.Uri
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -108,6 +110,17 @@ fun ArticleWebView(
                     // Block default download handling inside WebView
                 }
                 webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                        val u = url ?: return false
+                        if (u.contains("youtube.com/") || u.contains("youtu.be/")) {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
+                                context.startActivity(intent)
+                                return true
+                            } catch (_: Throwable) { }
+                        }
+                        return false
+                    }
                     private fun intercept(u: String?): WebResourceResponse? {
                         val url = u ?: return null
                         if (isInlineContent && url.startsWith("lwb-assets://")) {
@@ -523,7 +536,8 @@ private fun AudioPlayer(url: String) {
 @Composable
 private fun YouTubeBlock(videoId: String) {
     Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-        AndroidView(
+        Column(Modifier.fillMaxWidth()) {
+            AndroidView(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp),
@@ -549,7 +563,20 @@ private fun YouTubeBlock(videoId: String) {
                     loadUrl("https://www.youtube.com/embed/$videoId")
                 }
             },
-        )
+            )
+            Spacer(Modifier.height(8.dp))
+            val context = LocalContext.current
+            Button(
+                onClick = {
+                    val target = "https://www.youtube.com/watch?v=$videoId"
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
+                        context.startActivity(intent)
+                    } catch (_: Throwable) { }
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+            ) { Text("Watch this video on YouTube") }
+        }
     }
 }
 

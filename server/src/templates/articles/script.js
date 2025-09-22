@@ -51,4 +51,24 @@ document.addEventListener('DOMContentLoaded', () => {
       if(Date.now() - tapTs >= 1400) overlay.classList.add('show')
     }, 1500) }, {passive:true})
   })
+
+  // Wire below-video deep link buttons
+  const openBtns = Array.from(document.querySelectorAll('.media__item.youtube [data-yt-open]'))
+  openBtns.forEach(b => {
+    b.addEventListener('click', e => {
+      e.preventDefault()
+      // Prefer explicit data-yt-id on button; else try to infer from sibling iframe
+      const idAttr = b.getAttribute('data-yt-id')
+      let vid = idAttr && idAttr.trim() ? idAttr.trim() : null
+      if(!vid){
+        const container = b.closest('.media__item.youtube')
+        const iframe = container && container.querySelector('iframe')
+        if(iframe){
+          vid = (iframe.src.match(/[?&]v=([^&]+)/) || iframe.src.match(/embed\/([^?&]+)/))?.[1] || null
+        }
+      }
+      const href = vid ? `https://www.youtube.com/watch?v=${vid}` : (b.getAttribute('href') || '#')
+      if(href && href !== '#') window.location.href = href
+    })
+  })
 })
