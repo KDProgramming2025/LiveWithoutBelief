@@ -7,10 +7,11 @@ body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto
 .media__item{margin:8px 0}
 video{max-width:100%;height:auto;background:#000}
 audio{width:100%}
-/* Hide download buttons on media elements */
-video::-internal-media-controls-download-button{display:none}
+
+/* Hide native download buttons where browsers expose them */
 audio::-internal-media-controls-download-button{display:none}
 audio::-webkit-media-controls-enclosure{overflow:hidden}
+video::-internal-media-controls-download-button{display:none}
 video::-webkit-media-controls-enclosure{overflow:hidden}
 
 /* Responsive YouTube embeds */

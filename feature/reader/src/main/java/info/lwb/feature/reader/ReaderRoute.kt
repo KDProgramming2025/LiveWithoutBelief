@@ -74,7 +74,34 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
     }
 
     if (!resolvedUrl.isNullOrBlank()) {
-        ArticleWebView(url = resolvedUrl)
+        // When rendering server URL in a WebView, we still want the FAB behavior.
+        var fabVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        var hideJob by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<kotlinx.coroutines.Job?>(null) }
+        fun showFabTemporarily() {
+            fabVisible = true
+            hideJob?.cancel()
+            hideJob = scope.launch {
+                kotlinx.coroutines.delay(5000)
+                fabVisible = false
+            }
+        }
+        androidx.compose.runtime.LaunchedEffect(resolvedUrl) { showFabTemporarily() }
+        androidx.compose.runtime.DisposableEffect(Unit) { onDispose { hideJob?.cancel() } }
+        androidx.compose.material3.Scaffold(
+            floatingActionButton = {
+                if (fabVisible) {
+                    androidx.compose.material3.FloatingActionButton(onClick = { showFabTemporarily() }) {
+                        androidx.compose.material3.Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Filled.Edit,
+                            contentDescription = "FAB",
+                        )
+                    }
+                }
+            }
+        ) { padding ->
+            ArticleWebView(url = resolvedUrl, modifier = Modifier.padding(padding), onTap = { showFabTemporarily() })
+        }
     } else {
         // As a last resort, try inline HTML if available; otherwise show a minimal error.
         when (contentRes) {

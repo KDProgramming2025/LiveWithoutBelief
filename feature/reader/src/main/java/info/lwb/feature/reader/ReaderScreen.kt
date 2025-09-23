@@ -79,6 +79,7 @@ fun ArticleWebView(
     baseUrl: String? = null,
     url: String? = null,
     modifier: Modifier = Modifier,
+    onTap: (() -> Unit)? = null,
 ) {
     AndroidView(
         modifier = modifier.fillMaxSize(),
@@ -113,6 +114,27 @@ fun ArticleWebView(
                 setOnLongClickListener { true }
                 setDownloadListener { _, _, _, _, _ ->
                     // Block default download handling inside WebView
+                }
+                // Detect simple single-tap gestures without interfering with scroll/long-press
+                var downX = 0f
+                var downY = 0f
+                var downTs = 0L
+                val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+                setOnTouchListener { _, ev ->
+                    when (ev.actionMasked) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            downX = ev.x; downY = ev.y; downTs = ev.eventTime
+                        }
+                        android.view.MotionEvent.ACTION_UP -> {
+                            val dt = ev.eventTime - downTs
+                            val dx = ev.x - downX
+                            val dy = ev.y - downY
+                            if (dt in 1..250 && (dx*dx + dy*dy) <= (slop * slop)) {
+                                onTap?.invoke()
+                            }
+                        }
+                    }
+                    false // don't consume; let WebView handle it
                 }
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {

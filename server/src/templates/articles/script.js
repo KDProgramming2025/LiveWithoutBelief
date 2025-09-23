@@ -71,4 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if(href && href !== '#') window.location.href = href
     })
   })
+
+  // Suppress download options on media elements
+  const medias = Array.from(document.querySelectorAll('audio, video'))
+  medias.forEach(m => {
+    try { m.setAttribute('controlsList', 'nodownload noplaybackrate'); } catch {}
+    m.addEventListener('contextmenu', e => e.preventDefault())
+    // Some UAs need an explicit controls attribute for controlsList to apply
+    if (!m.hasAttribute('controls')) m.setAttribute('controls', '')
+  })
 })
