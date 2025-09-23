@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -58,6 +61,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import info.lwb.core.domain.AddAnnotationUseCase
 import info.lwb.feature.annotations.DiscussionThreadSheet
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 // Data holder for reader settings provided by caller (ViewModel layer wires flows & mutations)
@@ -82,8 +87,6 @@ fun ArticleWebView(
                 settings.javaScriptEnabled = true
                 // Storage & caching
                 settings.domStorageEnabled = true
-import android.content.Intent
-import android.net.Uri
                 settings.databaseEnabled = true
                 // Layout/scroll behavior
                 isHorizontalScrollBarEnabled = false
@@ -114,14 +117,8 @@ import android.net.Uri
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                         val u = url ?: return false
-                        if (u.contains("youtube.com/") || u.contains("youtu.be/")) {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
-                                context.startActivity(intent)
-                                return true
-                            } catch (_: Throwable) { }
-                        }
-                        return false
+                        if (isInlineContent && u.startsWith("lwb-assets://")) return false
+                        return openExternal(u)
                     }
                     override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
                         val u = request?.url?.toString() ?: return false
@@ -215,6 +212,21 @@ fun ReaderScreen(
     onPageChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // FAB visibility state with auto-hide timer
+    var fabVisible by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    var hideJob by remember { mutableStateOf<Job?>(null) }
+    fun showFabTemporarily() {
+        fabVisible = true
+        hideJob?.cancel()
+        hideJob = scope.launch {
+            delay(5000)
+            fabVisible = false
+        }
+    }
+    LaunchedEffect(Unit) { showFabTemporarily() }
+    DisposableEffect(Unit) { onDispose { hideJob?.cancel() } }
+
     val blocks = remember(htmlBody) { parseHtmlToBlocks(htmlBody) }
     var searchQuery by remember { mutableStateOf("") }
     var searchHits by remember { mutableStateOf(listOf<SearchHit>()) }
@@ -230,8 +242,24 @@ fun ReaderScreen(
                 settings.onLineHeightChange(line)
             }
         },
+        floatingActionButton = {
+            if (fabVisible) {
+                FloatingActionButton(onClick = { showFabTemporarily() }) {
+                    Icon(Icons.Filled.Edit, contentDescription = "FAB")
+                }
+            }
+        }
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        Column(
+            Modifier
+                .padding(padding)
+                .pointerInput(Unit) {
+                    // Show FAB on single taps only; ignore long press/drag/scroll
+                    detectTapGestures(
+                        onTap = { showFabTemporarily() }
+                    )
+                }
+        ) {
             SearchBar(
                 searchQuery,
                 occurrences = searchHits.size,
