@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -115,39 +114,6 @@ fun ArticleWebView(
                 setDownloadListener { _, _, _, _, _ ->
                     // Block default download handling inside WebView
                 }
-                                // For URL pages (not inline), we still block long-press and download listener above.
-                                // If we control the content we can also inject a small script to disable media context menu.
-                                                val disableCtxJs = """
-                                        (function(){
-                                            try{
-                                                document.addEventListener('contextmenu', function(e){
-                                                    var t = e.target; if(t && (t.tagName==='VIDEO'||t.tagName==='AUDIO')){ e.preventDefault(); }
-                                                }, {passive:false});
-                                            }catch(e){}
-                                        })();
-                                """.trimIndent()
-                                                val enforceNoDownloadJs = """
-                                                        (function(){
-                                                            try{
-                                                                function apply(){
-                                                                    var media = document.querySelectorAll('audio,video');
-                                                                    media.forEach(function(el){
-                                                                        try{
-                                                                            var list = (el.getAttribute('controlsList')||'').toLowerCase();
-                                                                            var parts = list.split(/\s+/).filter(Boolean);
-                                                                            if(parts.indexOf('nodownload')<0) parts.push('nodownload');
-                                                                            if(parts.indexOf('noplaybackrate')<0) parts.push('noplaybackrate');
-                                                                            el.setAttribute('controlsList', parts.join(' '));
-                                                                            el.setAttribute('oncontextmenu','return false');
-                                                                        }catch(e){}
-                                                                    });
-                                                                }
-                                                                apply();
-                                                                var mo = new MutationObserver(apply);
-                                                                mo.observe(document.documentElement||document.body,{childList:true,subtree:true,attributes:true});
-                                                            }catch(e){}
-                                                        })();
-                                                """.trimIndent()
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                         val u = url ?: return false
@@ -209,10 +175,6 @@ fun ArticleWebView(
                         super.onPageFinished(view, url)
                         if (isInlineContent) {
                             evaluateJavascript(clampJs, null)
-                        } else {
-                            // Best-effort: disable context menu and enforce nodownload on remote pages
-                            evaluateJavascript(disableCtxJs, null)
-                            evaluateJavascript(enforceNoDownloadJs, null)
                         }
                     }
                 }
@@ -286,8 +248,7 @@ fun ReaderScreen(
                     Icon(Icons.Filled.Edit, contentDescription = "FAB")
                 }
             }
-        },
-        floatingActionButtonPosition = FabPosition.End
+        }
     ) { padding ->
         Column(
             Modifier
@@ -396,13 +357,7 @@ fun ReaderScreen(
                     }
                     var openAnnotationFor by remember { mutableStateOf<String?>(null) }
                     val deps = hiltViewModel<ReaderDeps>()
-                    LazyColumn(
-                        contentModifier
-                            .pointerInput(Unit) {
-                                detectTapGestures(onTap = { showFabTemporarily() })
-                            },
-                        state = listState
-                    ) {
+                    LazyColumn(contentModifier, state = listState) {
                         items(pageBlocks.size) { idx ->
                             val b = pageBlocks[idx]
                             when (b) {
@@ -464,14 +419,7 @@ fun ReaderScreen(
                 }
                 var openAnnotationFor by remember { mutableStateOf<String?>(null) }
                 val deps = hiltViewModel<ReaderDeps>()
-                LazyColumn(
-                    Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { showFabTemporarily() })
-                        },
-                    state = listState
-                ) {
+                LazyColumn(Modifier.fillMaxSize(), state = listState) {
                     items(blocks.size) { idx ->
                         val b = blocks[idx]
                         when (b) {
