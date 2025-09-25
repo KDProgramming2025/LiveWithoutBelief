@@ -48,7 +48,8 @@ fun ArticleWebView(
     // Track last applied values so we don't re-apply typography when only background changes
     var lastFontScale by remember(url, htmlBody) { mutableStateOf<Float?>(null) }
     var lastLineHeight by remember(url, htmlBody) { mutableStateOf<Float?>(null) }
-        var lastAppliedScroll by remember(url, htmlBody) { mutableStateOf<Int?>(null) }
+        var restoreActive by remember(url, htmlBody) { mutableStateOf(false) }
+        var restoreTarget by remember(url, htmlBody) { mutableStateOf<Int?>(null) }
     Box(modifier = modifier) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
@@ -80,13 +81,31 @@ fun ArticleWebView(
                 overScrollMode = View.OVER_SCROLL_NEVER
                 setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
                     if (scrollX != 0) v.scrollTo(0, scrollY)
-                    onScrollChanged?.invoke(scrollY)
+                    if (!restoreActive) onScrollChanged?.invoke(scrollY)
                 }
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
                 // Keep a mutable reference to the latest CSS so intercept can serve updates
                 val cssRef = arrayOf(injectedCss)
+                // Deterministic scroll restore with a few retries to overcome late layout shifts (images/fonts)
+                val restoreDelays = longArrayOf(0, 50, 150, 350, 700, 1200, 2000)
+                fun startRestore(target: Int) {
+                    if (target <= 0) return
+                    restoreTarget = target
+                    restoreActive = true
+                    fun step(i: Int) {
+                        if (restoreTarget != target) { restoreActive = false; return }
+                        this@apply.scrollTo(0, target)
+                        if (i >= restoreDelays.lastIndex) { restoreActive = false; return }
+                        this@apply.postDelayed({
+                            val current = this@apply.scrollY
+                            val close = kotlin.math.abs(current - target) <= 12
+                            if (close) { restoreActive = false } else { step(i + 1) }
+                        }, restoreDelays[i + 1])
+                    }
+                    this@apply.post { step(0) }
+                }
                 fun loadAsset(path: String): String {
                     val am = context.assets
                     am.open(path).use { input ->
@@ -209,11 +228,8 @@ fun ArticleWebView(
                                 ready = true
                                 this@apply.alpha = 1f
                                 firstLoad = false
-                                // Restore scroll position after first style pass if provided
-                                try {
-                                    val target = initialScrollY ?: 0
-                                    if (target > 0) this@apply.post { this@apply.scrollTo(0, target) }
-                                } catch (_: Throwable) { }
+                                // Kick off robust scroll restore after initial style pass
+                                try { startRestore(initialScrollY ?: 0) } catch (_: Throwable) { }
                             }
                             if (fsChanged) lastFontScale = fs
                             if (lhChanged) lastLineHeight = lh
@@ -280,11 +296,28 @@ fun ArticleWebView(
                 webView.evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null)
                 if (fsChanged) lastFontScale = fs
                 if (lhChanged) lastLineHeight = lh
-                    // If WebView is already ready and a new initialScrollY is provided, apply it once
+                    // If WebView is ready and a desired scroll is available, perform a short restore sequence
                     val desired = initialScrollY ?: 0
-                    if (ready && desired > 0 && lastAppliedScroll != desired) {
-                        webView.post { webView.scrollTo(0, desired) }
-                        lastAppliedScroll = desired
+                    if (ready && desired > 0) {
+                        val current = webView.scrollY
+                        val isNewTarget = restoreTarget != desired
+                        val far = kotlin.math.abs(current - desired) > 12
+                        if (isNewTarget || (!restoreActive && far)) {
+                            restoreTarget = desired
+                            restoreActive = true
+                            val delays = longArrayOf(0, 100, 300, 800, 1600)
+                            fun step(i: Int) {
+                                if (restoreTarget != desired) { restoreActive = false; return }
+                                webView.scrollTo(0, desired)
+                                if (i >= delays.lastIndex) { restoreActive = false; return }
+                                webView.postDelayed({
+                                    val cur = webView.scrollY
+                                    val close = kotlin.math.abs(cur - desired) <= 12
+                                    if (close) { restoreActive = false } else { step(i + 1) }
+                                }, delays[i + 1])
+                            }
+                            webView.post { step(0) }
+                        }
                     }
                 if (webView.url != url) webView.loadUrl(url)
             } else {
