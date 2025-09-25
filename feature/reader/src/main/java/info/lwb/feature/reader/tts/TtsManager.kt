@@ -9,6 +9,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale
+import kotlin.math.min
 
 class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
@@ -18,16 +19,37 @@ class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
         tts = TextToSpeech(context.applicationContext) { status ->
             ready = status == TextToSpeech.SUCCESS
             if (ready) {
-                setLocale(locale)
-                preferOfflineVoice(locale)
+                val applied = setBestLocale(locale)
+                preferOfflineVoice(if (applied != null) applied else Locale.getDefault())
             }
             if (!cont.isCompleted) cont.resume(ready, onCancellation = null)
         }
     }
 
-    private fun setLocale(locale: Locale) {
-        val t = tts ?: return
-        try { t.language = locale } catch (_: Throwable) {}
+    /**
+     * Try to set the best available locale. Returns the locale actually applied, or null if none supported.
+     */
+    private fun setBestLocale(preferred: Locale): Locale? {
+        val t = tts ?: return null
+        fun apply(loc: Locale): Boolean {
+            return try {
+                val res = t.setLanguage(loc)
+                // setLanguage returns >= 0 when supported/available; < 0 when missing/not supported
+                res >= 0
+            } catch (_: Throwable) { false }
+        }
+        val candidates = buildList {
+            add(preferred)
+            add(Locale(preferred.language))
+            if (preferred.language != Locale.US.language) add(Locale.US)
+            if (preferred.language != Locale.UK.language) add(Locale.UK)
+            add(Locale.ENGLISH)
+            add(Locale.getDefault())
+        }
+        for (loc in candidates) {
+            if (apply(loc)) return loc
+        }
+        return null
     }
 
     private fun preferOfflineVoice(locale: Locale) {
@@ -46,15 +68,62 @@ class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
         } catch (_: Throwable) {}
     }
 
+    /**
+     * Speak text with automatic chunking to avoid engine limits (~4000 chars). Returns 0 if queued, -1 on error.
+     */
     fun speak(text: String, queue: Int = TextToSpeech.QUEUE_FLUSH): Int {
         val t = tts ?: return TextToSpeech.ERROR
         if (!ready) return TextToSpeech.ERROR
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            t.speak(text, queue, null, "lwb-tts")
-        } else {
-            @Suppress("DEPRECATION")
-            t.speak(text, queue, null)
+        val chunks = chunkText(text)
+        var result = TextToSpeech.SUCCESS
+        var first = true
+        for ((i, part) in chunks.withIndex()) {
+            val qMode = if (first) queue else TextToSpeech.QUEUE_ADD
+            val utteranceId = "lwb-tts-" + System.currentTimeMillis().toString() + "-" + i
+            val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                t.speak(part, qMode, null, utteranceId)
+            } else {
+                @Suppress("DEPRECATION")
+                t.speak(part, qMode, null)
+            }
+            if (r == TextToSpeech.ERROR) result = TextToSpeech.ERROR
+            first = false
         }
+        return result
+    }
+
+    private fun chunkText(text: String, maxLen: Int = 3900): List<String> {
+        if (text.length <= maxLen) return listOf(text)
+        val out = mutableListOf<String>()
+        // Split by paragraphs first
+        val paragraphs = text.split("\n\n").flatMap { it.split("\r\n\r\n") }
+        for (para in paragraphs) {
+            var p = para.trim()
+            if (p.isEmpty()) continue
+            while (p.length > maxLen) {
+                // try to cut at sentence boundary within window
+                val window = p.substring(0, min(maxLen, p.length))
+                val lastDot = window.lastIndexOf('.')
+                val lastQ = window.lastIndexOf('?')
+                val lastEx = window.lastIndexOf('!')
+                val cutAt = listOf(lastDot, lastQ, lastEx).maxOrNull() ?: -1
+                val idx = if (cutAt >= 100) cutAt + 1 else window.lastIndexOf(' ')
+                val cut = if (idx in 1 until window.length) idx else window.length
+                out.add(p.substring(0, cut).trim())
+                p = p.substring(cut).trimStart()
+            }
+            if (p.isNotEmpty()) out.add(p)
+        }
+        // Fallback: if we somehow produced no chunks, chunk hard
+        if (out.isEmpty()) {
+            var i = 0
+            while (i < text.length) {
+                val end = min(i + maxLen, text.length)
+                out.add(text.substring(i, end))
+                i = end
+            }
+        }
+        return out
     }
 
     fun stop() { tts?.stop() }

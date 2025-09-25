@@ -23,6 +23,12 @@ class ReaderTtsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun speak(text: String) { viewModelScope.launch(Dispatchers.IO) { tts.speak(text) } }
+    fun speakWithResult(text: String, onResult: (Int) -> Unit) {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { tts.speak(text) }
+            onResult(result)
+        }
+    }
     fun stop() { tts.stop() }
 
     override fun onCleared() { super.onCleared(); tts.shutdown() }

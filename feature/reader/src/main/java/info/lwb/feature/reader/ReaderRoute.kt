@@ -162,22 +162,31 @@ fun ReaderByIdRoute(
                                     val wv = webRef
                                     if (wv != null) {
                                         ttsVm.ensureReady { ok ->
-                                            if (ok) {
-                                                try {
-                                                    wv.evaluateJavascript("(window.lwbGetArticleText && window.lwbGetArticleText())||''") { res ->
-                                                        val text = res?.let { runCatching {
-                                                            // Result is a JSON-encoded string from WebView; parse safely
-                                                            org.json.JSONArray("[" + it + "]").getString(0)
-                                                        }.getOrNull() }?.replace("\r", "") ?: ""
-                                                        if (text.isBlank()) {
-                                                            Toast.makeText(ctx, "Nothing to read on this page", Toast.LENGTH_SHORT).show()
-                                                        } else {
-                                                            speaking = true
-                                                            ttsVm.speak(text)
+                                            if (!ok) {
+                                                Toast.makeText(ctx, "Text-to-speech not ready", Toast.LENGTH_SHORT).show()
+                                                return@ensureReady
+                                            }
+                                            try {
+                                                wv.evaluateJavascript("(window.lwbGetArticleText && window.lwbGetArticleText())||''") { res ->
+                                                    val text = res?.let { r ->
+                                                        // Try robust JSON parsing first; fallback to simple unquote
+                                                        runCatching { org.json.JSONArray("[" + r + "]").getString(0) }.getOrElse {
+                                                            r.trim('"').replace("\\n", "\n")
+                                                        }
+                                                    }?.replace("\r", "")?.trim() ?: ""
+                                                    if (text.isBlank()) {
+                                                        Toast.makeText(ctx, "Nothing to read on this page", Toast.LENGTH_SHORT).show()
+                                                    } else {
+                                                        speaking = true
+                                                        ttsVm.speakWithResult(text) { code ->
+                                                            if (code < 0) {
+                                                                speaking = false
+                                                                Toast.makeText(ctx, "TTS error (code $code)", Toast.LENGTH_SHORT).show()
+                                                            }
                                                         }
                                                     }
-                                                } catch (_: Throwable) { Toast.makeText(ctx, "Could not extract text", Toast.LENGTH_SHORT).show() }
-                                            }
+                                                }
+                                            } catch (_: Throwable) { Toast.makeText(ctx, "Could not extract text", Toast.LENGTH_SHORT).show() }
                                         }
                                     }
                                 } else {
