@@ -27,7 +27,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -92,27 +93,40 @@ fun ReaderAppearanceSheet(
                     Text("Reader appearance", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
                     Text("Font size", style = MaterialTheme.typography.labelMedium)
-                    Slider(
-                        value = state.fontScale.toFloat(),
-                        onValueChange = { state.onFontScale(it.toDouble().coerceIn(0.8, 1.6)) },
-                        valueRange = 0.8f..1.6f,
+                    Spacer(Modifier.height(6.dp))
+                    FontOptionRow(
+                        options = listOf(0.9, 1.0, 1.1, 1.2, 1.3),
+                        current = state.fontScale,
+                        onSelect = { state.onFontScale(it) },
+                        render = { v ->
+                            val label = when (v) {
+                                0.9 -> "A-"
+                                1.0 -> "A"
+                                1.1 -> "A+"
+                                1.2 -> "A++"
+                                else -> "A+++"
+                            }
+                            Text(label)
+                        }
                     )
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Small")
-                        Text("Large")
-                    }
                     Spacer(Modifier.height(12.dp))
 
                     Text("Line height", style = MaterialTheme.typography.labelMedium)
-                    Slider(
-                        value = state.lineHeight.toFloat(),
-                        onValueChange = { state.onLineHeight(it.toDouble().coerceIn(1.0, 2.0)) },
-                        valueRange = 1.0f..2.0f,
+                    Spacer(Modifier.height(6.dp))
+                    FontOptionRow(
+                        options = listOf(1.2, 1.4, 1.6, 1.8),
+                        current = state.lineHeight,
+                        onSelect = { state.onLineHeight(it) },
+                        render = { v ->
+                            val label = when (v) {
+                                1.2 -> "Tight"
+                                1.4 -> "Normal"
+                                1.6 -> "Relaxed"
+                                else -> "Loose"
+                            }
+                            Text(label)
+                        }
                     )
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Tight")
-                        Text("Relaxed")
-                    }
 
                     Spacer(Modifier.height(12.dp))
                     Text("Background", style = MaterialTheme.typography.labelMedium)
@@ -174,5 +188,32 @@ private fun BackgroundSwatch(name: String, color: Color, selected: Boolean, onCl
         Spacer(Modifier.height(4.dp))
         val style = if (selected) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall
         Text(name, style = style)
+    }
+}
+
+@Composable
+private fun <T : Comparable<T>> FontOptionRow(
+    options: List<T>,
+    current: T,
+    onSelect: (T) -> Unit,
+    render: @Composable (T) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { v ->
+            val selected = v == current
+            Surface(
+                tonalElevation = if (selected) 3.dp else 0.dp,
+                shape = RoundedCornerShape(16.dp),
+                border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .clickable { onSelect(v) }
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    render(v)
+                }
+            }
+        }
     }
 }
