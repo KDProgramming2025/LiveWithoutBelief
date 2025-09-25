@@ -58,6 +58,7 @@ fun ArticleWebView(
         v == null -> "undefined"
         else -> String.format(Locale.US, "%.1f", v)
     }
+    fun jsQuote(s: String): String = try { JSONObject.quote(s) } catch (_: Throwable) { "''" }
     Box(modifier = modifier) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
@@ -77,9 +78,6 @@ fun ArticleWebView(
                     if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
                         WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, false)
                     }
-                    if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-                        WebSettingsCompat.setForceDark(settings, WebSettingsCompat.FORCE_DARK_OFF)
-                    }
                     // Also set platform forceDark flag explicitly on Android Q+ for extra assurance
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                         this.settings.forceDark = WebSettings.FORCE_DARK_OFF
@@ -89,27 +87,30 @@ fun ArticleWebView(
                 try {
                     val bgStr = backgroundColor
                     if (!bgStr.isNullOrBlank()) this.setBackgroundColor(Color.parseColor(bgStr))
-                } catch (_: Throwable) { this.setBackgroundColor(Color.WHITE) }
-                isHorizontalScrollBarEnabled = false
-                overScrollMode = View.OVER_SCROLL_NEVER
+                } catch (_: Throwable) { }
+
+                // Report scroll changes and debounce anchor capture
                 var lastAnchorUpdateTs = 0L
-                setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
-                    if (scrollX != 0) v.scrollTo(0, scrollY)
-                    if (!restoreActive) {
-                        onScrollChanged?.invoke(scrollY)
-                        // Debounce anchor capture to ~200ms
-                        val now = System.currentTimeMillis()
-                        if (now - lastAnchorUpdateTs > 200) {
-                            lastAnchorUpdateTs = now
-                            try { this@apply.evaluateJavascript("(window.lwbGetViewportAnchor && window.lwbGetViewportAnchor())||''") { res ->
+                this.viewTreeObserver.addOnScrollChangedListener {
+                    try {
+                        if (!restoreActive) {
+                            onScrollChanged?.invoke(this.scrollY)
+                            val now = System.currentTimeMillis()
+                            if (now - lastAnchorUpdateTs > 200) {
+                                lastAnchorUpdateTs = now
                                 try {
-                                    val anchor = res?.trim('"')?.replace("\\n", "") ?: ""
-                                    if (anchor.isNotBlank()) onAnchorChanged?.invoke(anchor)
+                                    this@apply.evaluateJavascript("(window.lwbGetViewportAnchor && window.lwbGetViewportAnchor())||''") { res ->
+                                        try {
+                                            val anchor = res?.trim('"')?.replace("\\n", "") ?: ""
+                                            if (anchor.isNotBlank()) onAnchorChanged?.invoke(anchor)
+                                        } catch (_: Throwable) { }
+                                    }
                                 } catch (_: Throwable) { }
-                            } } catch (_: Throwable) { }
+                            }
                         }
-                    }
+                    } catch (_: Throwable) { }
                 }
+                
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
@@ -293,17 +294,14 @@ fun ArticleWebView(
                 try {
                     // NOP: captured ref updated by recreating client on recomposition; for safety we also refresh link
                 } catch (_: Throwable) { }
-                // Refresh external link with cache buster to pull latest CSS via intercept
-                // Load helpers and refresh theme link via helper
+                // Refresh external link with cache buster to pull latest CSS via intercept.
+                // Load helpers, capture current anchor, refresh theme link, then restore anchor to avoid scroll jumps.
                 val domHelpers = try { loadAssetText(webView.context, "webview/dom_helpers.js") } catch (_: Throwable) { "" }
                 if (domHelpers.isNotBlank()) {
                     webView.evaluateJavascript(domHelpers, null)
                 }
                 webView.evaluateJavascript("lwbEnsureLightMeta()", null)
-                webView.evaluateJavascript("lwbRefreshThemeLink()", null)
-                webView.evaluateJavascript("lwbEnsureBgOverride()", null)
-                webView.evaluateJavascript("lwbDisableColorSchemeDarkening()", null)
-                // Keep inline helper path for immediate application if external blocked momentarily
+                // Keep inline helper path available for immediate application if external blocked momentarily
                 fun loadAssetText(ctx: android.content.Context, path: String): String {
                     return try {
                         ctx.assets.open(path).use { input ->
@@ -312,22 +310,37 @@ fun ArticleWebView(
                     } catch (_: Throwable) { "" }
                 }
                 val themeJsCode = try { loadAssetText(webView.context, "webview/inject_theme.js") } catch (_: Throwable) { "" }
-                if (themeJsCode.isNotBlank()) {
-                    webView.evaluateJavascript(themeJsCode, null)
+                webView.evaluateJavascript("(window.lwbGetViewportAnchor && window.lwbGetViewportAnchor())||''") { res ->
+                    val capturedAnchor = try { res?.trim('"') ?: "" } catch (_: Throwable) { "" }
+                    // Refresh theme link and helpers
+                    webView.evaluateJavascript("lwbRefreshThemeLink()", null)
+                    webView.evaluateJavascript("lwbEnsureBgOverride()", null)
+                    webView.evaluateJavascript("lwbDisableColorSchemeDarkening()", null)
+                    if (themeJsCode.isNotBlank()) {
+                        webView.evaluateJavascript(themeJsCode, null)
+                    }
+                    if (!css.isNullOrBlank()) {
+                        val b64 = Base64.encodeToString(css.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                        webView.evaluateJavascript("window.lwbApplyThemeCss('" + b64 + "')", null)
+                    }
+                    // Apply runtime variables on updates (single pass)
+                    val fs = fontScale
+                    val lh = lineHeight
+                    val bg = backgroundColor ?: ""
+                    val fsArg = numArg(fs)
+                    val lhArg = numArg(lh)
+                    webView.evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null)
+                    lastFontScale = fs
+                    lastLineHeight = lh
+                    // Restore to the same content anchor if we captured one
+                    if (capturedAnchor.isNotBlank()) {
+                        restoreActive = true
+                        webView.post {
+                            webView.evaluateJavascript("(window.lwbScrollToAnchor && window.lwbScrollToAnchor(" + jsQuote(capturedAnchor) + "))", null)
+                        }
+                        try { webView.postDelayed({ restoreActive = false }, 250) } catch (_: Throwable) { restoreActive = false }
+                    }
                 }
-                if (!css.isNullOrBlank()) {
-                    val b64 = Base64.encodeToString(css.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-                    webView.evaluateJavascript("window.lwbApplyThemeCss('" + b64 + "')", null)
-                }
-                // Apply runtime variables on updates (single pass)
-                val fs = fontScale
-                val lh = lineHeight
-                val bg = backgroundColor ?: ""
-                val fsArg = numArg(fs)
-                val lhArg = numArg(lh)
-                webView.evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null)
-                lastFontScale = fs
-                lastLineHeight = lh
                     // If WebView is ready and a desired scroll is available, perform a short restore sequence
                     val desired = initialScrollY ?: 0
                     if (ready && desired > 0) {
