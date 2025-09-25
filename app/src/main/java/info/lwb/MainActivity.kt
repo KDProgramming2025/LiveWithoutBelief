@@ -193,10 +193,18 @@ private fun appNavHost(navController: NavHostController) {
                 }
             }
         }
-    composable(Destinations.READER) { info.lwb.feature.reader.ReaderByIdRoute(articleId = "sample-1") }
+    composable(Destinations.READER) {
+            info.lwb.feature.reader.ReaderByIdRoute(
+                articleId = "sample-1",
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
         composable(Destinations.READER_BY_ID) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("articleId") ?: return@composable
-            info.lwb.feature.reader.ReaderByIdRoute(articleId = id)
+            info.lwb.feature.reader.ReaderByIdRoute(
+                articleId = id,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
         composable(Destinations.SEARCH) { SearchRoute() }
         composable(Destinations.BOOKMARKS) { BookmarksRoute() }

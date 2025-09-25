@@ -1,2 +1,2 @@
-sudo systemctl daemon-reload
+systemctl status --no-pager lwb-server
 

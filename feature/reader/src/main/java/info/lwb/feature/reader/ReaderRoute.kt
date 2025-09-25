@@ -43,7 +43,11 @@ import kotlinx.coroutines.flow.first
  * Route that loads the article content by id from the repository and forwards to ReaderScreen.
  */
 @Composable
-fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
+fun ReaderByIdRoute(
+    articleId: String,
+    onNavigateBack: (() -> Unit)? = null,
+    vm: ReaderViewModel = hiltViewModel(),
+) {
     // For MVP, fetch content using GetArticleContentUseCase via the feature.viewmodels.ReaderViewModel
     val svcVm: info.lwb.feature.reader.viewmodels.ReaderViewModel = hiltViewModel()
     androidx.compose.runtime.LaunchedEffect(articleId) { svcVm.loadArticleContent(articleId) }
@@ -164,7 +168,8 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
                     confirmButton = {
                         androidx.compose.material3.TextButton(onClick = {
                             confirmExit = false
-                            backDispatcher?.onBackPressed()
+                            // Prefer explicit navigation callback to avoid BackHandler loop
+                            onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
                         }) { androidx.compose.material3.Text("Exit") }
                     },
                     dismissButton = {
