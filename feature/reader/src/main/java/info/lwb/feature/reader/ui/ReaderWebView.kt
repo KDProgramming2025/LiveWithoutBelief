@@ -48,6 +48,7 @@ fun ArticleWebView(
     // Track last applied values so we don't re-apply typography when only background changes
     var lastFontScale by remember(url, htmlBody) { mutableStateOf<Float?>(null) }
     var lastLineHeight by remember(url, htmlBody) { mutableStateOf<Float?>(null) }
+        var lastAppliedScroll by remember(url, htmlBody) { mutableStateOf<Int?>(null) }
     Box(modifier = modifier) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
@@ -279,6 +280,12 @@ fun ArticleWebView(
                 webView.evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null)
                 if (fsChanged) lastFontScale = fs
                 if (lhChanged) lastLineHeight = lh
+                    // If WebView is already ready and a new initialScrollY is provided, apply it once
+                    val desired = initialScrollY ?: 0
+                    if (ready && desired > 0 && lastAppliedScroll != desired) {
+                        webView.post { webView.scrollTo(0, desired) }
+                        lastAppliedScroll = desired
+                    }
                 if (webView.url != url) webView.loadUrl(url)
             } else {
                 val css = injectedCss

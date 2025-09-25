@@ -16,9 +16,9 @@ import java.io.IOException
 private val Context.scrollStore by preferencesDataStore(name = "reader_scroll")
 
 class ScrollRepository(private val context: Context) {
-    private fun key(articleId: String) = intPreferencesKey("scroll_${'$'}articleId")
-    private fun keyIndex(articleId: String) = intPreferencesKey("list_index_${'$'}articleId")
-    private fun keyOffset(articleId: String) = intPreferencesKey("list_offset_${'$'}articleId")
+    private fun key(articleId: String) = intPreferencesKey("scroll_${articleId}")
+    private fun keyIndex(articleId: String) = intPreferencesKey("list_index_${articleId}")
+    private fun keyOffset(articleId: String) = intPreferencesKey("list_offset_${articleId}")
 
     fun observe(articleId: String): Flow<Int> = context.scrollStore.data
         .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
