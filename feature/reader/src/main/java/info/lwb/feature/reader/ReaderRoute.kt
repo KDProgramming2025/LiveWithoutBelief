@@ -36,6 +36,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import kotlinx.coroutines.flow.first
+import androidx.lifecycle.viewmodel.compose.viewModel
+import info.lwb.feature.reader.tts.ReaderTtsViewModel
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 
 // Inline html-based ReaderRoute has been removed; use ReaderByIdRoute(articleId) exclusively.
 
@@ -85,6 +89,11 @@ fun ReaderByIdRoute(
         androidx.compose.runtime.LaunchedEffect(resolvedUrl) { showFabTemporarily() }
         androidx.compose.runtime.DisposableEffect(Unit) { onDispose { hideJob?.cancel() } }
         var showAppearance by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val ttsVm: ReaderTtsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    var webRef by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<android.webkit.WebView?>(null) }
+    var pageReady by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var speaking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        val ctx = LocalContext.current
         androidx.activity.compose.BackHandler(enabled = true) {
             when {
                 showAppearance -> showAppearance = false
@@ -121,6 +130,8 @@ fun ReaderByIdRoute(
                         scope.launch { scrollVm.save(articleId, y) }
                     },
                     onAnchorChanged = { a -> scope.launch { scrollVm.saveAnchor(articleId, a) } }
+                    , onWebViewReady = { wv -> webRef = wv }
+                    , onPageReady = { pageReady = true }
                 )
             }
             if (fabVisible) {
@@ -140,7 +151,39 @@ fun ReaderByIdRoute(
                         ActionRailItem(
                             icon = androidx.compose.material.icons.Icons.Filled.PlayArrow,
                             label = "Listen",
-                            onClick = { showFabTemporarily() }
+                            onClick = {
+                                showFabTemporarily()
+                                if (!speaking) {
+                                    if (webRef == null || !pageReady) {
+                                        Toast.makeText(ctx, "Page is still loading", Toast.LENGTH_SHORT).show()
+                                        return@ActionRailItem
+                                    }
+                                    // Get article text via JS and speak
+                                    val wv = webRef
+                                    if (wv != null) {
+                                        ttsVm.ensureReady { ok ->
+                                            if (ok) {
+                                                try {
+                                                    wv.evaluateJavascript("(window.lwbGetArticleText && window.lwbGetArticleText())||''") { res ->
+                                                        val text = res?.let { runCatching {
+                                                            // Result is a JSON-encoded string from WebView; parse safely
+                                                            org.json.JSONArray("[" + it + "]").getString(0)
+                                                        }.getOrNull() }?.replace("\r", "") ?: ""
+                                                        if (text.isBlank()) {
+                                                            Toast.makeText(ctx, "Nothing to read on this page", Toast.LENGTH_SHORT).show()
+                                                        } else {
+                                                            speaking = true
+                                                            ttsVm.speak(text)
+                                                        }
+                                                    }
+                                                } catch (_: Throwable) { Toast.makeText(ctx, "Could not extract text", Toast.LENGTH_SHORT).show() }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    ttsVm.stop(); speaking = false
+                                }
+                            }
                         ),
                     ),
                     mainIcon = androidx.compose.material.icons.Icons.Filled.Settings,
