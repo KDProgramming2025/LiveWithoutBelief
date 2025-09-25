@@ -32,6 +32,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -61,6 +64,7 @@ import info.lwb.feature.reader.ui.ActionRailItem
 import info.lwb.feature.reader.ui.YouTubeBlock
 import info.lwb.feature.reader.ui.AudioBlock
 import info.lwb.feature.reader.ui.ArticleWebView
+import kotlinx.coroutines.flow.first
 
 // Data holder for reader settings provided by caller (ViewModel layer wires flows & mutations)
 data class ReaderSettingsState(
@@ -90,6 +94,7 @@ fun ReaderScreen(
     val scope = rememberCoroutineScope()
     var hideJob by remember { mutableStateOf<Job?>(null) }
     var showAppearance by remember { mutableStateOf(false) }
+    var confirmExit by remember { mutableStateOf(false) }
     fun showFabTemporarily() {
         fabVisible = true
         hideJob?.cancel()
@@ -100,6 +105,14 @@ fun ReaderScreen(
     }
     LaunchedEffect(Unit) { showFabTemporarily() }
     DisposableEffect(Unit) { onDispose { hideJob?.cancel() } }
+
+    BackHandler(enabled = true) {
+        when {
+            showAppearance -> showAppearance = false
+            fabVisible -> fabVisible = false
+            else -> confirmExit = true
+        }
+    }
 
     val blocks = remember(htmlBody) { parseHtmlToBlocks(htmlBody) }
     var searchQuery by remember { mutableStateOf("") }
@@ -182,6 +195,17 @@ fun ReaderScreen(
                 val pageBlocks =
                     remember(currentPageIndex, pageList) { pageList.getOrNull(currentPageIndex)?.blocks ?: emptyList() }
                 val listState = rememberLazyListState()
+                // Restore persisted list position
+                val scrollVm: ScrollViewModel = hiltViewModel()
+                LaunchedEffect(articleTitle) {
+                    val index = try { scrollVm.observeListIndex(articleTitle).first() } catch (_: Throwable) { 0 }
+                    val offset = try { scrollVm.observeListOffset(articleTitle).first() } catch (_: Throwable) { 0 }
+                    if (index > 0 || offset > 0) listState.scrollToItem(index, offset)
+                }
+                // Save on scroll changes
+                LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+                    scrollVm.saveList(articleTitle, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+                }
                 // Auto-scroll to current hit if it's on this page
                 LaunchedEffect(currentSearchIndex, searchHits, currentPageIndex) {
                     val hit = searchHits.getOrNull(currentSearchIndex)
@@ -281,6 +305,15 @@ fun ReaderScreen(
                 }
             } else {
                 val listState = rememberLazyListState()
+                val scrollVm: ScrollViewModel = hiltViewModel()
+                LaunchedEffect(articleTitle) {
+                    val index = try { scrollVm.observeListIndex(articleTitle).first() } catch (_: Throwable) { 0 }
+                    val offset = try { scrollVm.observeListOffset(articleTitle).first() } catch (_: Throwable) { 0 }
+                    if (index > 0 || offset > 0) listState.scrollToItem(index, offset)
+                }
+                LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+                    scrollVm.saveList(articleTitle, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+                }
                 LaunchedEffect(currentSearchIndex, searchHits) {
                     val hit = searchHits.getOrNull(currentSearchIndex)
                     if (hit != null) listState.animateScrollToItem(hit.blockIndex)
@@ -371,6 +404,23 @@ fun ReaderScreen(
                 visible = showAppearance,
                 state = appearance,
                 onDismiss = { showAppearance = false },
+            )
+        }
+        if (confirmExit) {
+            val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+            AlertDialog(
+                onDismissRequest = { confirmExit = false },
+                title = { Text("Leave reader?") },
+                text = { Text("Are you sure you want to exit the reader?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmExit = false
+                        backDispatcher?.onBackPressed()
+                    }) { Text("Exit") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmExit = false }) { Text("Cancel") }
+                }
             )
         }
     }

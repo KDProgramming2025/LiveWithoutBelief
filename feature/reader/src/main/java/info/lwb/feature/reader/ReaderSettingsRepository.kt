@@ -23,10 +23,12 @@ private val Context.dataStore by preferencesDataStore(name = DS_NAME)
 
 class ReaderSettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
     enum class ReaderBackground(val key: String) {
-        System("system"),
         Sepia("sepia"),
         Paper("paper"),
         Gray("gray"),
+        Slate("slate"),
+        Charcoal("charcoal"),
+        Olive("olive"),
         Night("night"),
     }
 
@@ -51,8 +53,12 @@ class ReaderSettingsRepository @Inject constructor(@ApplicationContext private v
                 ReaderBackground.Sepia.key -> ReaderBackground.Sepia
                 ReaderBackground.Paper.key -> ReaderBackground.Paper
                 ReaderBackground.Gray.key -> ReaderBackground.Gray
+                ReaderBackground.Slate.key -> ReaderBackground.Slate
+                ReaderBackground.Charcoal.key -> ReaderBackground.Charcoal
+                ReaderBackground.Olive.key -> ReaderBackground.Olive
                 ReaderBackground.Night.key -> ReaderBackground.Night
-                else -> ReaderBackground.System
+                // Legacy or unset (including old 'system'): default to Paper
+                else -> ReaderBackground.Paper
             }
         }
 

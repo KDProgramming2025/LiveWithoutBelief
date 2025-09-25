@@ -40,6 +40,8 @@ fun ArticleWebView(
     backgroundColor: String? = null,
     modifier: Modifier = Modifier,
     onTap: (() -> Unit)? = null,
+    onScrollChanged: ((scrollY: Int) -> Unit)? = null,
+    initialScrollY: Int? = null,
 ) {
     var ready by remember(url, htmlBody) { mutableStateOf(false) }
     var firstLoad by remember(url, htmlBody) { mutableStateOf(true) }
@@ -75,7 +77,10 @@ fun ArticleWebView(
                 } catch (_: Throwable) { this.setBackgroundColor(Color.WHITE) }
                 isHorizontalScrollBarEnabled = false
                 overScrollMode = View.OVER_SCROLL_NEVER
-                setOnScrollChangeListener { v, scrollX, scrollY, _, _ -> if (scrollX != 0) v.scrollTo(0, scrollY) }
+                setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
+                    if (scrollX != 0) v.scrollTo(0, scrollY)
+                    onScrollChanged?.invoke(scrollY)
+                }
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
@@ -203,6 +208,11 @@ fun ArticleWebView(
                                 ready = true
                                 this@apply.alpha = 1f
                                 firstLoad = false
+                                // Restore scroll position after first style pass if provided
+                                try {
+                                    val target = initialScrollY ?: 0
+                                    if (target > 0) this@apply.post { this@apply.scrollTo(0, target) }
+                                } catch (_: Throwable) { }
                             }
                             if (fsChanged) lastFontScale = fs
                             if (lhChanged) lastLineHeight = lh

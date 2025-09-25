@@ -32,16 +32,19 @@ video::-webkit-media-controls-enclosure{overflow:hidden}
 	display:block;
 	padding:10px 14px;
 	border-radius:8px;
-	border:1px solid #ddd;
-	background:linear-gradient(#fafafa,#f0f0f0);
-	color:#111;
-	font-weight:600;
+	border:1px solid #FF0000;
+	background:#FF0000; /* YouTube red */
+	color:#FFFFFF;
+	font-weight:700;
 	cursor:pointer;
+	text-align:center;
 }
+.media__item.youtube .yt-deeplink .yt-open-btn:hover{filter:brightness(0.95)}
+.media__item.youtube .yt-deeplink .yt-open-btn:active{filter:brightness(0.9)}
 @media (prefers-color-scheme: dark){
 	.media__item.youtube .yt-deeplink .yt-open-btn{
-		border-color:#333;
-		background:linear-gradient(#1a1a1a,#111);
-		color:#fff;
+		border-color:#FF0000;
+		background:#FF0000;
+		color:#FFFFFF;
 	}
 }

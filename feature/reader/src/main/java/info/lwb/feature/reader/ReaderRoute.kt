@@ -32,53 +32,12 @@ import info.lwb.feature.reader.ui.ArticleWebView
 import info.lwb.feature.reader.ui.readerPalette
 import info.lwb.feature.reader.ui.themeCssAssetPath
 import info.lwb.feature.reader.ui.loadAssetText
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import kotlinx.coroutines.flow.first
 
-/**
- * Entry point composable for the Reader feature wiring the ViewModel (Hilt) to the UI layer.
- * For now it loads a temporary hard-coded sample article until ingestion pipeline supplies real data.
- */
-@Composable
-fun ReaderRoute(
-    articleId: String = "sample-1",
-    htmlBody: String = SAMPLE_HTML,
-    vm: ReaderViewModel = hiltViewModel(),
-) {
-    // Load article only once per id change
-    androidx.compose.runtime.LaunchedEffect(articleId, htmlBody) {
-        vm.loadArticle(articleId, htmlBody)
-    }
-    val ui by vm.uiState.collectAsState()
-    val settingsState = ReaderSettingsState(
-        fontScale = ui.fontScale,
-        lineHeight = ui.lineHeight,
-        onFontScaleChange = vm::onFontScaleChange,
-        onLineHeightChange = vm::onLineHeightChange,
-    )
-    val appearance = AppearanceState(
-        fontScale = ui.fontScale,
-        lineHeight = ui.lineHeight,
-        background = ui.background,
-        onFontScale = vm::onFontScaleChange,
-        onLineHeight = vm::onLineHeightChange,
-        onBackground = vm::onBackgroundChange,
-    )
-    val palette = readerPalette(ui.background)
-    val injectedCss = run {
-        val ctx = androidx.compose.ui.platform.LocalContext.current
-        val path = themeCssAssetPath(palette)
-        try { loadAssetText(ctx, path) } catch (_: Throwable) { "" }
-    }
-    ReaderScreen(
-        articleTitle = ui.articleId.ifBlank { "Sample Article" },
-        htmlBody = htmlBody,
-        settings = settingsState,
-        appearance = appearance,
-        pages = ui.pages,
-        currentPageIndex = ui.currentPageIndex,
-        onPageChange = vm::onPageChange,
-        injectedCss = injectedCss,
-    )
-}
+// Inline html-based ReaderRoute has been removed; use ReaderByIdRoute(articleId) exclusively.
 
 /**
  * Route that loads the article content by id from the repository and forwards to ReaderScreen.
@@ -110,6 +69,7 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
         var fabVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
         val scope = androidx.compose.runtime.rememberCoroutineScope()
         var hideJob by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<kotlinx.coroutines.Job?>(null) }
+        var confirmExit by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
         fun showFabTemporarily() {
             fabVisible = true
             hideJob?.cancel()
@@ -121,6 +81,19 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
         androidx.compose.runtime.LaunchedEffect(resolvedUrl) { showFabTemporarily() }
         androidx.compose.runtime.DisposableEffect(Unit) { onDispose { hideJob?.cancel() } }
         var showAppearance by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        androidx.activity.compose.BackHandler(enabled = true) {
+            when {
+                showAppearance -> showAppearance = false
+                fabVisible -> fabVisible = false
+                else -> confirmExit = true
+            }
+        }
+        val scrollVm: ScrollViewModel = hiltViewModel()
+        var initialScroll by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+        // Load initial scroll value once
+        androidx.compose.runtime.LaunchedEffect(articleId) {
+            initialScroll = try { scrollVm.observe(articleId).first() } catch (_: Throwable) { 0 }
+        }
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             val css = run {
                 val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -135,7 +108,11 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
                     lineHeight = ui.lineHeight.toFloat(),
                     backgroundColor = readerPalette(ui.background).background,
                     modifier = Modifier.padding(padding),
-                    onTap = { showFabTemporarily() }
+                    onTap = { showFabTemporarily() },
+                    initialScrollY = initialScroll,
+                    onScrollChanged = { y ->
+                        scope.launch { scrollVm.save(articleId, y) }
+                    }
                 )
             }
             if (fabVisible) {
@@ -178,6 +155,23 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
                     onDismiss = { showAppearance = false },
                 )
             }
+            if (confirmExit) {
+                val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { confirmExit = false },
+                    title = { androidx.compose.material3.Text("Leave reader?") },
+                    text = { androidx.compose.material3.Text("Are you sure you want to exit the reader?") },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(onClick = {
+                            confirmExit = false
+                            backDispatcher?.onBackPressed()
+                        }) { androidx.compose.material3.Text("Exit") }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = { confirmExit = false }) { androidx.compose.material3.Text("Cancel") }
+                    }
+                )
+            }
         }
     } else {
         // If URL cannot be resolved, show a minimal load/error placeholder without attempting inline fallback.
@@ -197,12 +191,3 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
 internal class ReaderEnv @javax.inject.Inject constructor(
     @javax.inject.Named("apiBaseUrl") val apiBaseUrl: String,
 ) : androidx.lifecycle.ViewModel()
-
-private val SAMPLE_HTML = """
-    <h1>Sample Article Heading</h1>
-    <p>This is a sample paragraph used for initial reader validation before the ingestion pipeline is active.</p>
-    <p>Adjust font size and line spacing using the controls below. Use search to highlight terms like sample.</p>
-    <img src="https://placekitten.com/800/400" alt="Kitten" />
-    <audio src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
-    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
-""".trimIndent()

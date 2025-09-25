@@ -33,7 +33,7 @@ class ReaderViewModel @Inject constructor(
     val background = settingsRepository.background.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        ReaderSettingsRepository.ReaderBackground.System,
+        ReaderSettingsRepository.ReaderBackground.Paper,
     )
 
     private val pagesState = combine(blocksState, fontScale) { blocks, scale ->
@@ -111,7 +111,7 @@ data class ReaderUiState(
             currentPageIndex = 0,
             fontScale = 1.0,
             lineHeight = 1.2,
-            background = ReaderSettingsRepository.ReaderBackground.System,
+            background = ReaderSettingsRepository.ReaderBackground.Paper,
         )
     }
 }

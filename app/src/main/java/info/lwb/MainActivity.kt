@@ -47,7 +47,6 @@ import info.lwb.auth.AuthViewModel
 import info.lwb.auth.AltchaTokenProvider
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.home.HomeRoute
-import info.lwb.feature.reader.ReaderRoute
 import info.lwb.feature.search.SearchRoute
 import javax.inject.Inject
 import info.lwb.feature.settings.SettingsRoute
@@ -194,7 +193,7 @@ private fun appNavHost(navController: NavHostController) {
                 }
             }
         }
-        composable(Destinations.READER) { ReaderRoute() }
+    composable(Destinations.READER) { info.lwb.feature.reader.ReaderByIdRoute(articleId = "sample-1") }
         composable(Destinations.READER_BY_ID) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("articleId") ?: return@composable
             info.lwb.feature.reader.ReaderByIdRoute(articleId = id)

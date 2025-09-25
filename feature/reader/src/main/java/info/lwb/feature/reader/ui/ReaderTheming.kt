@@ -3,7 +3,6 @@
  */
 package info.lwb.feature.reader.ui
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -28,28 +27,14 @@ val LocalReaderPalette = staticCompositionLocalOf { ReaderPalette("system", "#FF
 /** Map settings background + dark mode to a concrete palette. */
 @Composable
 fun readerPalette(bg: ReaderSettingsRepository.ReaderBackground): ReaderPalette {
-    val dark = isSystemInDarkTheme()
+    // Always use the light variants regardless of system theme, except for Night which is intentionally dark.
     return when (bg) {
-        ReaderSettingsRepository.ReaderBackground.System -> if (dark) {
-            ReaderPalette("system-dark", "#121212", "#FAFAFA", "#BBBBBB", "#222222")
-        } else {
-            ReaderPalette("system-light", "#FFFFFF", "#111111", "#555555", "#EEEEEE")
-        }
-        ReaderSettingsRepository.ReaderBackground.Sepia -> if (dark) {
-            ReaderPalette("sepia-dark", "#2E261C", "#FAE8C8", "#B79C74", "#3A3024")
-        } else {
-            ReaderPalette("sepia-light", "#F5ECD9", "#3A2F22", "#6E5A43", "#E6D7C0")
-        }
-        ReaderSettingsRepository.ReaderBackground.Paper -> if (dark) {
-            ReaderPalette("paper-dark", "#1E1E1A", "#EEEDE8", "#B5B5AE", "#2A2A26")
-        } else {
-            ReaderPalette("paper-light", "#FCFCF7", "#21211C", "#5E5E57", "#E8E8E0")
-        }
-        ReaderSettingsRepository.ReaderBackground.Gray -> if (dark) {
-            ReaderPalette("gray-dark", "#202124", "#F1F3F4", "#B8B9BA", "#2C2D30")
-        } else {
-            ReaderPalette("gray-light", "#F1F3F4", "#202124", "#5F6368", "#E0E2E3")
-        }
+        ReaderSettingsRepository.ReaderBackground.Sepia -> ReaderPalette("sepia-light", "#F5ECD9", "#3A2F22", "#6E5A43", "#E6D7C0")
+        ReaderSettingsRepository.ReaderBackground.Paper -> ReaderPalette("paper-light", "#FCFCF7", "#21211C", "#5E5E57", "#E8E8E0")
+        ReaderSettingsRepository.ReaderBackground.Gray -> ReaderPalette("gray-light", "#F1F3F4", "#202124", "#5F6368", "#E0E2E3")
+        ReaderSettingsRepository.ReaderBackground.Slate -> ReaderPalette("slate", "#2B2F36", "#E8EAED", "#B0B6BC", "#3A3F47")
+        ReaderSettingsRepository.ReaderBackground.Charcoal -> ReaderPalette("charcoal", "#1F2328", "#E6E6E6", "#9EA7B3", "#2A2F35")
+        ReaderSettingsRepository.ReaderBackground.Olive -> ReaderPalette("olive", "#3A3F2B", "#F1F3E6", "#C2C7B0", "#4A5038")
         ReaderSettingsRepository.ReaderBackground.Night -> ReaderPalette("night", "#000000", "#E6E6E6", "#9E9E9E", "#1A1A1A")
     }
 }

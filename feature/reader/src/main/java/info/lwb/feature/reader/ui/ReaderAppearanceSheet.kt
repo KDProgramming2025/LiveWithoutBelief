@@ -119,28 +119,38 @@ fun ReaderAppearanceSheet(
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         BackgroundSwatch(
-                            name = "System",
-                            color = MaterialTheme.colorScheme.background,
-                            selected = state.background == ReaderSettingsRepository.ReaderBackground.System,
-                        ) { state.onBackground(ReaderSettingsRepository.ReaderBackground.System) }
-                        BackgroundSwatch(
                             name = "Sepia",
-                            color = Color(0xFFF4ECD8),
+                            color = Color(0xFFF5ECD9),
                             selected = state.background == ReaderSettingsRepository.ReaderBackground.Sepia,
                         ) { state.onBackground(ReaderSettingsRepository.ReaderBackground.Sepia) }
                         BackgroundSwatch(
                             name = "Paper",
-                            color = Color(0xFFFFFBFE),
+                            color = Color(0xFFFCFCF7),
                             selected = state.background == ReaderSettingsRepository.ReaderBackground.Paper,
                         ) { state.onBackground(ReaderSettingsRepository.ReaderBackground.Paper) }
                         BackgroundSwatch(
                             name = "Gray",
-                            color = Color(0xFFEEEEEE),
+                            color = Color(0xFFF1F3F4),
                             selected = state.background == ReaderSettingsRepository.ReaderBackground.Gray,
                         ) { state.onBackground(ReaderSettingsRepository.ReaderBackground.Gray) }
                         BackgroundSwatch(
+                            name = "Slate",
+                            color = Color(0xFF2B2F36),
+                            selected = state.background == ReaderSettingsRepository.ReaderBackground.Slate,
+                        ) { state.onBackground(ReaderSettingsRepository.ReaderBackground.Slate) }
+                        BackgroundSwatch(
+                            name = "Charcoal",
+                            color = Color(0xFF1F2328),
+                            selected = state.background == ReaderSettingsRepository.ReaderBackground.Charcoal,
+                        ) { state.onBackground(ReaderSettingsRepository.ReaderBackground.Charcoal) }
+                        BackgroundSwatch(
+                            name = "Olive",
+                            color = Color(0xFF3A3F2B),
+                            selected = state.background == ReaderSettingsRepository.ReaderBackground.Olive,
+                        ) { state.onBackground(ReaderSettingsRepository.ReaderBackground.Olive) }
+                        BackgroundSwatch(
                             name = "Night",
-                            color = Color(0xFF0F1113),
+                            color = Color(0xFF000000),
                             selected = state.background == ReaderSettingsRepository.ReaderBackground.Night,
                         ) { state.onBackground(ReaderSettingsRepository.ReaderBackground.Night) }
                     }

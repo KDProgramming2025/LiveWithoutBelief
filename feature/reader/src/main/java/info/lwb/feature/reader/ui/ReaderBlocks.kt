@@ -140,7 +140,8 @@ fun YouTubeBlock(videoId: String) {
                     val target = "https://www.youtube.com/watch?v=$videoId"
                     try { val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target)); context.startActivity(intent) } catch (_: Throwable) {}
                 },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFFFF0000), contentColor = androidx.compose.ui.graphics.Color.White)
             ) { Text("Watch this video on YouTube") }
         }
     }
