@@ -31,5 +31,8 @@ class ReaderTtsViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun stop() { tts.stop() }
 
+    fun setRate(rate: Float) { tts.setRate(rate) }
+    fun getRate(): Float = tts.getRate()
+
     override fun onCleared() { super.onCleared(); tts.shutdown() }
 }

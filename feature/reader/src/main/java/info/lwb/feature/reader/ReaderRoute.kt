@@ -21,6 +21,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
+// Note: some icon names may require material-icons-extended; stick to commonly available ones.
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -191,6 +192,40 @@ fun ReaderByIdRoute(
                                     }
                                 } else {
                                     ttsVm.stop(); speaking = false
+                                }
+                            }
+                        ),
+                        ActionRailItem(
+                            icon = androidx.compose.material.icons.Icons.Filled.Settings,
+                            label = "Stop",
+                            onClick = { ttsVm.stop(); speaking = false }
+                        ),
+                        ActionRailItem(
+                            icon = androidx.compose.material.icons.Icons.Filled.Edit,
+                            label = "Speed",
+                            onClick = {
+                                // Cycle through discrete rates 0.9x, 1.0x, 1.2x
+                                val current = ttsVm.getRate()
+                                val next = when {
+                                    current < 0.95f -> 1.0f
+                                    current < 1.1f -> 1.2f
+                                    else -> 0.9f
+                                }
+                                ttsVm.setRate(next)
+                                Toast.makeText(ctx, "Speed ${next}x", Toast.LENGTH_SHORT).show()
+                            }
+                        ),
+                        ActionRailItem(
+                            icon = androidx.compose.material.icons.Icons.Filled.Settings,
+                            label = "TTS Settings",
+                            onClick = {
+                                // Open system TTS settings so user can install voices
+                                try {
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    ctx.startActivity(intent)
+                                } catch (_: Throwable) {
+                                    Toast.makeText(ctx, "Open settings manually: Text-to-speech output", Toast.LENGTH_LONG).show()
                                 }
                             }
                         ),

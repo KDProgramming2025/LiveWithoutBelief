@@ -14,6 +14,7 @@ import kotlin.math.min
 class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ready = false
+    private var rate: Float = 1.0f
 
     suspend fun init(locale: Locale = Locale.getDefault()): Boolean = suspendCancellableCoroutine { cont ->
         tts = TextToSpeech(context.applicationContext) { status ->
@@ -21,6 +22,8 @@ class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
             if (ready) {
                 val applied = setBestLocale(locale)
                 preferOfflineVoice(if (applied != null) applied else Locale.getDefault())
+                // Apply any pre-selected speech rate
+                setRate(rate)
             }
             if (!cont.isCompleted) cont.resume(ready, onCancellation = null)
         }
@@ -74,6 +77,8 @@ class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
     fun speak(text: String, queue: Int = TextToSpeech.QUEUE_FLUSH): Int {
         val t = tts ?: return TextToSpeech.ERROR
         if (!ready) return TextToSpeech.ERROR
+        // Ensure the current rate is applied
+        try { t.setSpeechRate(rate) } catch (_: Throwable) {}
         val chunks = chunkText(text)
         var result = TextToSpeech.SUCCESS
         var first = true
@@ -91,6 +96,14 @@ class TtsManager(private val context: Context) : TextToSpeech.OnInitListener {
         }
         return result
     }
+
+    fun setRate(value: Float) {
+        rate = value.coerceIn(0.5f, 2.0f)
+        val t = tts ?: return
+        try { t.setSpeechRate(rate) } catch (_: Throwable) {}
+    }
+
+    fun getRate(): Float = rate
 
     private fun chunkText(text: String, maxLen: Int = 3900): List<String> {
         if (text.length <= maxLen) return listOf(text)
