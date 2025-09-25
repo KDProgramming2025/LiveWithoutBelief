@@ -1,0 +1,10 @@
+/* System dark theme */
+:root { --lwb-font-size: 16px; --lwb-line-height: 1.6; --lwb-bg: #121212; }
+html, body { background: var(--lwb-bg) !important; }
+body { color: #FAFAFA !important; font-size: var(--lwb-font-size) !important; line-height: var(--lwb-line-height) !important; }
+h1, h2, h3, h4, h5, h6 { color: #FAFAFA !important; font-size: inherit !important; line-height: inherit !important; }
+p, li { font-size: inherit !important; line-height: inherit !important; }
+hr { border: none !important; border-top: 1px solid #222222 !important; }
+a { color: #66A3FF !important; }
+blockquote { border-left: 4px solid #222222 !important; padding-left: 12px !important; color: #BBBBBB !important; }
+figure figcaption { color: #BBBBBB !important; }

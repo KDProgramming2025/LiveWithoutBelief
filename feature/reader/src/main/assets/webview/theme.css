@@ -1,0 +1,10 @@
+/* Reader theme baseline; variables will be replaced via injected runtime CSS.
+	This file exists to keep CSS out of Kotlin sources; runtime CSS is provided by app layer.
+	Example selectors kept as comments to indicate intended targets: 
+	- body
+	- headings (h1..h6)
+	- hr
+	- a
+	- blockquote
+	- figure figcaption
+*/

@@ -1,0 +1,10 @@
+/* Sepia light theme */
+:root { --lwb-font-size: 16px; --lwb-line-height: 1.6; --lwb-bg: #F5ECD9; }
+html, body { background: var(--lwb-bg) !important; }
+body { color: #3A2F22 !important; font-size: var(--lwb-font-size) !important; line-height: var(--lwb-line-height) !important; }
+h1, h2, h3, h4, h5, h6 { color: #3A2F22 !important; font-size: inherit !important; line-height: inherit !important; }
+p, li { font-size: inherit !important; line-height: inherit !important; }
+hr { border: none !important; border-top: 1px solid #E6D7C0 !important; }
+a { color: #3366CC !important; }
+blockquote { border-left: 4px solid #E6D7C0 !important; padding-left: 12px !important; color: #6E5A43 !important; }
+figure figcaption { color: #6E5A43 !important; }

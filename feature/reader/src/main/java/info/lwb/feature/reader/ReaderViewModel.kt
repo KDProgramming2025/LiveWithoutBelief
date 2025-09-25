@@ -30,6 +30,11 @@ class ReaderViewModel @Inject constructor(
 
     val fontScale = settingsRepository.fontScale.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1.0)
     val lineHeight = settingsRepository.lineHeight.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1.2)
+    val background = settingsRepository.background.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        ReaderSettingsRepository.ReaderBackground.System,
+    )
 
     private val pagesState = combine(blocksState, fontScale) { blocks, scale ->
         paginate(blocks, fontScale = scale)
@@ -37,19 +42,22 @@ class ReaderViewModel @Inject constructor(
 
     val headings = pagesState.map { buildHeadingItems(it) }
 
+    private val appearanceState = combine(fontScale, lineHeight, background) { f, l, b -> Triple(f, l, b) }
+
     val uiState: StateFlow<ReaderUiState> = combine(
         articleIdState,
         pagesState,
         pageIndexState,
-        fontScale,
-        lineHeight,
-    ) { articleId, pages, pageIndex, fScale, lHeight ->
+        appearanceState,
+    ) { articleId, pages, pageIndex, appearance ->
+        val (fScale, lHeight, bg) = appearance
         ReaderUiState(
             articleId = articleId,
             pages = pages,
             currentPageIndex = pageIndex.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
             fontScale = fScale,
             lineHeight = lHeight,
+            background = bg,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReaderUiState.EMPTY)
 
@@ -74,6 +82,9 @@ class ReaderViewModel @Inject constructor(
 
     fun onFontScaleChange(v: Double) = viewModelScope.launch { settingsRepository.setFontScale(v) }
     fun onLineHeightChange(v: Double) = viewModelScope.launch { settingsRepository.setLineHeight(v) }
+    fun onBackgroundChange(bg: ReaderSettingsRepository.ReaderBackground) = viewModelScope.launch {
+        settingsRepository.setBackground(bg)
+    }
 
     private fun persistProgress() {
         val pages = pagesState.value
@@ -91,8 +102,16 @@ data class ReaderUiState(
     val currentPageIndex: Int,
     val fontScale: Double,
     val lineHeight: Double,
+    val background: ReaderSettingsRepository.ReaderBackground,
 ) {
     companion object {
-        val EMPTY = ReaderUiState("", emptyList(), 0, 1.0, 1.2)
+        val EMPTY = ReaderUiState(
+            articleId = "",
+            pages = emptyList(),
+            currentPageIndex = 0,
+            fontScale = 1.0,
+            lineHeight = 1.2,
+            background = ReaderSettingsRepository.ReaderBackground.System,
+        )
     }
 }

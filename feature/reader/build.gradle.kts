@@ -43,6 +43,8 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.3.1")
     // DataStore dependency (preferences)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    // WebKit support for disabling force-dark/algorithmic darkening
+    implementation("androidx.webkit:webkit:1.11.0")
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)

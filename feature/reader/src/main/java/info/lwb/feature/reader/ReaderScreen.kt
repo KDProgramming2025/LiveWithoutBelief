@@ -6,17 +6,10 @@
 
 package info.lwb.feature.reader
 
-import android.content.Intent
-import android.net.Uri
-import android.webkit.WebResourceResponse
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.view.View
+// cleaned after modularization
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
-import java.io.BufferedReader
-import java.io.InputStreamReader
+// cleaned after modularization
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -25,10 +18,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,12 +44,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import info.lwb.core.domain.AddAnnotationUseCase
 import info.lwb.feature.annotations.DiscussionThreadSheet
@@ -64,6 +54,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import javax.inject.Inject
+import info.lwb.feature.reader.ui.AppearanceState
+import info.lwb.feature.reader.ui.ReaderAppearanceSheet
+import info.lwb.feature.reader.ui.ActionRail
+import info.lwb.feature.reader.ui.ActionRailItem
+import info.lwb.feature.reader.ui.YouTubeBlock
+import info.lwb.feature.reader.ui.AudioBlock
+import info.lwb.feature.reader.ui.ArticleWebView
 
 // Data holder for reader settings provided by caller (ViewModel layer wires flows & mutations)
 data class ReaderSettingsState(
@@ -73,155 +70,7 @@ data class ReaderSettingsState(
     val onLineHeightChange: (Double) -> Unit,
 )
 
-@Composable
-fun ArticleWebView(
-    htmlBody: String? = null,
-    baseUrl: String? = null,
-    url: String? = null,
-    modifier: Modifier = Modifier,
-    onTap: (() -> Unit)? = null,
-) {
-    AndroidView(
-        modifier = modifier.fillMaxSize(),
-        factory = { ctx ->
-            WebView(ctx).apply {
-                settings.javaScriptEnabled = true
-                // Storage & caching
-                settings.domStorageEnabled = true
-                settings.databaseEnabled = true
-                // Layout/scroll behavior
-                isHorizontalScrollBarEnabled = false
-                overScrollMode = View.OVER_SCROLL_NEVER
-                setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
-                    if (scrollX != 0) v.scrollTo(0, scrollY)
-                }
-                // Viewport and width-fit
-                settings.loadWithOverviewMode = true
-                settings.useWideViewPort = true
-                // Default caching
-                settings.cacheMode = WebSettings.LOAD_DEFAULT
-                // Load clamp script from assets to adjust viewport, CSS and responsive iframes
-                fun loadClampJs(): String {
-                    val am = context.assets
-                    am.open("webview/inject_clamp.js").use { input ->
-                        return BufferedReader(InputStreamReader(input)).readText()
-                    }
-                }
-                val clampJs by lazy { loadClampJs() }
-                val isInlineContent = url.isNullOrBlank() && !htmlBody.isNullOrBlank()
-                // Disable long-click to avoid "Save video" or "Save audio" menus
-                isLongClickable = false
-                setOnLongClickListener { true }
-                setDownloadListener { _, _, _, _, _ ->
-                    // Block default download handling inside WebView
-                }
-                // Detect simple single-tap gestures without interfering with scroll/long-press
-                var downX = 0f
-                var downY = 0f
-                var downTs = 0L
-                val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
-                setOnTouchListener { _, ev ->
-                    when (ev.actionMasked) {
-                        android.view.MotionEvent.ACTION_DOWN -> {
-                            downX = ev.x; downY = ev.y; downTs = ev.eventTime
-                        }
-                        android.view.MotionEvent.ACTION_UP -> {
-                            val dt = ev.eventTime - downTs
-                            val dx = ev.x - downX
-                            val dy = ev.y - downY
-                            if (dt in 1..250 && (dx*dx + dy*dy) <= (slop * slop)) {
-                                onTap?.invoke()
-                            }
-                        }
-                    }
-                    false // don't consume; let WebView handle it
-                }
-                webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                        val u = url ?: return false
-                        if (isInlineContent && u.startsWith("lwb-assets://")) return false
-                        return openExternal(u)
-                    }
-                    override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
-                        val u = request?.url?.toString() ?: return false
-                        if (isInlineContent && u.startsWith("lwb-assets://")) return false
-                        if (request?.isForMainFrame == true) {
-                            return openExternal(u)
-                        }
-                        return false
-                    }
-                    private fun openExternal(u: String): Boolean {
-                        return try {
-                            if (u.startsWith("intent://")) {
-                                val intent = Intent.parseUri(u, Intent.URI_INTENT_SCHEME)
-                                context.startActivity(intent)
-                                true
-                            } else {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
-                                context.startActivity(intent)
-                                true
-                            }
-                        } catch (_: Throwable) {
-                            false
-                        }
-                    }
-                    private fun intercept(u: String?): WebResourceResponse? {
-                        val url = u ?: return null
-                        if (isInlineContent && url.startsWith("lwb-assets://")) {
-                            val path = url.removePrefix("lwb-assets://")
-                            return try {
-                                val mime = when {
-                                    path.endsWith(".js") -> "application/javascript"
-                                    path.endsWith(".css") -> "text/css"
-                                    else -> "application/octet-stream"
-                                }
-                                val stream = context.assets.open(path)
-                                WebResourceResponse(mime, "utf-8", stream)
-                            } catch (_: Throwable) {
-                                null
-                            }
-                        }
-                        return null
-                    }
-                    override fun shouldInterceptRequest(view: WebView?, url: String?): WebResourceResponse? {
-                        return intercept(url) ?: super.shouldInterceptRequest(view, url)
-                    }
-                    override fun shouldInterceptRequest(
-                        view: WebView?,
-                        request: android.webkit.WebResourceRequest?
-                    ): WebResourceResponse? {
-                        val u = request?.url?.toString()
-                        return intercept(u) ?: super.shouldInterceptRequest(view, request)
-                    }
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        if (isInlineContent) {
-                            evaluateJavascript(clampJs, null)
-                        }
-                    }
-                }
-                if (!url.isNullOrBlank()) {
-                    loadUrl(url)
-                } else {
-                    loadDataWithBaseURL(
-                        baseUrl,
-                        htmlBody.orEmpty(),
-                        "text/html",
-                        "utf-8",
-                        null,
-                    )
-                }
-            }
-        },
-        update = { webView ->
-            if (!url.isNullOrBlank()) {
-                webView.loadUrl(url)
-            } else {
-                webView.loadDataWithBaseURL(baseUrl, htmlBody.orEmpty(), "text/html", "utf-8", null)
-            }
-        }
-    )
-}
+// ArticleWebView moved to ui/ReaderWebView.kt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -229,15 +78,18 @@ fun ReaderScreen(
     articleTitle: String,
     htmlBody: String,
     settings: ReaderSettingsState,
+    appearance: AppearanceState? = null,
     pages: List<Page>? = null,
     currentPageIndex: Int = 0,
     onPageChange: (Int) -> Unit = {},
+    injectedCss: String? = null,
     modifier: Modifier = Modifier,
 ) {
     // FAB visibility state with auto-hide timer
     var fabVisible by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     var hideJob by remember { mutableStateOf<Job?>(null) }
+    var showAppearance by remember { mutableStateOf(false) }
     fun showFabTemporarily() {
         fabVisible = true
         hideJob?.cancel()
@@ -255,33 +107,27 @@ fun ReaderScreen(
     var currentSearchIndex by remember { mutableStateOf(0) }
     val configuration = LocalConfiguration.current
     val isWide = configuration.screenWidthDp >= 600
-    Scaffold(
-        modifier = modifier,
-        topBar = { TopAppBar(title = { Text(articleTitle) }) },
-        bottomBar = {
-            ReaderControlsBar(settings = settings) { font, line ->
-                settings.onFontScaleChange(font)
-                settings.onLineHeightChange(line)
-            }
-        },
-        floatingActionButton = {
-            if (fabVisible) {
-                FloatingActionButton(onClick = { showFabTemporarily() }) {
-                    Icon(Icons.Filled.Edit, contentDescription = "FAB")
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            topBar = { TopAppBar(title = { Text(articleTitle) }) },
+            bottomBar = {
+                ReaderControlsBar(settings = settings) { font, line ->
+                    settings.onFontScaleChange(font)
+                    settings.onLineHeightChange(line)
                 }
-            }
-        }
-    ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .pointerInput(Unit) {
-                    // Show FAB on single taps only; ignore long press/drag/scroll
-                    detectTapGestures(
-                        onTap = { showFabTemporarily() }
-                    )
-                }
-        ) {
+            },
+        ) { padding ->
+            Column(
+                Modifier
+                    .padding(padding)
+                    .pointerInput(Unit) {
+                        // Show rail on single taps only; ignore long press/drag/scroll
+                        detectTapGestures(
+                            onTap = { showFabTemporarily() }
+                        )
+                    }
+            ) {
             SearchBar(
                 searchQuery,
                 occurrences = searchHits.size,
@@ -493,6 +339,39 @@ fun ReaderScreen(
                     }
                 }
             }
+            }
+        }
+        if (fabVisible) {
+            ActionRail(
+                modifier = Modifier.align(Alignment.BottomEnd),
+                items = listOf(
+                    ActionRailItem(
+                        icon = Icons.Filled.Settings,
+                        label = "Appearance",
+                        onClick = { if (appearance != null) showAppearance = true }
+                    ),
+                    ActionRailItem(
+                        icon = Icons.Filled.Edit,
+                        label = "Bookmark",
+                        onClick = { showFabTemporarily() }
+                    ),
+                    ActionRailItem(
+                        icon = Icons.Filled.PlayArrow,
+                        label = "Listen",
+                        onClick = { showFabTemporarily() }
+                    ),
+                ),
+                mainIcon = Icons.Filled.Settings,
+                mainContentDescription = "Reader actions",
+                edgePadding = 16.dp,
+            )
+        }
+        if (appearance != null) {
+            ReaderAppearanceSheet(
+                visible = showAppearance,
+                state = appearance,
+                onDismiss = { showAppearance = false },
+            )
         }
     }
 }
@@ -555,126 +434,7 @@ private fun HeadingBlock(level: Int, text: String) {
     Text(text, style = style)
 }
 
-@Composable
-private fun AudioBlock(url: String) {
-    Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-        AudioPlayer(url)
-    }
-}
-
-@Composable
-private fun AudioPlayer(url: String) {
-    val context = LocalContext.current
-    var isPlaying by remember { mutableStateOf(false) }
-    var ready by remember { mutableStateOf(false) }
-    val player = remember {
-        ExoPlayer.Builder(context).build().apply {
-            val item = MediaItem.fromUri(url)
-            setMediaItem(item)
-            prepare()
-            addListener(
-                object : androidx.media3.common.Player.Listener {
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        ready =
-                            playbackState != androidx.media3.common.Player.STATE_BUFFERING &&
-                            playbackState != androidx.media3.common.Player.STATE_IDLE
-                    }
-                },
-            )
-        }
-    }
-    DisposableEffect(Unit) { onDispose { player.release() } }
-    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!ready) {
-            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(12.dp))
-        }
-        IconButton(onClick = {
-            if (player.isPlaying) {
-                player.pause()
-                isPlaying = false
-            } else {
-                player.play()
-                isPlaying = true
-            }
-        }) {
-            Icon(
-                Icons.Filled.PlayArrow,
-                contentDescription = if (player.isPlaying) "Pause audio" else "Play audio",
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        Text(text = url.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-private fun YouTubeBlock(videoId: String) {
-    Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth()) {
-            AndroidView(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    settings.javaScriptEnabled = true
-                    // Storage & caching
-                    settings.domStorageEnabled = true
-                    settings.databaseEnabled = true
-                    isLongClickable = false
-                    setOnLongClickListener { true }
-                    setDownloadListener { _, _, _, _, _ -> }
-                    // Prevent sideways panning inside the embedded frame
-                    isHorizontalScrollBarEnabled = false
-                    overScrollMode = View.OVER_SCROLL_NEVER
-                    setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
-                        if (scrollX != 0) v.scrollTo(0, scrollY)
-                    }
-                    settings.loadWithOverviewMode = true
-                    settings.useWideViewPort = true
-                    settings.cacheMode = WebSettings.LOAD_DEFAULT
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                            val u = url ?: return false
-                            return try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
-                                context.startActivity(intent)
-                                true
-                            } catch (_: Throwable) { false }
-                        }
-                        override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
-                            val u = request?.url?.toString() ?: return false
-                            if (request?.isForMainFrame == true) {
-                                return try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
-                                    context.startActivity(intent)
-                                    true
-                                } catch (_: Throwable) { false }
-                            }
-                            return false
-                        }
-                    }
-                    // Avoid inline HTML; load the embed URL directly.
-                    loadUrl("https://www.youtube.com/embed/$videoId")
-                }
-            },
-            )
-            Spacer(Modifier.height(8.dp))
-            val context = LocalContext.current
-            Button(
-                onClick = {
-                    val target = "https://www.youtube.com/watch?v=$videoId"
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
-                        context.startActivity(intent)
-                    } catch (_: Throwable) { }
-                },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
-            ) { Text("Watch this video on YouTube") }
-        }
-    }
-}
+// Media blocks moved to ui/ReaderBlocks.kt
 
 @Composable
 private fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double, Double) -> Unit) {

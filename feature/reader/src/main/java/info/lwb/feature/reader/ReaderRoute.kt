@@ -12,11 +12,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import info.lwb.feature.reader.ui.AppearanceState
+import info.lwb.feature.reader.ui.ReaderAppearanceSheet
+import info.lwb.feature.reader.ui.ActionRail
+import info.lwb.feature.reader.ui.ActionRailItem
+import info.lwb.feature.reader.ui.ArticleWebView
+import info.lwb.feature.reader.ui.readerPalette
+import info.lwb.feature.reader.ui.themeCssAssetPath
+import info.lwb.feature.reader.ui.loadAssetText
 
 /**
  * Entry point composable for the Reader feature wiring the ViewModel (Hilt) to the UI layer.
@@ -39,13 +54,29 @@ fun ReaderRoute(
         onFontScaleChange = vm::onFontScaleChange,
         onLineHeightChange = vm::onLineHeightChange,
     )
+    val appearance = AppearanceState(
+        fontScale = ui.fontScale,
+        lineHeight = ui.lineHeight,
+        background = ui.background,
+        onFontScale = vm::onFontScaleChange,
+        onLineHeight = vm::onLineHeightChange,
+        onBackground = vm::onBackgroundChange,
+    )
+    val palette = readerPalette(ui.background)
+    val injectedCss = run {
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val path = themeCssAssetPath(palette)
+        try { loadAssetText(ctx, path) } catch (_: Throwable) { "" }
+    }
     ReaderScreen(
         articleTitle = ui.articleId.ifBlank { "Sample Article" },
         htmlBody = htmlBody,
         settings = settingsState,
+        appearance = appearance,
         pages = ui.pages,
         currentPageIndex = ui.currentPageIndex,
         onPageChange = vm::onPageChange,
+        injectedCss = injectedCss,
     )
 }
 
@@ -58,6 +89,7 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
     val svcVm: info.lwb.feature.reader.viewmodels.ReaderViewModel = hiltViewModel()
     androidx.compose.runtime.LaunchedEffect(articleId) { svcVm.loadArticleContent(articleId) }
     val contentRes by svcVm.articleContent.collectAsState()
+    val ui by vm.uiState.collectAsState()
     val articlesRes by svcVm.articles.collectAsState()
     val env: ReaderEnv = hiltViewModel()
     // Resolve a URL to load: prefer server-provided indexUrl, else compute from slug using Admin web base derived from API base.
@@ -88,31 +120,72 @@ fun ReaderByIdRoute(articleId: String, vm: ReaderViewModel = hiltViewModel()) {
         }
         androidx.compose.runtime.LaunchedEffect(resolvedUrl) { showFabTemporarily() }
         androidx.compose.runtime.DisposableEffect(Unit) { onDispose { hideJob?.cancel() } }
-        androidx.compose.material3.Scaffold(
-            floatingActionButton = {
-                if (fabVisible) {
-                    androidx.compose.material3.FloatingActionButton(onClick = { showFabTemporarily() }) {
-                        androidx.compose.material3.Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Filled.Edit,
-                            contentDescription = "FAB",
-                        )
-                    }
-                }
+        var showAppearance by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+            val css = run {
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                val path = themeCssAssetPath(readerPalette(ui.background))
+                try { loadAssetText(ctx, path) } catch (_: Throwable) { "" }
             }
-        ) { padding ->
-            ArticleWebView(url = resolvedUrl, modifier = Modifier.padding(padding), onTap = { showFabTemporarily() })
+            androidx.compose.material3.Scaffold { padding ->
+                ArticleWebView(
+                    url = resolvedUrl,
+                    injectedCss = css,
+                    fontScale = ui.fontScale.toFloat(),
+                    lineHeight = ui.lineHeight.toFloat(),
+                    backgroundColor = readerPalette(ui.background).background,
+                    modifier = Modifier.padding(padding),
+                    onTap = { showFabTemporarily() }
+                )
+            }
+            if (fabVisible) {
+                ActionRail(
+                    modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomEnd),
+                    items = listOf(
+                        ActionRailItem(
+                            icon = androidx.compose.material.icons.Icons.Filled.Settings,
+                            label = "Appearance",
+                            onClick = { showAppearance = true }
+                        ),
+                        ActionRailItem(
+                            icon = androidx.compose.material.icons.Icons.Filled.Edit,
+                            label = "Bookmark",
+                            onClick = { showFabTemporarily() }
+                        ),
+                        ActionRailItem(
+                            icon = androidx.compose.material.icons.Icons.Filled.PlayArrow,
+                            label = "Listen",
+                            onClick = { showFabTemporarily() }
+                        ),
+                    ),
+                    mainIcon = androidx.compose.material.icons.Icons.Filled.Settings,
+                    mainContentDescription = "Reader actions",
+                    edgePadding = 16.dp,
+                )
+            }
+            if (showAppearance) {
+                val vmAppearance = AppearanceState(
+                    fontScale =  ui.fontScale,
+                    lineHeight = ui.lineHeight,
+                    background = ui.background,
+                    onFontScale = vm::onFontScaleChange,
+                    onLineHeight = vm::onLineHeightChange,
+                    onBackground = vm::onBackgroundChange,
+                )
+                ReaderAppearanceSheet(
+                    visible = showAppearance,
+                    state = vmAppearance,
+                    onDismiss = { showAppearance = false },
+                )
+            }
         }
     } else {
-        // As a last resort, try inline HTML if available; otherwise show a minimal error.
+        // If URL cannot be resolved, show a minimal load/error placeholder without attempting inline fallback.
         when (contentRes) {
-            is info.lwb.core.common.Result.Success -> {
-                val data = (contentRes as info.lwb.core.common.Result.Success<info.lwb.core.model.ArticleContent>).data
-                ArticleWebView(htmlBody = data.htmlBody, baseUrl = null)
-            }
             is info.lwb.core.common.Result.Loading -> Box(modifier = Modifier.fillMaxSize()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
-            is info.lwb.core.common.Result.Error -> Box(modifier = Modifier.fillMaxSize()) {
+            else -> Box(modifier = Modifier.fillMaxSize()) {
                 Text("Content not found", modifier = Modifier.align(Alignment.Center))
             }
         }
