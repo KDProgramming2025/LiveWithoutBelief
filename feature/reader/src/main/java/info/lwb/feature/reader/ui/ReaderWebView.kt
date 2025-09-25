@@ -240,7 +240,14 @@ fun ArticleWebView(
                         val lhChanged = lh != null && lh != lastLineHeight
                         val fsArg = if (fsChanged) fs.toString() else "undefined"
                         val lhArg = if (lhChanged) lh.toString() else "undefined"
-                        evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')") { _ ->
+                        fun applyReaderVarsOnce() {
+                            evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null)
+                        }
+                        // Apply once now, then schedule a couple of delayed re-applies to beat late styles/reflows
+                        applyReaderVarsOnce()
+                        try { this@apply.postDelayed({ applyReaderVarsOnce() }, 200) } catch (_: Throwable) {}
+                        try { this@apply.postDelayed({ applyReaderVarsOnce() }, 600) } catch (_: Throwable) {}
+                        evaluateJavascript("void 0") { _ ->
                             // Mark ready after first load is fully styled
                             if (firstLoad) {
                                 ready = true
@@ -321,7 +328,9 @@ fun ArticleWebView(
                 val lhChanged = lh != null && lh != lastLineHeight
                 val fsArg = if (fsChanged) fs.toString() else "undefined"
                 val lhArg = if (lhChanged) lh.toString() else "undefined"
+                // Re-apply now and a short time later to ensure persistence against late CSS
                 webView.evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null)
+                try { webView.postDelayed({ webView.evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null) }, 250) } catch (_: Throwable) {}
                 if (fsChanged) lastFontScale = fs
                 if (lhChanged) lastLineHeight = lh
                     // If WebView is ready and a desired scroll is available, perform a short restore sequence
