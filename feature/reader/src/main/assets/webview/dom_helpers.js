@@ -62,4 +62,56 @@
       }
     }catch(e){}
   }
+  // ----- Anchor helpers for precise scroll restore -----
+  function lwbElemTop(el){ try{ return el.getBoundingClientRect().top + window.scrollY; }catch(e){ return 0; } }
+  function lwbCssPath(el){
+    try{
+      if (!el || !el.tagName) return null;
+      if (el.id) return '#' + (window.CSS && CSS.escape ? CSS.escape(el.id) : el.id.replace(/([ #;?%&,.+*~\':"!^$\[\]\(\)=>|\/])/g,'\\$1'));
+      var path = [];
+      var cur = el; var depth = 0;
+      while (cur && cur.nodeType === 1 && depth < 8 && cur !== document.body && cur !== document.documentElement){
+        var name = cur.tagName.toLowerCase();
+        if (cur.id){ path.unshift(name + '#' + (window.CSS && CSS.escape ? CSS.escape(cur.id) : cur.id)); break; }
+        var sibs = 0, idx = 0; var n = cur;
+        while (n){ if (n.nodeType===1 && n.tagName===cur.tagName){ sibs++; if (n===cur) idx=sibs; } n = n.previousElementSibling; }
+        var part = name + (sibs>1 ? ':nth-of-type(' + idx + ')' : '');
+        path.unshift(part);
+        cur = cur.parentElement; depth++;
+      }
+      return path.length ? path.join('>') : null;
+    }catch(e){ return null; }
+  }
+  window.lwbGetViewportAnchor = function(){
+    try{
+      var y = window.scrollY || 0;
+      var candidates = Array.from(document.querySelectorAll('[id], h1, h2, h3, h4, h5, h6, figure, blockquote, p, section, article'));
+      if (!candidates.length) return '';
+      var best = null; var bestTop = -1;
+      for (var i=0;i<candidates.length;i++){
+        var el = candidates[i]; var top = lwbElemTop(el);
+        if (top <= y + 8 && top >= bestTop){ bestTop = top; best = el; }
+      }
+      if (!best){
+        best = candidates[0]; bestTop = lwbElemTop(best);
+        for (var j=1;j<candidates.length;j++){ var t=lwbElemTop(candidates[j]); if (t<bestTop) { bestTop=t; best=candidates[j]; } }
+      }
+      var by = best.id ? 'id' : 'css';
+      var sel = best.id ? best.id : lwbCssPath(best);
+      if (!sel) return '';
+      var off = Math.max(0, y - bestTop);
+      return JSON.stringify({ by: by, sel: sel, off: off });
+    }catch(e){ return ''; }
+  }
+  window.lwbScrollToAnchor = function(anchorJson){
+    try{
+      if (!anchorJson) return false;
+      var a = typeof anchorJson === 'string' ? JSON.parse(anchorJson) : anchorJson;
+      var el = a.by === 'id' ? document.getElementById(a.sel) : document.querySelector(a.sel);
+      if (!el) return false;
+      var top = lwbElemTop(el) + (a.off||0);
+      window.scrollTo(0, Math.max(0, top|0));
+      return true;
+    }catch(e){ return false; }
+  }
 })();

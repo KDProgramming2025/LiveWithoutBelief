@@ -94,9 +94,11 @@ fun ReaderByIdRoute(
         }
         val scrollVm: ScrollViewModel = hiltViewModel()
         var initialScroll by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+        var initialAnchor by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
         // Load initial scroll value once
         androidx.compose.runtime.LaunchedEffect(articleId) {
             initialScroll = try { scrollVm.observe(articleId).first() } catch (_: Throwable) { 0 }
+            initialAnchor = try { scrollVm.observeAnchor(articleId).first() } catch (_: Throwable) { "" }
         }
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             val css = run {
@@ -114,9 +116,11 @@ fun ReaderByIdRoute(
                     modifier = Modifier.padding(padding),
                     onTap = { showFabTemporarily() },
                     initialScrollY = initialScroll,
+                    initialAnchor = initialAnchor.takeIf { it.isNotBlank() },
                     onScrollChanged = { y ->
                         scope.launch { scrollVm.save(articleId, y) }
-                    }
+                    },
+                    onAnchorChanged = { a -> scope.launch { scrollVm.saveAnchor(articleId, a) } }
                 )
             }
             if (fabVisible) {

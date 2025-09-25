@@ -15,6 +15,8 @@ class ScrollViewModel @Inject constructor(@ApplicationContext appContext: Contex
     private val repo = ScrollRepository(appContext)
     fun observe(articleId: String): Flow<Int> = repo.observe(articleId)
     suspend fun save(articleId: String, y: Int) = repo.save(articleId, y)
+    fun observeAnchor(articleId: String): Flow<String> = repo.observeAnchor(articleId)
+    suspend fun saveAnchor(articleId: String, anchor: String?) = repo.saveAnchor(articleId, anchor)
     fun observeListIndex(articleId: String): Flow<Int> = repo.observeListIndex(articleId)
     fun observeListOffset(articleId: String): Flow<Int> = repo.observeListOffset(articleId)
     suspend fun saveList(articleId: String, index: Int, offset: Int) = repo.saveList(articleId, index, offset)

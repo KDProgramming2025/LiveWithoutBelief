@@ -28,6 +28,7 @@ import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import android.graphics.Color
 import android.os.Build
+import org.json.JSONObject
 
 @Composable
 fun ArticleWebView(
@@ -42,6 +43,8 @@ fun ArticleWebView(
     onTap: (() -> Unit)? = null,
     onScrollChanged: ((scrollY: Int) -> Unit)? = null,
     initialScrollY: Int? = null,
+    initialAnchor: String? = null,
+    onAnchorChanged: ((anchor: String) -> Unit)? = null,
 ) {
     var ready by remember(url, htmlBody) { mutableStateOf(false) }
     var firstLoad by remember(url, htmlBody) { mutableStateOf(true) }
@@ -55,6 +58,7 @@ fun ArticleWebView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             WebView(ctx).apply {
+                fun escapeJsString(s: String): String = JSONObject.quote(s)
                 alpha = if (ready) 1f else 0f
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
@@ -79,9 +83,23 @@ fun ArticleWebView(
                 } catch (_: Throwable) { this.setBackgroundColor(Color.WHITE) }
                 isHorizontalScrollBarEnabled = false
                 overScrollMode = View.OVER_SCROLL_NEVER
+                var lastAnchorUpdateTs = 0L
                 setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
                     if (scrollX != 0) v.scrollTo(0, scrollY)
-                    if (!restoreActive) onScrollChanged?.invoke(scrollY)
+                    if (!restoreActive) {
+                        onScrollChanged?.invoke(scrollY)
+                        // Debounce anchor capture to ~200ms
+                        val now = System.currentTimeMillis()
+                        if (now - lastAnchorUpdateTs > 200) {
+                            lastAnchorUpdateTs = now
+                            try { this@apply.evaluateJavascript("(window.lwbGetViewportAnchor && window.lwbGetViewportAnchor())||''") { res ->
+                                try {
+                                    val anchor = res?.trim('"')?.replace("\\n", "") ?: ""
+                                    if (anchor.isNotBlank()) onAnchorChanged?.invoke(anchor)
+                                } catch (_: Throwable) { }
+                            } } catch (_: Throwable) { }
+                        }
+                    }
                 }
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
@@ -228,8 +246,18 @@ fun ArticleWebView(
                                 ready = true
                                 this@apply.alpha = 1f
                                 firstLoad = false
-                                // Kick off robust scroll restore after initial style pass
-                                try { startRestore(initialScrollY ?: 0) } catch (_: Throwable) { }
+                                // Try anchor-based restore first, then pixel fallback
+                                var usedAnchor = false
+                                try {
+                                    val a = initialAnchor
+                                    if (!a.isNullOrBlank()) {
+                                        usedAnchor = true
+                                        evaluateJavascript("(window.lwbScrollToAnchor && window.lwbScrollToAnchor(${escapeJsString(a)}))") { _ -> }
+                                    }
+                                } catch (_: Throwable) { }
+                                if (!usedAnchor) {
+                                    try { startRestore(initialScrollY ?: 0) } catch (_: Throwable) { }
+                                }
                             }
                             if (fsChanged) lastFontScale = fs
                             if (lhChanged) lastLineHeight = lh
