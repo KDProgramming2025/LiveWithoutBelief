@@ -29,6 +29,7 @@ import androidx.webkit.WebViewFeature
 import android.graphics.Color
 import android.os.Build
 import org.json.JSONObject
+import java.util.Locale
 
 @Composable
 fun ArticleWebView(
@@ -53,12 +54,20 @@ fun ArticleWebView(
     var lastLineHeight by remember(url, htmlBody) { mutableStateOf<Float?>(null) }
         var restoreActive by remember(url, htmlBody) { mutableStateOf(false) }
         var restoreTarget by remember(url, htmlBody) { mutableStateOf<Int?>(null) }
+    fun numArg(v: Float?): String = when {
+        v == null -> "undefined"
+        else -> String.format(Locale.US, "%.1f", v)
+    }
     Box(modifier = modifier) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             WebView(ctx).apply {
                 fun escapeJsString(s: String): String = JSONObject.quote(s)
+                fun numArg(v: Float?): String = when {
+                    v == null -> "undefined"
+                    else -> String.format(Locale.US, "%.1f", v)
+                }
                 alpha = if (ready) 1f else 0f
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
@@ -235,19 +244,10 @@ fun ArticleWebView(
                         val fs = fontScale
                         val lh = lineHeight
                         val bg = backgroundColor ?: ""
-                        // Only pass typography values if they actually changed
-                        val fsChanged = fs != null && fs != lastFontScale
-                        val lhChanged = lh != null && lh != lastLineHeight
-                        val fsArg = if (fsChanged) fs.toString() else "undefined"
-                        val lhArg = if (lhChanged) lh.toString() else "undefined"
-                        fun applyReaderVarsOnce() {
-                            evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null)
-                        }
-                        // Apply once now, then schedule a couple of delayed re-applies to beat late styles/reflows
-                        applyReaderVarsOnce()
-                        try { this@apply.postDelayed({ applyReaderVarsOnce() }, 200) } catch (_: Throwable) {}
-                        try { this@apply.postDelayed({ applyReaderVarsOnce() }, 600) } catch (_: Throwable) {}
-                        evaluateJavascript("void 0") { _ ->
+                        // Apply once (unconditionally) on first ready using stable, discrete numeric values
+                        val fsArgOnce = numArg(fs)
+                        val lhArgOnce = numArg(lh)
+                        evaluateJavascript("lwbApplyReaderVars(" + fsArgOnce + ", " + lhArgOnce + ", '" + bg + "')") { _ ->
                             // Mark ready after first load is fully styled
                             if (firstLoad) {
                                 ready = true
@@ -266,8 +266,8 @@ fun ArticleWebView(
                                     try { startRestore(initialScrollY ?: 0) } catch (_: Throwable) { }
                                 }
                             }
-                            if (fsChanged) lastFontScale = fs
-                            if (lhChanged) lastLineHeight = lh
+                            lastFontScale = fs
+                            lastLineHeight = lh
                         }
                         if (isInlineContent) evaluateJavascript(clampJs, null)
                     }
@@ -319,20 +319,15 @@ fun ArticleWebView(
                     val b64 = Base64.encodeToString(css.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                     webView.evaluateJavascript("window.lwbApplyThemeCss('" + b64 + "')", null)
                 }
-                // Re-apply runtime variables on updates
+                // Apply runtime variables on updates (single pass)
                 val fs = fontScale
                 val lh = lineHeight
                 val bg = backgroundColor ?: ""
-                // Only pass typography values if they actually changed
-                val fsChanged = fs != null && fs != lastFontScale
-                val lhChanged = lh != null && lh != lastLineHeight
-                val fsArg = if (fsChanged) fs.toString() else "undefined"
-                val lhArg = if (lhChanged) lh.toString() else "undefined"
-                // Re-apply now and a short time later to ensure persistence against late CSS
+                val fsArg = numArg(fs)
+                val lhArg = numArg(lh)
                 webView.evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null)
-                try { webView.postDelayed({ webView.evaluateJavascript("lwbApplyReaderVars(" + fsArg + ", " + lhArg + ", '" + bg + "')", null) }, 250) } catch (_: Throwable) {}
-                if (fsChanged) lastFontScale = fs
-                if (lhChanged) lastLineHeight = lh
+                lastFontScale = fs
+                lastLineHeight = lh
                     // If WebView is ready and a desired scroll is available, perform a short restore sequence
                     val desired = initialScrollY ?: 0
                     if (ready && desired > 0) {
