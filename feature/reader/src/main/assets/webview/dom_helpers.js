@@ -115,20 +115,4 @@
       return true;
     }catch(e){ return false; }
   }
-
-  // ----- Extract main article text for offline TTS -----
-  window.lwbGetArticleText = function(){
-    try{
-      var root = document.querySelector('.article, main, article, #content, [role="main"]') || document.body;
-      if (!root) return '';
-      var clone = root.cloneNode(true);
-      // Remove non-content nodes
-      var selectors = ['script','style','nav','footer','aside','form','button','input','textarea','select','iframe'];
-      selectors.forEach(function(sel){ Array.from(clone.querySelectorAll(sel)).forEach(function(n){ n.remove(); }); });
-      // Convert <br> to newline for better flow
-      Array.from(clone.querySelectorAll('br')).forEach(function(br){ br.replaceWith('\n'); });
-      var text = (clone.innerText || clone.textContent || '').replace(/\s+\n/g,'\n').replace(/\n{3,}/g,'\n\n');
-      return text.trim();
-    }catch(e){ return ''; }
-  }
 })();

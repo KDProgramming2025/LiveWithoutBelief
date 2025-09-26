@@ -46,8 +46,6 @@ fun ArticleWebView(
     initialScrollY: Int? = null,
     initialAnchor: String? = null,
     onAnchorChanged: ((anchor: String) -> Unit)? = null,
-    onWebViewReady: ((WebView) -> Unit)? = null,
-    onPageReady: (() -> Unit)? = null,
 ) {
     var ready by remember(url, htmlBody) { mutableStateOf(false) }
     var firstLoad by remember(url, htmlBody) { mutableStateOf(true) }
@@ -255,7 +253,6 @@ fun ArticleWebView(
                                 ready = true
                                 this@apply.alpha = 1f
                                 firstLoad = false
-                                try { onPageReady?.invoke() } catch (_: Throwable) {}
                                 // Try anchor-based restore first, then pixel fallback
                                 var usedAnchor = false
                                 try {
@@ -283,7 +280,6 @@ fun ArticleWebView(
                     } else htmlBody.orEmpty()
                     loadDataWithBaseURL(baseUrl, finalHtml, "text/html", "utf-8", null)
                 }
-                try { onWebViewReady?.invoke(this) } catch (_: Throwable) {}
             }
         },
         update = { webView ->

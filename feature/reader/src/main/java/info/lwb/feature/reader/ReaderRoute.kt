@@ -21,7 +21,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
-// Note: some icon names may require material-icons-extended; stick to commonly available ones.
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -37,10 +36,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import kotlinx.coroutines.flow.first
-import androidx.lifecycle.viewmodel.compose.viewModel
-import info.lwb.feature.reader.tts.ReaderTtsViewModel
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
 
 // Inline html-based ReaderRoute has been removed; use ReaderByIdRoute(articleId) exclusively.
 
@@ -90,11 +85,6 @@ fun ReaderByIdRoute(
         androidx.compose.runtime.LaunchedEffect(resolvedUrl) { showFabTemporarily() }
         androidx.compose.runtime.DisposableEffect(Unit) { onDispose { hideJob?.cancel() } }
         var showAppearance by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    val ttsVm: ReaderTtsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-    var webRef by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<android.webkit.WebView?>(null) }
-    var pageReady by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var speaking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-        val ctx = LocalContext.current
         androidx.activity.compose.BackHandler(enabled = true) {
             when {
                 showAppearance -> showAppearance = false
@@ -131,8 +121,6 @@ fun ReaderByIdRoute(
                         scope.launch { scrollVm.save(articleId, y) }
                     },
                     onAnchorChanged = { a -> scope.launch { scrollVm.saveAnchor(articleId, a) } }
-                    , onWebViewReady = { wv -> webRef = wv }
-                    , onPageReady = { pageReady = true }
                 )
             }
             if (fabVisible) {
@@ -152,82 +140,7 @@ fun ReaderByIdRoute(
                         ActionRailItem(
                             icon = androidx.compose.material.icons.Icons.Filled.PlayArrow,
                             label = "Listen",
-                            onClick = {
-                                showFabTemporarily()
-                                if (!speaking) {
-                                    if (webRef == null || !pageReady) {
-                                        Toast.makeText(ctx, "Page is still loading", Toast.LENGTH_SHORT).show()
-                                        return@ActionRailItem
-                                    }
-                                    // Get article text via JS and speak
-                                    val wv = webRef
-                                    if (wv != null) {
-                                        ttsVm.ensureReady { ok ->
-                                            if (!ok) {
-                                                Toast.makeText(ctx, "Text-to-speech not ready", Toast.LENGTH_SHORT).show()
-                                                return@ensureReady
-                                            }
-                                            try {
-                                                wv.evaluateJavascript("(window.lwbGetArticleText && window.lwbGetArticleText())||''") { res ->
-                                                    val text = res?.let { r ->
-                                                        // Try robust JSON parsing first; fallback to simple unquote
-                                                        runCatching { org.json.JSONArray("[" + r + "]").getString(0) }.getOrElse {
-                                                            r.trim('"').replace("\\n", "\n")
-                                                        }
-                                                    }?.replace("\r", "")?.trim() ?: ""
-                                                    if (text.isBlank()) {
-                                                        Toast.makeText(ctx, "Nothing to read on this page", Toast.LENGTH_SHORT).show()
-                                                    } else {
-                                                        speaking = true
-                                                        ttsVm.speakWithResult(text) { code ->
-                                                            if (code < 0) {
-                                                                speaking = false
-                                                                Toast.makeText(ctx, "TTS error (code $code)", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            } catch (_: Throwable) { Toast.makeText(ctx, "Could not extract text", Toast.LENGTH_SHORT).show() }
-                                        }
-                                    }
-                                } else {
-                                    ttsVm.stop(); speaking = false
-                                }
-                            }
-                        ),
-                        ActionRailItem(
-                            icon = androidx.compose.material.icons.Icons.Filled.Settings,
-                            label = "Stop",
-                            onClick = { ttsVm.stop(); speaking = false }
-                        ),
-                        ActionRailItem(
-                            icon = androidx.compose.material.icons.Icons.Filled.Edit,
-                            label = "Speed",
-                            onClick = {
-                                // Cycle through discrete rates 0.9x, 1.0x, 1.2x
-                                val current = ttsVm.getRate()
-                                val next = when {
-                                    current < 0.95f -> 1.0f
-                                    current < 1.1f -> 1.2f
-                                    else -> 0.9f
-                                }
-                                ttsVm.setRate(next)
-                                Toast.makeText(ctx, "Speed ${next}x", Toast.LENGTH_SHORT).show()
-                            }
-                        ),
-                        ActionRailItem(
-                            icon = androidx.compose.material.icons.Icons.Filled.Settings,
-                            label = "TTS Settings",
-                            onClick = {
-                                // Open system TTS settings so user can install voices
-                                try {
-                                    val intent = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    ctx.startActivity(intent)
-                                } catch (_: Throwable) {
-                                    Toast.makeText(ctx, "Open settings manually: Text-to-speech output", Toast.LENGTH_LONG).show()
-                                }
-                            }
+                            onClick = { showFabTemporarily() }
                         ),
                     ),
                     mainIcon = androidx.compose.material.icons.Icons.Filled.Settings,
