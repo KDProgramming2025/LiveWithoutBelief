@@ -1,0 +1,32 @@
+root = true
+
+# Global EditorConfig for Kotlin, Gradle scripts, and related text files
+
+[*.{kt,kts}]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+# KtLint specific (standard ruleset keys)
+# Allow PascalCase for top-level @Composable / @Preview functions without needing @file:Suppress("FunctionName")
+# Newer ktlint supports ignore_when_annotated_with; fallback pattern allows capitalized names if annotation key unsupported.
+# Disable ktlint function naming so Detekt owns naming policy (Compose PascalCase allowed via detekt.yml)
+ktlint_function_naming = disabled
+
+# We already disable wildcard import rule via Spotless override; keep here for IDE parity.
+ktlint_standard_no-wildcard-imports = disabled
+
+# Consistent import ordering (leave ktlint default). If custom ordering needed, add below.
+
+[*.md]
+trim_trailing_whitespace = false
+insert_final_newline = true
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.gradle.kts]
+max_line_length = 120

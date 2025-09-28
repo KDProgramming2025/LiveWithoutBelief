@@ -10,7 +10,8 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.compose) apply false
-    // (Detekt will be re-added cleanly after purge step)
+    // Clean re-add of Detekt 2 alpha
+    id("dev.detekt") version "2.0.0-alpha.0" apply true
     id("org.jetbrains.kotlinx.kover") version "0.9.0"
     id("com.diffplug.spotless") version "6.25.0"
     alias(libs.plugins.play.publisher) apply false
@@ -21,7 +22,33 @@ plugins {
 // Repositories are centrally managed via settings.gradle.kts (dependencyResolutionManagement)
 
 subprojects {
-    // Detekt temporarily removed; will be re-applied cleanly.
+    // Apply detekt only to modules that have Kotlin sources (excluding detekt-src clone etc.)
+    val hasKotlinSources = projectDir.resolve("src").walkTopDown().any { it.isFile && it.extension == "kt" }
+    if (hasKotlinSources) {
+        apply(plugin = "dev.detekt")
+        extensions.configure<dev.detekt.gradle.extensions.DetektExtension>("detekt") {
+            buildUponDefaultConfig = true
+            config.setFrom(files(rootProject.file("detekt.yml")))
+            autoCorrect = false
+            parallel = true
+        }
+        // Attach additional rule set plugins (formatting/ktlint wrapper, coroutines, libraries)
+        dependencies {
+            add("detektPlugins", "dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
+            add("detektPlugins", "dev.detekt:detekt-rules-coroutines:2.0.0-alpha.0")
+            add("detektPlugins", "dev.detekt:detekt-rules-libraries:2.0.0-alpha.0")
+        }
+        tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+            jvmTarget.set("17")
+            reports {
+                sarif.required.set(true)
+                html.required.set(true)
+                xml.required.set(true) // enable XML for potential automated zero-violation enforcement
+                md.required.set(false)
+            }
+        }
+        tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach { jvmTarget.set("17") }
+    }
     apply(plugin = "com.diffplug.spotless")
     apply(plugin = "org.gradle.test-retry")
 
@@ -106,6 +133,20 @@ tasks.register("dependencyGuard") {
 }
 
 // Detekt root configuration removed (will be restored in clean setup phase)
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(files(rootProject.file("detekt.yml")))
+    autoCorrect = false
+    parallel = true
+}
+
+// Aggregate task to run detekt everywhere
+tasks.register("detektAll") {
+    group = "verification"
+    description = "Run detekt on all modules (aggregate)"
+    dependsOn(subprojects.mapNotNull { it.tasks.findByName("detekt")?.path })
+    dependsOn("detekt")
+}
 
 // Coverage verification: stable overall rule. Layered thresholds TODO via custom XML parsing script.
 kover {

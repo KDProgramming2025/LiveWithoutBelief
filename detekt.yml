@@ -1,5 +1,3 @@
-build:
-  maxIssues: 0
 config:
   validation: true
 processors:
@@ -45,11 +43,6 @@ style:
     active: true
   UnusedVariable:
     active: true
-  UnusedPrivateMember:
-    active: true
-    ignoreAnnotated:
-      - Composable
-      - Preview
   UseEmptyCounterpart:
     active: true
   UseIfInsteadOfWhen:
@@ -60,9 +53,6 @@ naming:
     ignoreAnnotated:
       - Composable
       - Preview
-      - androidx.compose.runtime.Composable
-      - androidx.compose.ui.tooling.preview.Preview
-    functionPattern: '^([a-z][a-zA-Z0-9]*|[A-Z][A-Za-z0-9]*)$'
 comments:
   CommentOverPrivateFunction:
     active: true
@@ -132,13 +122,13 @@ coroutines:
     active: true
   SuspendFunInFinallySection:
     active: true
-  SuspendFunSwallowedCancellationException:
+  SuspendFunSwallowedCancellation:
     active: true
   SuspendFunWithCoroutineScopeReceiver:
     active: true
   SuspendFunWithFlowReturnType:
     active: true
-formatting:
+ktlint:
   ImportOrdering:
     active: true
   Kdoc:
