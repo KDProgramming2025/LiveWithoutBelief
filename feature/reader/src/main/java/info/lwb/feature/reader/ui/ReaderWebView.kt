@@ -31,8 +31,20 @@ import android.os.Build
 import org.json.JSONObject
 import java.util.Locale
 
+/**
+ * Reader WebView composable for displaying either a remote URL or inline HTML content produced from a
+ * server-converted DOCX (HTML/CSS/JS) representation. It injects theme & typography variables at runtime
+ * while avoiding any inline JavaScript/CSS source code inside Kotlin (only function invocations are built).
+ *
+ * Responsibilities:
+ *  - Loads either [url] or provided [htmlBody] (with optional [injectedCss]).
+ *  - Applies reader configuration: [fontScale], [lineHeight], [backgroundColor].
+ *  - Restores scroll position by [initialScrollY] or [initialAnchor].
+ *  - Emits scroll changes and current anchor via [onScrollChanged] / [onAnchorChanged].
+ *  - Detects taps and invokes [onTap].
+ */
 @Composable
-fun ArticleWebView(
+internal fun ArticleWebView(
     htmlBody: String? = null,
     baseUrl: String? = null,
     url: String? = null,
@@ -49,25 +61,20 @@ fun ArticleWebView(
 ) {
     var ready by remember(url, htmlBody) { mutableStateOf(false) }
     var firstLoad by remember(url, htmlBody) { mutableStateOf(true) }
-    // Track last applied values so we don't re-apply typography when only background changes
     var lastFontScale by remember(url, htmlBody) { mutableStateOf<Float?>(null) }
     var lastLineHeight by remember(url, htmlBody) { mutableStateOf<Float?>(null) }
-        var restoreActive by remember(url, htmlBody) { mutableStateOf(false) }
-        var restoreTarget by remember(url, htmlBody) { mutableStateOf<Int?>(null) }
-    fun numArg(v: Float?): String = when {
-        v == null -> "undefined"
-        else -> String.format(Locale.US, "%.1f", v)
-    }
+    var restoreActive by remember(url, htmlBody) { mutableStateOf(false) }
+    var restoreTarget by remember(url, htmlBody) { mutableStateOf<Int?>(null) }
+
+    fun numArg(v: Float?): String = if (v == null) "undefined" else String.format(Locale.US, "%.1f", v)
+
     Box(modifier = modifier) {
-    AndroidView(
-        modifier = Modifier.fillMaxSize(),
-        factory = { ctx ->
-            WebView(ctx).apply {
-                fun escapeJsString(s: String): String = JSONObject.quote(s)
-                fun numArg(v: Float?): String = when {
-                    v == null -> "undefined"
-                    else -> String.format(Locale.US, "%.1f", v)
-                }
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { ctx ->
+                WebView(ctx).apply {
+                    fun escapeJsString(s: String): String = JSONObject.quote(s)
+                    fun numArgLocal(v: Float?): String = numArg(v)
                 alpha = if (ready) 1f else 0f
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
@@ -245,8 +252,8 @@ fun ArticleWebView(
                         val lh = lineHeight
                         val bg = backgroundColor ?: ""
                         // Apply once (unconditionally) on first ready using stable, discrete numeric values
-                        val fsArgOnce = numArg(fs)
-                        val lhArgOnce = numArg(lh)
+                        val fsArgOnce = numArgLocal(fs)
+                        val lhArgOnce = numArgLocal(lh)
                         evaluateJavascript("lwbApplyReaderVars(" + fsArgOnce + ", " + lhArgOnce + ", '" + bg + "')") { _ ->
                             // Mark ready after first load is fully styled
                             if (firstLoad) {
@@ -281,8 +288,8 @@ fun ArticleWebView(
                     loadDataWithBaseURL(baseUrl, finalHtml, "text/html", "utf-8", null)
                 }
             }
-        },
-        update = { webView ->
+            },
+            update = { webView ->
             if (!url.isNullOrBlank()) {
                 // For URL content, do not reload unless URL changed; just inject CSS if provided.
                 // Ensure helper script, then call function.
@@ -351,20 +358,20 @@ fun ArticleWebView(
                             webView.post { step(0) }
                         }
                     }
-                if (webView.url != url) webView.loadUrl(url)
-            } else {
-                val css = injectedCss
-                val finalHtml = if (!htmlBody.isNullOrBlank() && !css.isNullOrBlank()) {
-                    mergeHtmlAndCss(htmlBody, css)
-                } else htmlBody.orEmpty()
-                webView.loadDataWithBaseURL(baseUrl, finalHtml, "text/html", "utf-8", null)
+                    if (webView.url != url) webView.loadUrl(url)
+                } else {
+                    val cssInline = injectedCss
+                    val finalHtml = if (!htmlBody.isNullOrBlank() && !cssInline.isNullOrBlank()) {
+                        mergeHtmlAndCss(htmlBody, cssInline)
+                    } else htmlBody.orEmpty()
+                    webView.loadDataWithBaseURL(baseUrl, finalHtml, "text/html", "utf-8", null)
+                }
+            }
+        )
+        if (!ready) {
+            Box(Modifier.fillMaxSize()) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
         }
-    )
-    if (!ready) {
-        Box(Modifier.fillMaxSize()) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-        }
-    }
     }
 }
