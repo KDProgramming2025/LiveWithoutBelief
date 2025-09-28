@@ -3,6 +3,7 @@
 .idea/
 .vscode/
 .history
+build/
 
 # Gradle and Android build outputs
 .gradle/

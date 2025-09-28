@@ -249,3 +249,30 @@ tasks.register("detektAggregateReport") {
         println("[detektAggregateReport] Summary written to ${summaryFile.relativeTo(rootProject.projectDir)}")
     }
 }
+
+// Temporary task: run only ktlint Indentation rule with auto-correct to fix the 1318 indentation findings.
+// Implementation notes:
+// - Uses a dedicated config file (detekt-indent-only.yml) enabling only Indentation.
+// - buildUponDefaultConfig = false to ignore the main config; avoids other style adjustments.
+// - This task is intentionally not wired into standard verification lifecycle.
+// - Remove after indentation issues reach zero and commit includes only whitespace changes.
+tasks.register<dev.detekt.gradle.Detekt>("detektIndentationFix") {
+    description = "Auto-correct only ktlint Indentation rule across all modules"
+    group = "formatting"
+    parallel = true
+    autoCorrect = true
+    buildUponDefaultConfig = false
+    // Provide only the indentation-only config
+    config.setFrom(files(rootProject.file("detekt-indent-only.yml")))
+    // Include all project sources (subprojects already have plugin applied, but we aggregate manually)
+    setSource(files(subprojects.map { it.file("src") } + rootProject.file("src")))
+    // Include typical Kotlin file patterns
+    include("**/*.kt", "**/*.kts")
+    // Exclude build & generated artifacts
+    exclude("**/build/**", "**/.gradle/**", "**/generated/**")
+    // Reports not needed; we only want corrections.
+    reports { html.required.set(false); xml.required.set(false); sarif.required.set(false); md.required.set(false) }
+    // Ensure classpath contains all plugins so Indentation rule is available
+    val detektPluginsConf = configurations.detektPlugins.get()
+    pluginClasspath.setFrom(detektPluginsConf)
+}
