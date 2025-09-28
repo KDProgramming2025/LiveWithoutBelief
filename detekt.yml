@@ -36,9 +36,7 @@ style:
     active: true
   UnusedPrivateFunction:
     active: true
-    ignoreAnnotated:
-      - 'Preview'
-      - 'Composable'
+    ignoreAnnotated: ['Preview', 'Composable']
   UnusedPrivateProperty:
     active: true
   UnusedVariable:
@@ -50,9 +48,7 @@ style:
 naming:
   FunctionNaming:
     active: true
-    ignoreAnnotated:
-      - Composable
-      - Preview
+    ignoreAnnotated: ['Preview', 'Composable']
 comments:
   CommentOverPrivateFunction:
     active: true

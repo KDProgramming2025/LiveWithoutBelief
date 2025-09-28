@@ -10,8 +10,8 @@ import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
-import info.lwb.core.model.ThreadMessage
 import info.lwb.core.model.MenuItem
+import info.lwb.core.model.ThreadMessage
 import kotlinx.coroutines.flow.Flow
 
 class GetArticlesUseCase(private val articleRepository: ArticleRepository) {

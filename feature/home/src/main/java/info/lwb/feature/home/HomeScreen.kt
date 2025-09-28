@@ -55,6 +55,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import info.lwb.ui.designsystem.SurfaceStyleDefaults
 
+/**
+ * Root composable for the home feature. Decides what to render based on [HomeUiState].
+ *
+ * @param onItemClick invoked when a menu item is selected with its id and optional label.
+ * @param onContinueReading optional callback to resume last read article.
+ */
 @Composable
 fun HomeRoute(onItemClick: (String, String?) -> Unit = { _, _ -> }, onContinueReading: (() -> Unit)? = null) {
     val vm: HomeViewModel = hiltViewModel()
@@ -148,7 +154,7 @@ private fun NeoMenuCard(
             contentAlignment = Alignment.CenterStart,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Make icon well 25% larger (56dp -> 70dp) and add small inner padding
+                // Make icon well 25% larger (56dp -> 70.dp) and add small inner padding
                 RaisedIconWell(wellSize = 70.dp, innerPadding = 6.dp) {
                     if (!imageUrl.isNullOrBlank()) {
                         AsyncImage(

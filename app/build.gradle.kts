@@ -65,7 +65,11 @@ android {
                 val webMatch = Regex(""""client_id"\s*:\s*"([^"]+)"\s*,\s*"client_type"\s*:\s*3""").find(txt)
                 val androidMatch = Regex(""""client_id"\s*:\s*"([^"]+)"\s*,\s*"client_type"\s*:\s*1""").find(txt)
                 if (serverId == "CHANGE_ME_SERVER_CLIENT_ID") webMatch?.groupValues?.get(1)?.let { serverId = it }
-                if (androidClientId == "CHANGE_ME_ANDROID_CLIENT_ID") androidMatch?.groupValues?.get(1)?.let { androidClientId = it }
+                if (androidClientId == "CHANGE_ME_ANDROID_CLIENT_ID") {
+                    androidMatch?.groupValues?.get(
+                        1,
+                    )?.let { androidClientId = it }
+                }
             }
         } catch (e: Exception) {
             if (project.hasProperty("org.gradle.logging.stacktrace")) {
@@ -81,23 +85,23 @@ android {
                 ?: (project.findProperty("EMAIL_LINK_CONTINUE_URL") as String?)
                 ?: "https://live-without-belief-app.firebaseapp.com/emailLink"
         buildConfigField("String", "EMAIL_LINK_CONTINUE_URL", '"' + emailLinkContinue + '"')
-    val authBase =
+        val authBase =
             System.getenv("AUTH_BASE_URL")
                 ?: (project.findProperty("AUTH_BASE_URL") as String?)
-        ?: "https://aparat.feezor.net/LWB/API"
+                ?: "https://aparat.feezor.net/LWB/API"
         buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
         // Central API base URL for all endpoints
-    val apiBase =
+        val apiBase =
             System.getenv("API_BASE_URL")
                 ?: (project.findProperty("API_BASE_URL") as String?)
-        ?: "https://aparat.feezor.net/LWB/API/"
+                ?: "https://aparat.feezor.net/LWB/API/"
         buildConfigField("String", "API_BASE_URL", '"' + apiBase + '"')
-    val uploadsBase =
-        System.getenv("UPLOADS_BASE_URL")
-        ?: (project.findProperty("UPLOADS_BASE_URL") as String?)
-        ?: "https://aparat.feezor.net/LWB/Admin/uploads/"
-    buildConfigField("String", "UPLOADS_BASE_URL", '"' + uploadsBase + '"')
-    // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
+        val uploadsBase =
+            System.getenv("UPLOADS_BASE_URL")
+                ?: (project.findProperty("UPLOADS_BASE_URL") as String?)
+                ?: "https://aparat.feezor.net/LWB/Admin/uploads/"
+        buildConfigField("String", "UPLOADS_BASE_URL", '"' + uploadsBase + '"')
+        // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
 
         // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)
         fun intCfg(
@@ -152,7 +156,10 @@ android {
     }
     // Optional release signing from environment (CI-friendly). If not provided, release stays unsigned.
     val ksPath = System.getenv("SIGNING_KEYSTORE_PATH") ?: (project.findProperty("SIGNING_KEYSTORE_PATH") as String?)
-    val ksPass = System.getenv("SIGNING_KEYSTORE_PASSWORD") ?: (project.findProperty("SIGNING_KEYSTORE_PASSWORD") as String?)
+    val ksPass =
+        System.getenv(
+            "SIGNING_KEYSTORE_PASSWORD",
+        ) ?: (project.findProperty("SIGNING_KEYSTORE_PASSWORD") as String?)
     val keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: (project.findProperty("SIGNING_KEY_ALIAS") as String?)
     val keyPass = System.getenv("SIGNING_KEY_PASSWORD") ?: (project.findProperty("SIGNING_KEY_PASSWORD") as String?)
     if (!ksPath.isNullOrBlank() && !ksPass.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPass.isNullOrBlank()) {
@@ -172,8 +179,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    // Retain desugaring if other libs require it
-    isCoreLibraryDesugaringEnabled = true
+        // Retain desugaring if other libs require it
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
