@@ -1,0 +1,24 @@
+build:
+  maxIssues: 0
+config:
+  validation: true
+processors:
+  active: true
+style:
+  MagicNumber:
+    active: false
+  WildcardImport:
+    active: true
+    excludes: ['**/test/**']
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+naming:
+  FunctionNaming:
+    active: true
+    ignoreAnnotated: ['Composable']
+complexity:
+  LongParameterList:
+    active: false
+  TooManyFunctions:
+    active: false
