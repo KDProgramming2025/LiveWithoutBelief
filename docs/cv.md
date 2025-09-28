@@ -1,51 +1,42 @@
 # M.D. Programming
 **Senior Android Engineer**  
-Email: [your.email@example.com] | Phone: [+1-XXX-XXX-XXXX] | Location: [Relocation-ready]  
-LinkedIn: [linkedin.com/in/yourprofile] | GitHub: [github.com/yourprofile]  
+📧 your.email@example.com | 📱 +1-XXX-XXX-XXXX | 🌍 Relocation-ready  
+🔗 LinkedIn: linkedin.com/in/yourprofile | GitHub: github.com/yourprofile  
 
 ---
 
 ## Summary
-Senior Android Engineer with 9+ years of experience building **enterprise-grade mobile apps** for major corporations and government agencies. Expert in **Kotlin, Jetpack Compose, MVVM, Clean Architecture, and CI/CD**. Recognized for delivering **scalable, feature-rich apps** — including a government form engine, enterprise GPS tracking system, and an eBook platform covered by national media.  
+Senior Android Engineer with 9+ years’ experience delivering **enterprise and government apps**. Expert in **Kotlin, Jetpack Compose, MVVM, Clean Architecture**. Recognized for scalable solutions, including a **government form engine**, **GPS payroll tracker**, and **eBook platform featured in national media**.  
 
 ---
 
 ## Key Skills
-- **Languages:** Kotlin, Java, TypeScript, Node.js, PHP, HTML/CSS  
-- **Android:** Jetpack Compose, MVVM, Clean Architecture, Room, Hilt/Dagger, Coroutines  
-- **Tools:** GitHub Actions, Jira, Firebase, Retrofit, JUnit/Espresso  
-- **Other:** REST APIs, Linux/Nginx, SEO, UI/UX design  
+Kotlin, Java, Jetpack Compose, MVVM, Clean Architecture, Room, Hilt, Coroutines, Retrofit, Firebase, JUnit, GitHub Actions, Jira, REST APIs, Linux/Nginx, UI/UX.  
 
 ---
 
 ## Experience
 
-### Android Engineer — Negasht-e Andisheh Sabz  
-*2016 – 2017 | Tehran, Iran*  
-Developed Android apps for **leading companies and government agencies**, including:  
-- **SPCRI (Government Institute):** Built a **dynamic form engine** with GPS mapping, eliminating APK updates. [spcri.ir](https://spcri.ir/en/0)  
-- **Supervisor App:** Enterprise sales management for **Pars Hayan**, **Iran AvandFar**, and **Eviderm**. Integrated Google Maps, reporting dashboards, and tablet-optimized UX.  
-- **Tracking App:** Rebuilt company’s core GPS tracker → **tamper-proof & power-efficient**; still in active use for employee payroll.  
-- **Taktab eBook Platform:** Feature-rich eBook reader (surpassing Kindle in UX). Covered by national news agency **LISNA**. [tinyurl.com/taktab](https://tinyurl.com/taktab)  
+**Android Engineer — Negasht-e Andisheh Sabz** *(2016–2017)*  
+- Built **dynamic form engine** for **SPCRI (gov. institute)** → no APK updates required.  
+- Delivered enterprise apps for **Pars Hayan**, **Iran AvandFar**, **Eviderm** (sales dashboards, GPS, reporting).  
+- Rebuilt company GPS tracker → **tamper-proof & efficient**, still in use.  
+- Created **Taktab eBook platform** → covered by national news [tinyurl.com/taktab](https://tinyurl.com/taktab).  
 
-### Independent Engineer — Freelance  
-*2018 – Present*  
-- Built a **secure VPN platform** (Node.js, Nginx, Xray, Psiphon) with quota control, advanced routing, and DPI evasion.  
-- Designed a lightweight **admin panel** (pure HTML/CSS/JS) and traffic-masking solution for censorship environments.  
+**Independent Engineer — Freelance** *(2018–Present)*  
+- Developed **secure VPN platform** (Node.js, Nginx, Xray, Psiphon) with quota control + traffic masking.  
 
-### Software Engineer — BaghVilaParcham Real Estate  
-*2017 – 2024*  
-- Developed website + Android app enabling non-technical staff to upload listings with automated photo watermarking.  
+**Software Engineer — BaghVilaParcham Real Estate** *(2017–2024)*  
+- Built website + Android app enabling staff to upload listings via phone; automated image watermarking.  
 
 ---
 
 ## Education
-**Associate’s Degree in Computer Software Engineering**  
-*2006 – 2009*  
+**A.A. in Computer Software Engineering** *(2006–2009)*  
 - Ranked **top programming student** across both colleges.  
 
 ---
 
 ## Recognition
-- Featured in **LISNA National News Agency** for *Taktab* eBook platform.  
-- Apps adopted by **Pars Hayan**, **Iran AvandFar**, **Eviderm**, and **SPCRI**.  
+- Featured in **LISNA News Agency** for *Taktab* platform.  
+- Apps adopted by **SPCRI**, **Pars Hayan**, **Iran AvandFar**, **Eviderm**.  
