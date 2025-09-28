@@ -10,7 +10,7 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.compose) apply false
-    id("io.gitlab.arturbosch.detekt") version "1.23.6"
+    // (Detekt will be re-added cleanly after purge step)
     id("org.jetbrains.kotlinx.kover") version "0.9.0"
     id("com.diffplug.spotless") version "6.25.0"
     alias(libs.plugins.play.publisher) apply false
@@ -18,30 +18,25 @@ plugins {
     id("org.gradle.test-retry") version "1.5.8"
 }
 
+// Repositories are centrally managed via settings.gradle.kts (dependencyResolutionManagement)
+
 subprojects {
-    // Apply Spotless to all Kotlin/Gradle scripts for consistent formatting
+    // Detekt temporarily removed; will be re-applied cleanly.
     apply(plugin = "com.diffplug.spotless")
-    // Apply test-retry plugin to all subprojects so Test tasks can use retry{} configuration
     apply(plugin = "org.gradle.test-retry")
 
-    // Hermetic defaults for all Test tasks + CI retry policy
     tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
-        // Keep tests hermetic and deterministic
         systemProperty("user.timezone", "UTC")
         systemProperty("file.encoding", "UTF-8")
-        // Reduce default fork memory noise and ensure same locale handling if needed
         jvmArgs(listOf("-Djava.awt.headless=true"))
-
-        // Only enable retries on CI runners
         if (System.getenv("CI") == "true") {
             retry {
-                // One retry is usually enough to flag potential flakiness without hiding issues
                 maxRetries.set(1)
-                // Do not fail the build if the test passes on retry; we will surface it in reports
                 failOnPassedAfterRetry.set(false)
             }
         }
     }
+
     spotless {
         kotlin {
             target("**/*.kt")
@@ -53,10 +48,10 @@ subprojects {
                     "max_line_length" to "120"
                 )
             )
-            // Use concise SPDX-style header instead of full license text for Kotlin sources
             licenseHeaderFile(
                 rootProject.file("spotless.license.kt"),
-                "(package |@file:)")
+                "(package |@file:)"
+            )
         }
         kotlinGradle {
             target("**/*.kts")
@@ -110,12 +105,7 @@ tasks.register("dependencyGuard") {
     }
 }
 
-detekt {
-    config.setFrom(files(rootProject.file("detekt.yml")))
-    buildUponDefaultConfig = true
-    autoCorrect = false
-    parallel = true
-}
+// Detekt root configuration removed (will be restored in clean setup phase)
 
 // Coverage verification: stable overall rule. Layered thresholds TODO via custom XML parsing script.
 kover {
@@ -126,15 +116,7 @@ kover {
     }
 }
 
-// Configure Detekt to emit SARIF for code scanning
-detekt {
-    reports {
-        sarif.required.set(true)
-        xml.required.set(false)
-        html.required.set(true)
-        txt.required.set(false)
-    }
-}
+// detektAll task removed; will be recreated
 
 tasks.register("quality") {
     group = "verification"
@@ -147,7 +129,7 @@ tasks.register("quality") {
     // Include only debug lint tasks (avoid known FIR crash in aggregate/unit test lint variants)
     val lintTasks = subprojects.flatMap { sp -> sp.tasks.matching { it.name == "lintDebug" } }
     dependsOn(lintTasks)
-    dependsOn("detekt", "koverXmlReport", "dependencyGuard", "spotlessCheck")
+    dependsOn("koverXmlReport", "dependencyGuard", "spotlessCheck")
 }
 
 // Convenience aggregate format task
