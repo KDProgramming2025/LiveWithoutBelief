@@ -131,7 +131,8 @@ class ArticleRepositoryImplTest {
     }
 
     @Test
-    fun emitsLocalArticles() = runTest {
+    fun emitsLocalArticles() {
+        runTest {
         dao.upsertArticle(ArticleEntity("id1", "Title1", "slug1", 1, "now", 100))
         val emissions = mutableListOf<Result<*>>()
         repo.getArticles().collect { value ->
@@ -147,10 +148,12 @@ class ArticleRepositoryImplTest {
         } else {
             error("Expected final Success, got $success with emissions=$emissions")
         }
+        }
     }
 
     @Test
-    fun refreshArticles_syncsManifestItems() = runTest {
+    fun refreshArticles_syncsManifestItems() {
+        runTest {
         // Given manifest with two items
         api.manifest =
             listOf(
@@ -224,10 +227,12 @@ class ArticleRepositoryImplTest {
         assertEquals("B", c2?.plainText)
         check(!c1?.textHash.isNullOrBlank())
         check(!c2?.textHash.isNullOrBlank())
+        }
     }
 
     @Test
-    fun refreshArticles_skipsDetailWhenVersionUnchangedAndHasContent() = runTest {
+    fun refreshArticles_skipsDetailWhenVersionUnchangedAndHasContent() {
+        runTest {
         // Existing article with version 3 and content
         dao.upsertArticle(ArticleEntity("x1", "Title X", "slug-x", 3, "2025-01-03", 100))
         dao.upsertContent(ArticleContentEntity("x1", "<p>old</p>", "old", "hash-old"))
@@ -263,10 +268,12 @@ class ArticleRepositoryImplTest {
         repo.refreshArticles()
         val c = dao.getArticleContent("x1")
         assertEquals("old", c?.plainText) // unchanged
+        }
     }
 
     @Test
-    fun refreshArticles_dropsContentOnChecksumMismatch() = runTest {
+    fun refreshArticles_dropsContentOnChecksumMismatch() {
+        runTest {
         api.manifest =
             listOf(
                 ManifestItemDto(
@@ -299,10 +306,12 @@ class ArticleRepositoryImplTest {
         val content = dao.getArticleContent("c1")
         assertEquals("C1", art?.title)
         assertEquals(null, content)
+        }
     }
 
     @Test
-    fun refreshArticles_retriesOnFailureThenSucceeds() = runTest {
+    fun refreshArticles_retriesOnFailureThenSucceeds() {
+        runTest {
         // API fails first time for getArticle, succeeds next
         api.manifest =
             listOf(
@@ -326,19 +335,19 @@ class ArticleRepositoryImplTest {
                 if (attempts == 1) error("transient")
                 return
                     ArticleDto(
-                    id = id,
-                    slug = "r1",
-                    title = "R1",
-                    version = 1,
-                    wordCount = 10,
-                    updatedAt = "2025-01-01",
-                    // sha256("hello")
-                    checksum = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
-                    html = "<p>hello</p>",
-                    text = "hello",
-                    sections = emptyList(),
-                    media = emptyList(),
-                )
+                        id = id,
+                        slug = "r1",
+                        title = "R1",
+                        version = 1,
+                        wordCount = 10,
+                        updatedAt = "2025-01-01",
+                        // sha256("hello")
+                        checksum = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+                        html = "<p>hello</p>",
+                        text = "hello",
+                        sections = emptyList(),
+                        media = emptyList(),
+                    )
             }
         }
         val retryingRepo = ArticleRepositoryImpl(api = retryingApi, articleDao = dao)
@@ -346,24 +355,30 @@ class ArticleRepositoryImplTest {
         retryingRepo.refreshArticles()
         val c = dao.getArticleContent("r1")
         assertEquals("hello", c?.plainText)
+        }
     }
 
     @Test
-    fun refreshArticles_onNetworkError_insertsNothing() = runTest {
+    fun refreshArticles_onNetworkError_insertsNothing() {
+        runTest {
         // Simulate failure API
         val failingApi = object : ArticleApi {
-            override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = error("boom")
-            override suspend fun getArticle(id: String): ArticleDto = error("not used")
+            override suspend fun getManifest(): info.lwb.data.network.ManifestResponse =
+                error("boom")
+            override suspend fun getArticle(id: String): ArticleDto =
+                error("not used")
         }
         val failingRepo = ArticleRepositoryImpl(api = failingApi, articleDao = dao)
         // When
         failingRepo.refreshArticles()
         // Then - no articles inserted
         assertEquals(0, dao.listArticles().size)
+        }
     }
 
     @Test
-    fun refreshArticles_appliesEviction_keepsMostRecentN() = runTest {
+    fun refreshArticles_appliesEviction_keepsMostRecentN() {
+        runTest {
         // Given 6 manifest items with increasing updatedAt
         api.manifest =
             (1..6).map { i ->
@@ -389,10 +404,13 @@ class ArticleRepositoryImplTest {
         // When
         repo.refreshArticles()
         // Then: eviction keeps most recent 4 contents
-        val kept = (3..6).map { i -> dao.getArticleContent("id$i") != null }
+        val kept = (3..6).map { i ->
+            dao.getArticleContent("id$i") != null
+        }
         // id1 and id2 contents should be evicted
         val evicted = listOf(dao.getArticleContent("id1"), dao.getArticleContent("id2"))
         assertEquals(listOf(true, true, true, true), kept)
         assertEquals(listOf(null, null), evicted)
+        }
     }
 }
