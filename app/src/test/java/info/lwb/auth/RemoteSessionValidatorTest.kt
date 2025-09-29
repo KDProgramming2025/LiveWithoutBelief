@@ -56,59 +56,65 @@ class RemoteSessionValidatorTest {
     }
 
     @Test
-    fun validate_successTrue() =
+    fun validate_successTrue() {
         runTest {
             server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
             val ok = validator.validate("token")
             assertTrue(ok)
         }
+    }
 
     @Test
-    fun validate_failFalse() =
+    fun validate_failFalse() {
         runTest {
             server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
             val ok = validator.validate("token")
             assertFalse(ok)
         }
+    }
 
     @Test
-    fun validateDetailed_success() =
+    fun validateDetailed_success() {
         runTest {
             server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
             val res = validator.validateDetailed("token")
             assertTrue(res.isValid)
             assertNull(res.error)
         }
+    }
 
     @Test
-    fun validateDetailed_unauthorized() =
+    fun validateDetailed_unauthorized() {
         runTest {
             server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
             val res = validator.validateDetailed("token")
             assertFalse(res.isValid)
             assertEquals(ValidationError.Unauthorized, res.error)
         }
+    }
 
     @Test
-    fun validateDetailed_serverError() =
+    fun validateDetailed_serverError() {
         runTest {
             server.enqueue(MockResponse().setResponseCode(503).setBody("{}"))
             val res = validator.validateDetailed("token")
             assertFalse(res.isValid)
             assertTrue(res.error is ValidationError.Server)
         }
+    }
 
     @Test
-    fun revoke_doesNotThrow() =
+    fun revoke_doesNotThrow() {
         runTest {
             server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
             validator.revoke("token")
             // no assertion; just ensure no crash
             assertTrue(true)
         }
+    }
 
     @Test
-    fun validateDetailed_retriesOnServerErrorAndSucceeds() =
+    fun validateDetailed_retriesOnServerErrorAndSucceeds() {
         runTest {
             server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
             server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
@@ -116,9 +122,10 @@ class RemoteSessionValidatorTest {
             assertTrue(res.isValid)
             assertEquals(2, server.requestCount)
         }
+    }
 
     @Test
-    fun revoke_localStoreShortCircuitsValidation() =
+    fun revoke_localStoreShortCircuitsValidation() {
         runTest {
             // create validator with explicit revocation store
             val revocationStore = InMemoryRevocationStore()
@@ -135,9 +142,10 @@ class RemoteSessionValidatorTest {
             assertEquals(ValidationError.Unauthorized, res.error)
             assertEquals("Expected no network calls when token is locally revoked", 0, server.requestCount)
         }
+    }
 
     @Test
-    fun validateDetailed_observerReceivesRetryEvents() =
+    fun validateDetailed_observerReceivesRetryEvents() {
         runTest {
             class CapturingObserver : ValidationObserver {
                 val attempts = mutableListOf<Pair<Int, Int>>()
@@ -175,9 +183,10 @@ class RemoteSessionValidatorTest {
             }
             assertTrue("Expected at least one result callback", obs.results.isNotEmpty())
         }
+    }
 
     @Test
-    fun compositeObserver_fansOutEvents() =
+    fun compositeObserver_fansOutEvents() {
         runTest {
             class CObs : ValidationObserver {
                 var attempts = 0
@@ -215,9 +224,10 @@ class RemoteSessionValidatorTest {
             assertEquals(1, b.results)
             assertEquals(0, a.retries + b.retries)
         }
+    }
 
     @Test
-    fun metricsObserver_capturesCounts() =
+    fun metricsObserver_capturesCounts() {
         runTest {
             val metrics = MetricsValidationObserver()
             val composite = metrics.and(NoopValidationObserver)
@@ -243,9 +253,10 @@ class RemoteSessionValidatorTest {
             assertTrue((snap["fail"] ?: 0) >= 0)
             assertTrue((snap["retries"] ?: 0) >= 0)
         }
+    }
 
     @Test
-    fun compositeObserver_swallowsDelegateExceptions() =
+    fun compositeObserver_swallowsDelegateExceptions() {
         runTest {
             class BadObserver : ValidationObserver {
                 override fun onAttempt(attempt: Int, max: Int) {
@@ -281,9 +292,10 @@ class RemoteSessionValidatorTest {
             assertTrue(res.isValid)
             assertEquals(1, good.attempts) // ensured good observer still ran
         }
+    }
 
     @Test
-    fun samplingObserver_doesNotDropAllWhen1000Permille() =
+    fun samplingObserver_doesNotDropAllWhen1000Permille() {
         runTest {
             val metrics = MetricsValidationObserver()
             val sampled = SamplingValidationObserver(metrics, 1000, java.util.Random(123))
@@ -301,4 +313,5 @@ class RemoteSessionValidatorTest {
             val snap = metrics.snapshot()
             assertTrue((snap["attempts"] ?: 0) >= 1)
         }
+    }
 }
