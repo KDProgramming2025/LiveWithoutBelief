@@ -237,16 +237,11 @@ class RemoteSessionValidatorTest {
         val composite = a.and(b)
         // Trigger a single request (200 success, no retry)
         server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody("{}")
+            MockResponse().setResponseCode(200).setBody("{}")
         )
         validator = RemoteSessionValidator(
             client,
-            server
-                .url("")
-                .toString()
-                .trimEnd('/'),
+            server.url("").toString().trimEnd('/'),
             ValidationRetryPolicy(),
             composite,
             InMemoryRevocationStore(),
@@ -266,22 +261,14 @@ class RemoteSessionValidatorTest {
         val composite = metrics.and(NoopValidationObserver)
         // enqueue failure then success to produce retry + success
         server.enqueue(
-            MockResponse()
-                .setResponseCode(503)
-                .setBody("{}")
-                .addHeader("Retry-After", "0")
+            MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0")
         )
         server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody("{}")
+            MockResponse().setResponseCode(200).setBody("{}")
         )
         validator = RemoteSessionValidator(
             client,
-            server
-                .url("")
-                .toString()
-                .trimEnd('/'),
+            server.url("").toString().trimEnd('/'),
             ValidationRetryPolicy(),
             composite,
             InMemoryRevocationStore(),
@@ -317,17 +304,12 @@ class RemoteSessionValidatorTest {
             override fun onRetry(delayMs: Long) { }
         }
         server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody("{}")
+            MockResponse().setResponseCode(200).setBody("{}")
         )
         val composite = good.and(BadObserver())
         validator = RemoteSessionValidator(
             client,
-            server
-                .url("")
-                .toString()
-                .trimEnd('/'),
+            server.url("").toString().trimEnd('/'),
             ValidationRetryPolicy(),
             composite,
             InMemoryRevocationStore(),
@@ -342,16 +324,11 @@ class RemoteSessionValidatorTest {
         val metrics = MetricsValidationObserver()
         val sampled = SamplingValidationObserver(metrics, 1000, java.util.Random(123))
         server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody("{}")
+            MockResponse().setResponseCode(200).setBody("{}")
         )
         validator = RemoteSessionValidator(
             client,
-            server
-                .url("")
-                .toString()
-                .trimEnd('/'),
+            server.url("").toString().trimEnd('/'),
             ValidationRetryPolicy(),
             sampled,
             InMemoryRevocationStore(),
