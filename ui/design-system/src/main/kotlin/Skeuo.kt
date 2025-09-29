@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Deprecated: Legacy skeuomorphic components. Do not use.
+ * Copyright (c) 2024 Live Without Belief
  */
 @file:Suppress("FunctionName")
 
@@ -11,24 +11,23 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,10 +35,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -99,10 +97,7 @@ private val LightSkeuoColors = SkeuoColors(
 val LocalSkeuoColors = staticCompositionLocalOf { DarkSkeuoColors }
 
 @Composable
-fun ProvideSkeuoTheme(
-    dark: Boolean,
-    content: @Composable () -> Unit,
-){
+fun ProvideSkeuoTheme(dark: Boolean, content: @Composable () -> Unit) {
     val colors = if (dark) DarkSkeuoColors else LightSkeuoColors
     CompositionLocalProvider(LocalSkeuoColors provides colors, content = content)
 }
@@ -134,7 +129,9 @@ fun SkeuoCard(
             role = Role.Button,
             onClick = onClick,
         )
-    } else Modifier
+    } else {
+        Modifier
+    }
 
     // Admin .button gradient look
     val top = if (c.bg.luminance() < 0.5f) Color(0xFF2D2F34) else Color(0xFFEDEBE8)
@@ -170,7 +167,7 @@ fun IconWell(
             .clip(shape)
             .background(c.inset)
             .border(1.dp, c.border, shape)
-            .insetShadow()
+            .insetShadow(),
     ) {
         content()
     }
@@ -203,7 +200,7 @@ fun SkeuoPrimaryButton(
             .border(1.dp, border, shape)
             .clickable(enabled = enabled, interactionSource = interactionSource, indication = null, onClick = onClick)
             .drawButtonSheen(enabled),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Box(Modifier.wrapContentHeight().padding(contentPadding)) {
             content()
@@ -215,7 +212,8 @@ fun SkeuoPrimaryButton(
 
 private fun Modifier.drawGloss(): Modifier = drawBehind {
     // Subtle top gloss
-    val gloss = Brush.verticalGradient(
+    val gloss =
+        Brush.verticalGradient(
         colors = listOf(Color.White.copy(alpha = 0.04f), Color.Transparent),
         startY = 0f,
         endY = size.height * 0.4f,
@@ -225,11 +223,17 @@ private fun Modifier.drawGloss(): Modifier = drawBehind {
 
 private fun Modifier.insetShadow(): Modifier = drawBehind {
     // Inner shadow fake using gradients at top and bottom
-    val top = Brush.verticalGradient(
-        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent), 0f, size.height * 0.35f
+    val top =
+        Brush.verticalGradient(
+        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent),
+        0f,
+        size.height * 0.35f,
     )
-    val bottom = Brush.verticalGradient(
-        listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)), size.height * 0.65f, size.height
+    val bottom =
+        Brush.verticalGradient(
+        listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+        size.height * 0.65f,
+        size.height,
     )
     drawRect(top)
     drawRect(bottom)
@@ -237,8 +241,11 @@ private fun Modifier.insetShadow(): Modifier = drawBehind {
 
 private fun Modifier.drawButtonSheen(enabled: Boolean): Modifier = drawBehind {
     if (!enabled) return@drawBehind
-    val sheen = Brush.verticalGradient(
-        listOf(Color.White.copy(alpha = 0.05f), Color.Transparent), 0f, size.height * 0.6f
+    val sheen =
+        Brush.verticalGradient(
+        listOf(Color.White.copy(alpha = 0.05f), Color.Transparent),
+        0f,
+        size.height * 0.6f,
     )
     drawRect(sheen)
 }
@@ -268,19 +275,25 @@ private fun Modifier.drawNeonRim(alpha: Float): Modifier = drawBehind {
     // Top
     drawRect(
         Brush.verticalGradient(listOf(glow, Color.Transparent)),
-        size = androidx.compose.ui.geometry.Size(size.width, thickness)
+        size = androidx.compose.ui.geometry.Size(size.width, thickness),
     )
     // Bottom
     withTransform({ translate(0f, size.height - thickness) }) {
-        drawRect(Brush.verticalGradient(listOf(Color.Transparent, glow)), size = androidx.compose.ui.geometry.Size(size.width, thickness))
+        drawRect(
+            Brush.verticalGradient(listOf(Color.Transparent, glow)),
+            size = androidx.compose.ui.geometry.Size(size.width, thickness),
+        )
     }
     // Left
     drawRect(
         Brush.horizontalGradient(listOf(glow, Color.Transparent)),
-        size = androidx.compose.ui.geometry.Size(thickness, size.height)
+        size = androidx.compose.ui.geometry.Size(thickness, size.height),
     )
     // Right
     withTransform({ translate(size.width - thickness, 0f) }) {
-        drawRect(Brush.horizontalGradient(listOf(Color.Transparent, glow)), size = androidx.compose.ui.geometry.Size(thickness, size.height))
+        drawRect(
+            Brush.horizontalGradient(listOf(Color.Transparent, glow)),
+            size = androidx.compose.ui.geometry.Size(thickness, size.height),
+        )
     }
 }
