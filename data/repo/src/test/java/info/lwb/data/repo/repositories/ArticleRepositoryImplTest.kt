@@ -151,10 +151,11 @@ class ArticleRepositoryImplTest {
     @Test
     fun refreshArticles_syncsManifestItems() = runTest {
         // Given manifest with two items
-        api.manifest = listOf(
-            ManifestItemDto("m1", "M Title 1", "m-slug-1", 1, "2025-01-01T00:00:00Z", 150),
-            ManifestItemDto("m2", "M Title 2", "m-slug-2", 2, "2025-01-02T00:00:00Z", 250),
-        )
+        api.manifest =
+            listOf(
+                ManifestItemDto("m1", "M Title 1", "m-slug-1", 1, "2025-01-01T00:00:00Z", 150),
+                ManifestItemDto("m2", "M Title 2", "m-slug-2", 2, "2025-01-02T00:00:00Z", 250),
+            )
         api.articles["m1"] =
             ArticleDto(
             id = "m1", slug = "m-slug-1", title = "M Title 1", version = 1, wordCount = 150,
@@ -189,7 +190,8 @@ class ArticleRepositoryImplTest {
         dao.upsertContent(ArticleContentEntity("x1", "<p>old</p>", "old", "hash-old"))
 
         // Manifest has same version
-        api.manifest = listOf(ManifestItemDto("x1", "Title X", "slug-x", 3, "2025-01-03", 100))
+        api.manifest =
+            listOf(ManifestItemDto("x1", "Title X", "slug-x", 3, "2025-01-03", 100))
         // API should not be called for details if version unchanged and content exists; even if provided, repo should not overwrite
         api.articles["x1"] =
             ArticleDto(
@@ -205,7 +207,8 @@ class ArticleRepositoryImplTest {
 
     @Test
     fun refreshArticles_dropsContentOnChecksumMismatch() = runTest {
-        api.manifest = listOf(ManifestItemDto("c1", "C1", "c1", 1, "2025-01-01", 10))
+        api.manifest =
+            listOf(ManifestItemDto("c1", "C1", "c1", 1, "2025-01-01", 10))
         // Provide checksum that won't match sha256("hello")
         api.articles["c1"] =
             ArticleDto(
@@ -224,7 +227,8 @@ class ArticleRepositoryImplTest {
     @Test
     fun refreshArticles_retriesOnFailureThenSucceeds() = runTest {
         // API fails first time for getArticle, succeeds next
-        api.manifest = listOf(ManifestItemDto("r1", "R1", "r1", 1, "2025-01-01", 10))
+        api.manifest =
+            listOf(ManifestItemDto("r1", "R1", "r1", 1, "2025-01-01", 10))
         var attempts = 0
         val retryingApi = object : ArticleApi {
             override suspend fun getManifest(): info.lwb.data.network.ManifestResponse =
@@ -268,9 +272,10 @@ class ArticleRepositoryImplTest {
     @Test
     fun refreshArticles_appliesEviction_keepsMostRecentN() = runTest {
         // Given 6 manifest items with increasing updatedAt
-        api.manifest = (1..6).map { i ->
-            ManifestItemDto("id$i", "T$i", "s$i", i, "2025-01-0${i}T00:00:00Z", i * 10)
-        }
+        api.manifest =
+            (1..6).map { i ->
+                ManifestItemDto("id$i", "T$i", "s$i", i, "2025-01-0${i}T00:00:00Z", i * 10)
+            }
         // Provide article bodies so content gets stored
         (1..6).forEach { i ->
             api.articles["id$i"] =
