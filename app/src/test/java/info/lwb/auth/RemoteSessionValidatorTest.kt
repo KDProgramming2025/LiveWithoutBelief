@@ -182,8 +182,12 @@ class RemoteSessionValidatorTest {
                 }
             }
             val obs = CapturingObserver()
-            server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
-            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0")
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("{}")
+            )
             validator =
                 RemoteSessionValidator(
                     client,
