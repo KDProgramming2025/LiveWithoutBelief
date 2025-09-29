@@ -111,9 +111,10 @@ class FakeArticleDao : ArticleDao {
 class StubArticleApi : ArticleApi {
     var manifest: List<ManifestItemDto> = emptyList()
     var articles: MutableMap<String, ArticleDto> = mutableMapOf()
-    override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = info.lwb.data.network.ManifestResponse(
-        manifest,
-    )
+    override suspend fun getManifest(): info.lwb.data.network.ManifestResponse =
+        info.lwb.data.network.ManifestResponse(
+            manifest,
+        )
     override suspend fun getArticle(id: String): ArticleDto = articles[id] ?: error("not found")
 }
 
@@ -323,7 +324,8 @@ class ArticleRepositoryImplTest {
             override suspend fun getArticle(id: String): ArticleDto {
                 attempts++
                 if (attempts == 1) error("transient")
-                return ArticleDto(
+                return
+                    ArticleDto(
                     id = id,
                     slug = "r1",
                     title = "R1",
