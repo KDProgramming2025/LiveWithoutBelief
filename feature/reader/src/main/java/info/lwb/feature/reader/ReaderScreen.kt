@@ -7,10 +7,11 @@
 package info.lwb.feature.reader
 
 // cleaned after modularization
-import android.view.HapticFeedbackConstants
-import android.view.MotionEvent
 // cleaned after modularization
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,8 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,44 +31,39 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
-import androidx.activity.compose.BackHandler
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import androidx.lifecycle.viewModelScope
+import coil.compose.AsyncImage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import info.lwb.core.domain.AddAnnotationUseCase
 import info.lwb.feature.annotations.DiscussionThreadSheet
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import javax.inject.Inject
-import info.lwb.feature.reader.ui.AppearanceState
-import info.lwb.feature.reader.ui.ReaderAppearanceSheet
 import info.lwb.feature.reader.ui.ActionRail
 import info.lwb.feature.reader.ui.ActionRailItem
-import info.lwb.feature.reader.ui.YouTubeBlock
+import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.AudioBlock
-import info.lwb.feature.reader.ui.ArticleWebView
+import info.lwb.feature.reader.ui.ReaderAppearanceSheet
+import info.lwb.feature.reader.ui.YouTubeBlock
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // Data holder for reader settings provided by caller (ViewModel layer wires flows & mutations)
-data class ReaderSettingsState(
+internal data class ReaderSettingsState(
     val fontScale: Double,
     val lineHeight: Double,
     val onFontScaleChange: (Double) -> Unit,
@@ -78,7 +74,7 @@ data class ReaderSettingsState(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReaderScreen(
+internal fun ReaderScreen(
     articleTitle: String,
     htmlBody: String,
     settings: ReaderSettingsState,
@@ -89,12 +85,13 @@ fun ReaderScreen(
     injectedCss: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    // FAB visibility state with auto-hide timer
+    // Mutable UI state
     var fabVisible by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
-    var hideJob by remember { mutableStateOf<Job?>(null) }
     var showAppearance by remember { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var hideJob by remember { mutableStateOf<Job?>(null) }
+
     fun showFabTemporarily() {
         fabVisible = true
         hideJob?.cancel()
@@ -108,9 +105,15 @@ fun ReaderScreen(
 
     BackHandler(enabled = true) {
         when {
-            showAppearance -> showAppearance = false
-            fabVisible -> fabVisible = false
-            else -> confirmExit = true
+            showAppearance -> {
+                showAppearance = false
+            }
+            fabVisible -> {
+                fabVisible = false
+            }
+            else -> {
+                confirmExit = true
+            }
         }
     }
 
@@ -120,310 +123,435 @@ fun ReaderScreen(
     var currentSearchIndex by remember { mutableStateOf(0) }
     val configuration = LocalConfiguration.current
     val isWide = configuration.screenWidthDp >= 600
+
+    // Recompute matches whenever query or blocks change
+    LaunchedEffect(searchQuery, blocks) {
+        searchHits = buildSearchHits(
+            pages,
+            blocks,
+            searchQuery,
+        )
+        currentSearchIndex = 0
+    }
+
     Box(Modifier.fillMaxSize()) {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            topBar = { TopAppBar(title = { Text(articleTitle) }) },
-            bottomBar = {
-                ReaderControlsBar(settings = settings) { font, line ->
-                    settings.onFontScaleChange(font)
-                    settings.onLineHeightChange(line)
-                }
+        ReaderScaffold(
+            modifier = modifier,
+            articleTitle = articleTitle,
+            settings = settings,
+            onTapContent = { showFabTemporarily() },
+            searchBar = {
+                SearchBar(
+                    query = searchQuery,
+                    occurrences = searchHits.size,
+                    currentIndex = if (searchHits.isEmpty()) 0 else currentSearchIndex + 1,
+                    onPrev = {
+                        if (searchHits.isNotEmpty()) {
+                            currentSearchIndex = (currentSearchIndex - 1 + searchHits.size) % searchHits.size
+                        }
+                    },
+                    onNext = {
+                        if (searchHits.isNotEmpty()) {
+                            currentSearchIndex = (currentSearchIndex + 1) % searchHits.size
+                        }
+                    },
+                    onChange = { searchQuery = it },
+                )
             },
         ) { padding ->
-            Column(
-                Modifier
-                    .padding(padding)
-                    .pointerInput(Unit) {
-                        // Show rail on single taps only; ignore long press/drag/scroll
-                        detectTapGestures(
-                            onTap = { showFabTemporarily() }
-                        )
-                    }
-            ) {
-            SearchBar(
-                searchQuery,
-                occurrences = searchHits.size,
-                currentIndex = if (searchHits.isEmpty()) 0 else currentSearchIndex + 1,
-                onPrev = {
-                    if (searchHits.isNotEmpty()) {
-                        currentSearchIndex =
-                            (currentSearchIndex - 1 + searchHits.size) % searchHits.size
-                    }
-                },
-                onNext = {
-                    if (searchHits.isNotEmpty()) {
-                        currentSearchIndex = (currentSearchIndex + 1) % searchHits.size
-                    }
-                },
-            ) { q ->
-                searchQuery = q
-            }
-            // Recompute matches whenever query or blocks change (using full content for simplicity)
-            LaunchedEffect(searchQuery, blocks) {
-                searchHits = buildSearchHits(pages, blocks, searchQuery)
-                currentSearchIndex = 0
-            }
-            val pageList = pages
-            if (pageList != null && pageList.size > 1) {
-                // Simple horizontal pager substitute using Row + manual buttons (avoid new dependency)
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+            if (pages != null && pages.size > 1) {
+                ReaderPagedContent(
+                    articleTitle = articleTitle,
+                    currentPageIndex = currentPageIndex,
+                    pages = pages,
+                    isWide = isWide,
+                    settings = settings,
+                    searchQuery = searchQuery,
+                    searchHits = searchHits,
+                    currentSearchIndex = currentSearchIndex,
+                    onPageChange = onPageChange,
+                    onAnnotationCreated = { /* handled inside */ },
                 ) {
-                    Text(
-                        "Page ${currentPageIndex + 1} / ${pageList.size}",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    Row {
-                        androidx.compose.material3.Button(
-                            enabled = currentPageIndex > 0,
-                            onClick = {
-                                onPageChange((currentPageIndex - 1).coerceAtLeast(0))
-                            },
-                        ) { Text("Prev") }
-                        Spacer(Modifier.width(8.dp))
-                        androidx.compose.material3.Button(
-                            enabled = currentPageIndex < pageList.lastIndex,
-                            onClick = {
-                                onPageChange((currentPageIndex + 1).coerceAtMost(pageList.lastIndex))
-                            },
-                        ) { Text("Next") }
-                    }
-                }
-                val pageBlocks =
-                    remember(currentPageIndex, pageList) { pageList.getOrNull(currentPageIndex)?.blocks ?: emptyList() }
-                val listState = rememberLazyListState()
-                // Restore persisted list position
-                val scrollVm: ScrollViewModel = hiltViewModel()
-                LaunchedEffect(articleTitle) {
-                    val index = try { scrollVm.observeListIndex(articleTitle).first() } catch (_: Throwable) { 0 }
-                    val offset = try { scrollVm.observeListOffset(articleTitle).first() } catch (_: Throwable) { 0 }
-                    if (index > 0 || offset > 0) listState.scrollToItem(index, offset)
-                }
-                // Save on scroll changes
-                LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-                    scrollVm.saveList(articleTitle, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
-                }
-                // Auto-scroll to current hit if it's on this page
-                LaunchedEffect(currentSearchIndex, searchHits, currentPageIndex) {
-                    val hit = searchHits.getOrNull(currentSearchIndex)
-                    if (hit != null && hit.pageIndex == currentPageIndex) {
-                        listState.animateScrollToItem(hit.blockIndex)
-                    }
-                }
-                val contentModifier = if (isWide) Modifier.weight(1f) else Modifier.fillMaxSize()
-                val toc: List<HeadingItem> = remember(pageList) { buildHeadingItems(pageList) }
-                Row(Modifier.fillMaxSize()) {
-                    if (isWide && toc.isNotEmpty()) {
-                        Surface(
-                            tonalElevation = 1.dp,
-                            modifier = Modifier
-                                .width(220.dp)
-                                .fillMaxHeight(),
-                        ) {
-                            LazyColumn(
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp),
-                            ) {
-                                items(toc.size) { i ->
-                                    val h = toc[i]
-                                    Text(
-                                        text = h.text,
-                                        style = when (h.level) {
-                                            1 -> MaterialTheme.typography.titleMedium
-                                            2 -> MaterialTheme.typography.titleSmall
-                                            else -> MaterialTheme.typography.bodySmall
-                                        },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { onPageChange(h.pageIndex) }
-                                            .padding(vertical = 4.dp),
-                                    )
-                                    Spacer(Modifier.height(2.dp))
-                                }
-                            }
-                        }
-                    }
-                    var openAnnotationFor by remember { mutableStateOf<String?>(null) }
-                    val deps = hiltViewModel<ReaderDeps>()
-                    LazyColumn(contentModifier, state = listState) {
-                        items(pageBlocks.size) { idx ->
-                            val b = pageBlocks[idx]
-                            when (b) {
-                                is ContentBlock.Paragraph -> Column(Modifier.fillMaxWidth()) {
-                                    ParagraphBlock(
-                                        text = b.text,
-                                        query = searchQuery,
-                                        settings = settings,
-                                        activeRange = searchHits
-                                            .getOrNull(currentSearchIndex)
-                                            ?.takeIf { it.pageIndex == currentPageIndex && it.blockIndex == idx }
-                                            ?.range,
-                                    )
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                        IconButton(onClick = {
-                                            // Annotate whole paragraph for MVP
-                                            val articleId = articleTitle
-                                            val range = 0 to b.text.length
-                                            // Fire and open sheet after id returned
-                                            deps.scope.launch {
-                                                val res = deps.addAnnotation(
-                                                    articleId,
-                                                    range.first,
-                                                    range.second,
-                                                    b.text.hashCode().toString(),
-                                                )
-                                                if (res is info.lwb.core.common.Result.Success) {
-                                                    openAnnotationFor = res.data
-                                                }
-                                            }
-                                        }) { Icon(Icons.Filled.Edit, contentDescription = "Annotate") }
-                                    }
-                                }
-                                is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
-                                is ContentBlock.Image -> AsyncImage(
-                                    model = b.url,
-                                    contentDescription = b.alt,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(220.dp),
-                                )
-                                is ContentBlock.Audio -> AudioBlock(b.url)
-                                is ContentBlock.YouTube -> YouTubeBlock(b.videoId)
-                            }
-                            Spacer(Modifier.height(12.dp))
-                        }
-                    }
-                    if (openAnnotationFor != null) {
-                        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { openAnnotationFor = null }) {
-                            DiscussionThreadSheet(annotationId = openAnnotationFor!!)
-                        }
-                    }
-                }
+                    currentSearchIndex
+                } // lambda to read latest index
             } else {
-                val listState = rememberLazyListState()
-                val scrollVm: ScrollViewModel = hiltViewModel()
-                LaunchedEffect(articleTitle) {
-                    val index = try { scrollVm.observeListIndex(articleTitle).first() } catch (_: Throwable) { 0 }
-                    val offset = try { scrollVm.observeListOffset(articleTitle).first() } catch (_: Throwable) { 0 }
-                    if (index > 0 || offset > 0) listState.scrollToItem(index, offset)
-                }
-                LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-                    scrollVm.saveList(articleTitle, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
-                }
-                LaunchedEffect(currentSearchIndex, searchHits) {
-                    val hit = searchHits.getOrNull(currentSearchIndex)
-                    if (hit != null) listState.animateScrollToItem(hit.blockIndex)
-                }
-                var openAnnotationFor by remember { mutableStateOf<String?>(null) }
-                val deps = hiltViewModel<ReaderDeps>()
-                LazyColumn(Modifier.fillMaxSize(), state = listState) {
-                    items(blocks.size) { idx ->
-                        val b = blocks[idx]
-                        when (b) {
-                            is ContentBlock.Paragraph -> Column(Modifier.fillMaxWidth()) {
-                                ParagraphBlock(
-                                    text = b.text,
-                                    query = searchQuery,
-                                    settings = settings,
-                                    activeRange = searchHits
-                                        .getOrNull(currentSearchIndex)
-                                        ?.takeIf { it.blockIndex == idx }
-                                        ?.range,
-                                )
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                    IconButton(onClick = {
-                                        val articleId = articleTitle
-                                        val range = 0 to b.text.length
-                                        deps.scope.launch {
-                                            val res = deps.addAnnotation(
-                                                articleId,
-                                                range.first,
-                                                range.second,
-                                                b.text.hashCode().toString(),
-                                            )
-                                            if (res is info.lwb.core.common.Result.Success) {
-                                                openAnnotationFor = res.data
-                                            }
-                                        }
-                                    }) { Icon(Icons.Filled.Edit, contentDescription = "Annotate") }
-                                }
-                            }
-                            is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
-                            is ContentBlock.Image -> AsyncImage(
-                                model = b.url,
-                                contentDescription = b.alt,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(220.dp),
-                            )
-                            is ContentBlock.Audio -> AudioBlock(b.url)
-                            is ContentBlock.YouTube -> YouTubeBlock(b.videoId)
-                        }
-                        Spacer(Modifier.height(12.dp))
-                    }
-                }
-                if (openAnnotationFor != null) {
-                    androidx.compose.material3.ModalBottomSheet(onDismissRequest = { openAnnotationFor = null }) {
-                        DiscussionThreadSheet(annotationId = openAnnotationFor!!)
-                    }
+                ReaderSingleContent(
+                    articleTitle = articleTitle,
+                    blocks = blocks,
+                    settings = settings,
+                    searchQuery = searchQuery,
+                    searchHits = searchHits,
+                    currentSearchIndex = currentSearchIndex,
+                ) {
+                    currentSearchIndex
                 }
             }
+        }
+
+        ReaderScreenOverlays(
+            appearance = appearance,
+            showAppearance = showAppearance,
+            onShowAppearance = {
+                showAppearance = true
+            },
+            onDismissAppearance = {
+                showAppearance = false
+            },
+            confirmExit = confirmExit,
+            onDismissExit = {
+                confirmExit = false
+            },
+            onExitConfirmed = {
+                confirmExit = false
+                val back = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                back?.onBackPressed()
+            },
+            fabVisible = fabVisible,
+            onFabBookmark = {
+                showFabTemporarily()
+            },
+            onFabListen = {
+                showFabTemporarily()
+            },
+            onFabAppearance = {
+                if (appearance != null) showAppearance = true
+            },
+        )
+    }
+}
+
+@Composable
+private fun ReaderScaffold(
+    modifier: Modifier,
+    articleTitle: String,
+    settings: ReaderSettingsState,
+    onTapContent: () -> Unit,
+    searchBar: @Composable () -> Unit,
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = { TopAppBar(title = { Text(articleTitle) }) },
+        bottomBar = {
+            ReaderControlsBar(settings = settings) { font, line -> 
+                settings.onFontScaleChange(font)
+                settings.onLineHeightChange(line)
             }
-        }
-        if (fabVisible) {
-            ActionRail(
-                modifier = Modifier.align(Alignment.BottomEnd),
-                items = listOf(
-                    ActionRailItem(
-                        icon = Icons.Filled.Settings,
-                        label = "Appearance",
-                        onClick = { if (appearance != null) showAppearance = true }
-                    ),
-                    ActionRailItem(
-                        icon = Icons.Filled.Edit,
-                        label = "Bookmark",
-                        onClick = { showFabTemporarily() }
-                    ),
-                    ActionRailItem(
-                        icon = Icons.Filled.PlayArrow,
-                        label = "Listen",
-                        onClick = { showFabTemporarily() }
-                    ),
-                ),
-                mainIcon = Icons.Filled.Settings,
-                mainContentDescription = "Reader actions",
-                edgePadding = 16.dp,
-            )
-        }
-        if (appearance != null) {
-            ReaderAppearanceSheet(
-                visible = showAppearance,
-                state = appearance,
-                onDismiss = { showAppearance = false },
-            )
-        }
-        if (confirmExit) {
-            val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-            AlertDialog(
-                onDismissRequest = { confirmExit = false },
-                title = { Text("Leave reader?") },
-                text = { Text("Are you sure you want to exit the reader?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        confirmExit = false
-                        backDispatcher?.onBackPressed()
-                    }) { Text("Exit") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { confirmExit = false }) { Text("Cancel") }
-                }
-            )
+        },
+    ) { padding -> 
+        Column(
+            Modifier
+                .padding(padding)
+                .pointerInput(Unit) { detectTapGestures(onTap = { onTapContent() }) },
+        ) {
+            searchBar()
+            content(padding)
         }
     }
+}
+
+// ---------------------------- Paged Mode ----------------------------
+
+@Composable
+private fun ReaderPagedContent(
+    articleTitle: String,
+    currentPageIndex: Int,
+    pages: List<Page>,
+    isWide: Boolean,
+    settings: ReaderSettingsState,
+    searchQuery: String,
+    searchHits: List<SearchHit>,
+    currentSearchIndex: Int,
+    onPageChange: (Int) -> Unit,
+    onAnnotationCreated: (String) -> Unit,
+    currentSearchIndexProvider: () -> Int,
+) {
+    // Pager header
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Page ${currentPageIndex + 1} / ${pages.size}",
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Row {
+            androidx.compose.material3.Button(
+                enabled = currentPageIndex > 0,
+                onClick = { onPageChange((currentPageIndex - 1).coerceAtLeast(0)) },
+            ) { Text("Prev") }
+            Spacer(Modifier.width(8.dp))
+            androidx.compose.material3.Button(
+                enabled = currentPageIndex < pages.lastIndex,
+                onClick = { onPageChange((currentPageIndex + 1).coerceAtMost(pages.lastIndex)) },
+            ) { Text("Next") }
+        }
+    }
+
+    val pageBlocks = remember(currentPageIndex, pages) { pages.getOrNull(currentPageIndex)?.blocks ?: emptyList() }
+    val listState = rememberLazyListState()
+    val scrollVm: ScrollViewModel = hiltViewModel()
+    LaunchedEffect(articleTitle) { restoreListPosition(scrollVm, articleTitle, listState) }
+    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        scrollVm.saveList(articleTitle, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+    }
+    LaunchedEffect(currentSearchIndex, searchHits, currentPageIndex) {
+        val hit = searchHits.getOrNull(currentSearchIndex)
+        if (hit != null && hit.pageIndex == currentPageIndex) listState.animateScrollToItem(hit.blockIndex)
+    }
+    val contentModifier = if (isWide) Modifier.weight(1f) else Modifier.fillMaxSize()
+    val toc: List<HeadingItem> = remember(pages) { buildHeadingItems(pages) }
+    Row(Modifier.fillMaxSize()) {
+        if (isWide && toc.isNotEmpty()) {
+            TableOfContents(toc = toc, onSelect = onPageChange)
+        }
+        BlocksList(
+            articleTitle = articleTitle,
+            blocks = pageBlocks,
+            settings = settings,
+            searchQuery = searchQuery,
+            searchHits = searchHits,
+            currentSearchIndexProvider = currentSearchIndexProvider,
+            pageIndex = currentPageIndex,
+            listModifier = contentModifier,
+        )
+    }
+}
+
+// ---------------------------- Single Mode ----------------------------
+
+@Composable
+private fun ReaderSingleContent(
+    articleTitle: String,
+    blocks: List<ContentBlock>,
+    settings: ReaderSettingsState,
+    searchQuery: String,
+    searchHits: List<SearchHit>,
+    currentSearchIndex: Int,
+    currentSearchIndexProvider: () -> Int,
+) {
+    val listState = rememberLazyListState()
+    val scrollVm: ScrollViewModel = hiltViewModel()
+    LaunchedEffect(articleTitle) { restoreListPosition(scrollVm, articleTitle, listState) }
+    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        scrollVm.saveList(articleTitle, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+    }
+    LaunchedEffect(currentSearchIndex, searchHits) {
+        val hit = searchHits.getOrNull(currentSearchIndex)
+        if (hit != null) listState.animateScrollToItem(hit.blockIndex)
+    }
+    BlocksList(
+        articleTitle = articleTitle,
+        blocks = blocks,
+        settings = settings,
+        searchQuery = searchQuery,
+        searchHits = searchHits,
+        currentSearchIndexProvider = currentSearchIndexProvider,
+        pageIndex = null,
+        listModifier = Modifier.fillMaxSize(),
+    )
+}
+
+// ---------------------------- Shared UI pieces ----------------------------
+
+@Composable
+private fun BlocksList(
+    articleTitle: String,
+    blocks: List<ContentBlock>,
+    settings: ReaderSettingsState,
+    searchQuery: String,
+    searchHits: List<SearchHit>,
+    currentSearchIndexProvider: () -> Int,
+    pageIndex: Int?,
+    listModifier: Modifier,
+) {
+    val listState = rememberLazyListState()
+    // Provide the external state restored list (caller handled restore) by keying on articleTitle
+    val deps = hiltViewModel<ReaderDeps>()
+    var openAnnotationFor by remember { mutableStateOf<String?>(null) }
+    LazyColumn(listModifier, state = listState) {
+        items(blocks.size) { idx -> 
+            val b = blocks[idx]
+            when (b) {
+                is ContentBlock.Paragraph -> ParagraphWithActions(
+                    articleTitle = articleTitle,
+                    block = b,
+                    idx = idx,
+                    settings = settings,
+                    searchQuery = searchQuery,
+                    searchHits = searchHits,
+                    currentSearchIndexProvider = currentSearchIndexProvider,
+                    pageIndex = pageIndex,
+                    deps = deps,
+                    onOpenAnnotation = { openAnnotationFor = it },
+                )
+                is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
+                is ContentBlock.Image -> AsyncImage(
+                    model = b.url,
+                    contentDescription = b.alt,
+                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                )
+                is ContentBlock.Audio -> AudioBlock(b.url)
+                is ContentBlock.YouTube -> YouTubeBlock(b.videoId)
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+    if (openAnnotationFor != null) {
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { openAnnotationFor = null }) {
+            DiscussionThreadSheet(annotationId = openAnnotationFor!!)
+        }
+    }
+}
+
+@Composable
+private fun ParagraphWithActions(
+    articleTitle: String,
+    block: ContentBlock.Paragraph,
+    idx: Int,
+    settings: ReaderSettingsState,
+    searchQuery: String,
+    searchHits: List<SearchHit>,
+    currentSearchIndexProvider: () -> Int,
+    pageIndex: Int?,
+    deps: ReaderDeps,
+    onOpenAnnotation: (String) -> Unit,
+) {
+    val currentSearchIndex = currentSearchIndexProvider()
+    val activeRange =
+        searchHits
+            .getOrNull(currentSearchIndex)
+            ?.takeIf { hit ->
+                if (pageIndex != null) {
+                    hit.pageIndex == pageIndex && hit.blockIndex == idx
+                } else {
+                    hit.blockIndex == idx
+                }
+            }
+            ?.range
+    Column(Modifier.fillMaxWidth()) {
+        ParagraphBlock(
+            text = block.text,
+            query = searchQuery,
+            settings = settings,
+            activeRange = activeRange,
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            IconButton(onClick = {
+                val articleId = articleTitle
+                val range = 0 to block.text.length
+                deps.scope.launch {
+                    val res = deps.addAnnotation(articleId, range.first, range.second, block.text.hashCode().toString())
+                    if (res is info.lwb.core.common.Result.Success) onOpenAnnotation(res.data)
+                }
+            }) { Icon(Icons.Filled.Edit, contentDescription = "Annotate") }
+        }
+    }
+}
+
+@Composable
+private fun TableOfContents(toc: List<HeadingItem>, onSelect: (HeadingItem) -> Unit) {
+    Surface(
+        tonalElevation = 1.dp,
+        modifier = Modifier.width(220.dp).fillMaxHeight(),
+    ) {
+        LazyColumn(Modifier.fillMaxSize().padding(8.dp)) {
+            items(toc.size) { i -> 
+                val h = toc[i]
+                Text(
+                    text = h.text,
+                    style = when (h.level) {
+                        1 -> MaterialTheme.typography.titleMedium
+                        2 -> MaterialTheme.typography.titleSmall
+                        else -> MaterialTheme.typography.bodySmall
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(h) }
+                        .padding(vertical = 4.dp),
+                )
+                Spacer(Modifier.height(2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReaderScreenOverlays(
+    appearance: AppearanceState?,
+    showAppearance: Boolean,
+    onShowAppearance: () -> Unit,
+    onDismissAppearance: () -> Unit,
+    confirmExit: Boolean,
+    onDismissExit: () -> Unit,
+    onExitConfirmed: () -> Unit,
+    fabVisible: Boolean,
+    onFabBookmark: () -> Unit,
+    onFabListen: () -> Unit,
+    onFabAppearance: () -> Unit,
+) {
+    if (fabVisible) {
+        ActionRail(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            items = listOf(
+                ActionRailItem(
+                    icon = Icons.Filled.Settings,
+                    label = "Appearance",
+                    onClick = { onFabAppearance() },
+                ),
+                ActionRailItem(
+                    icon = Icons.Filled.Edit,
+                    label = "Bookmark",
+                    onClick = { onFabBookmark() },
+                ),
+                ActionRailItem(
+                    icon = Icons.Filled.PlayArrow,
+                    label = "Listen",
+                    onClick = { onFabListen() },
+                ),
+            ),
+            mainIcon = Icons.Filled.Settings,
+            mainContentDescription = "Reader actions",
+            edgePadding = 16.dp,
+        )
+    }
+    if (appearance != null) {
+        ReaderAppearanceSheet(
+            visible = showAppearance,
+            state = appearance,
+            onDismiss = onDismissAppearance,
+        )
+    }
+    if (confirmExit) {
+        AlertDialog(
+            onDismissRequest = onDismissExit,
+            title = { Text("Leave reader?") },
+            text = { Text("Are you sure you want to exit the reader?") },
+            confirmButton = { TextButton(onClick = onExitConfirmed) { Text("Exit") } },
+            dismissButton = { TextButton(onClick = onDismissExit) { Text("Cancel") } },
+        )
+    }
+}
+
+// ---------------------------- Utility ----------------------------
+
+private suspend fun restoreListPosition(
+    scrollVm: ScrollViewModel,
+    articleTitle: String,
+    state: androidx.compose.foundation.lazy.LazyListState,
+) {
+    val index = try {
+        scrollVm.observeListIndex(articleTitle).first()
+    } catch (_: Throwable) {
+        0
+    }
+    val offset = try {
+        scrollVm.observeListOffset(articleTitle).first()
+    } catch (_: Throwable) {
+        0
+    }
+    if (index > 0 || offset > 0) state.scrollToItem(index, offset)
 }
 
 // Internal small helper to access use cases without refactoring the entire screen into a VM here.
@@ -465,8 +593,14 @@ private fun ParagraphBlock(text: String, query: String, settings: ReaderSettings
         if (lastIndex < text.length) append(text.substring(lastIndex))
     }
     val baseStyle = MaterialTheme.typography.bodyLarge
-    val scaledFont = (baseStyle.fontSize.value * settings.fontScale).coerceAtLeast(10.0).sp
-    val scaledLineHeight = (baseStyle.lineHeight.value * settings.lineHeight).coerceAtLeast(12.0).sp
+    val scaledFont =
+        (baseStyle.fontSize.value * settings.fontScale)
+            .coerceAtLeast(10.0)
+            .sp
+    val scaledLineHeight =
+        (baseStyle.lineHeight.value * settings.lineHeight)
+            .coerceAtLeast(12.0)
+            .sp
     Text(
         annotated,
         style = baseStyle.copy(fontSize = scaledFont, lineHeight = scaledLineHeight),
@@ -488,7 +622,9 @@ private fun HeadingBlock(level: Int, text: String) {
 
 @Composable
 private fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double, Double) -> Unit) {
-    Surface(shadowElevation = 4.dp) {
+    Surface(
+        shadowElevation = 4.dp,
+    ) {
         Column(Modifier.fillMaxWidth().padding(8.dp)) {
             Text(
                 "Font: ${"%.2f".format(settings.fontScale)}  Line: ${"%.2f".format(settings.lineHeight)}",
@@ -497,14 +633,24 @@ private fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double, 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Slider(
                     value = settings.fontScale.toFloat(),
-                    onValueChange = { onChange(it.toDouble().coerceIn(0.8, 1.6), settings.lineHeight) },
+                    onValueChange = {
+                        onChange(
+                            it.toDouble().coerceIn(0.8, 1.6),
+                            settings.lineHeight,
+                        )
+                    },
                     valueRange = 0.8f..1.6f,
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
                 Slider(
                     value = settings.lineHeight.toFloat(),
-                    onValueChange = { onChange(settings.fontScale, it.toDouble().coerceIn(1.0, 2.0)) },
+                    onValueChange = {
+                        onChange(
+                            settings.fontScale,
+                            it.toDouble().coerceIn(1.0, 2.0),
+                        )
+                    },
                     valueRange = 1.0f..2.0f,
                     modifier = Modifier.weight(1f),
                 )
