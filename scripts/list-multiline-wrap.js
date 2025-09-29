@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Utility: list all detekt.ktlint.MultilineExpressionWrapping findings with file:line.
- * Scans all build/**/detekt/*.sarif files.
+ * Scans all SARIF reports produced by detekt under build/reports/detekt in each module.
  */
 const fs = require('fs');
 const path = require('path');
