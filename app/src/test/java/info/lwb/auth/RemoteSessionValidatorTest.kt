@@ -269,7 +269,9 @@ class RemoteSessionValidatorTest {
             validator =
                 RemoteSessionValidator(
                     client,
-                    server.url("").toString().trimEnd('/'),
+                    server.url("")
+                        .toString()
+                        .trimEnd('/'),
                     ValidationRetryPolicy(),
                     composite,
                     InMemoryRevocationStore(),
