@@ -149,7 +149,10 @@ class RemoteSessionValidatorTest {
         val revocationStore = InMemoryRevocationStore()
         validator = RemoteSessionValidator(
             client,
-            server.url("").toString().trimEnd('/'),
+            server
+                .url("")
+                .toString()
+                .trimEnd('/'),
             ValidationRetryPolicy(),
             NoopValidationObserver,
             revocationStore,
@@ -192,7 +195,10 @@ class RemoteSessionValidatorTest {
         )
         validator = RemoteSessionValidator(
             client,
-            server.url("").toString().trimEnd('/'),
+            server
+                .url("")
+                .toString()
+                .trimEnd('/'),
             ValidationRetryPolicy(),
             obs,
             InMemoryRevocationStore(),
@@ -237,7 +243,10 @@ class RemoteSessionValidatorTest {
         )
         validator = RemoteSessionValidator(
             client,
-            server.url("").toString().trimEnd('/'),
+            server
+                .url("")
+                .toString()
+                .trimEnd('/'),
             ValidationRetryPolicy(),
             composite,
             InMemoryRevocationStore(),
@@ -269,7 +278,10 @@ class RemoteSessionValidatorTest {
         )
         validator = RemoteSessionValidator(
             client,
-            server.url("").toString().trimEnd('/'),
+            server
+                .url("")
+                .toString()
+                .trimEnd('/'),
             ValidationRetryPolicy(),
             composite,
             InMemoryRevocationStore(),
@@ -312,7 +324,10 @@ class RemoteSessionValidatorTest {
         val composite = good.and(BadObserver())
         validator = RemoteSessionValidator(
             client,
-            server.url("").toString().trimEnd('/'),
+            server
+                .url("")
+                .toString()
+                .trimEnd('/'),
             ValidationRetryPolicy(),
             composite,
             InMemoryRevocationStore(),
@@ -333,7 +348,10 @@ class RemoteSessionValidatorTest {
         )
         validator = RemoteSessionValidator(
             client,
-            server.url("").toString().trimEnd('/'),
+            server
+                .url("")
+                .toString()
+                .trimEnd('/'),
             ValidationRetryPolicy(),
             sampled,
             InMemoryRevocationStore(),
