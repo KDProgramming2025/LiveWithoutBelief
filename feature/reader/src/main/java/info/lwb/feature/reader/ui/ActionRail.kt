@@ -8,9 +8,9 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -18,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -26,14 +27,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
  * A floating action rail suitable for reading UIs.
@@ -45,7 +44,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
  * - Items order: [items[0]] is closest to the main button (bottom-most), items grow upwards.
  */
 @Composable
-fun ActionRail(
+internal fun ActionRail(
     modifier: Modifier = Modifier,
     items: List<ActionRailItem>,
     mainIcon: ImageVector = Icons.Filled.Settings,
@@ -70,8 +69,8 @@ fun ActionRail(
                     .background(scrimColor)
                     .clickable(
                         indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { expanded = false }
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { expanded = false },
             )
         }
 
@@ -80,59 +79,60 @@ fun ActionRail(
                 .fillMaxSize()
                 .padding(end = edgePadding, bottom = edgePadding),
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.Bottom
+            verticalArrangement = Arrangement.Bottom,
         ) {
             // Constrain the rail content to wrap its width to pills
             Column(horizontalAlignment = Alignment.End) {
-
-            items.asReversed().forEachIndexed { indexFromTop, item ->
-                val indexFromBottom = items.lastIndex - indexFromTop
-                // Slight stagger per item (closer to main animates later)
-                val delay = 40 * indexFromBottom
-                AnimatedVisibility(
-                    visible = expanded,
-                    enter = fadeIn(tween(90, delayMillis = delay)) +
+                items.asReversed().forEachIndexed { indexFromTop, item ->
+                    val indexFromBottom = items.lastIndex - indexFromTop
+                    // Slight stagger per item (closer to main animates later)
+                    val delay = 40 * indexFromBottom
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = fadeIn(tween(90, delayMillis = delay)) +
                             expandHorizontally(tween(160 + delay, easing = FastOutSlowInEasing), Alignment.End) +
                             slideInVertically(tween(160 + delay)) { it / 5 },
-                    exit = fadeOut(tween(80)) +
-                           shrinkHorizontally(tween(120, easing = FastOutSlowInEasing), Alignment.End) +
-                           slideOutVertically(tween(120)) { it / 5 }
-                ) {
-                    ActionRailPill(
-                        icon = item.icon,
-                        label = item.label,
-                        height = itemHeight,
-                        width = railWidth,
-                        cornerRadius = cornerRadius,
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                            expanded = false
-                            item.onClick()
-                        }
-                    )
+                        exit = fadeOut(tween(80)) +
+                            shrinkHorizontally(tween(120, easing = FastOutSlowInEasing), Alignment.End) +
+                            slideOutVertically(tween(120)) { it / 5 },
+                    ) {
+                        ActionRailPill(
+                            icon = item.icon,
+                            label = item.label,
+                            height = itemHeight,
+                            width = railWidth,
+                            cornerRadius = cornerRadius,
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                expanded = false
+                                item.onClick()
+                            },
+                        )
+                    }
+                    if (expanded) {
+                        Spacer(Modifier.height(itemSpacing))
+                    }
                 }
-                if (expanded) Spacer(Modifier.height(itemSpacing))
-            }
 
-            // Main toggle button (rectangular with rounded corners)
-            Surface(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(MaterialTheme.shapes.large)
-                    .clickable(role = Role.Button) {
-                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                        expanded = !expanded
-                    },
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shadowElevation = 6.dp,
-                tonalElevation = 3.dp,
-                shape = MaterialTheme.shapes.large,
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Icon(mainIcon, contentDescription = mainContentDescription)
+                // Main toggle button (rectangular with rounded corners)
+                Surface(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(MaterialTheme.shapes.large)
+                        .clickable(role = Role.Button) {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            expanded = !expanded
+                        },
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shadowElevation = 6.dp,
+                    tonalElevation = 3.dp,
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(mainIcon, contentDescription = mainContentDescription)
+                    }
                 }
-            }
             }
         }
     }
@@ -165,7 +165,7 @@ private fun ActionRailPill(
                 .heightIn(min = height)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(icon, contentDescription = null)
             Text(
@@ -173,14 +173,14 @@ private fun ActionRailPill(
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false)
+                modifier = Modifier.weight(1f, fill = false),
             )
         }
     }
 }
 
 /** A single action item for [ActionRail]. items[0] is the bottom-most (closest to the main button). */
-data class ActionRailItem(
+internal data class ActionRailItem(
     val icon: ImageVector,
     val label: String,
     val onClick: () -> Unit,

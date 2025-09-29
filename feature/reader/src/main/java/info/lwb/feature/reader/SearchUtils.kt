@@ -5,9 +5,9 @@
 package info.lwb.feature.reader
 
 @Deprecated("Use SearchHit.kt declarations directly", ReplaceWith("buildSearchHits(pages, allBlocks, query)"))
-fun buildSearchHitsCompat(pages: List<Page>?, allBlocks: List<ContentBlock>, query: String): List<SearchHit> =
+internal fun buildSearchHitsCompat(pages: List<Page>?, allBlocks: List<ContentBlock>, query: String): List<SearchHit> =
     buildSearchHits(pages, allBlocks, query)
 
 // Keep file non-empty with multiple declarations to avoid ktlint filename rule complaining about class/file name.
 @Deprecated("Use SearchHit data class from SearchHit.kt")
-typealias LegacySearchHit = SearchHit
+internal typealias LegacySearchHit = SearchHit

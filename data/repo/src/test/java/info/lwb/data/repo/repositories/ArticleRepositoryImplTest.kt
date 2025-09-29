@@ -111,7 +111,9 @@ class FakeArticleDao : ArticleDao {
 class StubArticleApi : ArticleApi {
     var manifest: List<ManifestItemDto> = emptyList()
     var articles: MutableMap<String, ArticleDto> = mutableMapOf()
-    override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = info.lwb.data.network.ManifestResponse(manifest)
+    override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = info.lwb.data.network.ManifestResponse(
+        manifest,
+    )
     override suspend fun getArticle(id: String): ArticleDto = articles[id] ?: error("not found")
 }
 
@@ -221,7 +223,10 @@ class ArticleRepositoryImplTest {
         api.manifest = listOf(ManifestItemDto("r1", "R1", "r1", 1, "2025-01-01", 10))
         var attempts = 0
         val retryingApi = object : ArticleApi {
-            override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = info.lwb.data.network.ManifestResponse(api.manifest)
+            override suspend fun getManifest(): info.lwb.data.network.ManifestResponse =
+                info.lwb.data.network.ManifestResponse(
+                    api.manifest,
+                )
             override suspend fun getArticle(id: String): ArticleDto {
                 attempts++
                 if (attempts == 1) error("transient")

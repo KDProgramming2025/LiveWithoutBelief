@@ -12,7 +12,6 @@ import com.google.firebase.auth.GoogleAuthProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import info.lwb.BuildConfig
 import kotlinx.coroutines.tasks.await
-import java.security.MessageDigest
 
 data class AuthUser(
     val uid: String,
@@ -139,8 +138,8 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
                 android.util.Log.d("AuthFlow", "haveIdToken length=${idToken.length}")
             }
         }
-    // Persist the Google ID token locally for potential future use (Firebase refresh etc.).
-    secureStorage.putIdToken(idToken)
+        // Persist the Google ID token locally for potential future use (Firebase refresh etc.).
+        secureStorage.putIdToken(idToken)
         // Cache token expiry for future refresh heuristics
         val exp = JwtUtils.extractExpiryEpochSeconds(idToken)
         val storeExp = when {
@@ -153,7 +152,7 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         val email = user.email ?: existing?.email ?: error("Could not determine Google account email")
         val (regUser, created) = registrationApi.register(email)
         val authUser = AuthUser(user.uid, user.displayName ?: regUser.displayName, email, user.photoUrl?.toString())
-    secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
+        secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
         // Optionally refresh a Firebase token for Firebase-internal use, but avoid storing it as the server token
         runCatching { tokenRefresher.refresh(user, false) }.onFailure {
             if (BuildConfig.DEBUG) android.util.Log.w("AuthFlow", "tokenRefreshFailed", it)
@@ -219,13 +218,14 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         token
     }
 
-    override suspend fun register(username: String, password: String, altchaPayload: String?): Result<AuthUser> = runCatching {
-        val token = altchaPayload ?: throw IllegalStateException("ALTCHA required")
-        val user = passwordApi.register(username, password, token)
-        secureStorage.putIdToken("pwd:${user.uid}")
-        secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
-        user
-    }
+    override suspend fun register(username: String, password: String, altchaPayload: String?): Result<AuthUser> =
+        runCatching {
+            val token = altchaPayload ?: throw IllegalStateException("ALTCHA required")
+            val user = passwordApi.register(username, password, token)
+            secureStorage.putIdToken("pwd:${user.uid}")
+            secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
+            user
+        }
 
     override suspend fun passwordLogin(username: String, password: String): Result<AuthUser> = runCatching {
         val user = passwordApi.login(username, password)
@@ -236,7 +236,10 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
 }
 
 class RegionBlockedAuthException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
-class EmailLinkInitiatedException(val email: String, cause: Throwable? = null) : RuntimeException("Email link sent to $email", cause)
+class EmailLinkInitiatedException(
+    val email: String,
+    cause: Throwable? = null,
+) : RuntimeException("Email link sent to $email", cause)
 
 private fun Throwable.isRegionBlocked(): Boolean {
     var cur: Throwable? = this

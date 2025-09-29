@@ -114,11 +114,11 @@ class RemoteSessionValidatorTest {
             NoopValidationObserver,
             revocationStore,
         )
-    revocationStore.markRevoked("badToken")
+        revocationStore.markRevoked("badToken")
         val res = validator.validateDetailed("badToken")
-    assertFalse(res.isValid)
-    assertEquals(ValidationError.Unauthorized, res.error)
-    assertEquals("Expected no network calls when token is locally revoked", 0, server.requestCount)
+        assertFalse(res.isValid)
+        assertEquals(ValidationError.Unauthorized, res.error)
+        assertEquals("Expected no network calls when token is locally revoked", 0, server.requestCount)
     }
 
     @Test

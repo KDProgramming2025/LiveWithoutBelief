@@ -50,7 +50,11 @@ class AuthFacadeTest {
         coEvery { signInExecutor.signIn("idTokenABC") } returns firebaseUser
         coEvery { tokenRefresher.refresh(firebaseUser, false) } returns "freshTokenXYZ"
         coEvery { sessionValidator.validate(any()) } returns true
-        coEvery { registrationApi.register(any()) } returns (AuthUser("serverUid","Alice","alice@example.com",null) to true)
+        coEvery {
+            registrationApi.register(
+                any(),
+            )
+        } returns (AuthUser("serverUid", "Alice", "alice@example.com", null) to true)
         val facade = FirebaseCredentialAuthFacade(
             firebaseAuth,
             context,
@@ -68,10 +72,10 @@ class AuthFacadeTest {
         val result = facade.oneTapSignIn(mockk(relaxed = true))
         assertTrue(result.isSuccess)
         coVerify(exactly = 1) { signInExecutor.signIn("idTokenABC") }
-    coVerify(exactly = 1) { tokenRefresher.refresh(firebaseUser, false) }
-    verify(exactly = 1) { secureStorage.putProfile("Alice", "alice@example.com", null) }
-    // We persist the Google ID token (not the Firebase-refreshed token) for local caching.
-    verify(atLeast = 1) { secureStorage.putIdToken(any()) }
+        coVerify(exactly = 1) { tokenRefresher.refresh(firebaseUser, false) }
+        verify(exactly = 1) { secureStorage.putProfile("Alice", "alice@example.com", null) }
+        // We persist the Google ID token (not the Firebase-refreshed token) for local caching.
+        verify(atLeast = 1) { secureStorage.putIdToken(any()) }
     }
 
     @Test
@@ -80,7 +84,11 @@ class AuthFacadeTest {
         every { user.uid } returns "u"
         every { firebaseAuth.currentUser } returns user
         coEvery { tokenRefresher.refresh(user, true) } returns "newToken"
-        coEvery { registrationApi.register(any()) } returns (AuthUser("serverUid","Alice","alice@example.com",null) to false)
+        coEvery {
+            registrationApi.register(
+                any(),
+            )
+        } returns (AuthUser("serverUid", "Alice", "alice@example.com", null) to false)
         val facade = FirebaseCredentialAuthFacade(
             firebaseAuth,
             context,
@@ -101,7 +109,11 @@ class AuthFacadeTest {
 
     @Test
     fun signOutClearsStorage() = runTest {
-        coEvery { registrationApi.register(any()) } returns (AuthUser("serverUid","Alice","alice@example.com",null) to false)
+        coEvery {
+            registrationApi.register(
+                any(),
+            )
+        } returns (AuthUser("serverUid", "Alice", "alice@example.com", null) to false)
         val facade = FirebaseCredentialAuthFacade(
             firebaseAuth,
             context,
@@ -129,7 +141,11 @@ class AuthFacadeTest {
         }
         every { signInClient.getLastSignedInAccount(any()) } returns acct
         coEvery { signInExecutor.signIn("badToken") } throws IllegalStateException("Credential rejected")
-        coEvery { registrationApi.register(any()) } returns (AuthUser("serverUid","Alice","alice@example.com",null) to false)
+        coEvery {
+            registrationApi.register(
+                any(),
+            )
+        } returns (AuthUser("serverUid", "Alice", "alice@example.com", null) to false)
         val facade = FirebaseCredentialAuthFacade(
             firebaseAuth,
             context,

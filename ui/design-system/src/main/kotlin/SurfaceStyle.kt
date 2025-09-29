@@ -1,12 +1,13 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 @file:Suppress("FunctionName")
 
 package info.lwb.ui.designsystem
 
-import android.graphics.BlurMaskFilter
 import android.graphics.Bitmap
+import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -17,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,10 +29,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -107,21 +107,26 @@ private val DarkColors = SurfaceStyleColors(
     // Readable, slightly warm text
     textPrimary = Color(0xFFEEE7DF),
     textMuted = Color(0xFFB9AEA6),
-    reflectionTint = Color(0xFFE0F0FF), // colder tint
+    // Colder tint for subtle cool reflection
+    reflectionTint = Color(0xFFE0F0FF),
 )
 
 private val LightColors = SurfaceStyleColors(
     // Calming light warm background and surface (darkened)
-    bgTop = Color(0xFFFAEFE6),   // slightly darker than FFF7F0
-    bgBottom = Color(0xFFF3E6DB),// slightly darker than FDEFE6
-    surface = Color(0xFFF7EDE3), // slightly darker than FFF5EC
+    // slightly darker than FFF7F0
+    bgTop = Color(0xFFFAEFE6),
+    // slightly darker than FDEFE6
+    bgBottom = Color(0xFFF3E6DB),
+    // slightly darker than FFF5EC
+    surface = Color(0xFFF7EDE3),
     // Warm-tinted shadows/highlights
     shadowDark = Color(0xFFD8C9BF),
     shadowLight = Color(0xFFFDF6F0),
     // Readable warm-ish text
     textPrimary = Color(0xFF221A16),
     textMuted = Color(0xFF7A6B63),
-    reflectionTint = Color(0xFFE6F2FF), // keep a subtle cool tint for contrast
+    // Keep a subtle cool tint for contrast
+    reflectionTint = Color(0xFFE6F2FF),
 )
 
 val LocalSurfaceStyle = staticCompositionLocalOf { DarkColors }
@@ -145,19 +150,17 @@ fun GrainyBackground(modifier: Modifier = Modifier) {
     val c = LocalSurfaceStyle.current
     val gradient = Brush.verticalGradient(listOf(c.bgTop, c.bgBottom))
     Box(
-        modifier.drawWithCache {
-            onDrawBehind {
-                drawRect(brush = gradient)
-            }
-        }
+        modifier
+            .drawWithCache {
+                onDrawBehind {
+                    drawRect(brush = gradient)
+                }
+            },
     )
 }
 
 @Composable
-fun RaisedSurface(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit,
-) {
+fun RaisedSurface(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val c = LocalSurfaceStyle.current
     val m = LocalSurfaceMetrics.current
     val isDark = LocalIsDarkTheme.current
@@ -208,7 +211,7 @@ fun RaisedSurface(
                     drawImage(darkImg, blendMode = shadowMode)
                     drawImage(lightImg, blendMode = lightMode)
                 }
-            }
+            },
     ) {
         // Inner content box is separate from the shadow area so we don't cover shadows
         Box(
@@ -233,26 +236,18 @@ fun RaisedSurface(
                             cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
                         )
                     }
-                }
+                },
         ) { content() }
     }
 }
 
 @Composable
-fun RaisedButton(
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    content: @Composable BoxScope.() -> Unit,
-) {
+fun RaisedButton(modifier: Modifier = Modifier, onClick: () -> Unit, content: @Composable BoxScope.() -> Unit) {
     RaisedSurface(modifier.clickable(onClick = onClick)) { content() }
 }
 
 @Composable
-fun InsetIconWell(
-    modifier: Modifier = Modifier,
-    wellSize: Dp = 56.dp,
-    content: @Composable BoxScope.() -> Unit,
-) {
+fun InsetIconWell(modifier: Modifier = Modifier, wellSize: Dp = 56.dp, content: @Composable BoxScope.() -> Unit) {
     val c = LocalSurfaceStyle.current
     val m = LocalSurfaceMetrics.current
     val wellCorner = (m.cornerRadius - 4.dp).coerceAtLeast(8.dp)
@@ -283,7 +278,7 @@ fun InsetIconWell(
                     canvas.restore()
                 }
             }
-            .then(Modifier.size(wellSize))
+            .then(Modifier.size(wellSize)),
     ) { content() }
 }
 
@@ -303,6 +298,11 @@ fun RaisedIconWell(
         modifier = modifier.size(total),
     ) {
         // Fill the inner area (which will be wellSize x wellSize) with a small inner padding
-        Box(Modifier.size(wellSize).padding(innerPadding), content = content)
+        Box(
+            Modifier
+                .size(wellSize)
+                .padding(innerPadding),
+            content = content,
+        )
     }
 }

@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.data.repo.repositories
 
@@ -20,11 +21,14 @@ class LabelArticleRepositoryImpl(
     private val dao: ArticleDao,
 ) : LabelArticleRepository {
     override suspend fun listByLabel(label: String): List<Article> = withContext(Dispatchers.IO) {
-    val manifest = runCatching { api.getManifest() }.map { it.items }.getOrElse { emptyList() }
+        val manifest = runCatching { api.getManifest() }.map { it.items }.getOrElse { emptyList() }
         val q = label.trim()
         val wanted = manifest.filter { dto ->
             val lbl = (dto.label ?: "").trim()
-            lbl.equals(q, ignoreCase = true) || (lbl.isNotEmpty() && q.isNotEmpty() && lbl.contains(q, ignoreCase = true))
+            lbl.equals(
+                q,
+                ignoreCase = true,
+            ) || (lbl.isNotEmpty() && q.isNotEmpty() && lbl.contains(q, ignoreCase = true))
         }
         // Ensure minimal rows exist locally for navigation/search consistency
         if (wanted.isNotEmpty()) {
@@ -41,6 +45,6 @@ class LabelArticleRepositoryImpl(
                 )
             }
         }
-    wanted.map { m -> Article(m.id, m.title, m.slug, m.version, m.updatedAt, m.wordCount, m.coverUrl, m.iconUrl) }
+        wanted.map { m -> Article(m.id, m.title, m.slug, m.version, m.updatedAt, m.wordCount, m.coverUrl, m.iconUrl) }
     }
 }

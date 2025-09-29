@@ -11,14 +11,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -41,23 +41,22 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
-import info.lwb.auth.AuthFacade
-import info.lwb.auth.AuthUiState
-import info.lwb.auth.AuthViewModel
 import info.lwb.auth.AltchaTokenProvider
+import info.lwb.auth.AuthFacade
+import info.lwb.auth.AuthViewModel
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.home.HomeRoute
 import info.lwb.feature.search.SearchRoute
-import javax.inject.Inject
 import info.lwb.feature.settings.SettingsRoute
 import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
-import info.lwb.feature.settings.ThemePreferenceRepository
 import info.lwb.ui.designsystem.LwbTheme
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var authFacade: AuthFacade
+
     @Inject lateinit var altchaProvider: AltchaTokenProvider
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -135,10 +134,7 @@ private fun RegionBlockedBanner(message: String = "Google sign-in blocked here."
 
 // Password auth UI removed.
 @Composable
-private fun PasswordAuthSection(
-    onRegister: (String, String) -> Unit,
-    onLogin: (String, String) -> Unit,
-) {
+private fun PasswordAuthSection(onRegister: (String, String) -> Unit, onLogin: (String, String) -> Unit) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     Text("Or use username & password:")
@@ -148,9 +144,13 @@ private fun PasswordAuthSection(
     OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") })
     Spacer(Modifier.height(8.dp))
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Button(onClick = { if (username.isNotBlank() && password.isNotBlank()) onRegister(username.trim(), password) }) { Text("Register") }
+        Button(onClick = {
+            if (username.isNotBlank() && password.isNotBlank()) onRegister(username.trim(), password)
+        }) { Text("Register") }
         Spacer(Modifier.height(6.dp))
-        Button(onClick = { if (username.isNotBlank() && password.isNotBlank()) onLogin(username.trim(), password) }) { Text("Login") }
+        Button(onClick = {
+            if (username.isNotBlank() && password.isNotBlank()) onLogin(username.trim(), password)
+        }) { Text("Login") }
     }
 }
 
@@ -193,17 +193,17 @@ private fun appNavHost(navController: NavHostController) {
                 }
             }
         }
-    composable(Destinations.READER) {
+        composable(Destinations.READER) {
             info.lwb.feature.reader.ReaderByIdRoute(
                 articleId = "sample-1",
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(Destinations.READER_BY_ID) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("articleId") ?: return@composable
             info.lwb.feature.reader.ReaderByIdRoute(
                 articleId = id,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(Destinations.SEARCH) { SearchRoute() }

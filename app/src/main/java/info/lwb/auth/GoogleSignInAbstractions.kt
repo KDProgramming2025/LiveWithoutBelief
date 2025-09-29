@@ -73,7 +73,7 @@ class ActivityResultGoogleSignInExecutor : GoogleSignInIntentExecutor {
                         val status = (e as? ApiException)?.statusCode
                         android.util.Log.e(
                             "AuthFlow",
-                            "oneTapSignIn:failure status=${status}",
+                            "oneTapSignIn:failure status=$status",
                             e,
                         )
                     }

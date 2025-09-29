@@ -20,6 +20,7 @@ class CachingRecaptchaProvider(
     private val now: () -> Long = { System.currentTimeMillis() },
 ) : RecaptchaTokenProvider {
     @Volatile private var cached: String? = null
+
     @Volatile private var expiry: Long = 0L
     override suspend fun getToken(): String? {
         val current = now()

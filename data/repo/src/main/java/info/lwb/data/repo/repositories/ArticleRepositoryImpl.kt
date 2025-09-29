@@ -89,7 +89,7 @@ class ArticleRepositoryImpl(
 
     override suspend fun refreshArticles(): Unit = withContext(Dispatchers.IO) {
         // Fetch manifest with retry/backoff
-    val manifest = retryWithBackoff { api.getManifest().items } ?: emptyList()
+        val manifest = retryWithBackoff { api.getManifest().items } ?: emptyList()
         if (manifest.isEmpty()) return@withContext
 
         // Snapshot local state to guide delta decisions
@@ -181,7 +181,7 @@ class ArticleRepositoryImpl(
     }
 
     suspend fun syncManifest(): List<ManifestItemDto> = withContext(Dispatchers.IO) {
-    runCatching { api.getManifest().items }.getOrElse { emptyList() }
+        runCatching { api.getManifest().items }.getOrElse { emptyList() }
     }
 
     override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> = withContext(
@@ -211,6 +211,7 @@ class ArticleRepositoryImpl(
 private const val KEEP_RECENT_COUNT = 4
 
 private fun ArticleEntity.toDomain() = Article(id, title, slug, version, updatedAt, wordCount)
+
 // Note: Manifest images are not persisted in ArticleEntity; domain mapping from repo-by-label uses DTO directly.
 private fun ArticleContentEntity.toDomain() = ArticleContent(articleId, htmlBody, plainText, textHash, indexUrl)
 

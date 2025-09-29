@@ -67,7 +67,6 @@ abstract class AuthBindingsModule {
     @Binds
     @Singleton
     abstract fun bindAltchaProvider(impl: WebViewAltchaProvider): AltchaTokenProvider
-
 }
 
 @Module
@@ -131,7 +130,9 @@ object AuthProvisionModule {
         sessionValidator: SessionValidator,
         appScope: CoroutineScope,
         refreshConfig: TokenRefreshConfig,
-    ): AutoTokenRefresher = AutoTokenRefresher(storage, authFacade, sessionValidator, appScope, refreshConfig).apply { start() }
+    ): AutoTokenRefresher = AutoTokenRefresher(storage, authFacade, sessionValidator, appScope, refreshConfig).apply {
+        start()
+    }
 
     @Provides
     @Singleton

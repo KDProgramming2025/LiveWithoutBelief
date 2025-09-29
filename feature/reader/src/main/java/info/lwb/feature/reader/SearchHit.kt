@@ -5,10 +5,10 @@
 package info.lwb.feature.reader
 
 /** Represents a single search occurrence anchored to a page and block (paragraph) index. */
-data class SearchHit(val pageIndex: Int, val blockIndex: Int, val range: IntRange)
+internal data class SearchHit(val pageIndex: Int, val blockIndex: Int, val range: IntRange)
 
 /** Build ordered search hits across pages (or single list of blocks if pages null). */
-fun buildSearchHits(pages: List<Page>?, allBlocks: List<ContentBlock>, query: String): List<SearchHit> {
+internal fun buildSearchHits(pages: List<Page>?, allBlocks: List<ContentBlock>, query: String): List<SearchHit> {
     if (query.isBlank()) return emptyList()
     val regex = Regex(Regex.escape(query), RegexOption.IGNORE_CASE)
     val hits = mutableListOf<SearchHit>()
@@ -36,7 +36,7 @@ fun buildSearchHits(pages: List<Page>?, allBlocks: List<ContentBlock>, query: St
 }
 
 /** Backwards-compat alias to keep API stable if any other file imported SearchUtils member names. */
-object SearchUtils {
+internal object SearchUtils {
     fun buildSearchHits(pages: List<Page>?, allBlocks: List<ContentBlock>, query: String): List<SearchHit> =
         buildSearchHits(pages, allBlocks, query)
 }

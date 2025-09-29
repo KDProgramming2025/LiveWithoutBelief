@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.feature.home
 
@@ -10,12 +11,12 @@ import info.lwb.core.common.Result
 import info.lwb.core.domain.GetMenuUseCase
 import info.lwb.core.domain.RefreshMenuUseCase
 import info.lwb.core.model.MenuItem
-import javax.inject.Inject
-import javax.inject.Named
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Named
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(

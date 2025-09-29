@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ReaderViewModel @Inject constructor(
+internal class ReaderViewModel @Inject constructor(
     private val progressRepo: ReadingProgressRepository,
     private val settingsRepository: ReaderSettingsRepository,
 ) : ViewModel() {
@@ -36,6 +36,7 @@ class ReaderViewModel @Inject constructor(
         ReaderSettingsRepository.ReaderBackground.Paper,
     )
 
+    // Reverted to original inline chain layout
     private val pagesState = combine(blocksState, fontScale) { blocks, scale ->
         paginate(blocks, fontScale = scale)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -89,14 +90,16 @@ class ReaderViewModel @Inject constructor(
     private fun persistProgress() {
         val pages = pagesState.value
         val articleId = articleIdState.value
-        if (articleId.isBlank() || pages.isEmpty()) return
+        if (articleId.isBlank() || pages.isEmpty()) {
+            return
+        }
         viewModelScope.launch {
             progressRepo.update(articleId, pageIndexState.value, pages.size)
         }
     }
 }
 
-data class ReaderUiState(
+internal data class ReaderUiState(
     val articleId: String,
     val pages: List<Page>,
     val currentPageIndex: Int,

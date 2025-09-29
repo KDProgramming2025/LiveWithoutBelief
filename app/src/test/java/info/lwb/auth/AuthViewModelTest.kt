@@ -43,9 +43,9 @@ class AuthViewModelTest {
             override suspend fun solve(activity: Activity): String? = "altcha-token"
         }
         every { facade.currentUser() } returns null
-    coEvery { facade.register("e", "p", "altcha-token") } returns Result.success(AuthUser("u", "n", "e", null))
+        coEvery { facade.register("e", "p", "altcha-token") } returns Result.success(AuthUser("u", "n", "e", null))
         val vm = AuthViewModel(facade, altcha, mainDispatcherRule.dispatcher)
-    // Simulate direct facade call path (unit scope)
+        // Simulate direct facade call path (unit scope)
         vm.passwordRegister({ mockk<Activity>(relaxed = true) }, "e", "p")
         runCurrent()
         coVerify { facade.register("e", "p", "altcha-token") }
@@ -62,9 +62,9 @@ class AuthViewModelTest {
             override suspend fun solve(activity: Activity): String? = null
         }
         val vm = AuthViewModel(facade, altchaFail, mainDispatcherRule.dispatcher)
-    vm.passwordRegister({ mockk<Activity>(relaxed = true) }, "e", "p")
+        vm.passwordRegister({ mockk<Activity>(relaxed = true) }, "e", "p")
         runCurrent()
-    coVerify(exactly = 0) { facade.register(any(), any(), any()) }
+        coVerify(exactly = 0) { facade.register(any(), any(), any()) }
         val state = vm.state.value
         assertTrue(state is AuthUiState.Error)
     }

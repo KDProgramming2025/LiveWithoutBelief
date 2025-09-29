@@ -1,17 +1,18 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.feature.reader
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
-import dagger.hilt.android.qualifiers.ApplicationContext
-import android.content.Context
 
 @HiltViewModel
-class ScrollViewModel @Inject constructor(@ApplicationContext appContext: Context) : ViewModel() {
+internal class ScrollViewModel @Inject constructor(@ApplicationContext appContext: Context) : ViewModel() {
     private val repo = ScrollRepository(appContext)
     fun observe(articleId: String): Flow<Int> = repo.observe(articleId)
     suspend fun save(articleId: String, y: Int) = repo.save(articleId, y)

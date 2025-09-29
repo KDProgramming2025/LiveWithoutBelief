@@ -39,37 +39,31 @@ internal class ReaderSettingsRepository @Inject constructor(@ApplicationContext 
     }
 
     val fontScale: Flow<Double> =
-        context.dataStore.data
-        .catch { e ->
+        context.dataStore.data.catch { e ->
             if (e is IOException) {
                 emit(emptyPreferences())
             } else {
                 throw e
             }
-        }
-        .map { prefs -> prefs[Keys.FONT_SCALE] ?: 1.0 }
+        }.map { prefs -> prefs[Keys.FONT_SCALE] ?: 1.0 }
 
     val lineHeight: Flow<Double> =
-        context.dataStore.data
-        .catch { e ->
+        context.dataStore.data.catch { e ->
             if (e is IOException) {
                 emit(emptyPreferences())
             } else {
                 throw e
             }
-        }
-        .map { prefs -> prefs[Keys.LINE_HEIGHT] ?: 1.2 }
+        }.map { prefs -> prefs[Keys.LINE_HEIGHT] ?: 1.2 }
 
     val background: Flow<ReaderBackground> =
-        context.dataStore.data
-        .catch { e ->
+        context.dataStore.data.catch { e ->
             if (e is IOException) {
                 emit(emptyPreferences())
             } else {
                 throw e
             }
-        }
-        .map { prefs ->
+        }.map { prefs ->
             when (prefs[Keys.BACKGROUND]) {
                 ReaderBackground.Sepia.key -> {
                     ReaderBackground.Sepia

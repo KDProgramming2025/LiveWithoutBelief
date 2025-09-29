@@ -1,9 +1,13 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.settings
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +24,9 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 class ThemePreferenceRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private object Keys { val THEME = intPreferencesKey("theme_mode") }
+    private object Keys {
+        val THEME = intPreferencesKey("theme_mode")
+    }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data
         .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }

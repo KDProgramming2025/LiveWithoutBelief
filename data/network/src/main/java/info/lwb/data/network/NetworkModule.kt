@@ -34,11 +34,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(json: Json, client: OkHttpClient, @javax.inject.Named("apiBaseUrl") baseUrl: String): Retrofit = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-        .client(client)
-        .build()
+    fun provideRetrofit(json: Json, client: OkHttpClient, @javax.inject.Named("apiBaseUrl") baseUrl: String): Retrofit =
+        Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .client(client)
+            .build()
 
     @Provides
     @Singleton

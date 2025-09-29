@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
@@ -29,20 +33,30 @@ fun SettingsRoute(onBack: () -> Unit = {}) {
             Text("Appearance", style = MaterialTheme.typography.titleLarge)
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ThemeOptionRow(label = "Use system setting", selected = mode == ThemeMode.SYSTEM) { vm.setTheme(ThemeMode.SYSTEM) }
+                    ThemeOptionRow(
+                        label = "Use system setting",
+                        selected = mode == ThemeMode.SYSTEM,
+                    ) { vm.setTheme(ThemeMode.SYSTEM) }
                     ThemeOptionRow(label = "Light", selected = mode == ThemeMode.LIGHT) { vm.setTheme(ThemeMode.LIGHT) }
                     ThemeOptionRow(label = "Dark", selected = mode == ThemeMode.DARK) { vm.setTheme(ThemeMode.DARK) }
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Text("Changes apply instantly.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Changes apply instantly.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
 @Composable
 private fun ThemeOptionRow(label: String, selected: Boolean, onSelect: () -> Unit) {
-    androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+    androidx.compose.foundation.layout.Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 4.dp),
+    ) {
         RadioButton(selected = selected, onClick = onSelect)
         Text(label, modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyLarge)
     }

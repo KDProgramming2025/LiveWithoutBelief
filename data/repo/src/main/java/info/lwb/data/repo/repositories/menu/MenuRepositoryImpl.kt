@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.data.repo.repositories.menu
 
@@ -33,5 +34,4 @@ class MenuRepositoryImpl(
     }
 }
 
-private fun info.lwb.data.network.MenuItemDto.toDomain() =
-    MenuItem(id, title, label, order, iconPath, createdAt)
+private fun info.lwb.data.network.MenuItemDto.toDomain() = MenuItem(id, title, label, order, iconPath, createdAt)

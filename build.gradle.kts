@@ -55,16 +55,6 @@ subprojects {
             html.outputLocation.set(reportsDir.resolve("${project.name}.html"))
             xml.outputLocation.set(reportsDir.resolve("${project.name}.xml"))
         }
-
-        // Temporary indentation-only auto-correct mode triggered with -PindentOnly
-        if (project.hasProperty("indentOnly")) {
-            // Run only the ktlint Indentation rule to fix whitespace without other style churn.
-            buildUponDefaultConfig = false
-            autoCorrect = true
-            config.setFrom(files(rootProject.file("detekt-indent-only.yml")))
-            // Disable reports for speed (we'll run full detekt after corrections)
-            reports { sarif.required.set(false); html.required.set(false); xml.required.set(false) }
-        }
     }
     tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach { jvmTarget.set("17") }
     apply(plugin = "com.diffplug.spotless")
@@ -89,20 +79,17 @@ subprojects {
             targetExclude("**/build/**", "**/.gradle/**")
             ktlint().editorConfigOverride(
                 mapOf(
-                    // Allow PascalCase @Composable and @Preview function names
-                    "ktlint_standard_function-naming" to "disabled",
-                    "ktlint_function_naming" to "disabled",
-                    // Keep wildcard import rule disabled
-                    "ktlint_standard_no-wildcard-imports" to "disabled",
-                    // Global formatting parameters
+                    // Re-enabled rules after indentation cleanup phase completed.
+                    // Enforce standard function naming (custom composable naming now aligned with guidance).
+                    // Remove previous disables so ktlint applies defaults.
+                    // Note: If some Preview/@Composable functions intentionally use PascalCase beyond spec,
+                    // consider adding @Suppress or updating names individually instead of globally disabling.
                     "indent_size" to "4",
-                    // Temporarily disable max line length while focusing on indentation cleanup.
-                    // If desired later, re-enable by setting max_line_length back to a numeric value
-                    // and removing the ktlint rule disable.
-                    "max_line_length" to "off",
-                    "ktlint_standard_max-line-length" to "disabled",
-                    // Disable import ordering (blocked auto-correction due to comments). We'll tidy later.
-                    "ktlint_standard_import-ordering" to "disabled"
+                    // Reinstate line length guard at 120 chars for readability.
+                    "max_line_length" to "120",
+                    // Instruct ktlint to skip function-naming checks when annotated with these (Compose style).
+                    // This mirrors detekt.yml's FunctionNaming.ignoreAnnotated.
+                    "ktlint_function_naming_ignore_when_annotated_with" to "Composable,Preview"
                 )
             )
             licenseHeaderFile(
@@ -232,20 +219,29 @@ tasks.register("detektAggregateReport") {
             return@doLast
         }
         val ruleRegex = Regex("\"ruleId\"\\s*:\\s*\"([^\"]+)\"")
-        val counts = mutableMapOf<String, Int>()
+        val locRegex = Regex("\"physicalLocation\".*?\"artifactLocation\".*?\"uri\"\\s*:\\s*\"([^\"]+)\"", RegexOption.DOT_MATCHES_ALL)
+        // Simple split heuristic: capture occurrences sequentially; we pair ruleIds with following physicalLocation blocks.
+        data class Finding(val rule: String, val file: String?)
+        val findings = mutableListOf<Finding>()
         sarifFiles.forEach { file ->
             val text = file.readText()
-            ruleRegex.findAll(text).forEach { m ->
-                val id = m.groupValues[1]
-                counts[id] = (counts[id] ?: 0) + 1
+            // We iterate through matches; for each rule match we try to find the next physicalLocation after its end.
+            var index = 0
+            while (true) {
+                val ruleMatch = ruleRegex.find(text, index) ?: break
+                val ruleId = ruleMatch.groupValues[1]
+                val locMatch = locRegex.find(text, ruleMatch.range.last)
+                val filePath = locMatch?.groupValues?.get(1)
+                findings += Finding(ruleId, filePath)
+                index = ruleMatch.range.last + 1
             }
         }
-        if (counts.isEmpty()) {
+        if (findings.isEmpty()) {
             logger.warn("[detektAggregateReport] No ruleId entries parsed from SARIF files")
             return@doLast
         }
+        val counts = findings.groupingBy { it.rule }.eachCount().toMutableMap()
         // Derive category from ruleId pattern: detekt.<category>.<RuleName>
-        // Examples: detekt.ktlint.Indentation -> ktlint, detekt.comments.UndocumentedPublicProperty -> comments
         val categoryRegex = Regex("^detekt\\.([^.]+).*")
         val categoryCounts = mutableMapOf<String, Int>()
         counts.forEach { (rule, c) ->
@@ -265,6 +261,17 @@ tasks.register("detektAggregateReport") {
             counts.entries.sortedByDescending { it.value }.take(50).forEach { (r, v) ->
                 out.println(String.format("  %-40s %6d", r, v))
             }
+            // Additional per-file breakdown for Indentation to guide targeted refactors
+            val indentationFindings = findings.filter { it.rule == "detekt.ktlint.Indentation" && it.file != null }
+            if (indentationFindings.isNotEmpty()) {
+                out.println("\nIndentation Hotspots (per-file counts):")
+                indentationFindings.groupingBy { it.file!! }.eachCount()
+                    .entries.sortedByDescending { it.value }
+                    .take(50)
+                    .forEach { (file, count) ->
+                        out.println(String.format("  %-80s %5d", file, count))
+                    }
+            }
             out.println("\nTotal findings: ${counts.values.sum()}")
             out.println("SARIF files processed: ${sarifFiles.size}")
         }
@@ -272,29 +279,3 @@ tasks.register("detektAggregateReport") {
     }
 }
 
-// Temporary task: run only ktlint Indentation rule with auto-correct to fix the 1318 indentation findings.
-// Implementation notes:
-// - Uses a dedicated config file (detekt-indent-only.yml) enabling only Indentation.
-// - buildUponDefaultConfig = false to ignore the main config; avoids other style adjustments.
-// - This task is intentionally not wired into standard verification lifecycle.
-// - Remove after indentation issues reach zero and commit includes only whitespace changes.
-tasks.register<dev.detekt.gradle.Detekt>("detektIndentationFix") {
-    description = "Auto-correct only ktlint Indentation rule across all modules"
-    group = "formatting"
-    parallel = true
-    autoCorrect = true
-    buildUponDefaultConfig = false
-    // Provide only the indentation-only config
-    config.setFrom(files(rootProject.file("detekt-indent-only.yml")))
-    // Include all project sources (subprojects already have plugin applied, but we aggregate manually)
-    setSource(files(subprojects.map { it.file("src") } + rootProject.file("src")))
-    // Include typical Kotlin file patterns
-    include("**/*.kt", "**/*.kts")
-    // Exclude build & generated artifacts
-    exclude("**/build/**", "**/.gradle/**", "**/generated/**")
-    // Reports not needed; we only want corrections.
-    reports { html.required.set(false); xml.required.set(false); sarif.required.set(false); md.required.set(false) }
-    // Ensure classpath contains all plugins so Indentation rule is available
-    val detektPluginsConf = configurations.detektPlugins.get()
-    pluginClasspath.setFrom(detektPluginsConf)
-}

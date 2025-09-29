@@ -1,12 +1,12 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.data.repo.repositories
 
 import info.lwb.data.network.ArticleApi
 import info.lwb.data.network.ArticleDto
 import info.lwb.data.network.ManifestItemDto
-import info.lwb.data.network.SectionDto
 import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
 import info.lwb.data.repo.db.ArticleEntity
@@ -20,7 +20,9 @@ private class FakeDao : ArticleDao {
     val articles = mutableMapOf<String, ArticleEntity>()
     override suspend fun getArticle(id: String) = articles[id]
     override suspend fun listArticles() = articles.values.toList()
-    override suspend fun upsertArticle(article: ArticleEntity) { articles[article.id] = article }
+    override suspend fun upsertArticle(article: ArticleEntity) {
+        articles[article.id] = article
+    }
     override suspend fun upsertContent(content: ArticleContentEntity) {}
     override suspend fun upsertArticleWithContent(article: ArticleEntity, content: ArticleContentEntity) {}
     override suspend fun getContent(articleId: String) = null
@@ -37,7 +39,9 @@ private class FakeDao : ArticleDao {
 
 private class StubApi : ArticleApi {
     var manifest: List<ManifestItemDto> = emptyList()
-    override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = info.lwb.data.network.ManifestResponse(manifest)
+    override suspend fun getManifest(): info.lwb.data.network.ManifestResponse = info.lwb.data.network.ManifestResponse(
+        manifest,
+    )
     override suspend fun getArticle(id: String): ArticleDto = error("not used")
 }
 
@@ -46,7 +50,9 @@ class LabelArticleRepositoryImplTest {
     private val dao = FakeDao()
     private val api = StubApi()
 
-    @Before fun setup() { repo = LabelArticleRepositoryImpl(api, dao) }
+    @Before fun setup() {
+        repo = LabelArticleRepositoryImpl(api, dao)
+    }
 
     @Test
     fun filters_by_label_and_maps() = runTest {

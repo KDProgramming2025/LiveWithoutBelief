@@ -11,8 +11,10 @@ import com.google.firebase.analytics.FirebaseAnalytics
 /** Minimal telemetry facade to keep SDKs behind a tiny API. */
 object Telemetry {
     @Volatile private var analytics: FirebaseAnalytics? = null
+
     // Crashlytics/Performance are optional; access via reflection to avoid hard deps
     @Volatile private var crashlytics: Any? = null
+
     @Volatile private var perf: Any? = null
 
     fun init(app: Application) {

@@ -4,15 +4,15 @@
  */
 package info.lwb.auth
 
+import android.util.Log
+import info.lwb.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import android.util.Log
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import info.lwb.BuildConfig
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -128,7 +128,7 @@ class RemoteSessionValidator @Inject constructor(
                             Log.d(
                                 "AuthValidate",
                                 "response code=" + r.code +
-                                    " retryAfter=" + (r.header("Retry-After") ?: "<none>")
+                                    " retryAfter=" + (r.header("Retry-After") ?: "<none>"),
                             )
                         }
                     }

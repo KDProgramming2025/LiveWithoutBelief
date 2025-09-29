@@ -18,12 +18,7 @@ import java.security.MessageDigest
  * Returns the first number found in [0, max] that satisfies the condition,
  * or throws if not found within the range.
  */
-internal fun solveAltcha(
-    algorithm: String,
-    challengePrefix: String,
-    salt: String,
-    max: Long,
-): Long {
+internal fun solveAltcha(algorithm: String, challengePrefix: String, salt: String, max: Long): Long {
     val algo = when (algorithm.uppercase()) {
         "SHA-1" -> "SHA-1"
         "SHA-512" -> "SHA-512"
