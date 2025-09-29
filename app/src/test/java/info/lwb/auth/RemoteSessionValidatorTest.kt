@@ -50,21 +50,33 @@ class RemoteSessionValidatorTest {
 
     @Test
     fun validate_successTrue() = runTest {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         val ok = validator.validate("token")
         assertTrue(ok)
     }
 
     @Test
     fun validate_failFalse() = runTest {
-        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .setBody("{}"),
+        )
         val ok = validator.validate("token")
         assertFalse(ok)
     }
 
     @Test
     fun validateDetailed_success() = runTest {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
         assertNull(res.error)
@@ -72,7 +84,11 @@ class RemoteSessionValidatorTest {
 
     @Test
     fun validateDetailed_unauthorized() = runTest {
-        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .setBody("{}"),
+        )
         val res = validator.validateDetailed("token")
         assertFalse(res.isValid)
         assertEquals(ValidationError.Unauthorized, res.error)
@@ -80,7 +96,11 @@ class RemoteSessionValidatorTest {
 
     @Test
     fun validateDetailed_serverError() = runTest {
-        server.enqueue(MockResponse().setResponseCode(503).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(503)
+                .setBody("{}"),
+        )
         val res = validator.validateDetailed("token")
         assertFalse(res.isValid)
         assertTrue(res.error is ValidationError.Server)
@@ -88,7 +108,11 @@ class RemoteSessionValidatorTest {
 
     @Test
     fun revoke_doesNotThrow() = runTest {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         validator.revoke("token")
         // no assertion; just ensure no crash
         assertTrue(true)
@@ -96,8 +120,17 @@ class RemoteSessionValidatorTest {
 
     @Test
     fun validateDetailed_retriesOnServerErrorAndSucceeds() = runTest {
-        server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(503)
+                .setBody("{}")
+                .addHeader("Retry-After", "0"),
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
         assertEquals(2, server.requestCount)
@@ -139,8 +172,17 @@ class RemoteSessionValidatorTest {
         }
         val obs = CapturingObserver()
         // First a retryable 503 with header then success
-        server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(503)
+                .setBody("{}")
+                .addHeader("Retry-After", "0"),
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         validator = RemoteSessionValidator(
             client,
             server.url("").toString().trimEnd('/'),
@@ -181,7 +223,11 @@ class RemoteSessionValidatorTest {
         val b = CObs()
         val composite = a.and(b)
         // Trigger a single request (200 success, no retry)
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         validator = RemoteSessionValidator(
             client,
             server.url("").toString().trimEnd('/'),
@@ -203,8 +249,17 @@ class RemoteSessionValidatorTest {
         val metrics = MetricsValidationObserver()
         val composite = metrics.and(NoopValidationObserver)
         // enqueue failure then success to produce retry + success
-        server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(503)
+                .setBody("{}")
+                .addHeader("Retry-After", "0"),
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         validator = RemoteSessionValidator(
             client,
             server.url("").toString().trimEnd('/'),
@@ -242,7 +297,11 @@ class RemoteSessionValidatorTest {
             override fun onResult(result: ValidationResult) { }
             override fun onRetry(delayMs: Long) { }
         }
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         val composite = good.and(BadObserver())
         validator = RemoteSessionValidator(
             client,
@@ -260,7 +319,11 @@ class RemoteSessionValidatorTest {
     fun samplingObserver_doesNotDropAllWhen1000Permille() = runTest {
         val metrics = MetricsValidationObserver()
         val sampled = SamplingValidationObserver(metrics, 1000, java.util.Random(123))
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{}"),
+        )
         validator = RemoteSessionValidator(
             client,
             server.url("").toString().trimEnd('/'),
