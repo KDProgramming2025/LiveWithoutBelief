@@ -32,22 +32,25 @@ class RemoteSessionValidatorTest {
         server.start()
         client = OkHttpClient.Builder().build()
         val base = server.url("").toString().trimEnd('/')
-        validator = RemoteSessionValidator(
-            client,
-            base,
-            ValidationRetryPolicy(),
-        )
+        validator =
+            RemoteSessionValidator(
+                client,
+                base,
+                ValidationRetryPolicy(),
+            )
     }
 
     @Test
-    fun prefsRevocationStore_persistsBetweenInstances() = runTest {
-        // Use Robolectric application context
-        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
-        val store1 = PrefsRevocationStore(ctx)
-        store1.markRevoked("persistToken")
-        // New instance should still see revocation
-        val store2 = PrefsRevocationStore(ctx)
-        assertTrue(store2.isRevoked("persistToken"))
+    fun prefsRevocationStore_persistsBetweenInstances() {
+        runTest {
+            // Use Robolectric application context
+            val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+            val store1 = PrefsRevocationStore(ctx)
+            store1.markRevoked("persistToken")
+            // New instance should still see revocation
+            val store2 = PrefsRevocationStore(ctx)
+            assertTrue(store2.isRevoked("persistToken"))
+        }
     }
 
     @After
@@ -58,7 +61,9 @@ class RemoteSessionValidatorTest {
     @Test
     fun validate_successTrue() {
         runTest {
-            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("{}")
+            )
             val ok = validator.validate("token")
             assertTrue(ok)
         }
@@ -67,7 +72,9 @@ class RemoteSessionValidatorTest {
     @Test
     fun validate_failFalse() {
         runTest {
-            server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(401).setBody("{}")
+            )
             val ok = validator.validate("token")
             assertFalse(ok)
         }
@@ -76,7 +83,9 @@ class RemoteSessionValidatorTest {
     @Test
     fun validateDetailed_success() {
         runTest {
-            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("{}")
+            )
             val res = validator.validateDetailed("token")
             assertTrue(res.isValid)
             assertNull(res.error)
@@ -86,7 +95,9 @@ class RemoteSessionValidatorTest {
     @Test
     fun validateDetailed_unauthorized() {
         runTest {
-            server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(401).setBody("{}")
+            )
             val res = validator.validateDetailed("token")
             assertFalse(res.isValid)
             assertEquals(ValidationError.Unauthorized, res.error)
@@ -96,7 +107,9 @@ class RemoteSessionValidatorTest {
     @Test
     fun validateDetailed_serverError() {
         runTest {
-            server.enqueue(MockResponse().setResponseCode(503).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(503).setBody("{}")
+            )
             val res = validator.validateDetailed("token")
             assertFalse(res.isValid)
             assertTrue(res.error is ValidationError.Server)
@@ -106,7 +119,9 @@ class RemoteSessionValidatorTest {
     @Test
     fun revoke_doesNotThrow() {
         runTest {
-            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("{}")
+            )
             validator.revoke("token")
             // no assertion; just ensure no crash
             assertTrue(true)
@@ -116,8 +131,12 @@ class RemoteSessionValidatorTest {
     @Test
     fun validateDetailed_retriesOnServerErrorAndSucceeds() {
         runTest {
-            server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
-            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0")
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("{}")
+            )
             val res = validator.validateDetailed("token")
             assertTrue(res.isValid)
             assertEquals(2, server.requestCount)
@@ -129,13 +148,14 @@ class RemoteSessionValidatorTest {
         runTest {
             // create validator with explicit revocation store
             val revocationStore = InMemoryRevocationStore()
-            validator = RemoteSessionValidator(
-                client,
-                server.url("").toString().trimEnd('/'),
-                ValidationRetryPolicy(),
-                NoopValidationObserver,
-                revocationStore,
-            )
+            validator =
+                RemoteSessionValidator(
+                    client,
+                    server.url("").toString().trimEnd('/'),
+                    ValidationRetryPolicy(),
+                    NoopValidationObserver,
+                    revocationStore,
+                )
             revocationStore.markRevoked("badToken")
             val res = validator.validateDetailed("badToken")
             assertFalse(res.isValid)
@@ -164,13 +184,14 @@ class RemoteSessionValidatorTest {
             val obs = CapturingObserver()
             server.enqueue(MockResponse().setResponseCode(503).setBody("{}").addHeader("Retry-After", "0"))
             server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
-            validator = RemoteSessionValidator(
-                client,
-                server.url("").toString().trimEnd('/'),
-                ValidationRetryPolicy(),
-                obs,
-                InMemoryRevocationStore(),
-            )
+            validator =
+                RemoteSessionValidator(
+                    client,
+                    server.url("").toString().trimEnd('/'),
+                    ValidationRetryPolicy(),
+                    obs,
+                    InMemoryRevocationStore(),
+                )
             val res = validator.validateDetailed("token")
             assertTrue(res.isValid)
             assertEquals(2, server.requestCount)
@@ -209,13 +230,14 @@ class RemoteSessionValidatorTest {
             server.enqueue(
                 MockResponse().setResponseCode(200).setBody("{}")
             )
-            validator = RemoteSessionValidator(
-                client,
-                server.url("").toString().trimEnd('/'),
-                ValidationRetryPolicy(),
-                composite,
-                InMemoryRevocationStore(),
-            )
+            validator =
+                RemoteSessionValidator(
+                    client,
+                    server.url("").toString().trimEnd('/'),
+                    ValidationRetryPolicy(),
+                    composite,
+                    InMemoryRevocationStore(),
+                )
             val res = validator.validateDetailed("token")
             assertTrue(res.isValid)
             assertEquals(1, a.attempts)
@@ -238,13 +260,14 @@ class RemoteSessionValidatorTest {
             server.enqueue(
                 MockResponse().setResponseCode(200).setBody("{}")
             )
-            validator = RemoteSessionValidator(
-                client,
-                server.url("").toString().trimEnd('/'),
-                ValidationRetryPolicy(),
-                composite,
-                InMemoryRevocationStore(),
-            )
+            validator =
+                RemoteSessionValidator(
+                    client,
+                    server.url("").toString().trimEnd('/'),
+                    ValidationRetryPolicy(),
+                    composite,
+                    InMemoryRevocationStore(),
+                )
             val res = validator.validateDetailed("token")
             assertTrue(res.isValid)
             val snap = metrics.snapshot()
@@ -281,13 +304,14 @@ class RemoteSessionValidatorTest {
                 MockResponse().setResponseCode(200).setBody("{}")
             )
             val composite = good.and(BadObserver())
-            validator = RemoteSessionValidator(
-                client,
-                server.url("").toString().trimEnd('/'),
-                ValidationRetryPolicy(),
-                composite,
-                InMemoryRevocationStore(),
-            )
+            validator =
+                RemoteSessionValidator(
+                    client,
+                    server.url("").toString().trimEnd('/'),
+                    ValidationRetryPolicy(),
+                    composite,
+                    InMemoryRevocationStore(),
+                )
             val res = validator.validateDetailed("token")
             assertTrue(res.isValid)
             assertEquals(1, good.attempts) // ensured good observer still ran
@@ -302,13 +326,14 @@ class RemoteSessionValidatorTest {
             server.enqueue(
                 MockResponse().setResponseCode(200).setBody("{}")
             )
-            validator = RemoteSessionValidator(
-                client,
-                server.url("").toString().trimEnd('/'),
-                ValidationRetryPolicy(),
-                sampled,
-                InMemoryRevocationStore(),
-            )
+            validator =
+                RemoteSessionValidator(
+                    client,
+                    server.url("").toString().trimEnd('/'),
+                    ValidationRetryPolicy(),
+                    sampled,
+                    InMemoryRevocationStore(),
+                )
             validator.validateDetailed("token")
             val snap = metrics.snapshot()
             assertTrue((snap["attempts"] ?: 0) >= 1)
