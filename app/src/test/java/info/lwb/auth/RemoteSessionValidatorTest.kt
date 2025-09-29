@@ -60,7 +60,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         val ok = validator.validate("token")
         assertTrue(ok)
@@ -71,7 +71,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(401)
-                .setBody("{}"),
+                .setBody("{}")
         )
         val ok = validator.validate("token")
         assertFalse(ok)
@@ -82,7 +82,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
@@ -94,7 +94,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(401)
-                .setBody("{}"),
+                .setBody("{}")
         )
         val res = validator.validateDetailed("token")
         assertFalse(res.isValid)
@@ -106,7 +106,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(503)
-                .setBody("{}"),
+                .setBody("{}")
         )
         val res = validator.validateDetailed("token")
         assertFalse(res.isValid)
@@ -118,7 +118,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         validator.revoke("token")
         // no assertion; just ensure no crash
@@ -131,12 +131,12 @@ class RemoteSessionValidatorTest {
             MockResponse()
                 .setResponseCode(503)
                 .setBody("{}")
-                .addHeader("Retry-After", "0"),
+                .addHeader("Retry-After", "0")
         )
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         val res = validator.validateDetailed("token")
         assertTrue(res.isValid)
@@ -186,12 +186,12 @@ class RemoteSessionValidatorTest {
             MockResponse()
                 .setResponseCode(503)
                 .setBody("{}")
-                .addHeader("Retry-After", "0"),
+                .addHeader("Retry-After", "0")
         )
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         validator = RemoteSessionValidator(
             client,
@@ -239,7 +239,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         validator = RemoteSessionValidator(
             client,
@@ -269,12 +269,12 @@ class RemoteSessionValidatorTest {
             MockResponse()
                 .setResponseCode(503)
                 .setBody("{}")
-                .addHeader("Retry-After", "0"),
+                .addHeader("Retry-After", "0")
         )
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         validator = RemoteSessionValidator(
             client,
@@ -319,7 +319,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         val composite = good.and(BadObserver())
         validator = RemoteSessionValidator(
@@ -344,7 +344,7 @@ class RemoteSessionValidatorTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("{}"),
+                .setBody("{}")
         )
         validator = RemoteSessionValidator(
             client,
