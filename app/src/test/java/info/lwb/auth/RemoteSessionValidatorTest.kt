@@ -326,7 +326,12 @@ class RemoteSessionValidatorTest {
     fun samplingObserver_doesNotDropAllWhen1000Permille() {
         runTest {
             val metrics = MetricsValidationObserver()
-            val sampled = SamplingValidationObserver(metrics, 1000, java.util.Random(123))
+            val sampled =
+                SamplingValidationObserver(
+                    metrics,
+                    1000,
+                    java.util.Random(123),
+                )
             server.enqueue(
                 MockResponse().setResponseCode(200).setBody("{}")
             )
