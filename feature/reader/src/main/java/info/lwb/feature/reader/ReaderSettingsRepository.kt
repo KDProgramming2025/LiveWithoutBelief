@@ -6,9 +6,9 @@ package info.lwb.feature.reader
 
 import android.content.Context
 import androidx.datastore.preferences.core.doublePreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -21,7 +21,7 @@ private const val DS_NAME = "reader_settings"
 
 private val Context.dataStore by preferencesDataStore(name = DS_NAME)
 
-class ReaderSettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
+internal class ReaderSettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
     enum class ReaderBackground(val key: String) {
         Sepia("sepia"),
         Paper("paper"),
@@ -38,27 +38,64 @@ class ReaderSettingsRepository @Inject constructor(@ApplicationContext private v
         val BACKGROUND = stringPreferencesKey("background_theme")
     }
 
-    val fontScale: Flow<Double> = context.dataStore.data
-        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
-        .map { it[Keys.FONT_SCALE] ?: 1.0 }
+    val fontScale: Flow<Double> =
+        context.dataStore.data
+        .catch { e ->
+            if (e is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw e
+            }
+        }
+        .map { prefs -> prefs[Keys.FONT_SCALE] ?: 1.0 }
 
-    val lineHeight: Flow<Double> = context.dataStore.data
-        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
-        .map { it[Keys.LINE_HEIGHT] ?: 1.2 }
+    val lineHeight: Flow<Double> =
+        context.dataStore.data
+        .catch { e ->
+            if (e is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw e
+            }
+        }
+        .map { prefs -> prefs[Keys.LINE_HEIGHT] ?: 1.2 }
 
-    val background: Flow<ReaderBackground> = context.dataStore.data
-        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+    val background: Flow<ReaderBackground> =
+        context.dataStore.data
+        .catch { e ->
+            if (e is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw e
+            }
+        }
         .map { prefs ->
             when (prefs[Keys.BACKGROUND]) {
-                ReaderBackground.Sepia.key -> ReaderBackground.Sepia
-                ReaderBackground.Paper.key -> ReaderBackground.Paper
-                ReaderBackground.Gray.key -> ReaderBackground.Gray
-                ReaderBackground.Slate.key -> ReaderBackground.Slate
-                ReaderBackground.Charcoal.key -> ReaderBackground.Charcoal
-                ReaderBackground.Olive.key -> ReaderBackground.Olive
-                ReaderBackground.Night.key -> ReaderBackground.Night
-                // Legacy or unset (including old 'system'): default to Paper
-                else -> ReaderBackground.Paper
+                ReaderBackground.Sepia.key -> {
+                    ReaderBackground.Sepia
+                }
+                ReaderBackground.Paper.key -> {
+                    ReaderBackground.Paper
+                }
+                ReaderBackground.Gray.key -> {
+                    ReaderBackground.Gray
+                }
+                ReaderBackground.Slate.key -> {
+                    ReaderBackground.Slate
+                }
+                ReaderBackground.Charcoal.key -> {
+                    ReaderBackground.Charcoal
+                }
+                ReaderBackground.Olive.key -> {
+                    ReaderBackground.Olive
+                }
+                ReaderBackground.Night.key -> {
+                    ReaderBackground.Night
+                }
+                else -> {
+                    // Legacy or unset (including old 'system'): default to Paper
+                    ReaderBackground.Paper
+                }
             }
         }
 
