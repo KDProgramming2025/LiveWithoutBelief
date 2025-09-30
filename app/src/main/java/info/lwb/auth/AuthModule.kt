@@ -204,11 +204,10 @@ object AuthValidationModule {
     /** Provides configuration controlling token refresh lead time and polling. */
     @Provides
     @Singleton
-    fun provideTokenRefreshConfig(): TokenRefreshConfig =
-        TokenRefreshConfig(
-            refreshLeadTimeSeconds = info.lwb.BuildConfig.AUTH_REFRESH_LEAD_SECONDS,
-            pollIntervalSeconds = info.lwb.BuildConfig.AUTH_REFRESH_POLL_SECONDS,
-        )
+    fun provideTokenRefreshConfig(): TokenRefreshConfig = TokenRefreshConfig(
+        refreshLeadTimeSeconds = info.lwb.BuildConfig.AUTH_REFRESH_LEAD_SECONDS,
+        pollIntervalSeconds = info.lwb.BuildConfig.AUTH_REFRESH_POLL_SECONDS,
+    )
 
     /** Provides retry & backoff policy for remote validation attempts. */
     @Provides
@@ -259,16 +258,16 @@ class RealCredentialCall @javax.inject.Inject constructor() : CredentialCall {
 }
 
 /** One Tap provider backed by Credential Manager returning a Google ID token when available. */
-class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
-    private val call: CredentialCall,
-) : OneTapCredentialProvider {
+class CredentialManagerOneTapProvider @javax.inject.Inject constructor(private val call: CredentialCall) :
+    OneTapCredentialProvider {
     override suspend fun getIdToken(activity: android.app.Activity): String? =
         try {
             if (info.lwb.BuildConfig.DEBUG) {
                 android.util.Log.d(
                     LOG_TAG_AUTH,
-                    LOG_MSG_START + info.lwb.BuildConfig.GOOGLE_SERVER_CLIENT_ID
-                        .take(LOG_PREFIX_LEN) + "…",
+                    LOG_MSG_START +
+                        info.lwb.BuildConfig.GOOGLE_SERVER_CLIENT_ID
+                            .take(LOG_PREFIX_LEN) + "…",
                 )
             }
             val googleIdOption =
@@ -318,4 +317,5 @@ class CredentialManagerOneTapProvider @javax.inject.Inject constructor(
             }
             null
         }
+}
 }

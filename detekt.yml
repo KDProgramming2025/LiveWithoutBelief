@@ -131,3 +131,7 @@ ktlint:
     active: true
   NoUnusedImports:
     active: true
+  MultilineExpressionWrapping:
+    active: false
+  FunctionSignature:
+    active: false
