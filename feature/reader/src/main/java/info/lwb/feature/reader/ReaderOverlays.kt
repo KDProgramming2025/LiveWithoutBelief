@@ -1,0 +1,142 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package info.lwb.feature.reader
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import info.lwb.feature.reader.ui.ActionRail
+import info.lwb.feature.reader.ui.ActionRailItem
+
+@Composable
+internal fun BoxScope.ReaderScreenOverlays(
+    appearance: AppearanceState?,
+    showAppearance: Boolean,
+    onShowAppearance: () -> Unit,
+    onDismissAppearance: () -> Unit,
+    confirmExit: Boolean,
+    onDismissExit: () -> Unit,
+    onExitConfirmed: () -> Unit,
+    fabVisible: Boolean,
+    onFabBookmark: () -> Unit,
+    onFabListen: () -> Unit,
+    onFabAppearance: () -> Unit,
+) {
+    if (fabVisible) {
+        ActionRail(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            items = listOf(
+                ActionRailItem(
+                    icon = Icons.Filled.Settings,
+                    label = "Appearance",
+                    onClick = { onFabAppearance() },
+                ),
+                ActionRailItem(
+                    icon = Icons.Filled.Edit,
+                    label = "Bookmark",
+                    onClick = { onFabBookmark() },
+                ),
+                ActionRailItem(
+                    icon = Icons.Filled.PlayArrow,
+                    label = "Listen",
+                    onClick = { onFabListen() },
+                ),
+            ),
+            mainIcon = Icons.Filled.Settings,
+            mainContentDescription = "Reader actions",
+            edgePadding = 16.dp,
+        )
+    }
+    if (appearance != null) {
+        ReaderAppearanceSheet(
+            visible = showAppearance,
+            state = appearance,
+            onDismiss = onDismissAppearance,
+        )
+    }
+    if (confirmExit) {
+        AlertDialog(
+            onDismissRequest = onDismissExit,
+            title = { Text("Leave reader?") },
+            text = { Text("Are you sure you want to exit the reader?") },
+            confirmButton = { TextButton(onClick = onExitConfirmed) { Text("Exit") } },
+            dismissButton = { TextButton(onClick = onDismissExit) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+internal fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double, Double) -> Unit) {
+    Surface(
+        shadowElevation = 4.dp,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(8.dp)) {
+            Text(
+                "Font: ${"%.2f".format(settings.fontScale)}  Line: ${"%.2f".format(settings.lineHeight)}",
+                style = MaterialTheme.typography.labelSmall,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Slider(
+                    value = settings.fontScale.toFloat(),
+                    onValueChange = {
+                        onChange(
+                            it.toDouble().coerceIn(0.8, 1.6),
+                            settings.lineHeight,
+                        )
+                    },
+                    valueRange = 0.8f..1.6f,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
+                Slider(
+                    value = settings.lineHeight.toFloat(),
+                    onValueChange = {
+                        onChange(
+                            settings.fontScale,
+                            it.toDouble().coerceIn(1.0, 2.0),
+                        )
+                    },
+                    valueRange = 1.0f..2.0f,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SearchBar(
+    query: String,
+    occurrences: Int,
+    currentIndex: Int,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onChange: (String) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onChange,
+            modifier = Modifier.weight(1f),
+            placeholder = { Text("Search") },
+        )
+        if (occurrences > 0) {
+            Text(
+                "$currentIndex/$occurrences",
+                modifier = Modifier.padding(horizontal = 8.dp),
+                style = MaterialTheme.typography.labelSmall,
+            )
+            Button(onClick = onPrev, enabled = occurrences > 0) { Text("Prev") }
+            Spacer(Modifier.width(4.dp))
+            Button(onClick = onNext, enabled = occurrences > 0) { Text("Next") }
+        }
+    }
+}

@@ -71,7 +71,7 @@ complexity:
     active: true
   ComplexCondition:
     active: true
-    allowedConditions: 1
+    allowedConditions: 3
   ComplexInterface:
     active: true
     allowedDefinitions: 7
