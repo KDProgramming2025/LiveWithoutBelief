@@ -90,6 +90,8 @@ data class SurfaceStyleColors(
  * @property strokeLightWidth Width of the outer light stroke.
  * @property strokeDarkWidth Width of the inner dark stroke.
  * @property reflectionTintStrength Lerp fraction mixing [SurfaceStyleColors.shadowLight] with [SurfaceStyleColors.reflectionTint].
+ * @property rimDarkAlpha Opacity of the inner (dark) rim stroke.
+ * @property shadowDarkAlpha Alpha multiplier applied to the dark external shadow bitmap.
  */
 @Immutable
 data class SurfaceStyleMetrics(
@@ -268,7 +270,7 @@ fun GrainyBackground(modifier: Modifier = Modifier) {
     val c = LocalSurfaceStyle.current
     val gradient = Brush.verticalGradient(listOf(c.bgTop, c.bgBottom))
     Box(
-        modifier
+        modifier =
             .drawWithCache {
                 onDrawBehind {
                     drawRect(brush = gradient)
@@ -340,7 +342,7 @@ fun RaisedSurface(
             },
     ) {
         Box(
-            Modifier
+            Modifier =
                 .padding(shadowPadding)
                 .surfaceRim(colors, metrics, shape),
         ) { content() }
