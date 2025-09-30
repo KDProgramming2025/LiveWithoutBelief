@@ -33,7 +33,6 @@ data class ValidationRetryPolicy(
 )
 
 /** Lightweight hook for observability (can be bridged to Timber/Logcat or metrics). */
-    interface ValidationObserver {
 interface ValidationObserver {
     /** Called before each attempt (1-based index). */
     fun onAttempt(attempt: Int, max: Int)
@@ -81,7 +80,6 @@ class PrefsRevocationStore @Inject constructor(
     }
 
     // Key format: token hash -> 1 (value unused). Store only SHA-256 to avoid persisting raw tokens.
-    private fun hash(token: String): String =
     private fun hash(token: String): String = try {
         val md = java.security.MessageDigest.getInstance("SHA-256")
         md.digest(token.toByteArray())
