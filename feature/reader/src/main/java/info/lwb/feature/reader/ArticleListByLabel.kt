@@ -36,10 +36,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
-import info.lwb.core.domain.GetArticlesByLabelUseCase
 import info.lwb.core.model.Article
 import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
@@ -48,45 +44,11 @@ import info.lwb.ui.designsystem.LocalSurfaceStyle
 import info.lwb.ui.designsystem.ProvideSurfaceStyle
 import info.lwb.ui.designsystem.RaisedIconWell
 import info.lwb.ui.designsystem.RaisedSurface
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class ArticleListByLabelViewModel @Inject constructor(
-    private val getByLabel: GetArticlesByLabelUseCase,
-) : ViewModel() {
-    data class UiState(
-        val label: String = "",
-        val loading: Boolean = false,
-        val items: List<Article> = emptyList(),
-        val error: String? = null,
-    )
-
-    private val _state = MutableStateFlow(UiState())
-    val state: StateFlow<UiState> = _state.asStateFlow()
-
-    fun load(label: String) {
-        if (label == _state.value.label && !_state.value.loading) return
-        _state.value = _state.value.copy(label = label, loading = true, error = null)
-        viewModelScope.launch {
-            runCatching { getByLabel(label) }
-                .onSuccess { list ->
-                    _state.value = _state.value.copy(loading = false, items = list, error = null)
-                }
-                .onFailure { t ->
-                    _state.value = _state.value.copy(
-                        loading = false,
-                        items = emptyList(),
-                        error = t.message ?: "Failed to load",
-                    )
-                }
-        }
-    }
-}
-
+/**
+ * High level route composable that wires up the [ArticleListByLabelViewModel] and renders the
+ * appropriate UI state (loading, error, empty, list). Theme selection follows user settings.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticleListByLabelRoute(
@@ -101,12 +63,17 @@ fun ArticleListByLabelRoute(
     val settingsVm: SettingsViewModel = hiltViewModel()
     val themeMode by settingsVm.themeMode.collectAsState()
     val dark = when (themeMode) {
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> {
+            false
+        }
+        ThemeMode.DARK -> {
+            true
+        }
+        ThemeMode.SYSTEM -> {
+            isSystemInDarkTheme()
+        }
     }
     ProvideSurfaceStyle(dark = dark) {
-        val neo = LocalSurfaceStyle.current
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -122,74 +89,115 @@ fun ArticleListByLabelRoute(
                 )
             },
         ) { padding ->
-            Box(Modifier.fillMaxSize()) {
-                GrainyBackground(Modifier.matchParentSize())
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                ) {
-                    when {
-                        state.loading -> {
-                            Column(
-                                Modifier.fillMaxSize().padding(24.dp),
-                            ) {
-                                CircularProgressIndicator()
-                                Spacer(Modifier.height(12.dp))
-                                Text(
-                                    "Loading articles…",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = neo.textPrimary,
-                                )
-                            }
-                        }
-                        state.error != null -> {
-                            Column(Modifier.fillMaxSize().padding(24.dp)) {
-                                Text(
-                                    text = state.error ?: "Error",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = neo.textPrimary,
-                                )
-                                Spacer(Modifier.height(12.dp))
-                                Button(onClick = { vm.load(state.label) }) { Text("Retry") }
-                            }
-                        }
-                        state.items.isEmpty() -> {
-                            Column(Modifier.fillMaxSize().padding(24.dp)) {
-                                Text(
-                                    "No articles found.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = neo.textPrimary,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Button(onClick = onNavigateBack) { Text("Go back") }
-                            }
-                        }
-                        else -> {
-                            LazyColumn(
-                                Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                            ) {
-                                items(state.items) { a ->
-                                    ArticleCard(
-                                        title = a.title,
-                                        coverUrl = a.coverUrl,
-                                        iconUrl = a.iconUrl,
-                                        onClick = { onArticleClick(a) },
-                                    )
-                                    Spacer(Modifier.height(12.dp))
-                                }
-                            }
-                        }
-                    }
+            ArticleListByLabelContent(
+                state = state,
+                paddingValues = padding,
+                onRetry = { vm.load(state.label) },
+                onNavigateBack = onNavigateBack,
+                onArticleClick = onArticleClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArticleListByLabelContent(
+    state: ArticleListByLabelViewModel.UiState,
+    paddingValues: PaddingValues,
+    onRetry: () -> Unit,
+    onNavigateBack: () -> Unit,
+    onArticleClick: (Article) -> Unit,
+) {
+    val neo = LocalSurfaceStyle.current
+    Box(Modifier.fillMaxSize()) {
+        GrainyBackground(Modifier.matchParentSize())
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+        ) {
+            when {
+                state.loading -> {
+                    LoadingState(neo)
+                }
+                state.error != null -> {
+                    ErrorState(message = state.error ?: "Error", neo = neo, onRetry = onRetry)
+                }
+                state.items.isEmpty() -> {
+                    EmptyState(neo = neo, onNavigateBack = onNavigateBack)
+                }
+                else -> {
+                    ArticlesList(items = state.items, onArticleClick = onArticleClick)
                 }
             }
         }
     }
 }
 
+@Composable
+private fun LoadingState(neo: info.lwb.ui.designsystem.SurfaceStyle) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+    ) {
+        CircularProgressIndicator()
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Loading articles…",
+            style = MaterialTheme.typography.bodyMedium,
+            color = neo.textPrimary,
+        )
+    }
+}
+
+@Composable
+private fun ErrorState(message: String, neo: info.lwb.ui.designsystem.SurfaceStyle, onRetry: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = neo.textPrimary,
+        )
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onRetry) { Text("Retry") }
+    }
+}
+
+@Composable
+private fun EmptyState(neo: info.lwb.ui.designsystem.SurfaceStyle, onNavigateBack: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
+        Text(
+            "No articles found.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = neo.textPrimary,
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = onNavigateBack) { Text("Go back") }
+    }
+}
+
+@Composable
+private fun ArticlesList(items: List<Article>, onArticleClick: (Article) -> Unit) {
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+    ) {
+        items(items) { a ->
+            ArticleCard(
+                title = a.title,
+                coverUrl = a.coverUrl,
+                iconUrl = a.iconUrl,
+                onClick = { onArticleClick(a) },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
 // ——— UI bits
-data class Crumb(val label: String, val onClick: (() -> Unit)?)
+// Internal only: keep private to avoid unnecessary public API & documentation requirements.
+private data class Crumb(val label: String, val onClick: (() -> Unit)?)
 
 @Composable
 private fun Breadcrumb(segments: List<Crumb>) {
@@ -198,86 +206,103 @@ private fun Breadcrumb(segments: List<Crumb>) {
             val isLast = index == segments.lastIndex
             FilterChip(
                 selected = isLast,
-                onClick = { if (!isLast) crumb.onClick?.invoke() },
+                onClick = {
+                    if (!isLast) {
+                        crumb.onClick?.invoke()
+                    }
+                },
                 enabled = !isLast && crumb.onClick != null,
                 label = { Text(crumb.label) },
             )
-            if (index != segments.lastIndex) Spacer(Modifier.width(8.dp))
+            if (index != segments.lastIndex) {
+                Spacer(Modifier.width(8.dp))
+            }
         }
     }
 }
 
 @Composable
 private fun ArticleCard(title: String, coverUrl: String?, iconUrl: String?, onClick: () -> Unit) {
-    val neo = LocalSurfaceStyle.current
     RaisedSurface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
     ) {
         Column(Modifier.fillMaxWidth().padding(12.dp)) {
-            // Cover like a book
-            if (!coverUrl.isNullOrBlank()) {
-                coil.compose.AsyncImage(
-                    model = coverUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp),
-                    contentScale = ContentScale.Crop,
-                )
-            } else if (!iconUrl.isNullOrBlank()) {
-                // Fallback: use icon as large header when no cover
+            ArticleCover(coverUrl = coverUrl, iconUrl = iconUrl)
+            ArticleTitleRow(title = title, iconUrl = iconUrl)
+        }
+    }
+}
+
+@Composable
+private fun ArticleCover(coverUrl: String?, iconUrl: String?) {
+    when {
+        !coverUrl.isNullOrBlank() -> {
+            coil.compose.AsyncImage(
+                model = coverUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        !iconUrl.isNullOrBlank() -> {
+            coil.compose.AsyncImage(
+                model = iconUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                contentScale = ContentScale.Fit,
+            )
+        }
+        else -> {
+            Spacer(
+                Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArticleTitleRow(title: String, iconUrl: String?) {
+    val neo = LocalSurfaceStyle.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RaisedIconWell(wellSize = 48.dp, innerPadding = 6.dp) {
+            if (!iconUrl.isNullOrBlank()) {
                 coil.compose.AsyncImage(
                     model = iconUrl,
                     contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
                 )
             } else {
-                // Minimal placeholder
-                Spacer(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(80.dp),
-                )
-            }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RaisedIconWell(wellSize = 48.dp, innerPadding = 6.dp) {
-                    if (!iconUrl.isNullOrBlank()) {
-                        coil.compose.AsyncImage(
-                            model = iconUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit,
-                        )
-                    } else {
-                        androidx.compose.foundation.layout.Box(
-                            Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                title.take(1).uppercase(),
-                                color = neo.textMuted,
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                        }
-                    }
+                androidx.compose.foundation.layout.Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        title.take(1).uppercase(),
+                        color = neo.textMuted,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
                 }
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = neo.textPrimary,
-                )
             }
         }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = neo.textPrimary,
+        )
     }
 }
