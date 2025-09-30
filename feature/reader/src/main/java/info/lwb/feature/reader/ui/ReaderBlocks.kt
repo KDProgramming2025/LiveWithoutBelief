@@ -10,11 +10,30 @@ import android.view.View
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -25,42 +44,97 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
-import info.lwb.feature.reader.*
+import info.lwb.feature.reader.ReaderSettingsState
+
+// region constants -------------------------------------------------------------------------------------------------
+private const val MIN_FONT_SIZE = 10
+private const val MIN_LINE_HEIGHT = 12
+private const val SPACING_XS_UNITS = 4
+private const val SPACING_SM_UNITS = 8
+private const val SPACING_MD_UNITS = 12
+// YouTube embed player typical 16:9 area height when width ~360dp -> 360 * 9 / 16 = 202.5 ≈ 200
+private const val YT_PLAYER_HEIGHT_UNITS = 200
+private const val TONAL_ELEVATION_SM_UNITS = 2
+private const val PADDING_BLOCK_UNITS = 12
+private const val ICON_PROGRESS_SIZE_UNITS = 24
+private const val INDEX_INCREMENT = 1
+private const val ZERO = 0
+private const val HEADING_LEVEL_MEDIUM = 1
+private const val HEADING_LEVEL_SMALL = 2
+private const val HEADING_LEVEL_TITLE = 3
+private const val ALPHA_PERCENT_DENOMINATOR = 100
+private const val HIGHLIGHT_ACTIVE_ALPHA_NUMERATOR = 55
+private const val HIGHLIGHT_MATCH_ALPHA_NUMERATOR = 30
+private val HIGHLIGHT_ACTIVE_ALPHA: Float = HIGHLIGHT_ACTIVE_ALPHA_NUMERATOR / ALPHA_PERCENT_DENOMINATOR.toFloat()
+private val HIGHLIGHT_MATCH_ALPHA: Float = HIGHLIGHT_MATCH_ALPHA_NUMERATOR / ALPHA_PERCENT_DENOMINATOR.toFloat()
+
+private val MIN_FONT_SIZE_SP = MIN_FONT_SIZE.sp
+private val MIN_LINE_HEIGHT_SP = MIN_LINE_HEIGHT.sp
+private val SPACING_XS = SPACING_XS_UNITS.dp
+private val SPACING_SM = SPACING_SM_UNITS.dp
+private val SPACING_MD = SPACING_MD_UNITS.dp
+private val YT_PLAYER_HEIGHT = YT_PLAYER_HEIGHT_UNITS.dp
+private val TONAL_ELEVATION_SM = TONAL_ELEVATION_SM_UNITS.dp
+private val PADDING_BLOCK = PADDING_BLOCK_UNITS.dp
+private val ICON_PROGRESS_SIZE = ICON_PROGRESS_SIZE_UNITS.dp
+ 
+// Removed brand-specific color literals – rely on theme colors instead.
+
+// endregion --------------------------------------------------------------------------------------------------------
 
 @Composable
-internal fun ParagraphBlock(text: String, query: String, settings: ReaderSettingsState, activeRange: IntRange? = null) {
-    val matches =
-        if (query.isBlank()) {
-            emptyList()
-        } else {
-            Regex(Regex.escape(query), RegexOption.IGNORE_CASE)
-                .findAll(text)
-                .map { it.range }
-                .toList()
+internal fun ParagraphBlock(
+    text: String,
+    query: String,
+    settings: ReaderSettingsState,
+    activeRange: IntRange? = null,
+) {
+    val matches = if (query.isBlank()) {
+        emptyList()
+    } else {
+        val regex = Regex(Regex.escape(query), RegexOption.IGNORE_CASE)
+        val collected = mutableListOf<IntRange>()
+        for (m in regex.findAll(text)) {
+            collected.add(m.range)
         }
+        collected
+    }
+    // Base text style used for paragraph spans.
+    val baseStyle = MaterialTheme.typography.bodyLarge
     val annotated = buildAnnotatedString {
-        var lastIndex = 0
+        var lastIndex = ZERO
         matches.forEach { range ->
-            if (range.first > lastIndex) append(text.substring(lastIndex, range.first))
-            val highlightColor = if (activeRange == range) {
-                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.55f)
-            } else {
-                MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+            if (range.first > lastIndex) {
+                append(text.substring(lastIndex, range.first))
             }
-            withStyle(
-                MaterialTheme.typography.bodyLarge
-                    .toSpanStyle()
-                    .copy(background = highlightColor),
-            ) {
+            val highlightColor = if (activeRange == range) {
+                MaterialTheme.colorScheme.tertiary.copy(alpha = HIGHLIGHT_ACTIVE_ALPHA)
+            } else {
+                MaterialTheme.colorScheme.secondary.copy(alpha = HIGHLIGHT_MATCH_ALPHA)
+            }
+            val styleSpan = baseStyle
+                .toSpanStyle()
+            val highlightSpan = styleSpan
+                .copy(background = highlightColor)
+            withStyle(highlightSpan) {
                 append(text.substring(range))
             }
-            lastIndex = range.last + 1
+            lastIndex = range.last + INDEX_INCREMENT
         }
-        if (lastIndex < text.length) append(text.substring(lastIndex))
+        if (lastIndex < text.length) {
+            append(text.substring(lastIndex))
+        }
     }
-    val baseStyle = MaterialTheme.typography.bodyLarge
-    val scaledFont = (baseStyle.fontSize.value * settings.fontScale).coerceAtLeast(10.0).sp
-    val scaledLineHeight = (baseStyle.lineHeight.value * settings.lineHeight).coerceAtLeast(12.0).sp
+    val fontSizeValue = baseStyle.fontSize.value
+    val rawFontSize = fontSizeValue * settings.fontScale
+    val scaledFont = rawFontSize
+        .coerceAtLeast(MIN_FONT_SIZE_SP.value)
+        .sp
+    val lineHeightValue = baseStyle.lineHeight.value
+    val rawLineHeight = lineHeightValue * settings.lineHeight
+    val scaledLineHeight = rawLineHeight
+        .coerceAtLeast(MIN_LINE_HEIGHT_SP.value)
+        .sp
     Text(
         annotated,
         style = baseStyle.copy(
@@ -73,10 +147,18 @@ internal fun ParagraphBlock(text: String, query: String, settings: ReaderSetting
 @Composable
 internal fun HeadingBlock(level: Int, text: String) {
     val style = when (level) {
-        1 -> MaterialTheme.typography.headlineMedium
-        2 -> MaterialTheme.typography.headlineSmall
-        3 -> MaterialTheme.typography.titleLarge
-        else -> MaterialTheme.typography.titleMedium
+        HEADING_LEVEL_MEDIUM -> {
+            MaterialTheme.typography.headlineMedium
+        }
+        HEADING_LEVEL_SMALL -> {
+            MaterialTheme.typography.headlineSmall
+        }
+        HEADING_LEVEL_TITLE -> {
+            MaterialTheme.typography.titleLarge
+        }
+        else -> {
+            MaterialTheme.typography.titleMedium
+        }
     }
     Text(text, style = style)
 }
@@ -84,7 +166,7 @@ internal fun HeadingBlock(level: Int, text: String) {
 @Composable
 internal fun AudioBlock(url: String) {
     Surface(
-        tonalElevation = 2.dp,
+        tonalElevation = TONAL_ELEVATION_SM,
         modifier = Modifier.fillMaxWidth(),
     ) {
         AudioPlayer(url)
@@ -113,26 +195,33 @@ internal fun AudioPlayer(url: String) {
         }
     }
     DisposableEffect(Unit) { onDispose { player.release() } }
-    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.padding(PADDING_BLOCK), verticalAlignment = Alignment.CenterVertically) {
         if (!ready) {
-            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(12.dp))
+            CircularProgressIndicator(modifier = Modifier.size(ICON_PROGRESS_SIZE))
+            Spacer(Modifier.width(SPACING_MD))
         }
-        IconButton(onClick = {
-            if (player.isPlaying) {
-                player.pause()
-                isPlaying = false
+        IconButton(
+            onClick = {
+                if (player.isPlaying) {
+                    player.pause()
+                    isPlaying = false
+                } else {
+                    player.play()
+                    isPlaying = true
+                }
+            },
+        ) {
+            val contentDesc = if (player.isPlaying) {
+                "Pause audio"
             } else {
-                player.play()
-                isPlaying = true
+                "Play audio"
             }
-        }) {
             Icon(
                 Icons.Filled.PlayArrow,
-                contentDescription = if (player.isPlaying) "Pause audio" else "Play audio",
+                contentDescription = contentDesc,
             )
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(SPACING_SM))
         Text(text = url.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
     }
 }
@@ -140,86 +229,106 @@ internal fun AudioPlayer(url: String) {
 @Composable
 internal fun YouTubeBlock(videoId: String) {
     Surface(
-        tonalElevation = 2.dp,
+        tonalElevation = TONAL_ELEVATION_SM,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.fillMaxWidth()) {
-            AndroidView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.databaseEnabled = true
-                        isLongClickable = false
-                        setOnLongClickListener { true }
-                        setDownloadListener { _, _, _, _, _ -> }
-                        isHorizontalScrollBarEnabled = false
-                        overScrollMode = View.OVER_SCROLL_NEVER
-                        setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
-                            if (scrollX != 0) {
-                                v.scrollTo(0, scrollY)
-                            }
-                        }
-                        settings.loadWithOverviewMode = true
-                        settings.useWideViewPort = true
-                        settings.cacheMode = WebSettings.LOAD_DEFAULT
-                        webViewClient = object : WebViewClient() {
-                            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                                val u = url ?: return false
-                                return try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
-                                    context.startActivity(intent)
-                                    true
-                                } catch (_: Throwable) {
-                                    false
-                                }
-                            }
-                            override fun shouldOverrideUrlLoading(
-                                view: WebView?,
-                                request: android.webkit.WebResourceRequest?,
-                            ): Boolean {
-                                val u = request?.url?.toString() ?: return false
-                                if (request.isForMainFrame) {
-                                    return try {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
-                                        context.startActivity(intent)
-                                        true
-                                    } catch (_: Throwable) {
-                                        false
-                                    }
-                                }
-                                return false
-                            }
-                        }
-                        loadUrl("https://www.youtube.com/embed/$videoId")
-                    }
-                },
-            )
-            Spacer(Modifier.height(8.dp))
-            val context = LocalContext.current
-            Button(
-                onClick = {
-                    val target = "https://www.youtube.com/watch?v=$videoId"
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
-                        context.startActivity(intent)
-                    } catch (_: Throwable) {
-                        // ignored
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = androidx.compose.ui.graphics.Color(0xFFFF0000),
-                    contentColor = androidx.compose.ui.graphics.Color.White,
-                ),
-            ) {
-                Text("Watch this video on YouTube")
+            YouTubePlayerView(videoId = videoId)
+            Spacer(Modifier.height(SPACING_SM))
+            YouTubeLaunchButton(videoId = videoId)
+        }
+    }
+}
+
+@Composable
+private fun YouTubePlayerView(videoId: String) {
+    AndroidView(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(YT_PLAYER_HEIGHT),
+        factory = { ctx ->
+            WebView(ctx).apply {
+                configureYouTubeWebView(this, videoId)
+            }
+        },
+    )
+}
+
+@Composable
+private fun YouTubeLaunchButton(videoId: String) {
+    val context = LocalContext.current
+    val target = remember(videoId) { "https://www.youtube.com/watch?v=$videoId" }
+    val buttonColors = ButtonDefaults.buttonColors(
+        containerColor = MaterialTheme.colorScheme.error,
+        contentColor = MaterialTheme.colorScheme.onError,
+    )
+    Button(
+        onClick = {
+            launchExternalUrl(context, target)
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = SPACING_XS),
+        colors = buttonColors,
+    ) {
+        Text("Watch this video on YouTube")
+    }
+}
+
+private fun configureYouTubeWebView(webView: WebView, videoId: String) {
+    with(webView) {
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.databaseEnabled = true
+        isLongClickable = false
+        setOnLongClickListener { true }
+        setDownloadListener { _, _, _, _, _ -> }
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = View.OVER_SCROLL_NEVER
+        setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
+            if (scrollX != ZERO) {
+                v.scrollTo(ZERO, scrollY)
             }
         }
+        settings.loadWithOverviewMode = true
+        settings.useWideViewPort = true
+        settings.cacheMode = WebSettings.LOAD_DEFAULT
+        webViewClient = ReaderYouTubeClient(context)
+        loadUrl("https://www.youtube.com/embed/$videoId")
+    }
+}
+
+private class ReaderYouTubeClient(private val ctx: android.content.Context) : WebViewClient() {
+    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+        val target = url ?: return false
+        return launchIntent(target)
+    }
+
+    override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+        val u = request?.url?.toString() ?: return false
+        return if (request.isForMainFrame) {
+            launchIntent(u)
+        } else {
+            false
+        }
+    }
+
+    private fun launchIntent(u: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(u))
+        return try {
+            ctx.startActivity(intent)
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+}
+
+private fun launchExternalUrl(context: android.content.Context, target: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
+        context.startActivity(intent)
+    } catch (_: Throwable) {
+        // ignored
     }
 }
