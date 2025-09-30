@@ -135,29 +135,30 @@ internal fun ReaderScreen(
     }
 
     Box(Modifier.fillMaxSize()) {
+        val searchBarComposable: @Composable () -> Unit = {
+            SearchBar(
+                query = searchQuery,
+                occurrences = searchHits.size,
+                currentIndex = if (searchHits.isEmpty()) 0 else currentSearchIndex + 1,
+                onPrev = {
+                    if (searchHits.isNotEmpty()) {
+                        currentSearchIndex = (currentSearchIndex - 1 + searchHits.size) % searchHits.size
+                    }
+                },
+                onNext = {
+                    if (searchHits.isNotEmpty()) {
+                        currentSearchIndex = (currentSearchIndex + 1) % searchHits.size
+                    }
+                },
+                onChange = { searchQuery = it },
+            )
+        }
         ReaderScaffold(
             modifier = modifier,
             articleTitle = articleTitle,
             settings = settings,
             onTapContent = { showFabTemporarily() },
-            searchBar = {
-                SearchBar(
-                    query = searchQuery,
-                    occurrences = searchHits.size,
-                    currentIndex = if (searchHits.isEmpty()) 0 else currentSearchIndex + 1,
-                    onPrev = {
-                        if (searchHits.isNotEmpty()) {
-                            currentSearchIndex = (currentSearchIndex - 1 + searchHits.size) % searchHits.size
-                        }
-                    },
-                    onNext = {
-                        if (searchHits.isNotEmpty()) {
-                            currentSearchIndex = (currentSearchIndex + 1) % searchHits.size
-                        }
-                    },
-                    onChange = { searchQuery = it },
-                )
-            },
+            searchBar = searchBarComposable,
         ) { padding ->
             if (pages != null && pages.size > 1) {
                 ReaderPagedContent(
@@ -171,9 +172,8 @@ internal fun ReaderScreen(
                     currentSearchIndex = currentSearchIndex,
                     onPageChange = onPageChange,
                     onAnnotationCreated = { /* handled inside */ },
-                ) {
-                    currentSearchIndex
-                } // lambda to read latest index
+                    currentSearchIndexProvider = { currentSearchIndex },
+                )
             } else {
                 ReaderSingleContent(
                     articleTitle = articleTitle,
@@ -182,13 +182,13 @@ internal fun ReaderScreen(
                     searchQuery = searchQuery,
                     searchHits = searchHits,
                     currentSearchIndex = currentSearchIndex,
-                ) {
-                    currentSearchIndex
-                }
+                    currentSearchIndexProvider = { currentSearchIndex },
+                )
             }
         }
 
-        ReaderScreenOverlays(
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    ReaderScreenOverlays(
             appearance = appearance,
             showAppearance = showAppearance,
             onShowAppearance = {
@@ -203,8 +203,7 @@ internal fun ReaderScreen(
             },
             onExitConfirmed = {
                 confirmExit = false
-                val back = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-                back?.onBackPressed()
+                backDispatcher?.onBackPressed()
             },
             fabVisible = fabVisible,
             onFabBookmark = {
@@ -220,6 +219,7 @@ internal fun ReaderScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReaderScaffold(
     modifier: Modifier,
@@ -252,6 +252,7 @@ private fun ReaderScaffold(
 
 // ---------------------------- Paged Mode ----------------------------
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReaderPagedContent(
     articleTitle: String,
@@ -300,11 +301,10 @@ private fun ReaderPagedContent(
         val hit = searchHits.getOrNull(currentSearchIndex)
         if (hit != null && hit.pageIndex == currentPageIndex) listState.animateScrollToItem(hit.blockIndex)
     }
-    val contentModifier = if (isWide) Modifier.weight(1f) else Modifier.fillMaxSize()
     val toc: List<HeadingItem> = remember(pages) { buildHeadingItems(pages) }
     Row(Modifier.fillMaxSize()) {
         if (isWide && toc.isNotEmpty()) {
-            TableOfContents(toc = toc, onSelect = onPageChange)
+            TableOfContents(toc = toc, onSelect = { onPageChange(it.pageIndex) })
         }
         BlocksList(
             articleTitle = articleTitle,
@@ -314,13 +314,14 @@ private fun ReaderPagedContent(
             searchHits = searchHits,
             currentSearchIndexProvider = currentSearchIndexProvider,
             pageIndex = currentPageIndex,
-            listModifier = contentModifier,
+            listModifier = if (isWide) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxSize(),
         )
     }
 }
 
 // ---------------------------- Single Mode ----------------------------
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReaderSingleContent(
     articleTitle: String,
@@ -355,6 +356,7 @@ private fun ReaderSingleContent(
 
 // ---------------------------- Shared UI pieces ----------------------------
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BlocksList(
     articleTitle: String,
@@ -477,8 +479,9 @@ private fun TableOfContents(toc: List<HeadingItem>, onSelect: (HeadingItem) -> U
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ReaderScreenOverlays(
+private fun BoxScope.ReaderScreenOverlays(
     appearance: AppearanceState?,
     showAppearance: Boolean,
     onShowAppearance: () -> Unit,
@@ -621,6 +624,7 @@ private fun HeadingBlock(level: Int, text: String) {
 // Media blocks moved to ui/ReaderBlocks.kt
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double, Double) -> Unit) {
     Surface(
         shadowElevation = 4.dp,

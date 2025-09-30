@@ -28,7 +28,6 @@ internal val LocalReaderPalette =
 
 /** Map settings background + dark mode to a concrete palette. */
 @Composable
-@Composable
 internal fun readerPalette(bg: ReaderSettingsRepository.ReaderBackground): ReaderPalette {
     // Always use the light variants regardless of system theme, except for Night which is intentionally dark.
     return when (bg) {

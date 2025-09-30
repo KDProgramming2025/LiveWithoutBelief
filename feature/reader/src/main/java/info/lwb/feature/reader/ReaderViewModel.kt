@@ -17,6 +17,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Internal ViewModel backing the Reader screen, exposes article pagination state and appearance settings.
+ * Not part of the public feature API; use [ReaderByIdRoute] to interact with the Reader UI.
+ */
 @HiltViewModel
 internal class ReaderViewModel @Inject constructor(
     private val progressRepo: ReadingProgressRepository,
@@ -99,6 +103,7 @@ internal class ReaderViewModel @Inject constructor(
     }
 }
 
+/** UI state snapshot for the Reader screen (internal). */
 internal data class ReaderUiState(
     val articleId: String,
     val pages: List<Page>,

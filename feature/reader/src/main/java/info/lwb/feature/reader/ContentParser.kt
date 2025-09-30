@@ -6,11 +6,11 @@ package info.lwb.feature.reader
 
 // Reader content model sealed hierarchy (internal – not exposed as library API)
 internal sealed interface ContentBlock {
-    internal data class Paragraph(val text: String) : ContentBlock
-    internal data class Heading(val level: Int, val text: String) : ContentBlock
-    internal data class Image(val url: String, val alt: String?) : ContentBlock
-    internal data class Audio(val url: String) : ContentBlock
-    internal data class YouTube(val videoId: String) : ContentBlock
+    data class Paragraph(val text: String) : ContentBlock
+    data class Heading(val level: Int, val text: String) : ContentBlock
+    data class Image(val url: String, val alt: String?) : ContentBlock
+    data class Audio(val url: String) : ContentBlock
+    data class YouTube(val videoId: String) : ContentBlock
 }
 
 private val headingRegex = Regex("<h([1-6])[^>]*>(.*?)</h\\1>", RegexOption.IGNORE_CASE)

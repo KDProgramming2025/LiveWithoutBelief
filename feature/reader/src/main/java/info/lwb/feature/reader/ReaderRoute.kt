@@ -53,15 +53,15 @@ import kotlinx.coroutines.launch
  * Route that loads the article content by id from the repository and forwards to ReaderScreen.
  */
 @Composable
-internal fun ReaderByIdRoute(
+fun ReaderByIdRoute(
     articleId: String,
     onNavigateBack: (() -> Unit)? = null,
-    vm: ReaderViewModel = hiltViewModel(),
 ) {
     // For MVP, fetch content using GetArticleContentUseCase via the feature.viewmodels.ReaderViewModel
     val svcVm: info.lwb.feature.reader.viewmodels.ReaderViewModel = hiltViewModel()
     LaunchedEffect(articleId) { svcVm.loadArticleContent(articleId) }
     val contentRes by svcVm.articleContent.collectAsState()
+    val vm: ReaderViewModel = hiltViewModel()
     val ui by vm.uiState.collectAsState()
     val articlesRes by svcVm.articles.collectAsState()
     val env: ReaderEnv = hiltViewModel()

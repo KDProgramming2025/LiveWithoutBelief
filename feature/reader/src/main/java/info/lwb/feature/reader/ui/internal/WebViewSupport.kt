@@ -4,6 +4,8 @@
  */
 package info.lwb.feature.reader.ui.internal
 
+import info.lwb.feature.reader.ui.mergeHtmlAndCss
+
 import android.graphics.Color
 import android.net.Uri
 import android.util.Base64
