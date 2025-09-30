@@ -320,23 +320,25 @@ internal class ArticleClient(
     }
 
     
-    private fun resolveThemeCssResponse(view: WebView?, u: String): WebResourceResponse? = try {
-        val current = view?.url ?: return null
-        if (current.isBlank()) {
-            return null
-        }
-        val cur = Uri.parse(current)
-        val req = Uri.parse(u)
-        val isThemeReq = req.path?.endsWith(THEME_CSS_PATH_SUFFIX) == true
-        val sameHost = cur.host == req.host && cur.scheme == req.scheme
-        return if (isThemeReq && sameHost) {
-            val bytes = (cssRef[0] ?: "").toByteArray(Charsets.UTF_8)
-            WebResourceResponse("text/css", "utf-8", java.io.ByteArrayInputStream(bytes))
-        } else {
+    private fun resolveThemeCssResponse(view: WebView?, u: String): WebResourceResponse? {
+        return try {
+            val current = view?.url ?: return null
+            if (current.isBlank()) {
+                return null
+            }
+            val cur = Uri.parse(current)
+            val req = Uri.parse(u)
+            val isThemeReq = req.path?.endsWith(THEME_CSS_PATH_SUFFIX) == true
+            val sameHost = cur.host == req.host && cur.scheme == req.scheme
+            if (isThemeReq && sameHost) {
+                val bytes = (cssRef[0] ?: "").toByteArray(Charsets.UTF_8)
+                WebResourceResponse("text/css", "utf-8", java.io.ByteArrayInputStream(bytes))
+            } else {
+                null
+            }
+        } catch (_: Throwable) {
             null
         }
-    } catch (_: Throwable) {
-        null
     }
 
     
@@ -371,16 +373,18 @@ internal class ArticleClient(
     }
     
     
-    private fun openExternal(view: WebView?, u: String): Boolean = try {
-        val ctx = view?.context ?: return false
-        val intent = if (u.startsWith("intent://")) {
-            android.content.Intent.parseUri(u, android.content.Intent.URI_INTENT_SCHEME)
-        } else {
-            android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(u))
+    private fun openExternal(view: WebView?, u: String): Boolean {
+        return try {
+            val ctx = view?.context ?: return false
+            val intent = if (u.startsWith("intent://")) {
+                android.content.Intent.parseUri(u, android.content.Intent.URI_INTENT_SCHEME)
+            } else {
+                android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(u))
+            }
+            ctx.startActivity(intent)
+            true
+        } catch (_: Throwable) {
+            false
         }
-        ctx.startActivity(intent)
-        true
-    } catch (_: Throwable) {
-        false
     }
 }
