@@ -6,6 +6,7 @@ package info.lwb.auth
 
 import android.app.Activity
 import android.content.Context
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import androidx.activity.ComponentActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -143,101 +144,96 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
 
     override suspend fun passwordLogin(username: String, password: String): Result<AuthUser> =
         runCatching { passwordLoginInternal(username, password) }
-}
 
-// region private helpers (extracted from oneTapSignIn for readability / complexity reduction)
-private suspend fun FirebaseCredentialAuthFacade.oneTapSignInInternal(activity: Activity): AuthUser {
-    logDebugStart()
-    val comp = activity as? ComponentActivity
-    val existing = signInClient.getLastSignedInAccount(activity)
-    logDebugSilent(existing)
-    val idToken = resolveIdToken(activity, existing, comp)
-    logDebugHaveToken(idToken)
-    persistGoogleToken(idToken)
-    val user = signInExecutor.signIn(idToken)
-    val email = user.email ?: existing?.email ?: error("Could not determine Google account email")
-    val (regUser, _) = registrationApi.register(email)
-    val authUser =
-        AuthUser(
+    // region in-class helpers
+    private suspend fun oneTapSignInInternal(activity: Activity): AuthUser {
+        logDebugStart()
+        val comp = activity as? ComponentActivity
+        val existing = signInClient.getLastSignedInAccount(activity)
+        logDebugSilent(existing)
+        val idToken = resolveIdToken(activity, existing, comp)
+        logDebugHaveToken(idToken)
+        persistGoogleToken(idToken)
+        val user = signInExecutor.signIn(idToken)
+        val email = user.email ?: existing?.email ?: error("Could not determine Google account email")
+        val (regUser, _) = registrationApi.register(email)
+        val authUser = AuthUser(
             user.uid,
             user.displayName ?: regUser.displayName,
             email,
             user.photoUrl?.toString(),
         )
-    secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
-    runCatching { tokenRefresher.refresh(user, false) }.onFailure { err ->
-        if (BuildConfig.DEBUG) {
-            android.util.Log.w(AUTH_LOG_TAG, "tokenRefreshFailed", err)
+        secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
+        runCatching { tokenRefresher.refresh(user, false) }.onFailure { err ->
+            if (BuildConfig.DEBUG) {
+                android.util.Log.w("AuthFlow", "tokenRefreshFailed", err)
+            }
         }
+        logDebugSuccess(authUser)
+        return authUser
     }
-    logDebugSuccess(authUser)
-    return authUser
-}
 
-private suspend fun FirebaseCredentialAuthFacade.registerInternal(
-    username: String,
-    password: String,
-    altchaPayload: String?,
-): AuthUser {
-    val token = altchaPayload ?: throw IllegalStateException("ALTCHA required")
-    val user = passwordApi.register(username, password, token)
-    secureStorage.putIdToken("pwd:${user.uid}")
-    secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
-    return user
-}
-
-private suspend fun FirebaseCredentialAuthFacade.passwordLoginInternal(username: String, password: String): AuthUser {
-    val user = passwordApi.login(username, password)
-    secureStorage.putIdToken("pwd:${user.uid}")
-    secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
-    return user
-}
-
-private suspend fun FirebaseCredentialAuthFacade.refreshToken(forceRefresh: Boolean): String {
-    val user = firebaseAuth.currentUser ?: error("No user to refresh")
-    val token = tokenRefresher.refresh(user, forceRefresh)
-    persistExpiry(token)
-    return token
-}
-
-private fun FirebaseCredentialAuthFacade.resolveIdToken(
-    activity: Activity,
-    existing: GoogleAccount?,
-    comp: ComponentActivity?,
-): String = existing?.idToken ?: oneTapOrInteractive(activity, comp)
-
-private fun FirebaseCredentialAuthFacade.oneTapOrInteractive(activity: Activity, comp: ComponentActivity?): String {
-    val oneTapToken = runCatching { oneTapProvider.getIdToken(activity) }.getOrNull()
-    if (oneTapToken != null) {
-        return oneTapToken
+    private suspend fun registerInternal(
+        username: String,
+        password: String,
+        altchaPayload: String?,
+    ): AuthUser {
+        val token = altchaPayload ?: throw IllegalStateException("ALTCHA required")
+        val user = passwordApi.register(username, password, token)
+        secureStorage.putIdToken("pwd:${'$'}{user.uid}")
+        secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
+        return user
     }
-    requireNotNull(comp) { "Activity must be a ComponentActivity for interactive sign-in" }
-    val acct = intentExecutor.launch(comp) { signInClient.buildSignInIntent(activity) }
-    return acct.idToken ?: error("Missing idToken from interactive sign-in")
-}
 
-private fun FirebaseCredentialAuthFacade.persistGoogleToken(idToken: String) {
-    secureStorage.putIdToken(idToken)
-    persistExpiry(idToken)
-}
+    private suspend fun passwordLoginInternal(username: String, password: String): AuthUser {
+        val user = passwordApi.login(username, password)
+        secureStorage.putIdToken("pwd:${'$'}{user.uid}")
+        secureStorage.putProfile(user.displayName, user.email, user.photoUrl)
+        return user
+    }
 
-private fun FirebaseCredentialAuthFacade.persistExpiry(token: String) {
-    val exp = JwtUtils.extractExpiryEpochSeconds(token)
-    val nowSeconds = System.currentTimeMillis() / MILLIS_IN_SECOND
-    val early = exp?.minus(TOKEN_EARLY_REFRESH_SECONDS)
-    val storeExp = early ?: (nowSeconds + TOKEN_FALLBACK_LIFETIME_SECONDS)
-    secureStorage.putTokenExpiry(storeExp)
-}
+    private suspend fun refreshToken(forceRefresh: Boolean): String {
+        val user = firebaseAuth.currentUser ?: error("No user to refresh")
+        val token = tokenRefresher.refresh(user, forceRefresh)
+        persistExpiry(token)
+        return token
+    }
 
-private fun FirebaseCredentialAuthFacade.mapRegionBlock(e: Throwable): Throwable {
-    val mapped =
-        if (e.isRegionBlocked()) {
+    private suspend fun resolveIdToken(
+        activity: Activity,
+        existing: GoogleSignInAccount?,
+        comp: ComponentActivity?,
+    ): String = existing?.idToken ?: oneTapOrInteractive(activity, comp)
+
+    private suspend fun oneTapOrInteractive(activity: Activity, comp: ComponentActivity?): String {
+        val oneTapToken = runCatching { oneTapProvider.getIdToken(activity) }.getOrNull()
+        if (oneTapToken != null) return oneTapToken
+        requireNotNull(comp) { "Activity must be a ComponentActivity for interactive sign-in" }
+        val acct = intentExecutor.launch(comp) { signInClient.buildSignInIntent(activity) }
+        return acct.idToken ?: error("Missing idToken from interactive sign-in")
+    }
+
+    private fun persistGoogleToken(idToken: String) {
+        secureStorage.putIdToken(idToken)
+        persistExpiry(idToken)
+    }
+
+    private fun persistExpiry(token: String) {
+        val exp = JwtUtils.extractExpiryEpochSeconds(token)
+        val nowSeconds = System.currentTimeMillis() / MILLIS_IN_SECOND
+        val early = exp?.minus(TOKEN_EARLY_REFRESH_SECONDS)
+        val storeExp = early ?: (nowSeconds + TOKEN_FALLBACK_LIFETIME_SECONDS)
+        secureStorage.putTokenExpiry(storeExp)
+    }
+
+    private fun mapRegionBlock(e: Throwable): Throwable {
+        val mapped = if (e.isRegionBlocked()) {
             RegionBlockedAuthException("Google sign-in appears blocked in your region.", e)
-        } else {
-            null
-        }
-    logDebugFailure(mapped, e)
-    return mapped ?: e
+        } else null
+        logDebugFailure(mapped, e)
+        return mapped ?: e
+    }
+    // endregion
 }
 
 // logging helpers moved to AuthLogging.kt

@@ -87,12 +87,6 @@ data class SurfaceStyleColors(
  * @property shadowOffset Positional offset (both x/y) for shadow translation.
  * @property shadowPadding Extra outer padding reserved so blurred shadows are not clipped.
  * @property rimLightAlpha Opacity of the outer light rim stroke.
-        modifier =
-            modifier
-                .clickable(onClick = onClick),
-    ) {
-        content()
-    }
  * @property strokeLightWidth Width of the outer light stroke.
  * @property strokeDarkWidth Width of the inner dark stroke.
  * @property reflectionTintStrength Lerp fraction mixing [SurfaceStyleColors.shadowLight] with [SurfaceStyleColors.reflectionTint].
@@ -130,15 +124,6 @@ object SurfaceStyleDefaults {
     private const val DARK_RIM_DARK_ALPHA = 0.52f
     private const val LIGHT_RIM_LIGHT_ALPHA = 0.58f
     private const val LIGHT_RIM_DARK_ALPHA = 0.30f
-                        canvas.drawRoundRect(
-                            0f,
-                            0f,
-                            this.size.width,
-                            this.size.height,
-                            corner,
-                            corner,
-                            paint,
-                        )
     private const val DARK_SHADOW_LIGHT_ALPHA = 1.00f
     private const val LIGHT_SHADOW_DARK_ALPHA = 0.95f
     private const val LIGHT_SHADOW_LIGHT_ALPHA = 1.00f
@@ -148,15 +133,8 @@ object SurfaceStyleDefaults {
     private val LIGHT_STROKE_DARK_WIDTH = 0.8.dp
     private const val DARK_REFLECTION_TINT_STRENGTH = 0.26f
     private const val LIGHT_REFLECTION_TINT_STRENGTH = 0.22f
-                        canvas.drawRoundRect(
-                            0f,
-                            0f,
-                            this.size.width,
-                            this.size.height,
-                            corner,
-                            corner,
-                            paint,
-                        )
+    // Dark shadow alpha constant (missing earlier) for consistency with light metrics
+    private const val DARK_SHADOW_DARK_ALPHA = 0.90f
     /** Default metrics for dark theme raised and inset surfaces. */
     val DarkMetrics =
         SurfaceStyleMetrics(

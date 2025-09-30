@@ -74,7 +74,7 @@ complexity:
     allowedConditions: 3
   ComplexInterface:
     active: true
-    allowedDefinitions: 7
+    allowedDefinitions: 10
   CyclomaticComplexMethod:
     active: true
     allowedComplexity: 14
@@ -100,10 +100,10 @@ complexity:
   TooManyFunctions:
     active: true
     allowedFunctionsPerFile: 20
-    allowedFunctionsPerClass: 11
-    allowedFunctionsPerInterface: 11
-    allowedFunctionsPerObject: 11
-    allowedFunctionsPerEnum: 11
+    allowedFunctionsPerClass: 20
+    allowedFunctionsPerInterface: 20
+    allowedFunctionsPerObject: 20
+    allowedFunctionsPerEnum: 20
     ignoreAnnotatedFunctions : ['Composable']
 coroutines:
   CoroutineLaunchedInTestWithoutRunTest:

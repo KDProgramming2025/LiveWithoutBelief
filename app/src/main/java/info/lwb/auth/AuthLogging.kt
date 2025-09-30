@@ -4,6 +4,7 @@
 package info.lwb.auth
 
 import info.lwb.BuildConfig
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 
 private const val AUTH_LOG_TAG = "AuthFlow"
 private const val CLIENT_ID_SAMPLE = 12
@@ -21,7 +22,7 @@ internal fun FirebaseCredentialAuthFacade.logDebugStart() = logDebug(AUTH_LOG_TA
     "oneTapSignIn:start serverClientId=$serverPart… androidClientId=$androidPart…"
 }
 
-internal fun FirebaseCredentialAuthFacade.logDebugSilent(existing: GoogleAccount?) = logDebug(AUTH_LOG_TAG) {
+internal fun FirebaseCredentialAuthFacade.logDebugSilent(existing: GoogleSignInAccount?) = logDebug(AUTH_LOG_TAG) {
     "silentAccount: ${existing?.email} hasToken=${existing?.idToken?.isNotEmpty() == true}"
 }
 

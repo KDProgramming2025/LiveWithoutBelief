@@ -6,6 +6,7 @@ package info.lwb.feature.reader
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import info.lwb.feature.reader.ui.AppearanceState
+import info.lwb.feature.reader.ReaderSettingsRepository
 
 @Preview(name = "Reader Light", showBackground = true)
 @Composable
@@ -20,7 +21,14 @@ private fun PreviewReaderLight() {
         articleTitle = "Preview Article",
         htmlBody = sampleHtml,
         settings = ReaderSettingsState(1.0, 1.2, {}, {}),
-        appearance = AppearanceState(),
+        appearance = AppearanceState(
+            fontScale = 1.0,
+            lineHeight = 1.2,
+            background = ReaderSettingsRepository.ReaderBackground.Paper,
+            onFontScale = {},
+            onLineHeight = {},
+            onBackground = {},
+        ),
     )
 }
 
@@ -36,6 +44,13 @@ private fun PreviewReaderDark() {
         articleTitle = "Preview Dark",
         htmlBody = sampleHtml,
         settings = ReaderSettingsState(1.0, 1.2, {}, {}),
-        appearance = AppearanceState(),
+        appearance = AppearanceState(
+            fontScale = 1.0,
+            lineHeight = 1.2,
+            background = ReaderSettingsRepository.ReaderBackground.Night,
+            onFontScale = {},
+            onLineHeight = {},
+            onBackground = {},
+        ),
     )
 }
