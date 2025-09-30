@@ -11,6 +11,8 @@ indent_size = 4
 max_line_length = 120
 
 # KtLint specific (standard ruleset keys)
+ktlint_standard_op-spacing = disabled
+
 # Allow PascalCase for top-level @Composable / @Preview functions without needing @file:Suppress("FunctionName")
 # Newer ktlint supports ignore_when_annotated_with; fallback pattern allows capitalized names if annotation key unsupported.
 # Disable ktlint function naming so Detekt owns naming policy (Compose PascalCase allowed via detekt.yml)
