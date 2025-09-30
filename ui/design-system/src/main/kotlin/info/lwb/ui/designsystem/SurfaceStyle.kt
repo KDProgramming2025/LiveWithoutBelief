@@ -51,10 +51,8 @@ private val MIN_WELL_CORNER = 8.dp
 /**
  * Immutable set of tonal and shadow colors that define the raised/inset surface aesthetic.
  *
- * These colors are combined at runtime to draw layered soft shadows, rim lights and
-
-
- * subtle reflections that emulate a tactile, pseudo-neumorphic style while preserving
+ * These colors are combined at runtime to draw layered soft shadows, rim lights and subtle
+ * reflections that emulate a tactile, pseudo-neumorphic style while preserving
  * sufficient contrast for readability.
  *
  * @property bgTop Top color of the vertical background gradient.
@@ -87,11 +85,13 @@ data class SurfaceStyleColors(
  * @property shadowOffset Positional offset (both x/y) for shadow translation.
  * @property shadowPadding Extra outer padding reserved so blurred shadows are not clipped.
  * @property rimLightAlpha Opacity of the outer light rim stroke.
- * @property strokeLightWidth Width of the outer light stroke.
- * @property strokeDarkWidth Width of the inner dark stroke.
- * @property reflectionTintStrength Lerp fraction mixing [SurfaceStyleColors.shadowLight] with [SurfaceStyleColors.reflectionTint].
  * @property rimDarkAlpha Opacity of the inner (dark) rim stroke.
  * @property shadowDarkAlpha Alpha multiplier applied to the dark external shadow bitmap.
+ * @property shadowLightAlpha Alpha multiplier applied to the light external shadow bitmap.
+ * @property strokeLightWidth Width of the outer light stroke.
+ * @property strokeDarkWidth Width of the inner dark stroke.
+ * @property reflectionTintStrength Lerp fraction mixing
+ *   [SurfaceStyleColors.shadowLight] with [SurfaceStyleColors.reflectionTint].
  */
 @Immutable
 data class SurfaceStyleMetrics(
@@ -135,38 +135,39 @@ object SurfaceStyleDefaults {
     private val LIGHT_STROKE_DARK_WIDTH = 0.8.dp
     private const val DARK_REFLECTION_TINT_STRENGTH = 0.26f
     private const val LIGHT_REFLECTION_TINT_STRENGTH = 0.22f
+
     // Dark shadow alpha constant (missing earlier) for consistency with light metrics
     private const val DARK_SHADOW_DARK_ALPHA = 0.90f
+
     /** Default metrics for dark theme raised and inset surfaces. */
-    val DarkMetrics =
-        SurfaceStyleMetrics(
-            cornerRadius = DEFAULT_CORNER,
-            shadowBlur = DARK_SHADOW_BLUR,
-            shadowOffset = DEFAULT_SHADOW_OFFSET,
-            shadowPadding = DEFAULT_SHADOW_PADDING,
-            rimLightAlpha = DARK_RIM_LIGHT_ALPHA,
-            rimDarkAlpha = DARK_RIM_DARK_ALPHA,
-            shadowDarkAlpha = DARK_SHADOW_DARK_ALPHA,
-            shadowLightAlpha = DARK_SHADOW_LIGHT_ALPHA,
-            strokeLightWidth = DARK_STROKE_LIGHT_WIDTH,
-            strokeDarkWidth = DARK_STROKE_DARK_WIDTH,
-            reflectionTintStrength = DARK_REFLECTION_TINT_STRENGTH,
-        )
+    val DarkMetrics = SurfaceStyleMetrics(
+        cornerRadius = DEFAULT_CORNER,
+        shadowBlur = DARK_SHADOW_BLUR,
+        shadowOffset = DEFAULT_SHADOW_OFFSET,
+        shadowPadding = DEFAULT_SHADOW_PADDING,
+        rimLightAlpha = DARK_RIM_LIGHT_ALPHA,
+        rimDarkAlpha = DARK_RIM_DARK_ALPHA,
+        shadowDarkAlpha = DARK_SHADOW_DARK_ALPHA,
+        shadowLightAlpha = DARK_SHADOW_LIGHT_ALPHA,
+        strokeLightWidth = DARK_STROKE_LIGHT_WIDTH,
+        strokeDarkWidth = DARK_STROKE_DARK_WIDTH,
+        reflectionTintStrength = DARK_REFLECTION_TINT_STRENGTH,
+    )
+
     /** Default metrics for light theme raised and inset surfaces. */
-    val LightMetrics =
-        SurfaceStyleMetrics(
-            cornerRadius = DEFAULT_CORNER,
-            shadowBlur = LIGHT_SHADOW_BLUR,
-            shadowOffset = DEFAULT_SHADOW_OFFSET,
-            shadowPadding = DEFAULT_SHADOW_PADDING,
-            rimLightAlpha = LIGHT_RIM_LIGHT_ALPHA,
-            rimDarkAlpha = LIGHT_RIM_DARK_ALPHA,
-            shadowDarkAlpha = LIGHT_SHADOW_DARK_ALPHA,
-            shadowLightAlpha = LIGHT_SHADOW_LIGHT_ALPHA,
-            strokeLightWidth = LIGHT_STROKE_LIGHT_WIDTH,
-            strokeDarkWidth = LIGHT_STROKE_DARK_WIDTH,
-            reflectionTintStrength = LIGHT_REFLECTION_TINT_STRENGTH,
-        )
+    val LightMetrics = SurfaceStyleMetrics(
+        cornerRadius = DEFAULT_CORNER,
+        shadowBlur = LIGHT_SHADOW_BLUR,
+        shadowOffset = DEFAULT_SHADOW_OFFSET,
+        shadowPadding = DEFAULT_SHADOW_PADDING,
+        rimLightAlpha = LIGHT_RIM_LIGHT_ALPHA,
+        rimDarkAlpha = LIGHT_RIM_DARK_ALPHA,
+        shadowDarkAlpha = LIGHT_SHADOW_DARK_ALPHA,
+        shadowLightAlpha = LIGHT_SHADOW_LIGHT_ALPHA,
+        strokeLightWidth = LIGHT_STROKE_LIGHT_WIDTH,
+        strokeDarkWidth = LIGHT_STROKE_DARK_WIDTH,
+        reflectionTintStrength = LIGHT_REFLECTION_TINT_STRENGTH,
+    )
 }
 
 // Extracted color hex constants to satisfy MagicNumber rule
@@ -179,17 +180,16 @@ private const val COLOR_DARK_TEXT_PRIMARY = 0xFFEEE7DF
 private const val COLOR_DARK_TEXT_MUTED = 0xFFB9AEA6
 private const val COLOR_DARK_REFLECTION_TINT = 0xFFE0F0FF
 
-private val DarkColors =
-    SurfaceStyleColors(
-        bgTop = Color(COLOR_DARK_BG_TOP.toInt()),
-        bgBottom = Color(COLOR_DARK_BG_BOTTOM.toInt()),
-        surface = Color(COLOR_DARK_SURFACE.toInt()),
-        shadowDark = Color(COLOR_DARK_SHADOW_DARK.toInt()),
-        shadowLight = Color(COLOR_DARK_SHADOW_LIGHT.toInt()),
-        textPrimary = Color(COLOR_DARK_TEXT_PRIMARY.toInt()),
-        textMuted = Color(COLOR_DARK_TEXT_MUTED.toInt()),
-        reflectionTint = Color(COLOR_DARK_REFLECTION_TINT.toInt()),
-    )
+private val DarkColors = SurfaceStyleColors(
+    bgTop = Color(COLOR_DARK_BG_TOP.toInt()),
+    bgBottom = Color(COLOR_DARK_BG_BOTTOM.toInt()),
+    surface = Color(COLOR_DARK_SURFACE.toInt()),
+    shadowDark = Color(COLOR_DARK_SHADOW_DARK.toInt()),
+    shadowLight = Color(COLOR_DARK_SHADOW_LIGHT.toInt()),
+    textPrimary = Color(COLOR_DARK_TEXT_PRIMARY.toInt()),
+    textMuted = Color(COLOR_DARK_TEXT_MUTED.toInt()),
+    reflectionTint = Color(COLOR_DARK_REFLECTION_TINT.toInt()),
+)
 
 private const val COLOR_LIGHT_BG_TOP = 0xFFFAEFE6
 private const val COLOR_LIGHT_BG_BOTTOM = 0xFFF3E6DB
@@ -200,17 +200,16 @@ private const val COLOR_LIGHT_TEXT_PRIMARY = 0xFF221A16
 private const val COLOR_LIGHT_TEXT_MUTED = 0xFF7A6B63
 private const val COLOR_LIGHT_REFLECTION_TINT = 0xFFE6F2FF
 
-private val LightColors =
-    SurfaceStyleColors(
-        bgTop = Color(COLOR_LIGHT_BG_TOP.toInt()),
-        bgBottom = Color(COLOR_LIGHT_BG_BOTTOM.toInt()),
-        surface = Color(COLOR_LIGHT_SURFACE.toInt()),
-        shadowDark = Color(COLOR_LIGHT_SHADOW_DARK.toInt()),
-        shadowLight = Color(COLOR_LIGHT_SHADOW_LIGHT.toInt()),
-        textPrimary = Color(COLOR_LIGHT_TEXT_PRIMARY.toInt()),
-        textMuted = Color(COLOR_LIGHT_TEXT_MUTED.toInt()),
-        reflectionTint = Color(COLOR_LIGHT_REFLECTION_TINT.toInt()),
-    )
+private val LightColors = SurfaceStyleColors(
+    bgTop = Color(COLOR_LIGHT_BG_TOP.toInt()),
+    bgBottom = Color(COLOR_LIGHT_BG_BOTTOM.toInt()),
+    surface = Color(COLOR_LIGHT_SURFACE.toInt()),
+    shadowDark = Color(COLOR_LIGHT_SHADOW_DARK.toInt()),
+    shadowLight = Color(COLOR_LIGHT_SHADOW_LIGHT.toInt()),
+    textPrimary = Color(COLOR_LIGHT_TEXT_PRIMARY.toInt()),
+    textMuted = Color(COLOR_LIGHT_TEXT_MUTED.toInt()),
+    reflectionTint = Color(COLOR_LIGHT_REFLECTION_TINT.toInt()),
+)
 
 /** CompositionLocal exposing the active [SurfaceStyleColors]. */
 val LocalSurfaceStyle = staticCompositionLocalOf { DarkColors }
@@ -270,7 +269,7 @@ fun GrainyBackground(modifier: Modifier = Modifier) {
     val c = LocalSurfaceStyle.current
     val gradient = Brush.verticalGradient(listOf(c.bgTop, c.bgBottom))
     Box(
-        modifier =
+        modifier
             .drawWithCache {
                 onDrawBehind {
                     drawRect(brush = gradient)
@@ -300,9 +299,7 @@ fun RaisedSurface(
     val isDark = LocalIsDarkTheme.current
     val shape = RoundedCornerShape(metrics.cornerRadius)
     val shadowPadding = calculateShadowPadding(metrics)
-    Box(
-        modifier
-            .drawWithCache {
+    val outerModifier = modifier.drawWithCache {
                 val padPx = shadowPadding.toPx()
                 val left = padPx
                 val top = padPx
@@ -339,13 +336,11 @@ fun RaisedSurface(
                     drawImage(bitmaps.dark, blendMode = shadowMode)
                     drawImage(bitmaps.light, blendMode = lightMode)
                 }
-            },
-    ) {
-        Box(
-            Modifier =
-                .padding(shadowPadding)
-                .surfaceRim(colors, metrics, shape),
-        ) { content() }
+            }
+    }
+    Box(outerModifier) {
+        val innerModifier = Modifier.padding(shadowPadding).surfaceRim(colors, metrics, shape)
+        Box(innerModifier) { content() }
     }
 }
 
@@ -361,26 +356,33 @@ private fun calculateShadowPadding(metrics: SurfaceStyleMetrics): Dp {
     }
 }
 
-private fun Modifier.surfaceRim(colors: SurfaceStyleColors, metrics: SurfaceStyleMetrics, shape: RoundedCornerShape): Modifier =
-    clip(shape)
-        .background(colors.surface)
-        .drawWithContent {
-            drawContent()
-            val r = metrics.cornerRadius.toPx()
+private fun Modifier.surfaceRim(
+    colors: SurfaceStyleColors,
+    metrics: SurfaceStyleMetrics,
+    shape: RoundedCornerShape,
+): Modifier {
+    var current: Modifier = this
+    current = current.clip(shape)
+    current = current.background(colors.surface)
+    current = current.drawWithContent {
+        drawContent()
+        val r = metrics.cornerRadius.toPx()
+        drawRoundRect(
+            color = colors.shadowLight.copy(alpha = metrics.rimLightAlpha),
+            style = Stroke(width = metrics.strokeLightWidth.toPx()),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
+        )
+        val inset = metrics.strokeLightWidth.toPx()
+        withTransform({ translate(inset, inset) }) {
             drawRoundRect(
-                color = colors.shadowLight.copy(alpha = metrics.rimLightAlpha),
-                style = Stroke(width = metrics.strokeLightWidth.toPx()),
+                color = colors.shadowDark.copy(alpha = metrics.rimDarkAlpha),
+                style = Stroke(width = metrics.strokeDarkWidth.toPx()),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
             )
-            val inset = metrics.strokeLightWidth.toPx()
-            withTransform({ translate(inset, inset) }) {
-                drawRoundRect(
-                    color = colors.shadowDark.copy(alpha = metrics.rimDarkAlpha),
-                    style = Stroke(width = metrics.strokeDarkWidth.toPx()),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
-                )
-            }
         }
+    }
+    return current
+}
 
 /**
  * Convenience wrapper around [RaisedSurface] that applies a clickable modifier.
@@ -420,11 +422,10 @@ fun InsetIconWell(
     val c = LocalSurfaceStyle.current
     val m = LocalSurfaceMetrics.current
     val wellCorner = (m.cornerRadius - CORNER_ADJUST).coerceAtLeast(MIN_WELL_CORNER)
-    Box(
-        modifier
-            .clip(RoundedCornerShape(wellCorner))
-            .background(c.surface)
-            .drawBehind {
+    var wellModifier = modifier
+    wellModifier = wellModifier.clip(RoundedCornerShape(wellCorner))
+    wellModifier = wellModifier.background(c.surface)
+    wellModifier = wellModifier.drawBehind {
                 val corner = wellCorner.toPx()
                 drawIntoCanvas { canvas ->
                     val paint = Paint()
@@ -432,8 +433,15 @@ fun InsetIconWell(
                     fp.isAntiAlias = true
                     fp.style = android.graphics.Paint.Style.STROKE
                     fp.strokeWidth = INSET_WELL_STROKE_WIDTH
-                    fp.color = c.shadowDark.copy(alpha = m.shadowDarkAlpha * DARK_WELL_ALPHA_MULT).toArgb()
-                    fp.maskFilter = BlurMaskFilter(m.shadowBlur.toPx() * DARK_WELL_BLUR_MULT, BlurMaskFilter.Blur.NORMAL)
+                    fp.color =
+                        c.shadowDark
+                            .copy(alpha = m.shadowDarkAlpha * DARK_WELL_ALPHA_MULT)
+                            .toArgb()
+                    fp.maskFilter =
+                        BlurMaskFilter(
+                            m.shadowBlur.toPx() * DARK_WELL_BLUR_MULT,
+                            BlurMaskFilter.Blur.NORMAL,
+                        )
                     canvas.save()
                     canvas.translate(
                         m.shadowOffset.toPx() * DARK_WELL_TRANSLATE_X_MULT,
@@ -442,8 +450,15 @@ fun InsetIconWell(
                     canvas.drawRoundRect(0f, 0f, this.size.width, this.size.height, corner, corner, paint)
                     canvas.restore()
 
-                    fp.color = c.shadowLight.copy(alpha = m.shadowLightAlpha * LIGHT_WELL_ALPHA_MULT).toArgb()
-                    fp.maskFilter = BlurMaskFilter(m.shadowBlur.toPx() * LIGHT_WELL_BLUR_MULT, BlurMaskFilter.Blur.NORMAL)
+                    fp.color =
+                        c.shadowLight
+                            .copy(alpha = m.shadowLightAlpha * LIGHT_WELL_ALPHA_MULT)
+                            .toArgb()
+                    fp.maskFilter =
+                        BlurMaskFilter(
+                            m.shadowBlur.toPx() * LIGHT_WELL_BLUR_MULT,
+                            BlurMaskFilter.Blur.NORMAL,
+                        )
                     canvas.save()
                     canvas.translate(
                         -m.shadowOffset.toPx() * LIGHT_WELL_TRANSLATE_X_MULT,
@@ -453,7 +468,9 @@ fun InsetIconWell(
                     canvas.restore()
                 }
             }
-            .then(Modifier.size(wellSize)),
+    wellModifier = wellModifier.then(Modifier.size(wellSize))
+    Box(
+        wellModifier,
     ) { content() }
 }
 
@@ -489,16 +506,14 @@ fun RaisedIconWell(
         }
     val total = wellSize + shadowPadding * 2
     RaisedSurface(
-        modifier =
-            modifier
-                .size(total),
+        modifier
+            .size(total),
     ) {
         // Fill the inner area (which will be wellSize x wellSize) with a small inner padding
         Box(
-            modifier =
-                Modifier
-                    .size(wellSize)
-                    .padding(innerPadding),
+            modifier = Modifier
+                .size(wellSize)
+                .padding(innerPadding),
             content = content,
         )
     }
