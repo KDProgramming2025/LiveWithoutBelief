@@ -33,11 +33,10 @@ subprojects {
         autoCorrect = false
         parallel = true
     }
-    // Attach additional rule set plugins (ktlint wrapper, coroutines, libraries)
+    // Attach additional rule set plugins (ktlint wrapper, coroutines). Removed libraries ruleset since project is an app, not a published library.
     dependencies {
         add("detektPlugins", "dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
         add("detektPlugins", "dev.detekt:detekt-rules-coroutines:2.0.0-alpha.0")
-        add("detektPlugins", "dev.detekt:detekt-rules-libraries:2.0.0-alpha.0")
     }
     tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
         jvmTarget.set("17")

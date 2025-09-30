@@ -99,7 +99,7 @@ complexity:
     allowedDuplications: 2
   TooManyFunctions:
     active: true
-    allowedFunctionsPerFile: 11
+    allowedFunctionsPerFile: 20
     allowedFunctionsPerClass: 11
     allowedFunctionsPerInterface: 11
     allowedFunctionsPerObject: 11

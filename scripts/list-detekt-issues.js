@@ -20,7 +20,7 @@ const { readdirSync, statSync, writeFileSync } = require('fs');
 const { join, sep } = require('path');
 
 const PROJECT_ROOT = process.cwd();
-const OUTPUT_FILE = join(PROJECT_ROOT, 'build', 'detekt-issues-report.txt');
+const OUTPUT_FILE = join(PROJECT_ROOT, 'build','reports', 'detekt', 'detekt-issues-report.txt');
 
 function listKotlinFiles(dir) {
   const entries = readdirSync(dir, { withFileTypes: true });
