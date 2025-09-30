@@ -16,36 +16,55 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Retry configuration governing exponential backoff for remote session validation.
+ * @property maxAttempts Total validation attempts (must be >= 1).
+ * @property baseDelayMs Base delay for the second attempt (first retry) in milliseconds.
+ * @property backoffMultiplier Multiplier applied exponentially (attempt-1) to the base delay.
+ */
 @Singleton
 data class ValidationRetryPolicy(
+    /** Total validation attempts (including the first). */
     val maxAttempts: Int = 3,
+    /** Base delay for second attempt in milliseconds (subsequent attempts are multiplied). */
     val baseDelayMs: Long = 50,
+    /** Exponential multiplier for each retry after the first failed attempt. */
     val backoffMultiplier: Double = 2.0,
 )
 
 /** Lightweight hook for observability (can be bridged to Timber/Logcat or metrics). */
+    interface ValidationObserver {
 interface ValidationObserver {
+    /** Called before each attempt (1-based index). */
     fun onAttempt(attempt: Int, max: Int)
+    /** Called after each attempt with the resulting [ValidationResult]. */
     fun onResult(result: ValidationResult)
+    /** Called prior to delaying for a retry with the computed delay milliseconds. */
     fun onRetry(delayMs: Long)
 }
 
+/** No-op observer used by default. */
 object NoopValidationObserver : ValidationObserver {
-    override fun onAttempt(attempt: Int, max: Int) {}
-    override fun onResult(result: ValidationResult) {}
-    override fun onRetry(delayMs: Long) {}
+    override fun onAttempt(attempt: Int, max: Int) = Unit
+    override fun onResult(result: ValidationResult) = Unit
+    override fun onRetry(delayMs: Long) = Unit
 }
 
+/** Persistence abstraction tracking locally revoked tokens to avoid network calls for known-invalid tokens. */
 interface RevocationStore {
+    /** Marks the supplied token as revoked locally. */
     fun markRevoked(token: String)
+    /** Returns true if token was locally marked revoked. */
     fun isRevoked(token: String): Boolean
 }
 
+/** In-memory implementation suitable for tests or ephemeral processes. */
 class InMemoryRevocationStore @Inject constructor() : RevocationStore {
     private val revoked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     override fun markRevoked(token: String) {
         revoked.add(token)
     }
+
     override fun isRevoked(token: String): Boolean = token in revoked
 }
 
@@ -62,12 +81,14 @@ class PrefsRevocationStore @Inject constructor(
     }
 
     // Key format: token hash -> 1 (value unused). Store only SHA-256 to avoid persisting raw tokens.
+    private fun hash(token: String): String =
     private fun hash(token: String): String = try {
         val md = java.security.MessageDigest.getInstance("SHA-256")
-        md.digest(token.toByteArray()).joinToString("") { "%02x".format(it) }
+        md.digest(token.toByteArray())
+            .joinToString("") { "%02x".format(it) }
     } catch (_: Exception) {
-        token
-    } // fall back to raw (rare)
+        token // fall back to raw (rare edge case)
+    }
 
     override fun markRevoked(token: String) {
         val h = hash(token)
@@ -77,11 +98,19 @@ class PrefsRevocationStore @Inject constructor(
     override fun isRevoked(token: String): Boolean = prefs.getBoolean(hash(token), false)
 }
 
+/** No-op revocation store for cases where we do not persist local revocations. */
 object NoopRevocationStore : RevocationStore {
-    override fun markRevoked(token: String) {}
+    override fun markRevoked(token: String) = Unit
     override fun isRevoked(token: String) = false
 }
 
+/**
+ * Validates Google ID tokens against the backend auth endpoint with retries & local revocation caching.
+ * Behavior:
+ *  - Short-circuits immediately when token is locally revoked.
+ *  - Retries transient network/server (5xx with Retry-After) failures using exponential backoff.
+ *  - Treats 400/401 uniformly as Unauthorized for simplified UX handling.
+ */
 class RemoteSessionValidator @Inject constructor(
     @AuthClient private val client: OkHttpClient,
     @AuthBaseUrl private val baseUrl: String,
@@ -95,94 +124,108 @@ class RemoteSessionValidator @Inject constructor(
     override suspend fun validate(idToken: String): Boolean = validateDetailed(idToken).isValid
 
     override suspend fun validateDetailed(idToken: String): ValidationResult = withContext(Dispatchers.IO) {
-        // Short-circuit: if locally marked revoked, avoid any network I/O and return Unauthorized.
         if (revocationStore.isRevoked(idToken)) {
             return@withContext ValidationResult(false, ValidationError.Unauthorized)
         }
         val maxAttempts = retryPolicy.maxAttempts.coerceAtLeast(1)
-        var attempt = 0 // zero-based attempt index
-        var last: ValidationResult
+        var attempt = 0
         var lastServerRetryable = false
-        // All validation/sign-in goes through a single endpoint now: POST /v1/auth/google
+        var last: ValidationResult
         while (true) {
             observer.onAttempt(attempt + 1, maxAttempts)
-            val path = "/v1/auth/google"
-            val body = '{' + "\"idToken\":\"" + idToken + "\"}"
-            if (BuildConfig.DEBUG) {
-                runCatching {
-                    Log.d(
-                        "AuthValidate",
-                        "request url=" + endpoint(path) +
-                            " bodyLen=" + body.length,
-                    )
-                }
+            val request = buildRequest(idToken)
+            val result = execute(request) { code, retryAfter ->
+                lastServerRetryable = retryAfter
+                evaluateStatus(code)
             }
-            val req = Request.Builder()
-                .url(endpoint(path))
-                .post(body.toRequestBody("application/json".toMediaType()))
-                .build()
-            val result = runCatching { client.newCall(req).execute() }.fold(onSuccess = { resp ->
-                resp.use { r ->
-                    if (BuildConfig.DEBUG) {
-                        runCatching {
-                            Log.d(
-                                "AuthValidate",
-                                "response code=" + r.code +
-                                    " retryAfter=" + (r.header("Retry-After") ?: "<none>"),
-                            )
-                        }
-                    }
-                    when {
-                        // Success on 200 (existing) and 201 (created)
-                        r.code == 200 || r.code == 201 -> ValidationResult(true, null)
-                        // Treat 400 (invalid token/body) and 401 (aud mismatch) as Unauthorized for UX
-                        r.code == 400 || r.code == 401 -> ValidationResult(false, ValidationError.Unauthorized)
-                        r.code in 500..599 -> {
-                            // mark if server suggested retry (presence of Retry-After header)
-                            lastServerRetryable = r.header("Retry-After") != null
-                            ValidationResult(false, ValidationError.Server(r.code))
-                        }
-                        else -> ValidationResult(
-                            false,
-                            ValidationError.Unexpected("HTTP ${r.code}"),
-                        )
-                    }
-                }
-            }, onFailure = { e ->
-                // Swallow network logging in unit tests to avoid android.util.Log dependency
-                ValidationResult(false, ValidationError.Network)
-            })
             last = result
             observer.onResult(result)
-            val retryable = when (result.error) {
-                ValidationError.Network -> true
-                is ValidationError.Server -> lastServerRetryable
-                else -> false
-            }
+            val retryable = isRetryable(result, lastServerRetryable)
             if (result.isValid || !retryable || attempt == maxAttempts - 1) break
             attempt++
-            val computedDelay =
-                if (attempt == 0) {
-                    0L
-                } else {
-                    // exponential style: base * multiplier^(attempt-1)
-                    val factor = Math.pow(
-                        retryPolicy.backoffMultiplier,
-                        (attempt - 1).toDouble(),
-                    )
-                    (retryPolicy.baseDelayMs * factor).toLong()
-                }
-            if (computedDelay > 0) {
-                observer.onRetry(computedDelay)
-                delay(computedDelay)
+            val delayMs = computeDelay(attempt)
+            if (delayMs > 0) {
+                observer.onRetry(delayMs)
+                delay(delayMs)
             }
         }
         last
     }
 
-    override suspend fun revoke(idToken: String) = withContext(Dispatchers.IO) {
-        // No revoke endpoint for Google ID tokens in the simplified server; tokens expire naturally.
-        // Keep method for interface compatibility, but perform no network I/O.
-        Unit
+    private fun buildRequest(idToken: String): Request {
+        val path = AUTH_VALIDATE_PATH
+        val body = "{\"idToken\":\"$idToken\"}"
+        debugLog("request url=${endpoint(path)} bodyLen=${body.length}")
+        return Request.Builder()
+            .url(endpoint(path))
+            .post(body.toRequestBody(JSON.toMediaType()))
+            .build()
     }
+
+    private inline fun execute(request: Request, map: (code: Int, retryAfterHeaderPresent: Boolean) -> ValidationResult): ValidationResult =
+        runCatching { client.newCall(request).execute() }
+            .fold(
+                onSuccess = { resp ->
+                    resp.use { r ->
+                        debugLog(
+                            "response code=${r.code} retryAfter=" +
+                                (r.header(RETRY_AFTER) ?: "<none>"),
+                        )
+                        val retryableHeader = r.header(RETRY_AFTER) != null
+                        map(r.code, retryableHeader)
+                    }
+                },
+                onFailure = {
+                    ValidationResult(false, ValidationError.Network)
+                },
+            )
+
+    private fun evaluateStatus(code: Int): ValidationResult = when {
+        code == HTTP_OK || code == HTTP_CREATED -> {
+            ValidationResult(true, null)
+        }
+        code == HTTP_BAD_REQUEST || code == HTTP_UNAUTHORIZED -> {
+            ValidationResult(false, ValidationError.Unauthorized)
+        }
+        code in HTTP_SERVER_MIN..HTTP_SERVER_MAX -> {
+            ValidationResult(false, ValidationError.Server(code))
+        }
+        else -> {
+            ValidationResult(false, ValidationError.Unexpected("HTTP $code"))
+        }
+    }
+
+    private fun isRetryable(result: ValidationResult, serverRetryable: Boolean): Boolean = when (result.error) {
+        ValidationError.Network -> true
+        is ValidationError.Server -> serverRetryable
+        else -> false
+    }
+
+    private fun computeDelay(attempt: Int): Long {
+        if (attempt == 0) {
+            return 0L
+        }
+        val factor = Math.pow(retryPolicy.backoffMultiplier, (attempt - 1).toDouble())
+        return (retryPolicy.baseDelayMs * factor).toLong()
+    }
+
+    private fun debugLog(message: String) {
+        if (BuildConfig.DEBUG) {
+            runCatching { Log.d(DEBUG_TAG, message) }
+        }
+    }
+
+    override suspend fun revoke(idToken: String) = withContext(Dispatchers.IO) { /* No-op (natural expiry). */ }
 }
+
+// Constants extracted from magic numbers and repeated strings for clarity & reuse
+private const val DEBUG_TAG = "AuthValidate"
+private const val AUTH_VALIDATE_PATH = "/v1/auth/google"
+private const val RETRY_AFTER = "Retry-After"
+private const val JSON = "application/json"
+private const val HTTP_OK = 200
+private const val HTTP_CREATED = 201
+private const val HTTP_BAD_REQUEST = 400
+private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_SERVER_MIN = 500
+private const val HTTP_SERVER_MAX = 599
