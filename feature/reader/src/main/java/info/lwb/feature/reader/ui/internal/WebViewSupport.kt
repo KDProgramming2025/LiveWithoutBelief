@@ -2,9 +2,14 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-package info.lwb.feature.reader.ui.internal
+@file:Suppress(
+    "BlankLineBeforeDeclaration",
+    "ChainMethodContinuation",
+    "NoConsecutiveBlankLines",
+    "NoTrailingSpaces",
+)
 
-import info.lwb.feature.reader.ui.mergeHtmlAndCss
+package info.lwb.feature.reader.ui.internal
 
 import android.graphics.Color
 import android.net.Uri
@@ -17,6 +22,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
+import info.lwb.feature.reader.ui.mergeHtmlAndCss
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.Locale
@@ -24,31 +30,58 @@ import java.util.Locale
 /**
  * Lightweight container for JS snippets loaded from assets. Splitting keeps primary composable short.
  */
-internal data class WebViewAssetScripts(
-    val clampJs: String,
-    val themeJs: String,
-    val domHelpersJs: String,
+internal data class WebViewAssetScripts(val clampJs: String, val themeJs: String, val domHelpersJs: String)
+
+// region internal constants
+private const val THEME_CSS_PATH_SUFFIX = "/lwb-theme.css"
+private const val ASSET_SCHEME_PREFIX = "lwb-assets://"
+private const val ANCHOR_POLL_MIN_INTERVAL_MS = 200L
+private const val RESTORE_CLOSE_DISTANCE_PX = 12
+private const val TAP_MAX_DURATION_MS = 250L
+private const val TAP_MIN_DURATION_MS = 1L
+private const val ZERO = 0
+private const val RESTORE_DELAY_STEP_0 = 0L
+private const val RESTORE_DELAY_STEP_1 = 50L
+private const val RESTORE_DELAY_STEP_2 = 150L
+private const val RESTORE_DELAY_STEP_3 = 350L
+private const val RESTORE_DELAY_STEP_4 = 700L
+private const val RESTORE_DELAY_STEP_5 = 1200L
+private const val RESTORE_DELAY_STEP_6 = 2000L
+private val RESTORE_DELAYS_MS = longArrayOf(
+    RESTORE_DELAY_STEP_0,
+    RESTORE_DELAY_STEP_1,
+    RESTORE_DELAY_STEP_2,
+    RESTORE_DELAY_STEP_3,
+    RESTORE_DELAY_STEP_4,
+    RESTORE_DELAY_STEP_5,
+    RESTORE_DELAY_STEP_6,
 )
+// endregion
 
-internal fun buildInlineHtml(body: String?, css: String?): String = if (!body.isNullOrBlank() && !css.isNullOrBlank()) {
-    mergeHtmlAndCss(body, css)
-} else {
-    body.orEmpty()
-}
-
-internal fun numArg(v: Float?): String = if (v == null) {
-    "undefined"
-} else {
-    String.format(Locale.US, "%.1f", v)
-}
-
-internal fun WebView.safeLoadAsset(path: String): String = try {
-    context.assets.open(path).use { input ->
-        BufferedReader(InputStreamReader(input)).readText()
+internal fun buildInlineHtml(body: String?, css: String?): String =
+    if (!body.isNullOrBlank() && !css.isNullOrBlank()) {
+        mergeHtmlAndCss(body, css)
+    } else {
+        body.orEmpty()
     }
-} catch (_: Throwable) {
-    ""
-}
+
+internal fun numArg(v: Float?): String =
+    if (v == null) {
+        "undefined"
+    } else {
+        String.format(Locale.US, "%.1f", v)
+    }
+
+internal fun WebView.safeLoadAsset(path: String): String =
+    try {
+        context.assets
+            .open(path)
+            .use { input ->
+                BufferedReader(InputStreamReader(input)).readText()
+            }
+    } catch (_: Throwable) {
+        ""
+    }
 
 internal fun WebView.configureBaseSettings(backgroundColor: String?) {
     alpha = 0f
@@ -106,7 +139,9 @@ internal fun WebView.setupTouchHandlers(onTap: (() -> Unit)?) {
                 val dt = ev.eventTime - downTs
                 val dx = ev.x - downX
                 val dy = ev.y - downY
-                if (dt in 1..250 && (dx * dx + dy * dy) <= (slop * slop)) {
+                val withinTime = dt in TAP_MIN_DURATION_MS..TAP_MAX_DURATION_MS
+                val moved = (dx * dx + dy * dy) <= (slop * slop)
+                if (withinTime && moved) {
                     onTap()
                 }
             }
@@ -115,52 +150,58 @@ internal fun WebView.setupTouchHandlers(onTap: (() -> Unit)?) {
     }
 }
 
-internal fun WebView.setupScrollHandler(enabled: () -> Boolean, onScroll: (Int) -> Unit, onAnchor: (String) -> Unit) {
+internal fun WebView.setupScrollHandler(
+    enabled: () -> Boolean,
+    onScroll: (Int) -> Unit,
+    onAnchor: (String) -> Unit,
+) {
     var lastAnchorTs = 0L
+    fun maybeEmitAnchor(now: Long) {
+        if (now - lastAnchorTs <= ANCHOR_POLL_MIN_INTERVAL_MS) {
+            return
+        }
+        lastAnchorTs = now
+        try {
+            evaluateJavascript("(window.lwbGetViewportAnchor && window.lwbGetViewportAnchor())||''") { res ->
+                val anchor = try {
+                    res?.trim('"')?.replace("\\n", "") ?: ""
+                } catch (_: Throwable) {
+                    ""
+                }
+                if (anchor.isNotBlank()) {
+                    onAnchor(anchor)
+                }
+            }
+        } catch (_: Throwable) {
+            // ignore js eval errors
+        }
+    }
     setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
-        if (scrollX != 0) {
+        if (scrollX != ZERO) {
             v.scrollTo(0, scrollY)
         }
-        if (!enabled()) {
-            return@setOnScrollChangeListener
-        }
-        onScroll(scrollY)
-        val now = System.currentTimeMillis()
-        if (now - lastAnchorTs > 200) {
-            lastAnchorTs = now
-            try {
-                evaluateJavascript("(window.lwbGetViewportAnchor && window.lwbGetViewportAnchor())||''") { res ->
-                    try {
-                        val anchor = res?.trim('"')?.replace("\\n", "") ?: ""
-                        if (anchor.isNotBlank()) {
-                            onAnchor(anchor)
-                        }
-                    } catch (_: Throwable) {
-                        // ignore js errors
-                    }
-                }
-            } catch (_: Throwable) {
-                // ignore js eval errors
-            }
+        if (enabled()) {
+            onScroll(scrollY)
+            maybeEmitAnchor(System.currentTimeMillis())
         }
     }
 }
 
 internal fun WebView.postRestore(target: Int, onDone: () -> Unit) {
-    val delays = longArrayOf(0, 50, 150, 350, 700, 1200, 2000)
     fun step(i: Int) {
         scrollTo(0, target)
-        if (i >= delays.lastIndex) {
-            return onDone()
+        if (i >= RESTORE_DELAYS_MS.lastIndex) {
+            onDone()
+            return
         }
         postDelayed({
-            val close = kotlin.math.abs(scrollY - target) <= 12
+            val close = kotlin.math.abs(scrollY - target) <= RESTORE_CLOSE_DISTANCE_PX
             if (close) {
                 onDone()
             } else {
                 step(i + 1)
             }
-        }, delays[i + 1])
+        }, RESTORE_DELAYS_MS[i + 1])
     }
     post { step(0) }
 }
@@ -188,30 +229,38 @@ internal class ArticleClient(
             setReadyHidden()
         }
     }
+
+    
     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-        val u = url ?: return false
-        if (isInlineContent && u.startsWith("lwb-assets://")) {
+        if (url == null) {
             return false
         }
-        return openExternal(view, u)
+        val allowExternal = !(isInlineContent && url.startsWith(ASSET_SCHEME_PREFIX))
+        return allowExternal && openExternal(view, url)
     }
+
+    
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-        val u = request?.url?.toString() ?: return false
-        if (isInlineContent && u.startsWith("lwb-assets://")) {
+        val raw = request?.url?.toString()
+        if (raw == null) {
             return false
         }
-        return if (request?.isForMainFrame == true) {
-            openExternal(view, u)
-        } else {
-            false
-        }
+        val allowExternal = !(isInlineContent && raw.startsWith(ASSET_SCHEME_PREFIX))
+        val mainFrame = request.isForMainFrame
+        return allowExternal && mainFrame && openExternal(view, raw)
     }
+
+    
     override fun shouldInterceptRequest(view: WebView?, url: String?): WebResourceResponse? =
         intercept(view, url) ?: super.shouldInterceptRequest(view, url)
+
+    
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
         val u = request?.url?.toString()
         return intercept(view, u) ?: super.shouldInterceptRequest(view, request)
     }
+
+    
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
         if (view == null) {
@@ -255,54 +304,82 @@ internal class ArticleClient(
             evaluate(assets.clampJs)
         }
     }
+    
+    
     private fun intercept(view: WebView?, url: String?): WebResourceResponse? {
-        val u = url ?: return null
-        try {
-            val current = view?.url
-            if (!current.isNullOrBlank()) {
-                val cur = Uri.parse(current)
-                val req = Uri.parse(u)
-                val isThemeReq = req.path?.endsWith("/lwb-theme.css") == true
-                val sameHost = cur.host == req.host && cur.scheme == req.scheme
-                if (isThemeReq && sameHost) {
-                    val bytes = (cssRef[0] ?: "").toByteArray(Charsets.UTF_8)
-                    return WebResourceResponse("text/css", "utf-8", java.io.ByteArrayInputStream(bytes))
+        if (url == null) {
+            return null
+        }
+        val theme = resolveThemeCssResponse(view, url)
+        val asset = if (theme == null) {
+            resolveInlineAssetResponse(view, url)
+        } else {
+            null
+        }
+        return theme ?: asset
+    }
+
+    
+    private fun resolveThemeCssResponse(view: WebView?, u: String): WebResourceResponse? = try {
+        val current = view?.url ?: return null
+        if (current.isBlank()) {
+            return null
+        }
+        val cur = Uri.parse(current)
+        val req = Uri.parse(u)
+        val isThemeReq = req.path?.endsWith(THEME_CSS_PATH_SUFFIX) == true
+        val sameHost = cur.host == req.host && cur.scheme == req.scheme
+        return if (isThemeReq && sameHost) {
+            val bytes = (cssRef[0] ?: "").toByteArray(Charsets.UTF_8)
+            WebResourceResponse("text/css", "utf-8", java.io.ByteArrayInputStream(bytes))
+        } else {
+            null
+        }
+    } catch (_: Throwable) {
+        null
+    }
+
+    
+    private fun resolveInlineAssetResponse(view: WebView?, u: String): WebResourceResponse? {
+        if (!(isInlineContent && u.startsWith(ASSET_SCHEME_PREFIX))) {
+            return null
+        }
+        val path = u.removePrefix(ASSET_SCHEME_PREFIX)
+        return try {
+            val mime = when {
+                path.endsWith(".js") -> {
+                    "application/javascript"
                 }
+                path.endsWith(".css") -> {
+                    "text/css"
+                }
+                else -> {
+                    "application/octet-stream"
+                }
+            }
+            val ctx = view?.context
+            val assets = ctx?.assets
+            val stream = assets?.open(path)
+            if (stream == null) {
+                null
+            } else {
+                WebResourceResponse(mime, "utf-8", stream)
             }
         } catch (_: Throwable) {
-            // ignore request parse errors
+            null
         }
-        if (isInlineContent && u.startsWith("lwb-assets://")) {
-            val path = u.removePrefix("lwb-assets://")
-            return try {
-                val mime = when {
-                    path.endsWith(".js") -> "application/javascript"
-                    path.endsWith(".css") -> "text/css"
-                    else -> "application/octet-stream"
-                }
-                val stream = view?.context?.assets?.open(path)
-                if (stream != null) {
-                    WebResourceResponse(mime, "utf-8", stream)
-                } else {
-                    null
-                }
-            } catch (_: Throwable) {
-                null
-            }
-        }
-        return null
     }
+    
+    
     private fun openExternal(view: WebView?, u: String): Boolean = try {
         val ctx = view?.context ?: return false
-        if (u.startsWith("intent://")) {
-            val intent = android.content.Intent.parseUri(u, android.content.Intent.URI_INTENT_SCHEME)
-            ctx.startActivity(intent)
-            true
+        val intent = if (u.startsWith("intent://")) {
+            android.content.Intent.parseUri(u, android.content.Intent.URI_INTENT_SCHEME)
         } else {
-            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(u))
-            ctx.startActivity(intent)
-            true
+            android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(u))
         }
+        ctx.startActivity(intent)
+        true
     } catch (_: Throwable) {
         false
     }
