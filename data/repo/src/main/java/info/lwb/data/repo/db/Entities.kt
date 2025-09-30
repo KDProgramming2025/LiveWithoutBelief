@@ -10,6 +10,19 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.RoomDatabase
 
+/**
+ * Article metadata persisted locally.
+ *
+ * Represents the immutable identifying & descriptive fields of an article. Content/body lives
+ * in [ArticleContentEntity]. Assets (images/audio/video) live in [ArticleAssetEntity].
+ *
+ * @property id Stable unique article identifier (UUID or slug hash from server)
+ * @property title Human readable title
+ * @property slug Human readable url slug (used for deep links / indexing)
+ * @property version Monotonically increasing version for optimistic updates / cache invalidation
+ * @property updatedAt ISO-8601 timestamp string of last server modification
+ * @property wordCount Approximate plain text word count (used for reading time estimates)
+ */
 @Entity(tableName = "articles")
 data class ArticleEntity(
     @PrimaryKey val id: String,
@@ -20,6 +33,18 @@ data class ArticleEntity(
     val wordCount: Int,
 )
 
+/**
+ * Denormalized textual content for an article.
+ *
+ * Keeping body separate allows metadata refreshes without re-downloading large HTML. Plain text
+ * facilitates local search / highlighting while `textHash` is used to detect upstream changes.
+ *
+ * @property articleId FK to [ArticleEntity.id]
+ * @property htmlBody Raw sanitized HTML used by the reader webview
+ * @property plainText Extracted plain text (no markup) for fast searching/highlighting
+ * @property textHash Hash/fingerprint of the plain text for diff detection
+ * @property indexUrl Optional canonical URL for externally generated HTML export
+ */
 @Entity(tableName = "article_contents")
 data class ArticleContentEntity(
     @PrimaryKey val articleId: String,
@@ -30,6 +55,20 @@ data class ArticleContentEntity(
     val indexUrl: String? = null,
 )
 
+/**
+ * Media / auxiliary assets belonging to an article.
+ *
+ * Each asset can be lazily fetched or cached (image, audio, video, etc.)
+ *
+ * @property id Unique asset id (may be derived from URL or server issued)
+ * @property articleId FK to [ArticleEntity.id]
+ * @property type Media type/category (image, audio, video, etc.)
+ * @property uri Local or remote URI string
+ * @property checksum Optional checksum for integrity validation
+ * @property width Original pixel width (nullable if not applicable)
+ * @property height Original pixel height (nullable if not applicable)
+ * @property sizeBytes Approximate size for storage/statistics (nullable if unknown)
+ */
 @Entity(tableName = "article_assets")
 data class ArticleAssetEntity(
     @PrimaryKey val id: String,
@@ -42,6 +81,16 @@ data class ArticleAssetEntity(
     val sizeBytes: Long?,
 )
 
+/**
+ * User-defined bookmark folder grouping.
+ *
+ * Constraint ensures folder names are unique per user.
+ *
+ * @property id Unique folder id
+ * @property userId Owner user id
+ * @property name Human readable folder name (unique per user)
+ * @property createdAt ISO-8601 creation timestamp
+ */
 @Entity(tableName = "bookmark_folders", indices = [Index(value = ["userId", "name"], unique = true)])
 data class BookmarkFolderEntity(
     @PrimaryKey val id: String,
@@ -50,6 +99,17 @@ data class BookmarkFolderEntity(
     val createdAt: String,
 )
 
+/**
+ * Single bookmark referencing an article optionally scoped to a folder.
+ *
+ * Unique composite index enforces only one bookmark of an article per user.
+ *
+ * @property id Unique bookmark id
+ * @property userId Owner user id
+ * @property articleId Target article id
+ * @property folderId Optional containing folder
+ * @property createdAt ISO-8601 creation timestamp
+ */
 @Entity(tableName = "bookmarks", indices = [Index(value = ["userId", "articleId"], unique = true)])
 data class BookmarkEntity(
     @PrimaryKey val id: String,
@@ -59,6 +119,19 @@ data class BookmarkEntity(
     val createdAt: String,
 )
 
+/**
+ * Text range annotation created by a user.
+ *
+ * Offsets are character offsets within the article's plain text representation.
+ *
+ * @property id Unique annotation id
+ * @property userId Owner user id
+ * @property articleId Associated article
+ * @property startOffset Inclusive character start offset
+ * @property endOffset Exclusive character end offset
+ * @property anchorHash Stable hash of the anchored text (re-validate after content updates)
+ * @property createdAt ISO-8601 creation timestamp
+ */
 @Entity(tableName = "annotations", indices = [Index(value = ["userId", "articleId"])])
 data class AnnotationEntity(
     @PrimaryKey val id: String,
@@ -70,6 +143,18 @@ data class AnnotationEntity(
     val createdAt: String,
 )
 
+/**
+ * Discussion thread message attached to an annotation.
+ *
+ * Allows asynchronous Q/A or commentary per annotation for the owning user.
+ *
+ * @property id Unique message id
+ * @property annotationId Parent annotation id
+ * @property userId Message author user id
+ * @property type Message content type (text, image ref, etc.)
+ * @property contentRef Reference to actual content (text blob key, asset id, etc.)
+ * @property createdAt ISO-8601 creation timestamp
+ */
 @Entity(tableName = "thread_messages", indices = [Index(value = ["annotationId"])])
 data class ThreadMessageEntity(
     @PrimaryKey val id: String,
@@ -80,7 +165,15 @@ data class ThreadMessageEntity(
     val createdAt: String,
 )
 
-// Reading progress for pagination / resume (one row per article)
+/**
+ * Reading progress state for a given article (one row per article per user scope if multi-user DB).
+ *
+ * @property articleId FK to [ArticleEntity.id]
+ * @property pageIndex Current page index within pagination (starting at 0)
+ * @property totalPages Total pages at the time of recording
+ * @property progress Normalized progress fraction [0.0, 1.0]
+ * @property updatedAt Last update timestamp (ISO-8601)
+ */
 @Entity(tableName = "reading_progress")
 data class ReadingProgressEntity(
     @PrimaryKey val articleId: String,
@@ -91,6 +184,14 @@ data class ReadingProgressEntity(
     val updatedAt: String,
 )
 
+/**
+ * Main Room database entry point bundling all persistent entities.
+ *
+ * Version history:
+ * 1 -> Initial schema
+ * 2 -> Added thread messages & reading progress
+ * 3 -> Added asset dimension + sizeBytes tracking
+ */
 @Database(
     entities = [
         ArticleEntity::class,
@@ -106,10 +207,21 @@ data class ReadingProgressEntity(
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
+    /** Data access object for article metadata & queries */
     abstract fun articleDao(): ArticleDao
+
+    /** DAO for user bookmarks */
     abstract fun bookmarkDao(): BookmarkDao
+
+    /** DAO for bookmark folders */
     abstract fun folderDao(): FolderDao
+
+    /** DAO for text range annotations */
     abstract fun annotationDao(): AnnotationDao
+
+    /** DAO for annotation thread messages */
     abstract fun threadMessageDao(): ThreadMessageDao
+
+    /** DAO for reading progress state */
     abstract fun readingProgressDao(): ReadingProgressDao
 }
