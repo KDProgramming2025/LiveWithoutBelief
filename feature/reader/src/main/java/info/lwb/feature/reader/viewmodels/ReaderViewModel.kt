@@ -19,17 +19,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel backing the Reader feature. It exposes a stream of article lists and the currently
+ * requested article content. Data is provided via domain use cases which return [Result] wrapped
+ * flows representing loading / success / error states.
+ */
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     private val getArticlesUseCase: GetArticlesUseCase,
     private val getArticleContentUseCase: GetArticleContentUseCase,
     private val refreshArticlesUseCase: RefreshArticlesUseCase,
 ) : ViewModel() {
-
     private val _articles = MutableStateFlow<Result<List<Article>>>(Result.Loading)
+
+    /** Hot state flow of paged or filtered articles (loading, success or error). */
     val articles: StateFlow<Result<List<Article>>> = _articles.asStateFlow()
 
     private val _articleContent = MutableStateFlow<Result<ArticleContent>>(Result.Loading)
+
+    /** Article content for the last requested article id (loading, success or error). */
     val articleContent: StateFlow<Result<ArticleContent>> = _articleContent.asStateFlow()
 
     init {
@@ -44,6 +52,9 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Request the content for a specific article, updating [articleContent] as results arrive.
+     */
     fun loadArticleContent(articleId: String) {
         viewModelScope.launch {
             getArticleContentUseCase(articleId).collect { result ->
@@ -52,6 +63,7 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
+    /** Trigger a remote refresh of articles (e.g. user initiated pull-to-refresh). */
     fun refreshArticles() {
         viewModelScope.launch {
             refreshArticlesUseCase()
