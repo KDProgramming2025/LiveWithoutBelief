@@ -16,35 +16,73 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import javax.inject.Singleton
+import javax.inject.Named
 
+/**
+ * Hilt module providing network stack singletons: JSON serializer, OkHttp client,
+ * Retrofit instance, and typed service APIs.
+ */
 @OptIn(ExperimentalSerializationApi::class)
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-
+    /**
+     * Provides a configured [Json] instance for kotlinx serialization.
+     *
+     * Unknown keys are ignored so server side additive changes do not break older clients.
+     */
     @Provides
     @Singleton
-    fun provideJson(): Json = Json { ignoreUnknownKeys = true }
+    fun provideJson(): Json = Json {
+        ignoreUnknownKeys = true
+    }
 
+    /**
+     * Provides a shared [OkHttpClient] with basic logging for lightweight request/response visibility.
+     */
     @Provides
     @Singleton
-    fun provideOkHttp(): OkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
-        .build()
+    fun provideOkHttp(): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+        builder.addInterceptor(
+            HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BASIC
+            }
+        )
+        return builder.build()
+    }
 
+    /**
+     * Provides a [Retrofit] instance configured with the JSON converter and shared HTTP client.
+     *
+     * @param json serialization engine
+     * @param client shared OkHttp client
+     * @param baseUrl injected API base URL string
+     */
     @Provides
     @Singleton
-    fun provideRetrofit(json: Json, client: OkHttpClient, @javax.inject.Named("apiBaseUrl") baseUrl: String): Retrofit =
-        Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .client(client)
-            .build()
+    fun provideRetrofit(
+        json: Json,
+        client: OkHttpClient,
+        @Named("apiBaseUrl") baseUrl: String
+    ): Retrofit {
+        val builder = Retrofit.Builder()
+        builder.baseUrl(baseUrl)
+        builder.addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+        builder.client(client)
+        return builder.build()
+    }
 
+    /**
+     * Provides the API interface for article related endpoints.
+     */
     @Provides
     @Singleton
     fun provideArticleApi(retrofit: Retrofit): ArticleApi = retrofit.create(ArticleApi::class.java)
 
+    /**
+     * Provides the API interface for menu related endpoints.
+     */
     @Provides
     @Singleton
     fun provideMenuApi(retrofit: Retrofit): MenuApi = retrofit.create(MenuApi::class.java)
