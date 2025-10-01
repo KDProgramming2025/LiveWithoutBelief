@@ -8,6 +8,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.rules.ExternalResource
 
+/** JUnit4 rule managing the lifecycle of a [MockWebServer] for HTTP API tests. */
 class MockWebServerRule : ExternalResource() {
     lateinit var server: MockWebServer
         private set

@@ -6,6 +6,7 @@ package info.lwb.testfixtures
 
 import java.nio.charset.StandardCharsets
 
+/** Helpers for loading small JSON resources from the test classpath. */
 object JsonResource {
     fun fromClasspath(path: String): String {
         val stream = requireNotNull(javaClass.getResourceAsStream(path)) {
