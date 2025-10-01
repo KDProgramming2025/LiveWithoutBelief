@@ -106,10 +106,13 @@ function parseDetektOutput(outText) {
 
   const header = 'Detekt Issues per Kotlin File (>0 only, sorted desc by issue count)';
   const bodyLines = rows.map(r => `${r.count.toString().padStart(4, ' ')}  ${r.file}`);
-  const report = [header, ''.padEnd(header.length, '='), ...bodyLines].join('\n');
+  const totalFindings = rows.reduce((sum, r) => sum + r.count, 0);
+  const summaryLine = `Total findings: ${totalFindings}`;
+  const report = [header, ''.padEnd(header.length, '='), ...bodyLines, '', summaryLine].join('\n');
 
   // Ensure build directory exists
   try { statSync(join(PROJECT_ROOT, 'build')); } catch { /* ignore */ }
   writeFileSync(OUTPUT_FILE, report, 'utf8');
   console.log('Report written to', OUTPUT_FILE);
+  console.log('Total findings:', totalFindings);
 })();
