@@ -11,11 +11,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 
-/** Internal holder for pre-rendered shadow bitmaps. */
-internal data class ShadowBitmaps(
-    val dark: ImageBitmap,
-    val light: ImageBitmap,
-)
+/** Internal holder for pre-rendered shadow bitmaps.
+ *  Named to match file for Detekt MatchingDeclarationName compliance.
+ */
+internal data class SurfaceRendering(val dark: ImageBitmap, val light: ImageBitmap)
 
 /**
  * Pre-renders blurred shadow bitmaps for the given size and metrics so that the main composable draw phase
@@ -33,7 +32,7 @@ internal fun renderShadowBitmaps(
     blur: Float,
     colors: SurfaceStyleColors,
     metrics: SurfaceStyleMetrics,
-): ShadowBitmaps {
+): SurfaceRendering {
     fun render(color: Color, dx: Float, dy: Float): ImageBitmap {
         val bmp = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         val cnv = android.graphics.Canvas(bmp)
@@ -49,8 +48,20 @@ internal fun renderShadowBitmaps(
         return bmp.asImageBitmap()
     }
 
-    val darkImg = render(colors.shadowDark.copy(alpha = metrics.shadowDarkAlpha), offset, offset)
-    val mixedLight = androidx.compose.ui.graphics.lerp(colors.shadowLight, colors.reflectionTint, metrics.reflectionTintStrength)
-    val lightImg = render(mixedLight.copy(alpha = metrics.shadowLightAlpha), -offset, -offset)
-    return ShadowBitmaps(dark = darkImg, light = lightImg)
+    val darkImg = render(
+        colors.shadowDark.copy(alpha = metrics.shadowDarkAlpha),
+        offset,
+        offset,
+    )
+    val mixedLight = androidx.compose.ui.graphics.lerp(
+        colors.shadowLight,
+        colors.reflectionTint,
+        metrics.reflectionTintStrength,
+    )
+    val lightImg = render(
+        mixedLight.copy(alpha = metrics.shadowLightAlpha),
+        -offset,
+        -offset,
+    )
+    return SurfaceRendering(dark = darkImg, light = lightImg)
 }

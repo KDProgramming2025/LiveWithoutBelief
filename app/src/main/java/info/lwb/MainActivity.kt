@@ -53,35 +53,49 @@ import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.LwbTheme
 import javax.inject.Inject
 
+/**
+ * Root activity hosting the composable navigation graph.
+ *
+ * Responsibilities:
+ * - Initialize dependency-injected authentication facade & Altcha provider.
+ * - Dispatch deep links (future use via intent data string) into the composable hierarchy.
+ * - Provide a themed root surface and navigation host.
+ */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    /** Authentication facade providing sign-in/up/logout operations. */
     @Inject lateinit var authFacade: AuthFacade
 
+    /** Provider for Altcha challenge tokens used during sign-up / security flows. */
     @Inject lateinit var altchaProvider: AltchaTokenProvider
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val initialLink = intent?.dataString
-        setContent { appRoot(authFacade, altchaProvider, initialLink) }
+        setContent { appRoot(authFacade, altchaProvider) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        val link = intent.dataString
-        setContent { appRoot(authFacade, altchaProvider, link) }
+        setContent { appRoot(authFacade, altchaProvider) }
     }
 }
 
 @Composable
-private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider, maybeLink: String?) {
+private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider) {
     val navController = rememberNavController()
     // Observe theme preference using a lightweight VM scoped at root
     val settingsVm: SettingsViewModel = hiltViewModel()
     val theme by settingsVm.themeMode.collectAsState()
     val dark = when (theme) {
-        ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> {
+            androidx.compose.foundation.isSystemInDarkTheme()
+        }
+        ThemeMode.LIGHT -> {
+            false
+        }
+        ThemeMode.DARK -> {
+            true
+        }
     }
     LwbTheme(darkTheme = dark) {
         Surface(color = MaterialTheme.colorScheme.background) {
@@ -93,8 +107,8 @@ private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider,
                     }
                 },
             )
-            val state = vm.state.collectAsState()
-            val activity = LocalContext.current as android.app.Activity
+            val state = vm.state.collectAsState() // retained for future UI wiring
+            val activity = LocalContext.current as android.app.Activity // reserved for potential back handling
             // Temporarily hide authentication; always show Home main page
             appNavHost(navController)
         }
@@ -109,7 +123,11 @@ private fun EmailPromptView(onCancel: () -> Unit, onSubmit: (String) -> Unit) {
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
         Spacer(Modifier.height(8.dp))
-        Button(onClick = { if (email.isNotBlank()) onSubmit(email.trim()) }) { Text("Send Link") }
+        Button(onClick = {
+            if (email.isNotBlank()) {
+                onSubmit(email.trim())
+            }
+        }) { Text("Send Link") }
         Spacer(Modifier.height(4.dp))
         Button(onClick = onCancel) { Text("Cancel") }
     }
@@ -145,11 +163,15 @@ private fun PasswordAuthSection(onRegister: (String, String) -> Unit, onLogin: (
     Spacer(Modifier.height(8.dp))
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Button(onClick = {
-            if (username.isNotBlank() && password.isNotBlank()) onRegister(username.trim(), password)
+            if (username.isNotBlank() && password.isNotBlank()) {
+                onRegister(username.trim(), password)
+            }
         }) { Text("Register") }
         Spacer(Modifier.height(6.dp))
         Button(onClick = {
-            if (username.isNotBlank() && password.isNotBlank()) onLogin(username.trim(), password)
+            if (username.isNotBlank() && password.isNotBlank()) {
+                onLogin(username.trim(), password)
+            }
         }) { Text("Login") }
     }
 }
@@ -200,11 +222,13 @@ private fun appNavHost(navController: NavHostController) {
             )
         }
         composable(Destinations.READER_BY_ID) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("articleId") ?: return@composable
-            info.lwb.feature.reader.ReaderByIdRoute(
-                articleId = id,
-                onNavigateBack = { navController.popBackStack() },
-            )
+            val id = backStackEntry.arguments?.getString("articleId")
+            if (id != null) {
+                info.lwb.feature.reader.ReaderByIdRoute(
+                    articleId = id,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
         }
         composable(Destinations.SEARCH) { SearchRoute() }
         composable(Destinations.BOOKMARKS) { BookmarksRoute() }

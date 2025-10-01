@@ -18,86 +18,140 @@ import info.lwb.data.repo.db.FolderDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
+import java.time.Instant
+import java.util.UUID
 
+/**
+ * Concrete implementation of [BookmarkRepository] backed by local Room DAOs.
+ *
+ * Responsibilities:
+ * - Maps Room entities to domain models.
+ * - Ensures operations are scoped to the currently signed-in user.
+ * - Generates stable bookmark & folder identifiers.
+ */
 class BookmarkRepositoryImpl @Inject constructor(
     private val bookmarkDao: BookmarkDao,
     private val folderDao: FolderDao,
     private val session: UserSession,
 ) : BookmarkRepository {
-
     private fun userIdOrThrow(): String = session.currentUserId() ?: error("Not signed in")
 
     override fun getBookmarks(): Flow<Result<List<Bookmark>>> {
         val userId = userIdOrThrow()
-        return bookmarkDao.observeBookmarks(userId).map { list ->
-            Result.Success(list.map { it.toDomain() })
-        }
+        val flow = bookmarkDao.observeBookmarks(userId)
+        return flow
+            .map { list ->
+                val domainList = list
+                    .map { it.toDomain() }
+                Result.Success(domainList)
+            }
     }
 
     override fun getBookmarkFolders(): Flow<Result<List<BookmarkFolder>>> {
         val userId = userIdOrThrow()
-        return folderDao.observeFolders(userId).map { list ->
-            Result.Success(list.map { it.toDomain() })
-        }
+        val flow = folderDao.observeFolders(userId)
+        return flow
+            .map { list ->
+                val domainList = list
+                    .map { it.toDomain() }
+                Result.Success(domainList)
+            }
     }
 
-    override suspend fun addBookmark(articleId: String, folderId: String?): Result<Unit> = runCatching {
+    override suspend fun addBookmark(articleId: String, folderId: String?): Result<Unit> {
         val userId = userIdOrThrow()
-        val now = java.time.Instant.now().toString()
+        val now = Instant.now().toString()
         val id = "$userId:$articleId" // stable id per user-article
-        bookmarkDao.upsertBookmark(
-            BookmarkEntity(
-                id = id,
-                userId = userId,
-                articleId = articleId,
-                folderId = folderId,
-                createdAt = now,
-            ),
+        val outcome = runCatching {
+            bookmarkDao.upsertBookmark(
+                BookmarkEntity(
+                    id = id,
+                    userId = userId,
+                    articleId = articleId,
+                    folderId = folderId,
+                    createdAt = now,
+                ),
+            )
+        }
+        val result = outcome.fold(
+            onSuccess = { Result.Success(Unit) },
+            onFailure = { e -> Result.Error(e) },
         )
-    }.fold({ Result.Success(Unit) }, { e -> Result.Error(e) })
+        return result
+    }
 
-    override suspend fun removeBookmark(bookmarkId: String): Result<Unit> = runCatching {
+    override suspend fun removeBookmark(bookmarkId: String): Result<Unit> {
         val userId = userIdOrThrow()
         // We only know id here; build entity shell for @Delete
-        bookmarkDao.deleteBookmark(
-            BookmarkEntity(
-                id = bookmarkId,
-                userId = userId,
-                articleId = bookmarkId.substringAfter(':'),
-                folderId = null,
-                createdAt = "",
-            ),
+        val outcome = runCatching {
+            bookmarkDao.deleteBookmark(
+                BookmarkEntity(
+                    id = bookmarkId,
+                    userId = userId,
+                    articleId = bookmarkId.substringAfter(':'),
+                    folderId = null,
+                    createdAt = "",
+                ),
+            )
+        }
+        val result = outcome.fold(
+            onSuccess = { Result.Success(Unit) },
+            onFailure = { e -> Result.Error(e) },
         )
-    }.fold({ Result.Success(Unit) }, { e -> Result.Error(e) })
+        return result
+    }
 
-    override suspend fun createFolder(name: String): Result<String> = runCatching {
+    override suspend fun createFolder(name: String): Result<String> {
         val userId = userIdOrThrow()
         val existing = folderDao.findByName(userId, name)
-        if (existing != null) return@runCatching existing.id
-        val id = "$userId:folder:${java.util.UUID.randomUUID()}"
-        val now = java.time.Instant.now().toString()
-        folderDao.upsert(BookmarkFolderEntity(id = id, userId = userId, name = name, createdAt = now))
-        id
-    }.fold({ Result.Success(it) }, { e -> Result.Error(e) })
+        val id = if (existing != null) {
+            existing.id
+        } else {
+            val newId = "$userId:folder:${UUID.randomUUID()}"
+            val now = Instant.now().toString()
+            val outcomeInsert = runCatching {
+                folderDao.upsert(
+                    BookmarkFolderEntity(
+                        id = newId,
+                        userId = userId,
+                        name = name,
+                        createdAt = now,
+                    ),
+                )
+            }
+            outcomeInsert.exceptionOrNull()?.let { return Result.Error(it) }
+            newId
+        }
+        return Result.Success(id)
+    }
 
-    override suspend fun moveBookmark(bookmarkId: String, folderId: String?): Result<Unit> = runCatching {
+    override suspend fun moveBookmark(bookmarkId: String, folderId: String?): Result<Unit> {
         val userId = userIdOrThrow()
         // Load current bookmark row
         // No direct get in DAO; upsert by constructing new entity with same id
-        bookmarkDao.upsertBookmark(
-            BookmarkEntity(
-                id = bookmarkId,
-                userId = userId,
-                articleId = bookmarkId.substringAfter(':'),
-                folderId = folderId,
-                createdAt = java.time.Instant.now().toString(),
-            ),
+        val outcome = runCatching {
+            bookmarkDao.upsertBookmark(
+                BookmarkEntity(
+                    id = bookmarkId,
+                    userId = userId,
+                    articleId = bookmarkId.substringAfter(':'),
+                    folderId = folderId,
+                    createdAt = Instant.now().toString(),
+                ),
+            )
+        }
+        val result = outcome.fold(
+            onSuccess = { Result.Success(Unit) },
+            onFailure = { e -> Result.Error(e) },
         )
-    }.fold({ Result.Success(Unit) }, { e -> Result.Error(e) })
+        return result
+    }
 
     override suspend fun searchBookmarked(query: String, limit: Int, offset: Int): List<Article> {
         val userId = userIdOrThrow()
-        return bookmarkDao.searchBookmarkedArticles(userId, query, limit, offset).map { it.toDomain() }
+        val rows = bookmarkDao.searchBookmarkedArticles(userId, query, limit, offset)
+        return rows
+            .map { it.toDomain() }
     }
 }
 

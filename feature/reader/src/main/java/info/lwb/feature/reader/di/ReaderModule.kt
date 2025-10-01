@@ -15,27 +15,30 @@ import info.lwb.core.domain.GetArticleContentUseCase
 import info.lwb.core.domain.GetArticlesUseCase
 import info.lwb.core.domain.RefreshArticlesUseCase
 
+/**
+ * Hilt module exposing reader feature use cases to ViewModel scoped components.
+ * Keeps construction logic centralized and test-friendly.
+ */
 @Module
 @InstallIn(ViewModelComponent::class)
 object ReaderModule {
-
+    /** Provides use cases for reader-related domain operations. */
     @Provides
-    fun provideGetArticlesUseCase(articleRepository: ArticleRepository): GetArticlesUseCase {
-        return GetArticlesUseCase(articleRepository)
-    }
+    fun provideGetArticlesUseCase(articleRepository: ArticleRepository): GetArticlesUseCase =
+        GetArticlesUseCase(articleRepository)
 
+    /** Provides a use case to load article HTML/content payload. */
     @Provides
-    fun provideGetArticleContentUseCase(articleRepository: ArticleRepository): GetArticleContentUseCase {
-        return GetArticleContentUseCase(articleRepository)
-    }
+    fun provideGetArticleContentUseCase(articleRepository: ArticleRepository): GetArticleContentUseCase =
+        GetArticleContentUseCase(articleRepository)
 
+    /** Provides a use case to refresh remote + cache article list. */
     @Provides
-    fun provideRefreshArticlesUseCase(articleRepository: ArticleRepository): RefreshArticlesUseCase {
-        return RefreshArticlesUseCase(articleRepository)
-    }
+    fun provideRefreshArticlesUseCase(articleRepository: ArticleRepository): RefreshArticlesUseCase =
+        RefreshArticlesUseCase(articleRepository)
 
+    /** Provides a use case to create and persist a new annotation for an article. */
     @Provides
-    fun provideAddAnnotationUseCase(annotationRepository: AnnotationRepository): AddAnnotationUseCase {
-        return AddAnnotationUseCase(annotationRepository)
-    }
+    fun provideAddAnnotationUseCase(annotationRepository: AnnotationRepository): AddAnnotationUseCase =
+        AddAnnotationUseCase(annotationRepository)
 }
