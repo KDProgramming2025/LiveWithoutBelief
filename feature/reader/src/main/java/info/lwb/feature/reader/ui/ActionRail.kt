@@ -17,13 +17,33 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,32 +68,18 @@ internal fun ActionRail(
     modifier: Modifier = Modifier,
     items: List<ActionRailItem>,
     mainIcon: ImageVector = Icons.Filled.Settings,
-    mainContentDescription: String = "Reader actions",
-    itemHeight: Dp = 48.dp,
-    itemSpacing: Dp = 12.dp,
-    railWidth: Dp = 160.dp,
-    cornerRadius: Dp = 24.dp,
+    mainContentDescription: String = DEFAULT_MAIN_CONTENT_DESCRIPTION,
+    itemHeight: Dp = DefaultDimensions.ItemHeight,
+    itemSpacing: Dp = DefaultDimensions.ItemSpacing,
+    railWidth: Dp = DefaultDimensions.RailWidth,
+    cornerRadius: Dp = DefaultDimensions.CornerRadius,
     edgePadding: Dp = 0.dp,
 ) {
     val view = LocalView.current
     var expanded by rememberSaveable { mutableStateOf(false) }
 
-    // Root box spans parent to allow scrim tap capture, but internal rail is width-constrained.
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Scrim to collapse when expanded
-        if (expanded) {
-            val scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(scrimColor)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                    ) { expanded = false },
-            )
-        }
-
+    Box(modifier = modifier.fillMaxSize()) {
+        RailScrim(expanded = expanded) { expanded = false }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -81,59 +87,106 @@ internal fun ActionRail(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.Bottom,
         ) {
-            // Constrain the rail content to wrap its width to pills
             Column(horizontalAlignment = Alignment.End) {
-                items.asReversed().forEachIndexed { indexFromTop, item ->
-                    val indexFromBottom = items.lastIndex - indexFromTop
-                    // Slight stagger per item (closer to main animates later)
-                    val delay = 40 * indexFromBottom
-                    AnimatedVisibility(
-                        visible = expanded,
-                        enter = fadeIn(tween(90, delayMillis = delay)) +
-                            expandHorizontally(tween(160 + delay, easing = FastOutSlowInEasing), Alignment.End) +
-                            slideInVertically(tween(160 + delay)) { it / 5 },
-                        exit = fadeOut(tween(80)) +
-                            shrinkHorizontally(tween(120, easing = FastOutSlowInEasing), Alignment.End) +
-                            slideOutVertically(tween(120)) { it / 5 },
-                    ) {
-                        ActionRailPill(
-                            icon = item.icon,
-                            label = item.label,
-                            height = itemHeight,
-                            width = railWidth,
-                            cornerRadius = cornerRadius,
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                expanded = false
-                                item.onClick()
-                            },
-                        )
-                    }
-                    if (expanded) {
-                        Spacer(Modifier.height(itemSpacing))
-                    }
-                }
-
-                // Main toggle button (rectangular with rounded corners)
-                Surface(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(MaterialTheme.shapes.large)
-                        .clickable(role = Role.Button) {
-                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                            expanded = !expanded
-                        },
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shadowElevation = 6.dp,
-                    tonalElevation = 3.dp,
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(mainIcon, contentDescription = mainContentDescription)
-                    }
-                }
+                RailItems(
+                    expanded = expanded,
+                    items = items,
+                    itemHeight = itemHeight,
+                    itemSpacing = itemSpacing,
+                    railWidth = railWidth,
+                    cornerRadius = cornerRadius,
+                    onItemClick = { item ->
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        expanded = false
+                        item.onClick()
+                    },
+                )
+                RailToggleButton(
+                    expanded = expanded,
+                    onToggle = {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        expanded = !expanded
+                    },
+                    mainIcon = mainIcon,
+                    mainContentDescription = mainContentDescription,
+                )
             }
+        }
+                RailToggleButton(
+                    onToggle = {
+
+@Composable
+private fun RailScrim(expanded: Boolean, onCollapse: () -> Unit) {
+    if (expanded) {
+        val scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(scrimColor)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                ) { onCollapse() },
+        )
+    }
+}
+
+@Composable
+private fun RailItems(
+    expanded: Boolean,
+    items: List<ActionRailItem>,
+    itemHeight: Dp,
+    itemSpacing: Dp,
+    railWidth: Dp,
+    cornerRadius: Dp,
+    onItemClick: (ActionRailItem) -> Unit,
+) {
+    items.asReversed().forEachIndexed { indexFromTop, item ->
+        val indexFromBottom = items.lastIndex - indexFromTop
+        val delay = ITEM_STAGGER_BASE_MS * indexFromBottom
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn(tween(FADE_IN_DURATION_MS, delayMillis = delay)) +
+                expandHorizontally(tween(EXPAND_DURATION_MS + delay, easing = FastOutSlowInEasing), Alignment.End) +
+                slideInVertically(tween(EXPAND_DURATION_MS + delay)) { it / SLIDE_DIVISOR },
+            exit = fadeOut(tween(FADE_OUT_DURATION_MS)) +
+                shrinkHorizontally(tween(SHRINK_DURATION_MS, easing = FastOutSlowInEasing), Alignment.End) +
+                slideOutVertically(tween(SHRINK_DURATION_MS)) { it / SLIDE_DIVISOR },
+        ) {
+            ActionRailPill(
+                icon = item.icon,
+                label = item.label,
+                height = itemHeight,
+                width = railWidth,
+                cornerRadius = cornerRadius,
+                onClick = { onItemClick(item) },
+            )
+        }
+        if (expanded) {
+            Spacer(Modifier.height(itemSpacing))
+        }
+    }
+}
+
+@Composable
+private fun RailToggleButton(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    mainIcon: ImageVector,
+    mainContentDescription: String,
+) {
+    Surface(
+        modifier = Modifier
+            .size(TOGGLE_BUTTON_SIZE)
+            .clip(MaterialTheme.shapes.large)
+            .clickable(role = Role.Button) { onToggle() },
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shadowElevation = TOGGLE_SHADOW_ELEVATION,
+        tonalElevation = TOGGLE_TONAL_ELEVATION,
+        shape = MaterialTheme.shapes.large,
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(mainIcon, contentDescription = mainContentDescription)
         }
     }
 }
@@ -185,3 +238,24 @@ internal data class ActionRailItem(
     val label: String,
     val onClick: () -> Unit,
 )
+
+// Default dimensions consolidated as named constants for clarity and to eliminate magic numbers
+private object DefaultDimensions {
+    val ItemHeight = 48.dp
+    val ItemSpacing = 12.dp
+    val RailWidth = 160.dp
+    val CornerRadius = 24.dp
+}
+
+// Animation & UI constants extracted from previous inline magic numbers
+private const val ITEM_STAGGER_BASE_MS = 40
+private const val FADE_IN_DURATION_MS = 90
+private const val EXPAND_DURATION_MS = 160
+private const val FADE_OUT_DURATION_MS = 80
+private const val SHRINK_DURATION_MS = 120
+private const val SLIDE_DIVISOR = 5
+private const val SCRIM_ALPHA = 0.32f
+private val TOGGLE_BUTTON_SIZE = 56.dp
+private val TOGGLE_SHADOW_ELEVATION = 6.dp
+private val TOGGLE_TONAL_ELEVATION = 3.dp
+private const val DEFAULT_MAIN_CONTENT_DESCRIPTION = "Reader actions"

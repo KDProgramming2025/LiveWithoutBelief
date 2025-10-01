@@ -127,8 +127,6 @@ coroutines:
   SuspendFunWithFlowReturnType:
     active: true
 ktlint:
-  ImportOrdering:
-    active: true
   Kdoc:
     active: true
   NoUnusedImports:
@@ -136,4 +134,8 @@ ktlint:
   MultilineExpressionWrapping:
     active: false
   FunctionSignature:
+    active: false
+  TrailingCommaOnCallSite:
+    active: false
+  ImportOrdering:
     active: false

@@ -40,10 +40,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import info.lwb.core.model.MenuItem
 import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.GrainyBackground
-import info.lwb.core.model.MenuItem
 import info.lwb.ui.designsystem.LocalSurfaceStyle
 import info.lwb.ui.designsystem.ProvideSurfaceStyle
 import info.lwb.ui.designsystem.RaisedButton
@@ -208,10 +208,9 @@ private fun HomeSuccess(
 @Composable
 private fun ContinueReadingBar(onContinueReading: (() -> Unit)?, textColor: androidx.compose.ui.graphics.Color) {
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = HomeDimens.HorizontalPadding),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = HomeDimens.HorizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
     ) {
@@ -227,8 +226,8 @@ private fun ContinueReadingBar(onContinueReading: (() -> Unit)?, textColor: andr
         }
     }
 }
- 
-// blank line intentionally added above to satisfy BlankLineBeforeDeclaration
+// Menu grid presenting menu items in adaptive columns.
+
 @Composable
 private fun MenuGrid(
     items: List<MenuItem>,
@@ -237,15 +236,14 @@ private fun MenuGrid(
     textPrimary: androidx.compose.ui.graphics.Color,
     textMuted: androidx.compose.ui.graphics.Color,
 ) {
-    val sorted =
-        remember(items) {
-            items.sortedWith(
-                compareBy(
-                    { it.order },
-                    { it.title },
-                ),
-            )
-        }
+    val sorted = remember(items) {
+        items.sortedWith(
+            compareBy(
+                { it.order },
+                { it.title },
+            ),
+        )
+    }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = HomeDimens.GridAdaptiveMin),
         modifier = Modifier.fillMaxSize(),
@@ -260,12 +258,11 @@ private fun MenuGrid(
     ) {
         items(sorted, key = { it.id }) { item ->
             val normalized = normalizeIconPath(item.iconPath)
-            val imageUrl =
-                if (normalized != null) {
-                    uploadsBaseUrl.trimEnd('/') + "/" + normalized
-                } else {
-                    null
-                }
+            val imageUrl = if (normalized != null) {
+                uploadsBaseUrl.trimEnd('/') + "/" + normalized
+            } else {
+                null
+            }
             NeoMenuCard(
                 title = item.title,
                 imageUrl = imageUrl,
@@ -298,11 +295,10 @@ private fun NeoMenuCard(
     textMuted: androidx.compose.ui.graphics.Color,
 ) {
     RaisedSurface(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .heightIn(min = minHeight),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .heightIn(min = minHeight),
     ) {
         Box(
             modifier = Modifier.padding(HomeDimens.CardPadding),
@@ -331,12 +327,8 @@ private fun NeoMenuCard(
                         }
                     }
                 }
-                Spacer(
-                    modifier = Modifier.width(HomeDimens.IconTitleSpacing),
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                ) {
+                Spacer(modifier = Modifier.width(HomeDimens.IconTitleSpacing))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium.copy(lineHeight = 20.sp),
@@ -350,35 +342,32 @@ private fun NeoMenuCard(
 }
 
 // ----- Previews -----
-
 private data class PreviewItem(val id: String, val title: String, val iconUrl: String?)
 
 @Composable
 private fun HomeMenuPreviewContent(dark: Boolean) {
     ProvideSurfaceStyle(dark = dark) {
-        val items =
-            remember {
-                listOf(
-                    PreviewItem("1", "Cosmology vs. Scripture", null),
-                    PreviewItem("2", "Geology and Flood Myths", null),
-                    PreviewItem("3", "Evolution and Design Claims", null),
-                    PreviewItem("4", "Moral Philosophy without Dogma", null),
-                    PreviewItem("5", "Historical Criticism of Texts", null),
-                )
-            }
+        val items = remember {
+            listOf(
+                PreviewItem("1", "Cosmology vs. Scripture", null),
+                PreviewItem("2", "Geology and Flood Myths", null),
+                PreviewItem("3", "Evolution and Design Claims", null),
+                PreviewItem("4", "Moral Philosophy without Dogma", null),
+                PreviewItem("5", "Historical Criticism of Texts", null),
+            )
+        }
         HomeScreen(
-            state =
-                HomeUiState.Success(
-                    items.map {
-                        MenuItem(
-                            id = it.id,
-                            title = it.title,
-                            label = null,
-                            order = 0,
-                            iconPath = null,
-                        )
-                    },
-                ),
+            state = HomeUiState.Success(
+                items.map {
+                    MenuItem(
+                        id = it.id,
+                        title = it.title,
+                        label = null,
+                        order = 0,
+                        iconPath = null,
+                    )
+                },
+            ),
             uploadsBaseUrl = "https://example.test/uploads",
             onItemClick = { _, _ -> },
             onContinueReading = {},
@@ -407,4 +396,3 @@ private fun PreviewHomeMenuLight() {
 private fun PreviewHomeMenuDark() {
     HomeMenuPreviewContent(dark = true)
 }
-

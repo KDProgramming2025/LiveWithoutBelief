@@ -4,17 +4,18 @@
  */
 package info.lwb.auth
 
-import android.util.Log
-import info.lwb.BuildConfig
+import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import android.util.Log
+import info.lwb.BuildConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Retry configuration governing exponential backoff for remote session validation.
@@ -36,8 +37,10 @@ data class ValidationRetryPolicy(
 interface ValidationObserver {
     /** Called before each attempt (1-based index). */
     fun onAttempt(attempt: Int, max: Int)
+
     /** Called after each attempt with the resulting [ValidationResult]. */
     fun onResult(result: ValidationResult)
+
     /** Called prior to delaying for a retry with the computed delay milliseconds. */
     fun onRetry(delayMs: Long)
 }
@@ -45,7 +48,9 @@ interface ValidationObserver {
 /** No-op observer used by default. */
 object NoopValidationObserver : ValidationObserver {
     override fun onAttempt(attempt: Int, max: Int) = Unit
+
     override fun onResult(result: ValidationResult) = Unit
+
     override fun onRetry(delayMs: Long) = Unit
 }
 
@@ -53,13 +58,15 @@ object NoopValidationObserver : ValidationObserver {
 interface RevocationStore {
     /** Marks the supplied token as revoked locally. */
     fun markRevoked(token: String)
+
     /** Returns true if token was locally marked revoked. */
     fun isRevoked(token: String): Boolean
 }
 
 /** In-memory implementation suitable for tests or ephemeral processes. */
 class InMemoryRevocationStore @Inject constructor() : RevocationStore {
-    private val revoked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val revoked = ConcurrentHashMap.newKeySet<String>()
+
     override fun markRevoked(token: String) {
         revoked.add(token)
     }
@@ -82,7 +89,8 @@ class PrefsRevocationStore @Inject constructor(
     // Key format: token hash -> 1 (value unused). Store only SHA-256 to avoid persisting raw tokens.
     private fun hash(token: String): String = try {
         val md = java.security.MessageDigest.getInstance("SHA-256")
-        md.digest(token.toByteArray())
+        md
+            .digest(token.toByteArray())
             .joinToString("") { "%02x".format(it) }
     } catch (_: Exception) {
         token // fall back to raw (rare edge case)
@@ -99,6 +107,7 @@ class PrefsRevocationStore @Inject constructor(
 /** No-op revocation store for cases where we do not persist local revocations. */
 object NoopRevocationStore : RevocationStore {
     override fun markRevoked(token: String) = Unit
+
     override fun isRevoked(token: String) = false
 }
 
@@ -116,16 +125,22 @@ class RemoteSessionValidator @Inject constructor(
     private val observer: ValidationObserver = NoopValidationObserver,
     private val revocationStore: RevocationStore = NoopRevocationStore,
 ) : SessionValidator {
-
-    private fun endpoint(path: String) = baseUrl.trimEnd('/') + path
+    private fun endpoint(path: String): String = baseUrl.trimEnd('/') + path
 
     override suspend fun validate(idToken: String): Boolean = validateDetailed(idToken).isValid
 
     override suspend fun validateDetailed(idToken: String): ValidationResult = withContext(Dispatchers.IO) {
         if (revocationStore.isRevoked(idToken)) {
-            return@withContext ValidationResult(false, ValidationError.Unauthorized)
+            ValidationResult(false, ValidationError.Unauthorized)
+        } else {
+            performValidation(idToken)
         }
-        val maxAttempts = retryPolicy.maxAttempts.coerceAtLeast(1)
+    }
+
+    private suspend fun performValidation(idToken: String): ValidationResult {
+        val maxAttempts = retryPolicy
+            .maxAttempts
+            .coerceAtLeast(1)
         var attempt = 0
         var lastServerRetryable = false
         var last: ValidationResult
@@ -139,7 +154,9 @@ class RemoteSessionValidator @Inject constructor(
             last = result
             observer.onResult(result)
             val retryable = isRetryable(result, lastServerRetryable)
-            if (result.isValid || !retryable || attempt == maxAttempts - 1) break
+            if (result.isValid || !retryable || attempt == maxAttempts - 1) {
+                break
+            }
             attempt++
             val delayMs = computeDelay(attempt)
             if (delayMs > 0) {
@@ -147,7 +164,7 @@ class RemoteSessionValidator @Inject constructor(
                 delay(delayMs)
             }
         }
-        last
+        return last
     }
 
     private fun buildRequest(idToken: String): Request {
@@ -160,23 +177,24 @@ class RemoteSessionValidator @Inject constructor(
             .build()
     }
 
-    private inline fun execute(request: Request, map: (code: Int, retryAfterHeaderPresent: Boolean) -> ValidationResult): ValidationResult =
-        runCatching { client.newCall(request).execute() }
-            .fold(
-                onSuccess = { resp ->
-                    resp.use { r ->
-                        debugLog(
-                            "response code=${r.code} retryAfter=" +
-                                (r.header(RETRY_AFTER) ?: "<none>"),
-                        )
-                        val retryableHeader = r.header(RETRY_AFTER) != null
-                        map(r.code, retryableHeader)
-                    }
-                },
-                onFailure = {
-                    ValidationResult(false, ValidationError.Network)
-                },
-            )
+    private inline fun execute(
+        request: Request,
+        map: (code: Int, retryAfterHeaderPresent: Boolean) -> ValidationResult,
+    ): ValidationResult {
+        return try {
+            client
+                .newCall(request)
+                .execute()
+                .use { r ->
+                    val retryAfterValue = r.header(RETRY_AFTER) ?: "<none>"
+                    debugLog("response code=${r.code} retryAfter=$retryAfterValue")
+                    val retryableHeader = r.header(RETRY_AFTER) != null
+                    map(r.code, retryableHeader)
+                }
+        } catch (_: Exception) {
+            ValidationResult(false, ValidationError.Network)
+        }
+    }
 
     private fun evaluateStatus(code: Int): ValidationResult = when {
         code == HTTP_OK || code == HTTP_CREATED -> {
@@ -194,23 +212,31 @@ class RemoteSessionValidator @Inject constructor(
     }
 
     private fun isRetryable(result: ValidationResult, serverRetryable: Boolean): Boolean = when (result.error) {
-        ValidationError.Network -> true
-        is ValidationError.Server -> serverRetryable
-        else -> false
+        ValidationError.Network -> {
+            true
+        }
+        is ValidationError.Server -> {
+            serverRetryable
+        }
+        else -> {
+            false
+        }
     }
 
-    private fun computeDelay(attempt: Int): Long {
-        if (attempt == 0) {
-            return 0L
-        }
+    private fun computeDelay(attempt: Int): Long = if (attempt == 0) {
+        0L
+    } else {
         val factor = Math.pow(retryPolicy.backoffMultiplier, (attempt - 1).toDouble())
-        return (retryPolicy.baseDelayMs * factor).toLong()
+        (retryPolicy.baseDelayMs * factor).toLong()
     }
 
-    private fun debugLog(message: String) {
-        if (BuildConfig.DEBUG) {
-            runCatching { Log.d(DEBUG_TAG, message) }
+    private fun debugLog(message: String) = if (BuildConfig.DEBUG) {
+        runCatching {
+            Log
+                .d(DEBUG_TAG, message)
         }
+    } else {
+        Unit
     }
 
     override suspend fun revoke(idToken: String) = withContext(Dispatchers.IO) { /* No-op (natural expiry). */ }
