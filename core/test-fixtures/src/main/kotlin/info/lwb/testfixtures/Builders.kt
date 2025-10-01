@@ -4,12 +4,30 @@
  */
 package info.lwb.testfixtures
 
-import info.lwb.core.model.*
+import info.lwb.core.model.Article
+import info.lwb.core.model.ArticleAsset
+import info.lwb.core.model.ArticleContent
 
+/**
+ * Factory helpers for creating model objects in tests with sensible defaults.
+ */
 object Builders {
-    fun article(id: String = "a1", title: String = "Title", slug: String = "title", version: Int = 1): Article =
-        Article(id, title, slug, version, updatedAt = "2025-01-01T00:00:00Z", wordCount = 1000)
+    /** Build an [Article] with overridable identifiers and version. */
+    fun article(
+        id: String = "a1",
+        title: String = "Title",
+        slug: String = "title",
+        version: Int = 1,
+    ): Article = Article(
+        id = id,
+        title = title,
+        slug = slug,
+        version = version,
+        updatedAt = "2025-01-01T00:00:00Z",
+        wordCount = 1000,
+    )
 
+    /** Build [ArticleContent] for an article. */
     fun content(articleId: String = "a1"): ArticleContent = ArticleContent(
         articleId = articleId,
         htmlBody = "<p>Hello</p>",
@@ -17,6 +35,7 @@ object Builders {
         textHash = "deadbeef",
     )
 
+    /** Build an [ArticleAsset] (image by default). */
     fun asset(
         articleId: String = "a1",
         type: String = "image",
