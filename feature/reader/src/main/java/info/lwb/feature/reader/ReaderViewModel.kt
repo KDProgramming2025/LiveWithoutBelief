@@ -26,24 +26,43 @@ internal class ReaderViewModel @Inject constructor(
     private val progressRepo: ReadingProgressRepository,
     private val settingsRepository: ReaderSettingsRepository,
 ) : ViewModel() {
+    private companion object {
+        // StateIn subscription timeout milliseconds
+        private const val WHILE_SUB_TIMEOUT_MS = 5_000L
+        private const val DEFAULT_FONT_SCALE = 1.0
+        private const val DEFAULT_LINE_HEIGHT = 1.2
+        private const val DEFAULT_PAGE_INDEX = 0
+    }
 
     private val articleIdState = MutableStateFlow("")
     private val htmlBodyState = MutableStateFlow("")
     private val blocksState = MutableStateFlow<List<ContentBlock>>(emptyList())
     private val pageIndexState = MutableStateFlow(0)
 
-    val fontScale = settingsRepository.fontScale.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1.0)
-    val lineHeight = settingsRepository.lineHeight.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1.2)
+    val fontScale = settingsRepository.fontScale.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(WHILE_SUB_TIMEOUT_MS),
+        DEFAULT_FONT_SCALE,
+    )
+    val lineHeight = settingsRepository.lineHeight.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(WHILE_SUB_TIMEOUT_MS),
+        DEFAULT_LINE_HEIGHT,
+    )
     val background = settingsRepository.background.stateIn(
         viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
+        SharingStarted.WhileSubscribed(WHILE_SUB_TIMEOUT_MS),
         ReaderSettingsRepository.ReaderBackground.Paper,
     )
 
     // Reverted to original inline chain layout
     private val pagesState = combine(blocksState, fontScale) { blocks, scale ->
         paginate(blocks, fontScale = scale)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(WHILE_SUB_TIMEOUT_MS),
+        emptyList(),
+    )
 
     val headings = pagesState.map { buildHeadingItems(it) }
 
@@ -64,7 +83,11 @@ internal class ReaderViewModel @Inject constructor(
             lineHeight = lHeight,
             background = bg,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReaderUiState.EMPTY)
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(WHILE_SUB_TIMEOUT_MS),
+        ReaderUiState.EMPTY,
+    )
 
     fun loadArticle(articleId: String, htmlBody: String) {
         articleIdState.value = articleId
@@ -86,7 +109,9 @@ internal class ReaderViewModel @Inject constructor(
     }
 
     fun onFontScaleChange(v: Double) = viewModelScope.launch { settingsRepository.setFontScale(v) }
+
     fun onLineHeightChange(v: Double) = viewModelScope.launch { settingsRepository.setLineHeight(v) }
+
     fun onBackgroundChange(bg: ReaderSettingsRepository.ReaderBackground) = viewModelScope.launch {
         settingsRepository.setBackground(bg)
     }
@@ -116,9 +141,9 @@ internal data class ReaderUiState(
         val EMPTY = ReaderUiState(
             articleId = "",
             pages = emptyList(),
-            currentPageIndex = 0,
-            fontScale = 1.0,
-            lineHeight = 1.2,
+            currentPageIndex = DEFAULT_PAGE_INDEX,
+            fontScale = DEFAULT_FONT_SCALE,
+            lineHeight = DEFAULT_LINE_HEIGHT,
             background = ReaderSettingsRepository.ReaderBackground.Paper,
         )
     }
