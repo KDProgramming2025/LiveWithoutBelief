@@ -168,8 +168,14 @@ private fun AppearanceSheetCard(visible: Boolean, modifier: Modifier, state: App
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
             visible = visible,
-            enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(SHEET_ENTER_DURATION_MS)) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(SHEET_EXIT_DURATION_MS)) + fadeOut(),
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(SHEET_ENTER_DURATION_MS),
+            ) + fadeIn(),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(SHEET_EXIT_DURATION_MS),
+            ) + fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             Surface(

@@ -137,5 +137,7 @@ ktlint:
     active: false
   TrailingCommaOnCallSite:
     active: false
+  TrailingCommaOnDeclarationSite:
+    active: false
   ImportOrdering:
     active: false

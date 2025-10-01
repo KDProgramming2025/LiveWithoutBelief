@@ -24,13 +24,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -102,7 +100,6 @@ internal fun ActionRail(
                     },
                 )
                 RailToggleButton(
-                    expanded = expanded,
                     onToggle = {
                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         expanded = !expanded
@@ -112,8 +109,8 @@ internal fun ActionRail(
                 )
             }
         }
-                RailToggleButton(
-                    onToggle = {
+    }
+}
 
 @Composable
 private fun RailScrim(expanded: Boolean, onCollapse: () -> Unit) {
@@ -170,7 +167,6 @@ private fun RailItems(
 
 @Composable
 private fun RailToggleButton(
-    expanded: Boolean,
     onToggle: () -> Unit,
     mainIcon: ImageVector,
     mainContentDescription: String,
@@ -180,6 +176,7 @@ private fun RailToggleButton(
             .size(TOGGLE_BUTTON_SIZE)
             .clip(MaterialTheme.shapes.large)
             .clickable(role = Role.Button) { onToggle() },
+        color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shadowElevation = TOGGLE_SHADOW_ELEVATION,
         tonalElevation = TOGGLE_TONAL_ELEVATION,
@@ -233,11 +230,7 @@ private fun ActionRailPill(
 }
 
 /** A single action item for [ActionRail]. items[0] is the bottom-most (closest to the main button). */
-internal data class ActionRailItem(
-    val icon: ImageVector,
-    val label: String,
-    val onClick: () -> Unit,
-)
+internal data class ActionRailItem(val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
 // Default dimensions consolidated as named constants for clarity and to eliminate magic numbers
 private object DefaultDimensions {

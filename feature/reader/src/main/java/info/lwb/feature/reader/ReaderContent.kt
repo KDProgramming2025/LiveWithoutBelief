@@ -23,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,19 +32,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import info.lwb.feature.reader.ui.AudioBlock
 import info.lwb.feature.reader.ui.YouTubeBlock
 import info.lwb.feature.reader.ui.ParagraphBlock
 import info.lwb.feature.reader.ui.HeadingBlock
-import androidx.compose.material3.ExperimentalMaterial3Api
+import info.lwb.feature.annotations.DiscussionThreadSheet
 import kotlinx.coroutines.launch
-import kotlin.math.max
 
 /**
  * Hosts either paged reader content or a single scrolling list of blocks depending on the
@@ -74,7 +71,6 @@ internal fun ReaderScreenContent(
             searchHits = searchHits,
             currentSearchIndex = currentSearchIndex,
             onPageChange = onPageChange,
-            onAnnotationCreated = { /* handled inside */ },
             currentSearchIndexProvider = currentSearchIndexProvider,
         )
     } else {
@@ -113,8 +109,32 @@ internal fun ReaderPagedContent(
     searchHits: List<SearchHit>,
     currentSearchIndex: Int,
     onPageChange: (Int) -> Unit,
-    onAnnotationCreated: (String) -> Unit,
     currentSearchIndexProvider: () -> Int,
+) {
+    ReaderPagedHeader(
+        currentPageIndex = currentPageIndex,
+        pages = pages,
+        onPageChange = onPageChange,
+    )
+    ReaderPagedBody(
+        articleTitle = articleTitle,
+        currentPageIndex = currentPageIndex,
+        pages = pages,
+        isWide = isWide,
+        settings = settings,
+        searchQuery = searchQuery,
+        searchHits = searchHits,
+        currentSearchIndex = currentSearchIndex,
+        onPageChange = onPageChange,
+        currentSearchIndexProvider = currentSearchIndexProvider,
+    )
+}
+
+@Composable
+private fun ReaderPagedHeader(
+    currentPageIndex: Int,
+    pages: List<Page>,
+    onPageChange: (Int) -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth(),
@@ -137,8 +157,27 @@ internal fun ReaderPagedContent(
             ) { Text("Next") }
         }
     }
+}
 
-    val pageBlocks = remember(currentPageIndex, pages) { pages.getOrNull(currentPageIndex)?.blocks ?: emptyList() }
+@Composable
+private fun ReaderPagedBody(
+    articleTitle: String,
+    currentPageIndex: Int,
+    pages: List<Page>,
+    isWide: Boolean,
+    settings: ReaderSettingsState,
+    searchQuery: String,
+    searchHits: List<SearchHit>,
+    currentSearchIndex: Int,
+    onPageChange: (Int) -> Unit,
+    currentSearchIndexProvider: () -> Int,
+) {
+    val pageBlocks = remember(currentPageIndex, pages) {
+        pages
+            .getOrNull(currentPageIndex)
+            ?.blocks
+            ?: emptyList()
+    }
     val listState = rememberLazyListState()
     val scrollVm: ScrollViewModel = hiltViewModel()
     LaunchedEffect(articleTitle) { restoreListPosition(scrollVm, articleTitle, listState) }
@@ -147,7 +186,9 @@ internal fun ReaderPagedContent(
     }
     LaunchedEffect(currentSearchIndex, searchHits, currentPageIndex) {
         val hit = searchHits.getOrNull(currentSearchIndex)
-        if (hit != null && hit.pageIndex == currentPageIndex) listState.animateScrollToItem(hit.blockIndex)
+        if (hit != null && hit.pageIndex == currentPageIndex) {
+            listState.animateScrollToItem(hit.blockIndex)
+        }
     }
     val toc: List<HeadingItem> = remember(pages) { buildHeadingItems(pages) }
     Row(Modifier.fillMaxSize()) {
@@ -162,7 +203,14 @@ internal fun ReaderPagedContent(
             searchHits = searchHits,
             currentSearchIndexProvider = currentSearchIndexProvider,
             pageIndex = currentPageIndex,
-            listModifier = if (isWide) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxSize(),
+            listModifier = if (isWide) {
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            } else {
+                Modifier
+                    .fillMaxSize()
+            },
         )
     }
 }
@@ -185,7 +233,9 @@ internal fun ReaderSingleContent(
     }
     LaunchedEffect(currentSearchIndex, searchHits) {
         val hit = searchHits.getOrNull(currentSearchIndex)
-        if (hit != null) listState.animateScrollToItem(hit.blockIndex)
+        if (hit != null) {
+            listState.animateScrollToItem(hit.blockIndex)
+        }
     }
     BlocksList(
         articleTitle = articleTitle,
@@ -218,20 +268,24 @@ internal fun BlocksList(
         items(blocks.size) { idx ->
             val b = blocks[idx]
             when (b) {
-                is ContentBlock.Paragraph -> ParagraphWithActions(
-                    articleTitle = articleTitle,
-                    block = b,
-                    idx = idx,
-                    settings = settings,
-                    searchQuery = searchQuery,
-                    searchHits = searchHits,
-                    currentSearchIndexProvider = currentSearchIndexProvider,
-                    pageIndex = pageIndex,
-                    deps = deps,
-                    onOpenAnnotation = { openAnnotationFor = it },
-                )
-                is ContentBlock.Heading -> HeadingBlock(b.level, b.text)
-                is ContentBlock.Image ->
+                is ContentBlock.Paragraph -> {
+                    ParagraphWithActions(
+                        articleTitle = articleTitle,
+                        block = b,
+                        idx = idx,
+                        settings = settings,
+                        searchQuery = searchQuery,
+                        searchHits = searchHits,
+                        currentSearchIndexProvider = currentSearchIndexProvider,
+                        pageIndex = pageIndex,
+                        deps = deps,
+                        onOpenAnnotation = { openAnnotationFor = it },
+                    )
+                }
+                is ContentBlock.Heading -> {
+                    HeadingBlock(b.level, b.text)
+                }
+                is ContentBlock.Image -> {
                     AsyncImage(
                         model = b.url,
                         contentDescription = b.alt,
@@ -239,15 +293,20 @@ internal fun BlocksList(
                             .fillMaxWidth()
                             .height(IMAGE_BLOCK_HEIGHT),
                     )
-                is ContentBlock.Audio -> AudioBlock(b.url)
-                is ContentBlock.YouTube -> YouTubeBlock(b.videoId)
+                }
+                is ContentBlock.Audio -> {
+                    AudioBlock(b.url)
+                }
+                is ContentBlock.YouTube -> {
+                    YouTubeBlock(b.videoId)
+                }
             }
             Spacer(Modifier.height(BLOCK_SPACING))
         }
     }
     if (openAnnotationFor != null) {
-        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { openAnnotationFor = null }) {
-            info.lwb.feature.annotations.DiscussionThreadSheet(annotationId = openAnnotationFor!!)
+        ModalBottomSheet(onDismissRequest = { openAnnotationFor = null }) {
+            DiscussionThreadSheet(annotationId = openAnnotationFor!!)
         }
     }
 }
@@ -266,17 +325,15 @@ internal fun ParagraphWithActions(
     onOpenAnnotation: (String) -> Unit,
 ) {
     val currentSearchIndex = currentSearchIndexProvider()
-    val activeRange =
-        searchHits
-            .getOrNull(currentSearchIndex)
-            ?.takeIf { hit ->
-                if (pageIndex != null) {
-                    hit.pageIndex == pageIndex && hit.blockIndex == idx
-                } else {
-                    hit.blockIndex == idx
-                }
+    val activeRange = searchHits
+        .getOrNull(currentSearchIndex)
+        ?.takeIf { hit ->
+            if (pageIndex != null) {
+                hit.pageIndex == pageIndex && hit.blockIndex == idx
+            } else {
+                hit.blockIndex == idx
             }
-            ?.range
+        }?.range
     Column(Modifier.fillMaxWidth()) {
         ParagraphBlock(
             text = block.text,
@@ -285,14 +342,25 @@ internal fun ParagraphWithActions(
             activeRange = activeRange,
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            androidx.compose.material3.IconButton(onClick = {
-                val articleId = articleTitle
-                val range = 0 to block.text.length
-                deps.scope.launch {
-                    val res = deps.addAnnotation(articleId, range.first, range.second, block.text.hashCode().toString())
-                    if (res is info.lwb.core.common.Result.Success) onOpenAnnotation(res.data)
-                }
-            }) { androidx.compose.material3.Icon(Icons.Filled.Edit, contentDescription = "Annotate") }
+            androidx.compose.material3.IconButton(
+                onClick = {
+                    val articleId = articleTitle
+                    val range = 0 to block.text.length
+                    deps.scope.launch {
+                        val res = deps.addAnnotation(
+                            articleId,
+                            range.first,
+                            range.second,
+                            block.text.hashCode().toString(),
+                        )
+                        if (res is info.lwb.core.common.Result.Success) {
+                            onOpenAnnotation(res.data)
+                        }
+                    }
+                },
+            ) {
+                androidx.compose.material3.Icon(Icons.Filled.Edit, contentDescription = "Annotate")
+            }
         }
     }
 }
@@ -309,9 +377,15 @@ internal fun TableOfContents(toc: List<HeadingItem>, onSelect: (HeadingItem) -> 
                 Text(
                     text = h.text,
                     style = when (h.level) {
-                        1 -> MaterialTheme.typography.titleMedium
-                        2 -> MaterialTheme.typography.titleSmall
-                        else -> MaterialTheme.typography.bodySmall
+                        1 -> {
+                            MaterialTheme.typography.titleMedium
+                        }
+                        2 -> {
+                            MaterialTheme.typography.titleSmall
+                        }
+                        else -> {
+                            MaterialTheme.typography.bodySmall
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -322,5 +396,4 @@ internal fun TableOfContents(toc: List<HeadingItem>, onSelect: (HeadingItem) -> 
             }
         }
     }
-
 }

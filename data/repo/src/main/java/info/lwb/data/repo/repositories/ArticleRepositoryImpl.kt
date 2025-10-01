@@ -26,19 +26,43 @@ import java.security.MessageDigest
 import kotlin.math.min
 import kotlin.random.Random
 
-class ArticleRepositoryImpl(
-    private val api: ArticleApi,
-    private val articleDao: ArticleDao,
-) : ArticleRepository {
-
+/**
+ * Concrete implementation of [ArticleRepository] backed by a local Room database and a remote [ArticleApi].
+ *
+ * Responsibilities:
+ *  - Expose reactive streams of article metadata & content (serving cached data first).
+ *  - On-demand fetch of missing article content with checksum validation for integrity.
+ *  - Periodic/full refresh using the remote manifest (delta style) with bounded parallel detail fetches.
+ *  - Media asset upsert + pruning (idempotent) to keep local cache aligned with remote state.
+ *  - Simple eviction policy to limit offline footprint to the most recently updated N articles.
+ *
+ * Concurrency / Threading:
+ *  - All blocking I/O is dispatched to [Dispatchers.IO]. Parallel network/content fetches leverage structured
+ *    concurrency (coroutineScope + async) enabling cancellation propagation.
+ *
+ * Failure Handling:
+ *  - Individual article detail fetch failures do not abort the entire refresh—metadata upsert still occurs.
+ *  - Eviction failures are swallowed to avoid failing the refresh (logged externally if needed later).
+ *  - Retry with backoff (see [retryWithBackoff]) is used for manifest and detail retrieval.
+ *
+ * Integrity:
+ *  - Optional checksum verification (plain text) prevents persisting corrupt payloads if mismatch occurs.
+ */
+class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao: ArticleDao) : ArticleRepository {
     override fun getArticles(): Flow<Result<List<Article>>> = flow {
         emit(Result.Loading)
         try {
-            val articles = articleDao.listArticles().map { it.toDomain() }
+            val articles = articleDao
+                .listArticles()
+                .map { it.toDomain() }
             @Suppress("UNCHECKED_CAST")
             emit(Result.Success(articles) as Result<List<Article>>)
-        } catch (e: Exception) {
-            emit(Result.Error(e))
+        } catch (io: java.io.IOException) {
+            emit(Result.Error(io))
+        } catch (sql: java.sql.SQLException) {
+            emit(Result.Error(sql))
+        } catch (ise: IllegalStateException) {
+            emit(Result.Error(ise))
         }
     }
 
@@ -47,149 +71,141 @@ class ArticleRepositoryImpl(
         try {
             var contentEntity = articleDao.getArticleContent(articleId)
             if (contentEntity == null) {
-                // On-demand fetch when content is missing locally
-                val dto = retryWithBackoff { api.getArticle(articleId) }
-                if (dto != null) {
-                    val plain = dto.text ?: ""
-                    val html = dto.html ?: ""
-                    val textHash = sha256(plain)
-                    val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
-                    if (checksumOk) {
-                        val articleEntity = ArticleEntity(
-                            id = dto.id,
-                            title = dto.title,
-                            slug = dto.slug,
-                            version = dto.version,
-                            updatedAt = dto.updatedAt,
-                            wordCount = dto.wordCount,
-                        )
-                        val newContent = ArticleContentEntity(
-                            articleId = dto.id,
-                            htmlBody = html,
-                            plainText = plain,
-                            textHash = textHash,
-                            indexUrl = dto.indexUrl,
-                        )
-                        articleDao.upsertArticleWithContent(articleEntity, newContent)
-                        contentEntity = newContent
-                    }
-                }
+                contentEntity = fetchAndPersistContent(
+                    articleId = articleId,
+                    api = api,
+                    articleDao = articleDao,
+                )
             }
             val domain = contentEntity?.toDomain()
             if (domain != null) {
                 @Suppress("UNCHECKED_CAST")
                 emit(Result.Success(domain) as Result<ArticleContent>)
             } else {
-                emit(Result.Error(Exception("Content not found")))
+                emit(Result.Error(IllegalStateException("Content not found")))
             }
-        } catch (e: Exception) {
-            emit(Result.Error(e))
+        } catch (io: java.io.IOException) {
+            emit(Result.Error(io))
+        } catch (sql: java.sql.SQLException) {
+            emit(Result.Error(sql))
+        } catch (ise: IllegalStateException) {
+            emit(Result.Error(ise))
         }
     }
 
-    override suspend fun refreshArticles(): Unit = withContext(Dispatchers.IO) {
-        // Fetch manifest with retry/backoff
-        val manifest = retryWithBackoff { api.getManifest().items } ?: emptyList()
-        if (manifest.isEmpty()) return@withContext
+    override suspend fun refreshArticles() {
+        val manifest = fetchManifestInternal() ?: return
+        if (manifest.isEmpty()) {
+            return
+        }
+        withContext(Dispatchers.IO) {
+            val localById = snapshotLocalArticles()
+            processManifest(
+                manifest = manifest,
+                localById = localById,
+            )
+            applyEvictionPolicy(manifest)
+        }
+    }
 
-        // Snapshot local state to guide delta decisions
-        val localById = articleDao.listArticles().associateBy { it.id }
-        // Parallelize detail fetches with bounded concurrency
-        // Run detail fetches in parallel and await, but discard returned list to keep Unit
-        val awaited = coroutineScope {
-            manifest.map { item ->
-                async {
-                    val articleEntity = ArticleEntity(
-                        id = item.id,
-                        title = item.title,
-                        slug = item.slug,
-                        version = item.version,
-                        updatedAt = item.updatedAt,
-                        wordCount = item.wordCount,
-                    )
+    private suspend fun fetchManifestInternal(): List<ManifestItemDto>? = retryWithBackoff {
+        api
+            .getManifest()
+            .items
+    }
 
-                    val local = localById[item.id]
-                    val hasLocalContent = articleDao.getArticleContent(item.id) != null
-                    // If version unchanged and content exists, skip details fetch; still upsert metadata
-                    if (local?.version == item.version && hasLocalContent) {
-                        articleDao.upsertArticle(articleEntity)
-                        return@async
-                    }
+    private suspend fun snapshotLocalArticles(): Map<String, ArticleEntity> =
+        articleDao
+            .listArticles()
+            .associateBy { it.id }
 
-                    // Fetch details with retry/backoff
-                    val dto = retryWithBackoff { api.getArticle(item.id) }
-                    if (dto == null) {
-                        // Network failed; upsert metadata only
-                        articleDao.upsertArticle(articleEntity)
-                        return@async
-                    }
-
-                    val plain = dto.text ?: ""
-                    val html = dto.html ?: ""
-                    val textHash = sha256(plain)
-
-                    // Optional checksum verification (assumes checksum is of plain text for now)
-                    val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
-                    if (!checksumOk) {
-                        // Integrity check failed; don't persist content, but keep metadata
-                        articleDao.upsertArticle(articleEntity)
-                        return@async
-                    }
-
-                    val existing = articleDao.getArticleContent(item.id)
-                    if (existing == null || existing.textHash != textHash) {
-                        val contentEntity = ArticleContentEntity(
-                            articleId = item.id,
-                            htmlBody = html,
-                            plainText = plain,
-                            textHash = textHash,
-                            indexUrl = dto.indexUrl,
-                        )
-                        articleDao.upsertArticleWithContent(articleEntity, contentEntity)
-                    } else {
-                        // Content unchanged; still ensure article row updated
-                        articleDao.upsertArticle(articleEntity)
-                    }
-
-                    // Persist media assets (idempotent) and prune removed ones
-                    val mediaEntities = dto.media.map { m ->
-                        info.lwb.data.repo.db.ArticleAssetEntity(
-                            id = m.id,
-                            articleId = item.id,
-                            type = m.type,
-                            uri = m.src ?: (m.filename ?: ""),
-                            checksum = m.checksum ?: "",
-                            width = null,
-                            height = null,
-                            sizeBytes = null,
-                        )
-                    }
-                    if (mediaEntities.isNotEmpty()) {
-                        articleDao.upsertAssets(mediaEntities)
-                        articleDao.pruneAssetsForArticle(item.id, mediaEntities.map { it.id })
-                    } else {
-                        // No media in payload; prune all existing for this article
-                        articleDao.pruneAssetsForArticle(item.id, emptyList())
-                    }
-                }
+    private suspend fun processManifest(
+        manifest: List<ManifestItemDto>,
+        localById: Map<String, ArticleEntity>,
+    ) = coroutineScope {
+        manifest
+            .map { item ->
+                async { upsertArticleAndMaybeContent(item, localById[item.id]) }
             }.awaitAll()
-        }
-        // After sync, apply eviction policy to limit offline cache footprint.
-        applyEvictionPolicy(manifest)
-        // ensure Unit return
-        Unit
     }
 
+    private suspend fun upsertArticleAndMaybeContent(item: ManifestItemDto, local: ArticleEntity?) {
+        val articleEntity = ArticleEntity(
+            id = item.id,
+            title = item.title,
+            slug = item.slug,
+            version = item.version,
+            updatedAt = item.updatedAt,
+            wordCount = item.wordCount,
+        )
+        val hasLocalContent = articleDao.getArticleContent(item.id) != null
+        if (local?.version == item.version && hasLocalContent) {
+            articleDao.upsertArticle(articleEntity)
+            return
+        }
+        val dto = retryWithBackoff { api.getArticle(item.id) }
+        if (dto == null) {
+            articleDao.upsertArticle(articleEntity)
+            return
+        }
+        val plain = dto.text ?: ""
+        val html = dto.html ?: ""
+        val textHash = sha256(plain)
+        val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
+        if (!checksumOk) {
+            articleDao.upsertArticle(articleEntity)
+            return
+        }
+        val existing = articleDao.getArticleContent(item.id)
+        if (existing == null || existing.textHash != textHash) {
+            val contentEntity = ArticleContentEntity(
+                articleId = item.id,
+                htmlBody = html,
+                plainText = plain,
+                textHash = textHash,
+                indexUrl = dto.indexUrl,
+            )
+            articleDao.upsertArticleWithContent(articleEntity, contentEntity)
+        } else {
+            articleDao.upsertArticle(articleEntity)
+        }
+        persistAndPruneMedia(dto, item.id)
+    }
+
+    private suspend fun persistAndPruneMedia(dto: info.lwb.data.network.ArticleDto, articleId: String) {
+        val mediaEntities = dto.media.map { m ->
+            info.lwb.data.repo.db.ArticleAssetEntity(
+                id = m.id,
+                articleId = articleId,
+                type = m.type,
+                uri = m.src ?: (m.filename ?: ""),
+                checksum = m.checksum ?: "",
+                width = null,
+                height = null,
+                sizeBytes = null,
+            )
+        }
+        if (mediaEntities.isNotEmpty()) {
+            articleDao.upsertAssets(mediaEntities)
+            articleDao.pruneAssetsForArticle(articleId, mediaEntities.map { it.id })
+        } else {
+            articleDao.pruneAssetsForArticle(articleId, emptyList())
+        }
+    }
+
+    /** Public helper to retrieve the current manifest snapshot without performing a full refresh. */
     suspend fun syncManifest(): List<ManifestItemDto> = withContext(Dispatchers.IO) {
         runCatching { api.getManifest().items }.getOrElse { emptyList() }
     }
 
-    override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> = withContext(
-        Dispatchers.IO,
-    ) {
-        if (query.isBlank()) return@withContext emptyList()
-        val rows = articleDao.searchArticlesLike(query.trim(), limit, offset)
-        rows.map { Article(it.id, it.title, it.slug, it.version, it.updatedAt, it.wordCount) }
+    override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> {
+        if (query.isBlank()) {
+            return emptyList()
+        }
+        return withContext(Dispatchers.IO) {
+            val rows = articleDao.searchArticlesLike(query.trim(), limit, offset)
+            rows.map { Article(it.id, it.title, it.slug, it.version, it.updatedAt, it.wordCount) }
+        }
     }
 
     // Keep the most recent 'KEEP_RECENT_COUNT' articles' content/assets; evict older ones.
@@ -201,14 +217,48 @@ class ArticleRepositoryImpl(
         try {
             articleDao.deleteContentsNotIn(keepIds)
             articleDao.deleteAssetsNotIn(keepIds)
-        } catch (_: Exception) {
-            // Avoid failing the whole refresh on eviction issues.
+        } catch (_: java.sql.SQLException) {
+            // Swallow DB pruning issues; refresh already succeeded.
+        } catch (_: IllegalStateException) {
+            // Swallow DB state issues during eviction.
         }
     }
 }
 
 // Keep most recent N content cached
 private const val KEEP_RECENT_COUNT = 4
+
+private suspend fun fetchAndPersistContent(
+    articleId: String,
+    api: ArticleApi,
+    articleDao: ArticleDao,
+): ArticleContentEntity? {
+    val dto = retryWithBackoff { api.getArticle(articleId) } ?: return null
+    val plain = dto.text ?: ""
+    val html = dto.html ?: ""
+    val textHash = sha256(plain)
+    val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
+    if (!checksumOk) {
+        return null
+    }
+    val articleEntity = ArticleEntity(
+        id = dto.id,
+        title = dto.title,
+        slug = dto.slug,
+        version = dto.version,
+        updatedAt = dto.updatedAt,
+        wordCount = dto.wordCount,
+    )
+    val newContent = ArticleContentEntity(
+        articleId = dto.id,
+        htmlBody = html,
+        plainText = plain,
+        textHash = textHash,
+        indexUrl = dto.indexUrl,
+    )
+    articleDao.upsertArticleWithContent(articleEntity, newContent)
+    return newContent
+}
 
 private fun ArticleEntity.toDomain() = Article(id, title, slug, version, updatedAt, wordCount)
 
@@ -236,7 +286,9 @@ private suspend fun <T> retryWithBackoff(
             return block()
         } catch (_: Exception) {
             attempt++
-            if (attempt >= maxAttempts) break
+            if (attempt >= maxAttempts) {
+                break
+            }
             val jitter = Random.nextLong(0, delayMs / 2 + 1)
             val actual = min(delayMs + jitter, maxDelayMs)
             delay(actual)
