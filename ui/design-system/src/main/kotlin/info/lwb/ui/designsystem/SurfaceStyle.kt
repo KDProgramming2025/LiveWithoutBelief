@@ -300,43 +300,40 @@ fun RaisedSurface(
     val shape = RoundedCornerShape(metrics.cornerRadius)
     val shadowPadding = calculateShadowPadding(metrics)
     val outerModifier = modifier.drawWithCache {
-                val padPx = shadowPadding.toPx()
-                val left = padPx
-                val top = padPx
-                val right = size.width - padPx
-                val bottom = size.height - padPx
-                val w = size.width.roundToInt().coerceAtLeast(MIN_BITMAP_DIMENSION)
-                val h = size.height.roundToInt().coerceAtLeast(MIN_BITMAP_DIMENSION)
-                val bitmaps = renderShadowBitmaps(
-                    widthPx = w,
-                    heightPx = h,
-                    left = left,
-                    top = top,
-                    right = right,
-                    bottom = bottom,
-                    radius = metrics.cornerRadius.toPx(),
-                    offset = metrics.shadowOffset.toPx(),
-                    blur = metrics.shadowBlur.toPx(),
-                    colors = colors,
-                    metrics = metrics,
-                )
-                onDrawBehind {
-                    val shadowMode =
-                        if (isDark) {
-                            BlendMode.Darken
-                        } else {
-                            BlendMode.Multiply
-                        }
-                    val lightMode =
-                        if (isDark) {
-                            BlendMode.Lighten
-                        } else {
-                            BlendMode.Screen
-                        }
-                    drawImage(bitmaps.dark, blendMode = shadowMode)
-                    drawImage(bitmaps.light, blendMode = lightMode)
-                }
+        val padPx = shadowPadding.toPx()
+        val left = padPx
+        val top = padPx
+        val right = size.width - padPx
+        val bottom = size.height - padPx
+        val w = size.width.roundToInt().coerceAtLeast(MIN_BITMAP_DIMENSION)
+        val h = size.height.roundToInt().coerceAtLeast(MIN_BITMAP_DIMENSION)
+        val bitmaps = renderShadowBitmaps(
+            widthPx = w,
+            heightPx = h,
+            left = left,
+            top = top,
+            right = right,
+            bottom = bottom,
+            radius = metrics.cornerRadius.toPx(),
+            offset = metrics.shadowOffset.toPx(),
+            blur = metrics.shadowBlur.toPx(),
+            colors = colors,
+            metrics = metrics,
+        )
+        onDrawBehind {
+            val shadowMode = if (isDark) {
+                BlendMode.Darken
+            } else {
+                BlendMode.Multiply
             }
+            val lightMode = if (isDark) {
+                BlendMode.Lighten
+            } else {
+                BlendMode.Screen
+            }
+            drawImage(bitmaps.dark, blendMode = shadowMode)
+            drawImage(bitmaps.light, blendMode = lightMode)
+        }
     }
     Box(outerModifier) {
         val innerModifier = Modifier.padding(shadowPadding).surfaceRim(colors, metrics, shape)
@@ -426,48 +423,44 @@ fun InsetIconWell(
     wellModifier = wellModifier.clip(RoundedCornerShape(wellCorner))
     wellModifier = wellModifier.background(c.surface)
     wellModifier = wellModifier.drawBehind {
-                val corner = wellCorner.toPx()
-                drawIntoCanvas { canvas ->
-                    val paint = Paint()
-                    val fp = paint.asFrameworkPaint()
-                    fp.isAntiAlias = true
-                    fp.style = android.graphics.Paint.Style.STROKE
-                    fp.strokeWidth = INSET_WELL_STROKE_WIDTH
-                    fp.color =
-                        c.shadowDark
-                            .copy(alpha = m.shadowDarkAlpha * DARK_WELL_ALPHA_MULT)
-                            .toArgb()
-                    fp.maskFilter =
-                        BlurMaskFilter(
-                            m.shadowBlur.toPx() * DARK_WELL_BLUR_MULT,
-                            BlurMaskFilter.Blur.NORMAL,
-                        )
-                    canvas.save()
-                    canvas.translate(
-                        m.shadowOffset.toPx() * DARK_WELL_TRANSLATE_X_MULT,
-                        m.shadowOffset.toPx() * DARK_WELL_TRANSLATE_Y_MULT,
-                    )
-                    canvas.drawRoundRect(0f, 0f, this.size.width, this.size.height, corner, corner, paint)
-                    canvas.restore()
+        val corner = wellCorner.toPx()
+        drawIntoCanvas { canvas ->
+            val paint = Paint()
+            val fp = paint.asFrameworkPaint()
+            fp.isAntiAlias = true
+            fp.style = android.graphics.Paint.Style.STROKE
+            fp.strokeWidth = INSET_WELL_STROKE_WIDTH
+            fp.color = c.shadowDark
+                .copy(alpha = m.shadowDarkAlpha * DARK_WELL_ALPHA_MULT)
+                .toArgb()
+            fp.maskFilter = BlurMaskFilter(
+                m.shadowBlur.toPx() * DARK_WELL_BLUR_MULT,
+                BlurMaskFilter.Blur.NORMAL,
+            )
+            canvas.save()
+            canvas.translate(
+                m.shadowOffset.toPx() * DARK_WELL_TRANSLATE_X_MULT,
+                m.shadowOffset.toPx() * DARK_WELL_TRANSLATE_Y_MULT,
+            )
+            canvas.drawRoundRect(0f, 0f, this.size.width, this.size.height, corner, corner, paint)
+            canvas.restore()
 
-                    fp.color =
-                        c.shadowLight
-                            .copy(alpha = m.shadowLightAlpha * LIGHT_WELL_ALPHA_MULT)
-                            .toArgb()
-                    fp.maskFilter =
-                        BlurMaskFilter(
-                            m.shadowBlur.toPx() * LIGHT_WELL_BLUR_MULT,
-                            BlurMaskFilter.Blur.NORMAL,
-                        )
-                    canvas.save()
-                    canvas.translate(
-                        -m.shadowOffset.toPx() * LIGHT_WELL_TRANSLATE_X_MULT,
-                        -m.shadowOffset.toPx() * LIGHT_WELL_TRANSLATE_Y_MULT,
-                    )
-                    canvas.drawRoundRect(0f, 0f, this.size.width, this.size.height, corner, corner, paint)
-                    canvas.restore()
-                }
-            }
+            fp.color = c.shadowLight
+                .copy(alpha = m.shadowLightAlpha * LIGHT_WELL_ALPHA_MULT)
+                .toArgb()
+            fp.maskFilter = BlurMaskFilter(
+                m.shadowBlur.toPx() * LIGHT_WELL_BLUR_MULT,
+                BlurMaskFilter.Blur.NORMAL,
+            )
+            canvas.save()
+            canvas.translate(
+                -m.shadowOffset.toPx() * LIGHT_WELL_TRANSLATE_X_MULT,
+                -m.shadowOffset.toPx() * LIGHT_WELL_TRANSLATE_Y_MULT,
+            )
+            canvas.drawRoundRect(0f, 0f, this.size.width, this.size.height, corner, corner, paint)
+            canvas.restore()
+        }
+    }
     wellModifier = wellModifier.then(Modifier.size(wellSize))
     Box(
         wellModifier,

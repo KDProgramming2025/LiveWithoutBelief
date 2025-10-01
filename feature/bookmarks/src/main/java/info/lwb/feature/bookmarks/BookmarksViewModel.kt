@@ -67,7 +67,7 @@ class BookmarksViewModel @Inject constructor(
                         bookmarks = res.data
                     }
                     is Result.Error -> {
-                        errorMessage = res.message ?: "Bookmark load failed"
+                        errorMessage = res.throwable.message ?: "Bookmark load failed"
                     }
                     Result.Loading -> {
                         // ignored for now
@@ -83,7 +83,7 @@ class BookmarksViewModel @Inject constructor(
                         folders = res.data
                     }
                     is Result.Error -> {
-                        errorMessage = res.message ?: "Folder load failed"
+                        errorMessage = res.throwable.message ?: "Folder load failed"
                     }
                     Result.Loading -> {
                     }
