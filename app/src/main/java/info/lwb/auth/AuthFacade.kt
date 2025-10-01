@@ -207,9 +207,13 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
 
     private suspend fun oneTapOrInteractive(activity: Activity, comp: ComponentActivity?): String {
         val oneTapToken = runCatching { oneTapProvider.getIdToken(activity) }.getOrNull()
-        if (oneTapToken != null) return oneTapToken
+        if (oneTapToken != null) {
+            return oneTapToken
+        }
         requireNotNull(comp) { "Activity must be a ComponentActivity for interactive sign-in" }
-        val acct = intentExecutor.launch(comp) { signInClient.buildSignInIntent(activity) }
+        val acct = intentExecutor.launch(comp) {
+            signInClient.buildSignInIntent(activity)
+        }
         return acct.idToken ?: error("Missing idToken from interactive sign-in")
     }
 
@@ -229,7 +233,9 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     private fun mapRegionBlock(e: Throwable): Throwable {
         val mapped = if (e.isRegionBlocked()) {
             RegionBlockedAuthException("Google sign-in appears blocked in your region.", e)
-        } else null
+        } else {
+            null
+        }
         logDebugFailure(mapped, e)
         return mapped ?: e
     }
