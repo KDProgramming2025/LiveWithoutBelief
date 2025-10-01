@@ -17,14 +17,24 @@ import java.io.IOException
 
 private val Context.scrollStore by preferencesDataStore(name = "reader_scroll")
 
+/**
+ * Persistence helper for per-article scroll and list position state using DataStore.
+ *
+ * Stores: vertical scroll Y, anchor id, list index and list offset. All values are
+ * namespaced by article id. IOExceptions during read are converted to empty prefs.
+ */
 internal class ScrollRepository(private val context: Context) {
     private fun key(articleId: String) = intPreferencesKey("scroll_$articleId")
+
     private fun keyAnchor(articleId: String) = stringPreferencesKey("anchor_$articleId")
+
     private fun keyIndex(articleId: String) = intPreferencesKey("list_index_$articleId")
+
     private fun keyOffset(articleId: String) = intPreferencesKey("list_offset_$articleId")
 
-    fun observe(articleId: String): Flow<Int> =
-        context.scrollStore.data
+    /** Observe scroll Y for an article. */
+    fun observe(articleId: String): Flow<Int> {
+        val flow = context.scrollStore.data
             .catch { e ->
                 if (e is IOException) {
                     emit(emptyPreferences())
@@ -32,35 +42,19 @@ internal class ScrollRepository(private val context: Context) {
                     throw e
                 }
             }
-            .map { prefs ->
-                prefs[key(articleId)] ?: 0
-            }
-
-    suspend fun save(articleId: String, scrollY: Int) {
-        context.scrollStore.edit { prefs -> prefs[key(articleId)] = scrollY.coerceAtLeast(0) }
+        return flow.map { prefs -> prefs[key(articleId)] ?: 0 }
     }
 
-    fun observeAnchor(articleId: String): Flow<String> =
-        context.scrollStore.data
-            .catch { e ->
-                if (e is IOException) {
-                    emit(emptyPreferences())
-                } else {
-                    throw e
-                }
-            }
-            .map { prefs ->
-                prefs[keyAnchor(articleId)] ?: ""
-            }
-
-    suspend fun saveAnchor(articleId: String, anchor: String?) {
+    /** Persist scroll Y (clamped to >= 0). */
+    suspend fun save(articleId: String, scrollY: Int) {
         context.scrollStore.edit { prefs ->
-            if (anchor.isNullOrBlank()) prefs.remove(keyAnchor(articleId)) else prefs[keyAnchor(articleId)] = anchor
+            prefs[key(articleId)] = scrollY.coerceAtLeast(0)
         }
     }
 
-    fun observeListIndex(articleId: String): Flow<Int> =
-        context.scrollStore.data
+    /** Observe anchor id for an article. */
+    fun observeAnchor(articleId: String): Flow<String> {
+        val flow = context.scrollStore.data
             .catch { e ->
                 if (e is IOException) {
                     emit(emptyPreferences())
@@ -68,12 +62,23 @@ internal class ScrollRepository(private val context: Context) {
                     throw e
                 }
             }
-            .map { prefs ->
-                prefs[keyIndex(articleId)] ?: 0
-            }
+        return flow.map { prefs -> prefs[keyAnchor(articleId)] ?: "" }
+    }
 
-    fun observeListOffset(articleId: String): Flow<Int> =
-        context.scrollStore.data
+    /** Save or clear anchor id (removed if blank). */
+    suspend fun saveAnchor(articleId: String, anchor: String?) {
+        context.scrollStore.edit { prefs ->
+            if (anchor.isNullOrBlank()) {
+                prefs.remove(keyAnchor(articleId))
+            } else {
+                prefs[keyAnchor(articleId)] = anchor
+            }
+        }
+    }
+
+    /** Observe list index for an article. */
+    fun observeListIndex(articleId: String): Flow<Int> {
+        val flow = context.scrollStore.data
             .catch { e ->
                 if (e is IOException) {
                     emit(emptyPreferences())
@@ -81,10 +86,23 @@ internal class ScrollRepository(private val context: Context) {
                     throw e
                 }
             }
-            .map { prefs ->
-                prefs[keyOffset(articleId)] ?: 0
-            }
+        return flow.map { prefs -> prefs[keyIndex(articleId)] ?: 0 }
+    }
 
+    /** Observe list pixel offset for an article. */
+    fun observeListOffset(articleId: String): Flow<Int> {
+        val flow = context.scrollStore.data
+            .catch { e ->
+                if (e is IOException) {
+                    emit(emptyPreferences())
+                } else {
+                    throw e
+                }
+            }
+        return flow.map { prefs -> prefs[keyOffset(articleId)] ?: 0 }
+    }
+
+    /** Persist list index and offset (coerced to >= 0). */
     suspend fun saveList(articleId: String, index: Int, offset: Int) {
         context.scrollStore.edit { prefs ->
             prefs[keyIndex(articleId)] = index.coerceAtLeast(0)
