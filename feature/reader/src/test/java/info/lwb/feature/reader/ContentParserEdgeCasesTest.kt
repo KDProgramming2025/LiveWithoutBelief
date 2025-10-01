@@ -9,13 +9,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ContentParserEdgeCasesTest {
-
     @Test
     fun parse_ignoresEmptyAndWhitespaceOnlyParagraphs() {
-        val html = """
-            <p>  First </p>   <p>   </p> <p>Second</p>
-            <p>\t</p>
-        """.trimIndent()
+        // Using a normal string instead of raw multiline to satisfy detekt StringTemplateIndent
+        val html = "<p>  First </p>   <p>   </p> <p>Second</p>\n<p>\t</p>"
         val rawParas = parseHtmlToBlocks(html).filterIsInstance<ContentBlock.Paragraph>()
         val texts = rawParas.map { it.text }.filter { it.isNotBlank() }
         println("DEBUG raw paragraphs=${rawParas.map { it.text }} filtered=$texts")
@@ -26,9 +23,7 @@ class ContentParserEdgeCasesTest {
 
     @Test
     fun parse_malformedTag_fallsBackToText() {
-        val html = """
-            <h2>Good</h2><p>Para</p><h3 Broken><span>Oops</span>Trailing
-        """.trimIndent()
+        val html = "<h2>Good</h2><p>Para</p><h3 Broken><span>Oops</span>Trailing"
         val blocks = parseHtmlToBlocks(html)
         val headingTexts = blocks.filterIsInstance<ContentBlock.Heading>().map { it.text }
         assertTrue("Expected first heading present", headingTexts.contains("Good"))
