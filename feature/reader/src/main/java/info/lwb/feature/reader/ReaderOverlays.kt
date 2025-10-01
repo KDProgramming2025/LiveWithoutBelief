@@ -10,7 +10,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Slider
+
+// Slider range constants
+private const val FONT_SCALE_MIN = 0.8
+private const val FONT_SCALE_MAX = 1.6
+private const val LINE_HEIGHT_MIN = 1.0
+private const val LINE_HEIGHT_MAX = 2.0
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
@@ -22,7 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Slider
+// imports grouped above
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,12 +37,12 @@ import info.lwb.feature.reader.ui.ActionRail
 import info.lwb.feature.reader.ui.ActionRailItem
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ReaderAppearanceSheet
+// Constants for reader control slider ranges.
 
 @Composable
 internal fun BoxScope.ReaderScreenOverlays(
     appearance: AppearanceState?,
     showAppearance: Boolean,
-    onShowAppearance: () -> Unit,
     onDismissAppearance: () -> Unit,
     confirmExit: Boolean,
     onDismissExit: () -> Unit,
@@ -104,11 +110,11 @@ internal fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double,
                     value = settings.fontScale.toFloat(),
                     onValueChange = {
                         onChange(
-                            it.toDouble().coerceIn(0.8, 1.6),
+                            it.toDouble().coerceIn(FONT_SCALE_MIN, FONT_SCALE_MAX),
                             settings.lineHeight,
                         )
                     },
-                    valueRange = 0.8f..1.6f,
+                    valueRange = FONT_SCALE_MIN.toFloat()..FONT_SCALE_MAX.toFloat(),
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
@@ -117,10 +123,10 @@ internal fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double,
                     onValueChange = {
                         onChange(
                             settings.fontScale,
-                            it.toDouble().coerceIn(1.0, 2.0),
+                            it.toDouble().coerceIn(LINE_HEIGHT_MIN, LINE_HEIGHT_MAX),
                         )
                     },
-                    valueRange = 1.0f..2.0f,
+                    valueRange = LINE_HEIGHT_MIN.toFloat()..LINE_HEIGHT_MAX.toFloat(),
                     modifier = Modifier.weight(1f),
                 )
             }

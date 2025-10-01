@@ -130,7 +130,6 @@ private fun BoxScope.ReaderOverlaysHost(state: ReaderScreenState, appearance: Ap
     ReaderScreenOverlays(
         appearance = appearance,
         showAppearance = state.showAppearance,
-        onShowAppearance = { state.showAppearance = true },
         onDismissAppearance = { state.showAppearance = false },
         confirmExit = state.confirmExit,
         onDismissExit = { state.confirmExit = false },
