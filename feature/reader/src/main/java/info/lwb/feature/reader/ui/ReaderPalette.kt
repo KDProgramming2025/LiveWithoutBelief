@@ -26,8 +26,7 @@ internal data class ReaderPalette(
 internal val LocalReaderPalette =
     staticCompositionLocalOf { ReaderPalette("system", "#FFFFFF", "#111111", "#444444", "#DDDDDD") }
 
-/** Predefined palettes keyed by background selection. */
-private val BACKGROUND_TO_PALETTE: Map<ReaderSettingsRepository.ReaderBackground, ReaderPalette> = mapOf(
+private val backgroundToPaletteMap: Map<ReaderSettingsRepository.ReaderBackground, ReaderPalette> = mapOf(
     ReaderSettingsRepository.ReaderBackground.Sepia to ReaderPalette(
         "sepia-light",
         "#F5ECD9",
@@ -82,7 +81,7 @@ private val BACKGROUND_TO_PALETTE: Map<ReaderSettingsRepository.ReaderBackground
 /** Map settings background + dark mode to a concrete palette. */
 @Composable
 internal fun readerPalette(bg: ReaderSettingsRepository.ReaderBackground): ReaderPalette =
-    BACKGROUND_TO_PALETTE.getValue(bg)
+    backgroundToPaletteMap.getValue(bg)
 
 /** Resolve the asset path for the CSS file corresponding to this palette. */
 internal fun themeCssAssetPath(palette: ReaderPalette): String = "webview/themes/${palette.name}.css"
