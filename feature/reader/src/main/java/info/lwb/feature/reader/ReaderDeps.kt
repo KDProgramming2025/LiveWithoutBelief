@@ -11,7 +11,9 @@ import info.lwb.core.domain.AddAnnotationUseCase
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 
-/** ViewModel exposing small set of dependencies (annotation use case) for the reader UI tree. */
+/**
+ * ViewModel exposing small set of dependencies (annotation use case) for the reader UI tree.
+ */
 @HiltViewModel
 internal class ReaderDeps @Inject constructor(
     private val addAnnotationUseCase: AddAnnotationUseCase,
