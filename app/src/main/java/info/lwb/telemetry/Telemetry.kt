@@ -25,7 +25,7 @@ object Telemetry {
     private const val METHOD_RECORD_EXCEPTION = "recordException"
     private const val METHOD_NEW_TRACE = "newTrace"
     private const val METHOD_START = "start"
-    private const val METHOD_STOP = "stop"
+    internal const val METHOD_STOP = "stop"
 
     /**
      * Initialize telemetry backends (analytics + optional crash/perf) in a best-effort way.

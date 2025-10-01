@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -63,7 +62,7 @@ fun DiscussionThreadSheet(annotationId: String, vm: DiscussionViewModel = hiltVi
     Column(Modifier.fillMaxWidth().padding(12.dp)) {
         Text("Discussion", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
-        LazyColumn(Modifier.weight(1f)) {
+        LazyColumn(modifier = Modifier.weight(1f, fill = true)) {
             items(ui.messages) { m ->
                 Text("${'$'}{m.type}: ${'$'}{m.contentRef}", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
@@ -160,4 +159,4 @@ class DiscussionViewModel @Inject constructor(
     }
 }
 
-private const val UI_STATE_SUBSCRIPTION_TIMEOUT_MS = 5_000
+private const val UI_STATE_SUBSCRIPTION_TIMEOUT_MS: Long = 5_000L

@@ -9,6 +9,7 @@ package info.lwb.feature.reader
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.filled.Edit
@@ -37,6 +38,7 @@ import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import javax.inject.Named
+import info.lwb.feature.reader.ReaderSettingsRepository
 import info.lwb.core.common.Result
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
@@ -150,7 +152,7 @@ private fun ConfirmExitDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
 }
 
 @Composable
-private fun loadCssOrBlank(uiStateBackground: ReaderBackground): String {
+private fun loadCssOrBlank(uiStateBackground: ReaderSettingsRepository.ReaderBackground): String {
     val ctx = LocalContext.current
     val path = themeCssAssetPath(readerPalette(uiStateBackground))
     return try {
@@ -193,7 +195,7 @@ private fun ReaderWebViewScaffold(
 }
 
 @Composable
-private fun ReaderActionRailOverlay(
+private fun BoxScope.ReaderActionRailOverlay(
     visible: Boolean,
     onAppearance: () -> Unit,
     onBookmark: () -> Unit,
@@ -316,7 +318,8 @@ private fun ReaderResolvedContent(
     LaunchedEffect(resolvedUrl) { showFabTemporarily() }
 
     val scrollRestore = rememberScrollRestore(articleId)
-    val css = remember(uiState.background) { loadCssOrBlank(uiState) }
+    // Cache CSS per background setting
+    val css = loadCssOrBlank(uiState.background)
 
     BackHandler(enabled = true) {
         when {
@@ -360,6 +363,9 @@ private fun ReaderResolvedLayout(
     readerViewModel: ReaderViewModel,
 ) {
     val scope = rememberCoroutineScope()
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    // Obtain once inside composition; do not call inside non-composable lambdas
+    val scrollVm: ScrollViewModel = hiltViewModel()
     Box(Modifier.fillMaxSize()) {
         ReaderWebViewScaffold(
             resolvedUrl = resolvedUrl,
@@ -368,14 +374,8 @@ private fun ReaderResolvedLayout(
             initialScroll = scrollRestore.initialScroll,
             initialAnchor = scrollRestore.initialAnchor,
             onTap = { onShowFabTemp() },
-            onScrollSave = { y ->
-                val scrollVm: ScrollViewModel = hiltViewModel()
-                scope.launch { scrollVm.save(articleId, y) }
-            },
-            onAnchorSave = { a ->
-                val scrollVm: ScrollViewModel = hiltViewModel()
-                scope.launch { scrollVm.saveAnchor(articleId, a) }
-            },
+            onScrollSave = { y -> scope.launch { scrollVm.save(articleId, y) } },
+            onAnchorSave = { a -> scope.launch { scrollVm.saveAnchor(articleId, a) } },
         )
         ReaderActionRailOverlay(
             visible = fabState.visible,
@@ -394,10 +394,7 @@ private fun ReaderResolvedLayout(
                 onDismiss = { onSetFabState(fabState.copy(confirmExit = false)) },
                 onConfirm = {
                     onSetFabState(fabState.copy(confirmExit = false))
-                    onNavigateBack?.invoke()
-                        ?: LocalOnBackPressedDispatcherOwner.current
-                            ?.onBackPressedDispatcher
-                            ?.onBackPressed()
+                    onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
                 },
             )
         }

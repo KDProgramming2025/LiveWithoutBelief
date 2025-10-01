@@ -61,7 +61,7 @@ class AutoTokenRefresher(
         job = null
     }
 
-    private suspend fun performIteration(refresh: () -> Unit, didInitialValidation: Boolean): Boolean =
+    private suspend fun performIteration(refresh: suspend () -> Unit, didInitialValidation: Boolean): Boolean =
         try {
             if (!didInitialValidation) {
                 validateExistingOnce()
@@ -80,7 +80,7 @@ class AutoTokenRefresher(
         }
     }
 
-    private suspend fun maybeRefresh(refresh: () -> Unit) {
+    private suspend fun maybeRefresh(refresh: suspend () -> Unit) {
         val expirySeconds = storage.getTokenExpiry() ?: return
         val nowSeconds = System.currentTimeMillis() / MILLIS_PER_SECOND
         val remaining = expirySeconds - nowSeconds
@@ -89,5 +89,5 @@ class AutoTokenRefresher(
         }
     }
 
-    private fun authFacadeRefresh() = authFacade.refreshIdToken(false)
+    private suspend fun authFacadeRefresh() = authFacade.refreshIdToken(false)
 }

@@ -134,7 +134,7 @@ object DatabaseModule {
         db: AppDatabase,
     ): LabelArticleRepository = LabelArticleRepositoryImpl(
         api = api,
-        articleDao = db.articleDao(),
+        dao = db.articleDao(),
     )
 
     /** Repository for reading progress persistence. */
