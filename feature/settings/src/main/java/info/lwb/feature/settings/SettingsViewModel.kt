@@ -13,12 +13,24 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@HiltViewModel
-class SettingsViewModel @Inject constructor(
-    private val prefs: ThemePreferenceRepository,
-) : ViewModel() {
-    val themeMode: StateFlow<ThemeMode> = prefs.themeMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.SYSTEM)
+private const val THEME_FLOW_STOP_TIMEOUT_MS = 5_000L
 
-    fun setTheme(mode: ThemeMode) = viewModelScope.launch { prefs.setThemeMode(mode) }
+/**
+ * ViewModel exposing the current [ThemeMode] selection and persisting user changes.
+ * It converts the repository flow into a hot [StateFlow] with an active subscription
+ * timeout to conserve resources when UI is not observing.
+ */
+@HiltViewModel
+class SettingsViewModel @Inject constructor(private val prefs: ThemePreferenceRepository) : ViewModel() {
+    /** Hot state of the selected theme mode (system / light / dark). */
+    val themeMode: StateFlow<ThemeMode> = prefs.themeMode.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(THEME_FLOW_STOP_TIMEOUT_MS),
+        initialValue = ThemeMode.SYSTEM,
+    )
+
+    /** Persist a new [ThemeMode] selection. */
+    fun setTheme(mode: ThemeMode) {
+        viewModelScope.launch { prefs.setThemeMode(mode) }
+    }
 }
