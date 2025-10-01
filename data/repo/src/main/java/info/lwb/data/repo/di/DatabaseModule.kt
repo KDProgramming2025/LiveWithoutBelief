@@ -33,10 +33,18 @@ import info.lwb.data.repo.repositories.ReadingProgressRepositoryImpl
 import info.lwb.data.repo.repositories.menu.MenuRepositoryImpl
 import javax.inject.Singleton
 
+/**
+ * Hilt module wiring Room database, migrations, DAOs, repositories and related use cases.
+ * Each provider supplies a singleton or factory for data layer dependencies.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
+    private const val VERSION_1 = 1
+    private const val VERSION_2 = 2
+    private const val VERSION_3 = 3
+
+    private val MIGRATION_1_2 = object : Migration(VERSION_1, VERSION_2) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 """
@@ -52,63 +60,137 @@ object DatabaseModule {
         }
     }
 
-    private val MIGRATION_2_3 = object : Migration(2, 3) {
+    private val MIGRATION_2_3 = object : Migration(VERSION_2, VERSION_3) {
         override fun migrate(db: SupportSQLiteDatabase) {
             // Add nullable indexUrl column to article_contents
             db.execSQL("ALTER TABLE article_contents ADD COLUMN indexUrl TEXT")
         }
     }
 
+    /** Provide the Room [AppDatabase] instance with registered migrations. */
     @Provides
     @Singleton
-    fun provideDb(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "lwb.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-            .build()
+    fun provideDb(
+        @ApplicationContext context: Context,
+    ): AppDatabase = Room
+        .databaseBuilder(context, AppDatabase::class.java, DB_NAME)
+        .addMigrations(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+        ).build()
 
-    @Provides fun provideArticleDao(db: AppDatabase): info.lwb.data.repo.db.ArticleDao = db.articleDao()
-
-    @Provides fun provideBookmarkDao(db: AppDatabase): info.lwb.data.repo.db.BookmarkDao = db.bookmarkDao()
-
-    @Provides fun provideFolderDao(db: AppDatabase): info.lwb.data.repo.db.FolderDao = db.folderDao()
-
-    @Provides fun provideAnnotationDao(db: AppDatabase): info.lwb.data.repo.db.AnnotationDao = db.annotationDao()
-
+    /** DAO for articles table. */
     @Provides
-    fun provideThreadMessageDao(db: AppDatabase): info.lwb.data.repo.db.ThreadMessageDao = db.threadMessageDao()
+    fun provideArticleDao(
+        db: AppDatabase,
+    ): info.lwb.data.repo.db.ArticleDao = db.articleDao()
 
+    /** DAO for bookmarks table. */
     @Provides
-    fun provideReadingProgressDao(db: AppDatabase): info.lwb.data.repo.db.ReadingProgressDao = db.readingProgressDao()
+    fun provideBookmarkDao(
+        db: AppDatabase,
+    ): info.lwb.data.repo.db.BookmarkDao = db.bookmarkDao()
 
+    /** DAO for folders table. */
+    @Provides
+    fun provideFolderDao(
+        db: AppDatabase,
+    ): info.lwb.data.repo.db.FolderDao = db.folderDao()
+
+    /** DAO for annotations table. */
+    @Provides
+    fun provideAnnotationDao(
+        db: AppDatabase,
+    ): info.lwb.data.repo.db.AnnotationDao = db.annotationDao()
+
+    /** DAO for thread messages. */
+    @Provides
+    fun provideThreadMessageDao(
+        db: AppDatabase,
+    ): info.lwb.data.repo.db.ThreadMessageDao = db.threadMessageDao()
+
+    /** DAO for reading progress entries. */
+    @Provides
+    fun provideReadingProgressDao(
+        db: AppDatabase,
+    ): info.lwb.data.repo.db.ReadingProgressDao = db.readingProgressDao()
+
+    /** Repository for articles syncing and persistence. */
     @Provides
     @Singleton
-    fun provideArticleRepository(api: ArticleApi, db: AppDatabase): ArticleRepository =
-        ArticleRepositoryImpl(api, db.articleDao())
+    fun provideArticleRepository(
+        api: ArticleApi,
+        db: AppDatabase,
+    ): ArticleRepository = ArticleRepositoryImpl(
+        api = api,
+        articleDao = db.articleDao(),
+    )
 
+    /** Repository for label -> articles relationships. */
     @Provides
     @Singleton
-    fun provideLabelArticleRepository(api: ArticleApi, db: AppDatabase): LabelArticleRepository =
-        LabelArticleRepositoryImpl(api, db.articleDao())
+    fun provideLabelArticleRepository(
+        api: ArticleApi,
+        db: AppDatabase,
+    ): LabelArticleRepository = LabelArticleRepositoryImpl(
+        api = api,
+        articleDao = db.articleDao(),
+    )
 
+    /** Repository for reading progress persistence. */
     @Provides
-    fun provideReadingProgressRepository(db: AppDatabase): ReadingProgressRepository =
-        ReadingProgressRepositoryImpl(db.readingProgressDao())
+    fun provideReadingProgressRepository(
+        db: AppDatabase,
+    ): ReadingProgressRepository = ReadingProgressRepositoryImpl(
+        db.readingProgressDao(),
+    )
 
+    /** Repository for bookmarks and folders. */
     @Provides
-    fun provideBookmarkRepository(db: AppDatabase, session: info.lwb.core.domain.UserSession): BookmarkRepository =
-        BookmarkRepositoryImpl(db.bookmarkDao(), db.folderDao(), session)
+    fun provideBookmarkRepository(
+        db: AppDatabase,
+        session: info.lwb.core.domain.UserSession,
+    ): BookmarkRepository = BookmarkRepositoryImpl(
+        db.bookmarkDao(),
+        db.folderDao(),
+        session,
+    )
 
+    /** Repository for annotations and their thread messages. */
     @Provides
-    fun provideAnnotationRepository(db: AppDatabase, session: info.lwb.core.domain.UserSession): AnnotationRepository =
-        AnnotationRepositoryImpl(db.annotationDao(), db.threadMessageDao(), session)
+    fun provideAnnotationRepository(
+        db: AppDatabase,
+        session: info.lwb.core.domain.UserSession,
+    ): AnnotationRepository = AnnotationRepositoryImpl(
+        db.annotationDao(),
+        db.threadMessageDao(),
+        session,
+    )
 
+    /** Repository for menu structure retrieval. */
     @Provides
     @Singleton
-    fun provideMenuRepository(api: MenuApi): MenuRepository = MenuRepositoryImpl(api)
+    fun provideMenuRepository(
+        api: MenuApi,
+    ): MenuRepository = MenuRepositoryImpl(api)
 
-    @Provides fun provideGetMenuUseCase(repo: MenuRepository) = GetMenuUseCase(repo)
+    /** Use case to retrieve menu. */
+    @Provides
+    fun provideGetMenuUseCase(
+        repo: MenuRepository,
+    ): GetMenuUseCase = GetMenuUseCase(repo)
 
-    @Provides fun provideRefreshMenuUseCase(repo: MenuRepository) = RefreshMenuUseCase(repo)
+    /** Use case to refresh menu from remote. */
+    @Provides
+    fun provideRefreshMenuUseCase(
+        repo: MenuRepository,
+    ): RefreshMenuUseCase = RefreshMenuUseCase(repo)
 
-    @Provides fun provideGetArticlesByLabelUseCase(repo: LabelArticleRepository) = GetArticlesByLabelUseCase(repo)
+    /** Use case to fetch articles by label. */
+    @Provides
+    fun provideGetArticlesByLabelUseCase(
+        repo: LabelArticleRepository,
+    ): GetArticlesByLabelUseCase = GetArticlesByLabelUseCase(repo)
+
+    private const val DB_NAME = "lwb.db"
 }
