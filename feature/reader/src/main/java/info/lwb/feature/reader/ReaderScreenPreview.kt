@@ -8,22 +8,26 @@ import androidx.compose.ui.tooling.preview.Preview
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ReaderSettingsRepository
 
+private const val DEFAULT_FONT_SCALE = 1.0
+private const val DEFAULT_LINE_HEIGHT = 1.2
+
 @Preview(name = "Reader Light", showBackground = true)
 @Composable
-private fun PreviewReaderLight() {
-    val sampleHtml = """
+private fun previewReaderLight() {
+    val sampleHtml =
+        """
         <h1>Sample Title</h1>
         <p>Paragraph one with some text for preview.</p>
         <p>Paragraph two with more content to demonstrate scaling.</p>
         <img src='https://example.com/x.png' alt='x'/>
-    """.trimIndent()
+        """.trimIndent()
     ReaderScreen(
         articleTitle = "Preview Article",
         htmlBody = sampleHtml,
-    settings = ReaderSettingsState(1.0, 1.2, {}, {}),
+        settings = ReaderSettingsState(DEFAULT_FONT_SCALE, DEFAULT_LINE_HEIGHT, {}, {}),
         appearance = AppearanceState(
-            fontScale = 1.0,
-            lineHeight = 1.2,
+            fontScale = DEFAULT_FONT_SCALE,
+            lineHeight = DEFAULT_LINE_HEIGHT,
             background = ReaderSettingsRepository.ReaderBackground.Paper,
             onFontScale = {},
             onLineHeight = {},
@@ -34,19 +38,20 @@ private fun PreviewReaderLight() {
 
 @Preview(name = "Reader Dark", showBackground = true)
 @Composable
-private fun PreviewReaderDark() {
-    val sampleHtml = """
+private fun previewReaderDark() {
+    val sampleHtml =
+        """
         <h1>Sample Title</h1>
         <p>Dark theme paragraph example.</p>
         <audio src='https://example.com/a.mp3'></audio>
-    """.trimIndent()
+        """.trimIndent()
     ReaderScreen(
         articleTitle = "Preview Dark",
         htmlBody = sampleHtml,
-    settings = ReaderSettingsState(1.0, 1.2, {}, {}),
+        settings = ReaderSettingsState(DEFAULT_FONT_SCALE, DEFAULT_LINE_HEIGHT, {}, {}),
         appearance = AppearanceState(
-            fontScale = 1.0,
-            lineHeight = 1.2,
+            fontScale = DEFAULT_FONT_SCALE,
+            lineHeight = DEFAULT_LINE_HEIGHT,
             background = ReaderSettingsRepository.ReaderBackground.Night,
             onFontScale = {},
             onLineHeight = {},
