@@ -11,14 +11,40 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
+/**
+ * ViewModel facade over [ScrollRepository] exposing scroll, anchor, and list position persistence APIs.
+ * Keeps UI layer unaware of underlying storage implementation.
+ */
 @HiltViewModel
 internal class ScrollViewModel @Inject constructor(@ApplicationContext appContext: Context) : ViewModel() {
-    private val repo = ScrollRepository(appContext)
-    fun observe(articleId: String): Flow<Int> = repo.observe(articleId)
-    suspend fun save(articleId: String, y: Int) = repo.save(articleId, y)
-    fun observeAnchor(articleId: String): Flow<String> = repo.observeAnchor(articleId)
-    suspend fun saveAnchor(articleId: String, anchor: String?) = repo.saveAnchor(articleId, anchor)
-    fun observeListIndex(articleId: String): Flow<Int> = repo.observeListIndex(articleId)
-    fun observeListOffset(articleId: String): Flow<Int> = repo.observeListOffset(articleId)
-    suspend fun saveList(articleId: String, index: Int, offset: Int) = repo.saveList(articleId, index, offset)
+    private val scrollRepository: ScrollRepository = ScrollRepository(appContext)
+
+    /** Observe vertical scroll Y position for an article. */
+    fun observe(articleId: String): Flow<Int> = scrollRepository.observe(articleId)
+
+    /** Persist latest vertical scroll Y position for an article. */
+    suspend fun save(articleId: String, y: Int) = scrollRepository.save(articleId, y)
+
+    /** Observe anchor id (e.g., element id) near current position. */
+    fun observeAnchor(articleId: String): Flow<String> = scrollRepository.observeAnchor(articleId)
+
+    /** Persist anchor id near current position (nullable to clear). */
+    suspend fun saveAnchor(articleId: String, anchor: String?) = scrollRepository.saveAnchor(articleId, anchor)
+
+    /** Observe list index of currently visible item. */
+    fun observeListIndex(articleId: String): Flow<Int> = scrollRepository.observeListIndex(articleId)
+
+    /** Observe pixel offset within the currently visible list item. */
+    fun observeListOffset(articleId: String): Flow<Int> = scrollRepository.observeListOffset(articleId)
+
+    /** Persist list index + offset snapshot for current position. */
+    suspend fun saveList(
+        articleId: String,
+        index: Int,
+        offset: Int,
+    ) = scrollRepository.saveList(
+        articleId = articleId,
+        index = index,
+        offset = offset,
+    )
 }
