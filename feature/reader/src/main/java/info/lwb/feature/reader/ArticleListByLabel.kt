@@ -41,6 +41,7 @@ import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.GrainyBackground
 import info.lwb.ui.designsystem.LocalSurfaceStyle
+import info.lwb.ui.designsystem.SurfaceStyleColors
 import info.lwb.ui.designsystem.ProvideSurfaceStyle
 import info.lwb.ui.designsystem.RaisedIconWell
 import info.lwb.ui.designsystem.RaisedSurface
@@ -135,7 +136,7 @@ private fun ArticleListByLabelContent(
 }
 
 @Composable
-private fun LoadingState(neo: info.lwb.ui.designsystem.SurfaceStyle) {
+private fun LoadingState(neo: SurfaceStyleColors) {
     Column(
         Modifier
             .fillMaxSize()
@@ -152,7 +153,7 @@ private fun LoadingState(neo: info.lwb.ui.designsystem.SurfaceStyle) {
 }
 
 @Composable
-private fun ErrorState(message: String, neo: info.lwb.ui.designsystem.SurfaceStyle, onRetry: () -> Unit) {
+private fun ErrorState(message: String, neo: SurfaceStyleColors, onRetry: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Text(
             text = message,
@@ -165,7 +166,7 @@ private fun ErrorState(message: String, neo: info.lwb.ui.designsystem.SurfaceSty
 }
 
 @Composable
-private fun EmptyState(neo: info.lwb.ui.designsystem.SurfaceStyle, onNavigateBack: () -> Unit) {
+private fun EmptyState(neo: SurfaceStyleColors, onNavigateBack: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Text(
             "No articles found.",

@@ -20,7 +20,7 @@ private fun PreviewReaderLight() {
     ReaderScreen(
         articleTitle = "Preview Article",
         htmlBody = sampleHtml,
-        settings = ReaderSettingsState(1.0, 1.2, {}, {}),
+    settings = ReaderSettingsState(1.0, 1.2, {}, {}),
         appearance = AppearanceState(
             fontScale = 1.0,
             lineHeight = 1.2,
@@ -43,7 +43,7 @@ private fun PreviewReaderDark() {
     ReaderScreen(
         articleTitle = "Preview Dark",
         htmlBody = sampleHtml,
-        settings = ReaderSettingsState(1.0, 1.2, {}, {}),
+    settings = ReaderSettingsState(1.0, 1.2, {}, {}),
         appearance = AppearanceState(
             fontScale = 1.0,
             lineHeight = 1.2,

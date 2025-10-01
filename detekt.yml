@@ -8,6 +8,8 @@ performance:
   ForEachOnRange:
     active: true
 style:
+  ReturnCount:
+    active: false
   MagicNumber:
     active: true
   WildcardImport:

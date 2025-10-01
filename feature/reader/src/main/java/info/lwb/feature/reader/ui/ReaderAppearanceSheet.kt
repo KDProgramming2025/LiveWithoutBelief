@@ -165,35 +165,37 @@ private fun AppearanceSheetScrim(visible: Boolean, onDismiss: () -> Unit) {
 
 @Composable
 private fun AppearanceSheetCard(visible: Boolean, modifier: Modifier, state: AppearanceState) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(SHEET_ENTER_DURATION_MS)) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(SHEET_EXIT_DURATION_MS)) + fadeOut(),
-        modifier = Modifier.align(Alignment.BottomCenter),
-    ) {
-        Surface(
-            tonalElevation = TONAL_ELEVATION_DP.dp,
-            shape = RoundedCornerShape(topStart = SHEET_CORNER_RADIUS_DP.dp, topEnd = SHEET_CORNER_RADIUS_DP.dp),
-            modifier = modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(),
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(SHEET_ENTER_DURATION_MS)) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(SHEET_EXIT_DURATION_MS)) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            Column(
-                Modifier
+            Surface(
+                tonalElevation = TONAL_ELEVATION_DP.dp,
+                shape = RoundedCornerShape(topStart = SHEET_CORNER_RADIUS_DP.dp, topEnd = SHEET_CORNER_RADIUS_DP.dp),
+                modifier = modifier
                     .fillMaxWidth()
-                    .padding(
-                        horizontal = SHEET_HORIZONTAL_PADDING_DP.dp,
-                        vertical = SHEET_VERTICAL_PADDING_DP.dp,
-                    ),
+                    .navigationBarsPadding(),
             ) {
-                Text("Reader appearance", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(SECTION_SPACER_MEDIUM_DP.dp))
-                FontScaleSection(state)
-                Spacer(Modifier.height(SECTION_SPACER_LARGE_DP.dp))
-                LineHeightSection(state)
-                Spacer(Modifier.height(SECTION_SPACER_LARGE_DP.dp))
-                BackgroundSection(state)
-                Spacer(Modifier.height(SECTION_SPACER_MEDIUM_DP.dp))
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = SHEET_HORIZONTAL_PADDING_DP.dp,
+                            vertical = SHEET_VERTICAL_PADDING_DP.dp,
+                        ),
+                ) {
+                    Text("Reader appearance", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(SECTION_SPACER_MEDIUM_DP.dp))
+                    FontScaleSection(state)
+                    Spacer(Modifier.height(SECTION_SPACER_LARGE_DP.dp))
+                    LineHeightSection(state)
+                    Spacer(Modifier.height(SECTION_SPACER_LARGE_DP.dp))
+                    BackgroundSection(state)
+                    Spacer(Modifier.height(SECTION_SPACER_MEDIUM_DP.dp))
+                }
             }
         }
     }

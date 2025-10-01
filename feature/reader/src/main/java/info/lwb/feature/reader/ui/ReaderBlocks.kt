@@ -52,6 +52,7 @@ private const val MIN_LINE_HEIGHT = 12
 private const val SPACING_XS_UNITS = 4
 private const val SPACING_SM_UNITS = 8
 private const val SPACING_MD_UNITS = 12
+
 // YouTube embed player typical 16:9 area height when width ~360dp -> 360 * 9 / 16 = 202.5 ≈ 200
 private const val YT_PLAYER_HEIGHT_UNITS = 200
 private const val TONAL_ELEVATION_SM_UNITS = 2
@@ -77,8 +78,6 @@ private val YT_PLAYER_HEIGHT = YT_PLAYER_HEIGHT_UNITS.dp
 private val TONAL_ELEVATION_SM = TONAL_ELEVATION_SM_UNITS.dp
 private val PADDING_BLOCK = PADDING_BLOCK_UNITS.dp
 private val ICON_PROGRESS_SIZE = ICON_PROGRESS_SIZE_UNITS.dp
- 
-// Removed brand-specific color literals – rely on theme colors instead.
 
 // endregion --------------------------------------------------------------------------------------------------------
 
@@ -126,12 +125,12 @@ internal fun ParagraphBlock(
         }
     }
     val fontSizeValue = baseStyle.fontSize.value
-    val rawFontSize = fontSizeValue * settings.fontScale
+    val rawFontSize = fontSizeValue * settings.fontScale.toFloat()
     val scaledFont = rawFontSize
         .coerceAtLeast(MIN_FONT_SIZE_SP.value)
         .sp
     val lineHeightValue = baseStyle.lineHeight.value
-    val rawLineHeight = lineHeightValue * settings.lineHeight
+    val rawLineHeight = lineHeightValue * settings.lineHeight.toFloat()
     val scaledLineHeight = rawLineHeight
         .coerceAtLeast(MIN_LINE_HEIGHT_SP.value)
         .sp
