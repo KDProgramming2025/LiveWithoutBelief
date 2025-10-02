@@ -18,11 +18,10 @@ class ReaderScreenSnapshotTest {
 
     @Test
     fun snapshot_readerPlaceholder() {
-        val sampleHtml = """
-            <h1>Title</h1>
-            <p>This is a short paragraph for snapshot.</p>
-            <img src='https://example.com/img.png' alt='img'/>
-        """.trimIndent()
+        val sampleHtml = """|<h1>Title</h1>
+        |<p>This is a short paragraph for snapshot.</p>
+        |<img src='https://example.com/img.png' alt='img'/>
+        """.trimMargin()
         val settings = ReaderSettingsState(
             fontScale = 1.0,
             lineHeight = 1.2,
