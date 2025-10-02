@@ -9,7 +9,9 @@ internal data class SearchHit(val pageIndex: Int, val blockIndex: Int, val range
 
 /** Build ordered search hits across pages (or single list of blocks if pages null). */
 internal fun buildSearchHits(pages: List<Page>?, allBlocks: List<ContentBlock>, query: String): List<SearchHit> {
-    if (query.isBlank()) return emptyList()
+    if (query.isBlank()) {
+        return emptyList()
+    }
     val regex = Regex(Regex.escape(query), RegexOption.IGNORE_CASE)
     val hits = mutableListOf<SearchHit>()
     if (pages != null && pages.isNotEmpty()) {
