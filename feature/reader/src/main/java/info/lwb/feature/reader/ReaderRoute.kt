@@ -70,12 +70,12 @@ fun ReaderByIdRoute(
     articleId: String,
     onNavigateBack: (() -> Unit)? = null,
 ) {
-    val svcVm: info.lwb.feature.reader.viewmodels.ReaderViewModel = hiltViewModel()
+    val svcVm: info.lwb.feature.reader.viewmodels.ArticlesViewModel = hiltViewModel()
     LaunchedEffect(articleId) { svcVm.loadArticleContent(articleId) }
     val contentRes by svcVm.articleContent.collectAsState()
     val articlesRes by svcVm.articles.collectAsState()
     val env: ReaderEnv = hiltViewModel()
-    val vm: ReaderViewModel = hiltViewModel()
+    val vm: ReaderSessionViewModel = hiltViewModel()
     val ui by vm.uiState.collectAsState()
 
     val resolvedUrl = remember(contentRes, articlesRes, env.apiBaseUrl, articleId) {
@@ -233,7 +233,7 @@ private fun BoxScope.ReaderActionRailOverlay(
 private fun ReaderAppearanceOverlay(
     showAppearance: Boolean,
     uiState: ReaderUiState,
-    readerViewModel: ReaderViewModel,
+    readerViewModel: ReaderSessionViewModel,
     onDismiss: () -> Unit
 ) {
     if (!showAppearance) {
@@ -312,7 +312,7 @@ private fun ReaderResolvedContent(
     resolvedUrl: String,
     uiState: ReaderUiState,
     onNavigateBack: (() -> Unit)?,
-    readerViewModel: ReaderViewModel
+    readerViewModel: ReaderSessionViewModel
 ) {
     val (fabState, showFabTemporarily, setFabState) = rememberFabController()
     LaunchedEffect(resolvedUrl) { showFabTemporarily() }
@@ -360,7 +360,7 @@ private fun ReaderResolvedLayout(
     onSetFabState: (FabState) -> Unit,
     onShowFabTemp: () -> Unit,
     onNavigateBack: (() -> Unit)?,
-    readerViewModel: ReaderViewModel,
+    readerViewModel: ReaderSessionViewModel,
 ) {
     val scope = rememberCoroutineScope()
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher

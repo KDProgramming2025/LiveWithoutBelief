@@ -25,7 +25,7 @@ internal const val DEFAULT_PAGE_INDEX = 0
  * Not part of the public feature API; use [ReaderByIdRoute] to interact with the Reader UI.
  */
 @HiltViewModel
-internal class ReaderViewModel @Inject constructor(
+internal class ReaderSessionViewModel @Inject constructor(
     private val progressRepo: ReadingProgressRepository,
     private val settingsRepository: ReaderSettingsRepository,
 ) : ViewModel() {

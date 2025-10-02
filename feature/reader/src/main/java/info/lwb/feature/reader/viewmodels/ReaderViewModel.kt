@@ -25,7 +25,7 @@ import javax.inject.Inject
  * flows representing loading / success / error states.
  */
 @HiltViewModel
-class ReaderViewModel @Inject constructor(
+class ArticlesViewModel @Inject constructor(
     private val getArticlesUseCase: GetArticlesUseCase,
     private val getArticleContentUseCase: GetArticleContentUseCase,
     private val refreshArticlesUseCase: RefreshArticlesUseCase,
