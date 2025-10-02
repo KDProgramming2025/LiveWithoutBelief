@@ -6,7 +6,6 @@ package info.lwb.auth
 
 import android.app.Activity
 import android.content.Context
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import androidx.activity.ComponentActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -50,10 +49,6 @@ interface AuthFacade {
 }
 
 /** Optional abstraction for One Tap / Credential Manager based Google ID token retrieval. */
-interface OneTapCredentialProvider {
-    /** Attempts to obtain a Google ID token silently via One Tap / Credential Manager (null if not available). */
-    suspend fun getIdToken(activity: Activity): String?
-}
 
 /**
  * Abstraction over Firebase token refresh so unit tests can mock without dealing with Task APIs.
@@ -97,11 +92,9 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     @ApplicationContext private val context: Context,
     private val secureStorage: SecureStorage,
     private val sessionValidator: SessionValidator,
-    private val signInClient: GoogleSignInClientFacade,
-    private val intentExecutor: GoogleSignInIntentExecutor,
+    private val identityFacade: IdentityCredentialFacade,
     private val tokenRefresher: TokenRefresher,
     private val signInExecutor: SignInExecutor,
-    private val oneTapProvider: OneTapCredentialProvider,
     private val registrationApi: RegistrationApi,
     private val passwordApi: PasswordAuthApi,
     private val altcha: AltchaTokenProvider,
@@ -148,14 +141,13 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
     // region in-class helpers
     private suspend fun oneTapSignInInternal(activity: Activity): AuthUser {
         logDebugStart()
-        val comp = activity as? ComponentActivity
-        val existing = signInClient.getLastSignedInAccount(activity)
-        logDebugSilent(existing)
-        val idToken = resolveIdToken(activity, existing, comp)
+        val comp = activity as? ComponentActivity ?: error("Activity must be ComponentActivity")
+        val tokenResult = identityFacade.getIdToken(comp)
+        val idToken = tokenResult.idToken
         logDebugHaveToken(idToken)
         persistGoogleToken(idToken)
         val user = signInExecutor.signIn(idToken)
-        val email = user.email ?: existing?.email ?: error("Could not determine Google account email")
+        val email = user.email ?: tokenResult.email ?: error("Could not determine Google account email")
         val (regUser, _) = registrationApi.register(email)
         val authUser = AuthUser(
             user.uid,
@@ -199,23 +191,7 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         return token
     }
 
-    private suspend fun resolveIdToken(
-        activity: Activity,
-        existing: GoogleSignInAccount?,
-        comp: ComponentActivity?,
-    ): String = existing?.idToken ?: oneTapOrInteractive(activity, comp)
-
-    private suspend fun oneTapOrInteractive(activity: Activity, comp: ComponentActivity?): String {
-        val oneTapToken = runCatching { oneTapProvider.getIdToken(activity) }.getOrNull()
-        if (oneTapToken != null) {
-            return oneTapToken
-        }
-        requireNotNull(comp) { "Activity must be a ComponentActivity for interactive sign-in" }
-        val acct = intentExecutor.launch(comp) {
-            signInClient.buildSignInIntent(activity)
-        }
-        return acct.idToken ?: error("Missing idToken from interactive sign-in")
-    }
+    // Legacy GoogleSignIn flow removed after migration to Credential Manager.
 
     private fun persistGoogleToken(idToken: String) {
         secureStorage.putIdToken(idToken)

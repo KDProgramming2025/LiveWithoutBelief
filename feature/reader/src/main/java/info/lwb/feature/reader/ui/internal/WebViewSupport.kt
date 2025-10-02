@@ -87,15 +87,24 @@ internal fun WebView.configureBaseSettings(backgroundColor: String?) {
     alpha = 0f
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
-    settings.databaseEnabled = true
+    // databaseEnabled deprecated: still set for legacy content relying on Web SQL / local DB
+    @Suppress("DEPRECATION")
+    try {
+        settings.databaseEnabled = true
+    } catch (_: Throwable) {
+        // ignore (deprecated API guarded for legacy content relying on Web SQL)
+    }
     try {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, false)
         }
         if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+            // force dark deprecated; explicitly disabling via compat API
+            @Suppress("DEPRECATION")
             WebSettingsCompat.setForceDark(settings, WebSettingsCompat.FORCE_DARK_OFF)
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            @Suppress("DEPRECATION")
             settings.forceDark = WebSettings.FORCE_DARK_OFF
         }
     } catch (_: Throwable) {

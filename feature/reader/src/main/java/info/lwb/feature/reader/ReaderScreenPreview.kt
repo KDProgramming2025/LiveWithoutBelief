@@ -7,9 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ReaderSettingsRepository
-
-private const val DEFAULT_FONT_SCALE = 1.0
-private const val DEFAULT_LINE_HEIGHT = 1.2
+// Use shared constants from ReaderViewModel.kt
 
 @Preview(name = "Reader Light", showBackground = true)
 @Composable

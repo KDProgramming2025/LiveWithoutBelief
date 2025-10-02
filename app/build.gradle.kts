@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.compose)
     // Make plugin available on classpath but don't apply automatically
@@ -210,16 +210,12 @@ dependencies {
     implementation(libs.lifecycle.runtime.ktx)
 
     implementation(libs.hilt.android)
-    kapt(libs.hilt.android.compiler)
+    ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.analytics)
-    // Crashlytics temporarily disabled until plugin onboarding
-    // implementation(libs.firebase.crashlytics)
-    // Firebase Performance temporarily disabled
-    // implementation("com.google.firebase:firebase-perf-ktx")
     implementation(libs.play.services.auth)
     implementation(libs.credential.manager)
     implementation(libs.credential.manager.play.services)
@@ -241,9 +237,9 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    // Hilt instrumentation testing
+    // Hilt instrumentation testing (KSP)
     androidTestImplementation("com.google.dagger:hilt-android-testing:${libs.versions.hilt.get()}")
-    kaptAndroidTest(libs.hilt.android.compiler)
+    kspAndroidTest(libs.hilt.android.compiler)
     androidTestImplementation("androidx.test:core:1.6.1")
 
     implementation(libs.navigation.compose)

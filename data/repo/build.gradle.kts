@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
 }
@@ -25,7 +24,7 @@ dependencies {
     implementation("androidx.room:room-ktx:${libs.versions.room.get()}")
     ksp(libs.room.compiler)
     implementation(libs.hilt.android)
-    kapt(libs.hilt.android.compiler)
+    ksp(libs.hilt.android.compiler)
     implementation(project(":data:network"))
 
     testImplementation(libs.junit)

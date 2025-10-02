@@ -278,7 +278,12 @@ private fun configureYouTubeWebView(webView: WebView, videoId: String) {
     with(webView) {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
-        settings.databaseEnabled = true
+        @Suppress("DEPRECATION")
+        try {
+            settings.databaseEnabled = true
+        } catch (_: Throwable) {
+            // ignore deprecated databaseEnabled failure
+        }
         isLongClickable = false
         setOnLongClickListener { true }
         setDownloadListener { _, _, _, _, _ -> }

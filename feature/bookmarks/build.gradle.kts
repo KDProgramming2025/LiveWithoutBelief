@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -19,9 +19,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
-kapt {
-    correctErrorTypes = true
-}
+
 
 dependencies {
     implementation(project(":core:model"))
@@ -35,5 +33,5 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:${libs.versions.lifecycle.get()}")
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
-    kapt(libs.hilt.android.compiler)
+        ksp(libs.hilt.android.compiler)
 }

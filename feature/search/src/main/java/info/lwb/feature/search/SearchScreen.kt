@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -72,7 +72,7 @@ fun SearchScreen(query: String, results: List<Article>, onQueryChange: (String) 
                     headlineContent = { Text(a.title) },
                     supportingContent = { Text(a.updatedAt) },
                 )
-                Divider()
+                HorizontalDivider()
             }
         }
     }

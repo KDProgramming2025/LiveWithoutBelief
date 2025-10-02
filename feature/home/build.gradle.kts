@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.compose)
 }
@@ -11,8 +11,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        minSdk = 26
-        targetSdk = 36
+    minSdk = 26
+    // targetSdk removed (library module); app module declares targetSdk.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -27,9 +27,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
-kapt {
-    correctErrorTypes = true
-}
+
 
 dependencies {
     implementation(platform(libs.compose.bom))
@@ -44,7 +42,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.hilt.android)
-    kapt(libs.hilt.android.compiler)
+    ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.coil)
 

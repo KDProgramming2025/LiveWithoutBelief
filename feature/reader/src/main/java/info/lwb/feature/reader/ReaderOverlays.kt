@@ -11,12 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Slider
-
-// Slider range constants
-private const val FONT_SCALE_MIN = 0.8
-private const val FONT_SCALE_MAX = 1.6
-private const val LINE_HEIGHT_MIN = 1.0
-private const val LINE_HEIGHT_MAX = 2.0
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
@@ -28,7 +22,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-// imports grouped above
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +30,11 @@ import info.lwb.feature.reader.ui.ActionRail
 import info.lwb.feature.reader.ui.ActionRailItem
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ReaderAppearanceSheet
-// Constants for reader control slider ranges.
+
+private const val FONT_SCALE_MIN = 0.8
+private const val FONT_SCALE_MAX = 1.6
+private const val LINE_HEIGHT_MIN = 1.0
+private const val LINE_HEIGHT_MAX = 2.0
 
 @Composable
 internal fun BoxScope.ReaderScreenOverlays(

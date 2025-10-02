@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// Default appearance & pagination constants in ReaderSettingsRepository; keep only page index here.
+internal const val DEFAULT_PAGE_INDEX = 0
+
 /**
  * Internal ViewModel backing the Reader screen, exposes article pagination state and appearance settings.
  * Not part of the public feature API; use [ReaderByIdRoute] to interact with the Reader UI.
@@ -29,9 +32,6 @@ internal class ReaderViewModel @Inject constructor(
     private companion object {
         // StateIn subscription timeout milliseconds
         private const val WHILE_SUB_TIMEOUT_MS = 5_000L
-        private const val DEFAULT_FONT_SCALE = 1.0
-        private const val DEFAULT_LINE_HEIGHT = 1.2
-        private const val DEFAULT_PAGE_INDEX = 0
     }
 
     private val articleIdState = MutableStateFlow("")

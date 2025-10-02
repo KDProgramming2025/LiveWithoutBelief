@@ -5,7 +5,6 @@
 package info.lwb.auth
 
 import android.content.Context
-import androidx.credentials.exceptions.GetCredentialException
 import com.google.firebase.auth.FirebaseAuth
 import dagger.Binds
 import dagger.Module
@@ -57,16 +56,6 @@ abstract class AuthBindingsModule {
     @Singleton
     abstract fun bindSignInExecutor(impl: FirebaseSignInExecutor): SignInExecutor
 
-    /** Binds Credential Manager backed one‑tap provider. */
-    @Binds
-    @Singleton
-    abstract fun bindOneTapProvider(impl: CredentialManagerOneTapProvider): OneTapCredentialProvider
-
-    /** Binds low level credential call abstraction (seam for testing and fakes). */
-    @Binds
-    @Singleton
-    abstract fun bindCredentialCall(impl: RealCredentialCall): CredentialCall
-
     /** Binds revocation store implementation. */
     @Binds
     @Singleton
@@ -115,15 +104,10 @@ object AuthProvisionModule {
     fun provideEncryptedStorage(@ApplicationContext context: Context): EncryptedPrefsSecureStorage =
         EncryptedPrefsSecureStorage(context)
 
-    /** Provides abstraction over Google Sign-In client implementation. */
+    /** Provides Identity API credential facade implementation. */
     @Provides
     @Singleton
-    fun provideGoogleSignInClient(): GoogleSignInClientFacade = DefaultGoogleSignInClientFacade()
-
-    /** Provides an executor for launching Google Sign-In intents (Activity Result API). */
-    @Provides
-    @Singleton
-    fun provideGoogleSignInIntentExecutor(): GoogleSignInIntentExecutor = ActivityResultGoogleSignInExecutor()
+    fun provideIdentityCredentialFacade(): IdentityCredentialFacade = DefaultIdentityCredentialFacade()
 
     /** Provides auth-scoped OkHttp client with a small call timeout appropriate for auth endpoints. */
     @Provides
@@ -163,16 +147,17 @@ object AuthProvisionModule {
             refreshConfig,
         ).apply { start() }
 
-    /** Ensures server client id is configured correctly and wraps it for DI (non placeholder). */
+    /** Ensures server client id is configured correctly and exposes it as a qualified String. */
     @Provides
     @Singleton
-    fun assertServerClientId(): ServerClientIdGuard {
+    @ServerClientId
+    fun provideServerClientId(): String {
         val id = BuildConfig.GOOGLE_SERVER_CLIENT_ID
         require(id.isNotBlank() && id != "CHANGE_ME_SERVER_CLIENT_ID") {
-            "GOOGLE_SERVER_CLIENT_ID is unset or placeholder. " +
-                "Provide via env var or Gradle property GOOGLE_SERVER_CLIENT_ID."
+            "GOOGLE_SERVER_CLIENT_ID is unset or placeholder. Provide via env var or " +
+                "Gradle property GOOGLE_SERVER_CLIENT_ID."
         }
-        return ServerClientIdGuard(id)
+        return id
     }
 }
 
@@ -230,91 +215,7 @@ annotation class AuthBaseUrl
 @Retention(AnnotationRetention.BINARY)
 annotation class AuthClient
 
-/**
- * Value class wrapper signaling the contained server client id has been validated.
- * @property value Non-blank, non-placeholder server client id used for Google sign in flows.
- */
-@JvmInline
-value class ServerClientIdGuard(val value: String)
-
-/** Abstraction over credential retrieval allowing substitution and testing. */
-interface CredentialCall {
-    /** Performs credential retrieval using the given Activity and request. */
-    suspend fun get(
-        activity: android.app.Activity,
-        request: androidx.credentials.GetCredentialRequest,
-    ): androidx.credentials.GetCredentialResponse
-}
-
-/** Production implementation delegating to [androidx.credentials.CredentialManager]. */
-class RealCredentialCall @javax.inject.Inject constructor() : CredentialCall {
-    override suspend fun get(
-        activity: android.app.Activity,
-        request: androidx.credentials.GetCredentialRequest,
-    ): androidx.credentials.GetCredentialResponse {
-        val cm = androidx.credentials.CredentialManager.create(activity)
-        return cm.getCredential(activity, request)
-    }
-}
-
-/** One Tap provider backed by Credential Manager returning a Google ID token when available. */
-class CredentialManagerOneTapProvider @javax.inject.Inject constructor(private val call: CredentialCall) :
-    OneTapCredentialProvider {
-    override suspend fun getIdToken(activity: android.app.Activity): String? =
-        try {
-            if (info.lwb.BuildConfig.DEBUG) {
-                android.util.Log.d(
-                    LOG_TAG_AUTH,
-                    LOG_MSG_START +
-                        info.lwb.BuildConfig.GOOGLE_SERVER_CLIENT_ID
-                            .take(LOG_PREFIX_LEN) + "…",
-                )
-            }
-            val googleIdOption =
-                com.google.android.libraries.identity.googleid.GetGoogleIdOption
-                    .Builder()
-                    .setServerClientId(info.lwb.BuildConfig.GOOGLE_SERVER_CLIENT_ID)
-                    .setFilterByAuthorizedAccounts(false)
-                    .setAutoSelectEnabled(false)
-                    .build()
-            val request =
-                androidx.credentials.GetCredentialRequest
-                    .Builder()
-                    .addCredentialOption(googleIdOption)
-                    .build()
-            val response =
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    call.get(activity, request)
-                }
-            val credential = response.credential
-            if (credential is androidx.credentials.CustomCredential &&
-                credential.type ==
-                com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-                    .TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
-            ) {
-                val googleCred =
-                    com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-                        .createFrom(credential.data)
-                if (info.lwb.BuildConfig.DEBUG) {
-                    android.util.Log.d(
-                        LOG_TAG_AUTH,
-                        LOG_MSG_SUCCESS + "${googleCred.idToken.isNotEmpty()}",
-                    )
-                }
-                googleCred.idToken
-            } else {
-                null
-            }
-        } catch (e: GetCredentialException) {
-            if (info.lwb.BuildConfig.DEBUG) {
-                runCatching {
-                    android.util.Log.w(
-                        LOG_TAG_AUTH,
-                        LOG_MSG_FAILURE + e.message,
-                        e,
-                    )
-                }
-            }
-            null
-        }
-}
+/** Qualifier for validated Google server client id String. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ServerClientId

@@ -21,8 +21,8 @@ private const val DS_NAME = "reader_settings"
 
 private val Context.dataStore by preferencesDataStore(name = DS_NAME)
 
-private const val DEFAULT_FONT_SCALE = 1.0
-private const val DEFAULT_LINE_HEIGHT = 1.2
+internal const val DEFAULT_FONT_SCALE = 1.0
+internal const val DEFAULT_LINE_HEIGHT = 1.2
 private const val MIN_FONT_SCALE = 0.8
 private const val MAX_FONT_SCALE = 1.6
 private const val MIN_LINE_HEIGHT = 1.0

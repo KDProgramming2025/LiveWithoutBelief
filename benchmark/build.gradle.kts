@@ -8,8 +8,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        minSdk = 26
-        targetSdk = 36
+    minSdk = 26
+    // targetSdk removed (library module); app module declares targetSdk.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -37,11 +37,13 @@ dependencies {
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }
 
-// Enable macrobenchmark to run without animations for stable metrics
+// Enable macrobenchmark device definition
 android {
-    testOptions.managedDevices.devices.create<com.android.build.api.dsl.ManagedVirtualDevice>("pixel6Api34") {
-        device = "Pixel 6"
-        apiLevel = 34
-        systemImageSource = "aosp"
+    testOptions.managedDevices.allDevices {
+        create<com.android.build.api.dsl.ManagedVirtualDevice>("pixel9xlApi36") {
+            device = "Pixel 9 XL"
+            apiLevel = 36
+            systemImageSource = "aosp"
+        }
     }
 }

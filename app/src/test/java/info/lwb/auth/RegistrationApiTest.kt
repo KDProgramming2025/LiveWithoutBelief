@@ -38,7 +38,8 @@ class RegistrationApiTest {
 
     @Test
     fun register_ignoresUnknownFields_on200() = runTest {
-        val body = """
+        val body =
+            """
             {"user":{
                 "id":"u-123",
                 "username":"alice",
@@ -46,7 +47,7 @@ class RegistrationApiTest {
                 "lastLogin":"2024-09-02T12:00:00Z",
                 "extra":"ignored"
             }}
-        """.trimIndent()
+            """.trimIndent()
         server.enqueue(MockResponse().setResponseCode(200).setBody(body))
 
         val (user, created) = api.register("alice@example.com")
@@ -66,12 +67,13 @@ class RegistrationApiTest {
 
     @Test
     fun register_setsCreatedTrue_on201() = runTest {
-        val body = """
+        val body =
+            """
             {"user":{
                 "id":"u-456",
                 "username":"bob"
             }}
-        """.trimIndent()
+            """.trimIndent()
         server.enqueue(MockResponse().setResponseCode(201).setBody(body))
 
         val (user, created) = api.register("bob@example.com")
