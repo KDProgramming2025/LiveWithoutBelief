@@ -171,7 +171,8 @@ class RemoteSessionValidator @Inject constructor(
         val path = AUTH_VALIDATE_PATH
         val body = "{\"idToken\":\"$idToken\"}"
         debugLog("request url=${endpoint(path)} bodyLen=${body.length}")
-        return Request.Builder()
+        return Request
+            .Builder()
             .url(endpoint(path))
             .post(body.toRequestBody(JSON.toMediaType()))
             .build()
@@ -180,8 +181,8 @@ class RemoteSessionValidator @Inject constructor(
     private inline fun execute(
         request: Request,
         map: (code: Int, retryAfterHeaderPresent: Boolean) -> ValidationResult,
-    ): ValidationResult {
-        return try {
+    ): ValidationResult =
+        try {
             client
                 .newCall(request)
                 .execute()
@@ -194,7 +195,6 @@ class RemoteSessionValidator @Inject constructor(
         } catch (_: Exception) {
             ValidationResult(false, ValidationError.Network)
         }
-    }
 
     private fun evaluateStatus(code: Int): ValidationResult = when {
         code == HTTP_OK || code == HTTP_CREATED -> {
@@ -223,12 +223,14 @@ class RemoteSessionValidator @Inject constructor(
         }
     }
 
-    private fun computeDelay(attempt: Int): Long = if (attempt == 0) {
-        0L
-    } else {
-        val factor = Math.pow(retryPolicy.backoffMultiplier, (attempt - 1).toDouble())
-        (retryPolicy.baseDelayMs * factor).toLong()
-    }
+    private fun computeDelay(attempt: Int): Long =
+        if (attempt == 0) {
+            0L
+        } else {
+            val factor = Math
+                .pow(retryPolicy.backoffMultiplier, (attempt - 1).toDouble())
+            (retryPolicy.baseDelayMs * factor).toLong()
+        }
 
     private fun debugLog(message: String) = if (BuildConfig.DEBUG) {
         runCatching {
