@@ -294,9 +294,11 @@ tasks.register("qualityGate") {
     notCompatibleWithConfigurationCache("Scans generated SARIF report files at execution time")
     // Ensure all analysis & formatting checks ran first
     dependsOn("detektAll")
-    // Depend on every subproject's spotlessCheck (will fail automatically on issues)
+    // Depend only on subprojects that actually have a spotlessCheck task
     subprojects.forEach { sp ->
-        dependsOn(":${sp.name}:spotlessCheck")
+        sp.tasks.matching { it.name == "spotlessCheck" }.configureEach {
+            this@register.dependsOn(this)
+        }
     }
     doLast {
         // Collect SARIF files (root + subprojects) similar to detektAggregateReport logic
