@@ -29,16 +29,21 @@ class ArticlesViewModel @Inject constructor(
     private val getArticleContentUseCase: GetArticleContentUseCase,
     private val refreshArticlesUseCase: RefreshArticlesUseCase,
 ) : ViewModel() {
-
     private val _articles = MutableStateFlow<Result<List<Article>>>(Result.Loading)
+
+    /** Latest article list with loading / success / error states. */
     val articles: StateFlow<Result<List<Article>>> = _articles.asStateFlow()
 
     private val _articleContent = MutableStateFlow<Result<ArticleContent>>(Result.Loading)
+
+    /** Content result for the most recently requested article id. */
     val articleContent: StateFlow<Result<ArticleContent>> = _articleContent.asStateFlow()
 
-    init { loadArticles() }
+    init {
+        startArticlesCollection()
+    }
 
-    private fun loadArticles() {
+    private fun startArticlesCollection() {
         viewModelScope.launch {
             getArticlesUseCase().collect { result ->
                 _articles.value = result
@@ -46,6 +51,7 @@ class ArticlesViewModel @Inject constructor(
         }
     }
 
+    /** Requests content for [articleId] and emits progressive states to [articleContent]. */
     fun loadArticleContent(articleId: String) {
         viewModelScope.launch {
             getArticleContentUseCase(articleId).collect { result ->
@@ -54,7 +60,10 @@ class ArticlesViewModel @Inject constructor(
         }
     }
 
+    /** Triggers a remote refresh of the article list (idempotent if backend unchanged). */
     fun refreshArticles() {
-        viewModelScope.launch { refreshArticlesUseCase() }
+        viewModelScope.launch {
+            refreshArticlesUseCase()
+        }
     }
 }

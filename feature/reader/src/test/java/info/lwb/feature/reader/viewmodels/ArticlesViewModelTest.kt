@@ -27,7 +27,6 @@ import org.junit.Test
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ArticlesViewModelTest {
-
     private val dispatcher = StandardTestDispatcher()
 
     private lateinit var articlesFlow: MutableSharedFlow<Result<List<Article>>>
