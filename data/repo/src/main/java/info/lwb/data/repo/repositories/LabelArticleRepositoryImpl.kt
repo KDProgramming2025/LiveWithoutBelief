@@ -16,10 +16,7 @@ import kotlinx.coroutines.withContext
  * Simple implementation that reuses the manifest endpoint and filters by label.
  * It maps to local ArticleEntity for shape consistency with core.model.Article.
  */
-class LabelArticleRepositoryImpl(
-    private val api: ArticleApi,
-    private val dao: ArticleDao,
-) : LabelArticleRepository {
+class LabelArticleRepositoryImpl(private val api: ArticleApi, private val dao: ArticleDao) : LabelArticleRepository {
     override suspend fun listByLabel(label: String): List<Article> = withContext(Dispatchers.IO) {
         val manifest = runCatching { api.getManifest() }.map { it.items }.getOrElse { emptyList() }
         val q = label.trim()
