@@ -13,14 +13,13 @@ class ContentParserTest {
         // NOTE: Triple-quoted Kotlin strings don't require escaping quotes. The previous version
         // mistakenly included backslashes (\") which made the parser regexes (expecting src="...") fail
         // causing image/audio/iframe blocks to be missed. This version removes the spurious backslashes.
-        val html = """
-            <h1>Title</h1>
-            <p>First paragraph.</p>
-            <img src="https://example.com/img.png" alt="Alt" />
-            <p>Second paragraph.</p>
-            <audio src="https://example.com/a.mp3"></audio>
-            <iframe src="https://www.youtube.com/embed/abc12345"></iframe>
-        """.trimIndent()
+        val html = """|<h1>Title</h1>
+        |<p>First paragraph.</p>
+        |<img src=\"https://example.com/img.png\" alt=\"Alt\" />
+        |<p>Second paragraph.</p>
+        |<audio src=\"https://example.com/a.mp3\"></audio>
+        |<iframe src=\"https://www.youtube.com/embed/abc12345\"></iframe>
+        """.trimMargin()
         val blocks = parseHtmlToBlocks(html)
         val headings = blocks.filterIsInstance<ContentBlock.Heading>()
         val paras = blocks.filterIsInstance<ContentBlock.Paragraph>()
