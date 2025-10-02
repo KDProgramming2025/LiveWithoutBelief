@@ -305,7 +305,7 @@ private fun ReaderScaffold(
             }
         },
     ) { padding ->
-    Column(
+        Column(
             Modifier
                 .padding(padding)
                 .pointerInput(Unit) { detectTapGestures(onTap = { onTapContent() }) },
