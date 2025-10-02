@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
+
 package info.lwb.ui.designsystem
 
 import androidx.compose.foundation.background
@@ -12,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+@Composable
 /**
  * Simple square preview block rendered using the current theme's primary color.
  *
@@ -19,7 +21,6 @@ import androidx.compose.ui.unit.dp
  *
  * @param modifier Modifier chain for sizing/styling; by default a 64.dp square.
  */
-@Composable
 fun ColorSwatch(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier

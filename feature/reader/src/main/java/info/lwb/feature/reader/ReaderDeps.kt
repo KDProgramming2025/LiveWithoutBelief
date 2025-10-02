@@ -15,10 +15,9 @@ import kotlinx.coroutines.flow.first
  * ViewModel exposing small set of dependencies (annotation use case) for the reader UI tree.
  */
 @HiltViewModel
-internal class ReaderDeps @Inject constructor(
-    private val addAnnotationUseCase: AddAnnotationUseCase,
-) : ViewModel() {
+internal class ReaderDeps @Inject constructor(private val addAnnotationUseCase: AddAnnotationUseCase) : ViewModel() {
     val scope get() = viewModelScope
+
     suspend fun addAnnotation(articleId: String, start: Int, end: Int, hash: String) =
         addAnnotationUseCase(articleId, start, end, hash)
 }

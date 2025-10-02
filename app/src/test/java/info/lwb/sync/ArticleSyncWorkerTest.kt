@@ -18,7 +18,8 @@ class ArticleSyncWorkerTest {
     @Test
     fun schedule_doesNotCrash() {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
-        val config = Configuration.Builder()
+        val config = Configuration
+            .Builder()
             .setExecutor(Executors.newSingleThreadExecutor())
             .build()
         WorkManagerTestInitHelper.initializeTestWorkManager(ctx, config)
