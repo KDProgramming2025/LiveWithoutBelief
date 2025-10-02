@@ -48,10 +48,9 @@ interface AuthFacade {
     suspend fun passwordLogin(username: String, password: String): Result<AuthUser>
 }
 
-/** Optional abstraction for One Tap / Credential Manager based Google ID token retrieval. */
-
 /**
  * Abstraction over Firebase token refresh so unit tests can mock without dealing with Task APIs.
+ * (Legacy note: Google ID token retrieval responsibilities were moved to IdentityCredentialFacade.)
  */
 interface TokenRefresher {
     /** Refreshes a Firebase ID token, optionally forcing network. Returns raw token string. */
