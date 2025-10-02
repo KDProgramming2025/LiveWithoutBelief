@@ -10,6 +10,14 @@ import dagger.hilt.android.HiltAndroidApp
 import info.lwb.sync.ArticleSyncWorker
 import info.lwb.telemetry.Telemetry
 
+/**
+ * Application entry point initializing telemetry and scheduling periodic background sync.
+ *
+ * Responsibilities:
+ *  - Initialize [Telemetry] early for structured event logging.
+ *  - Emit an app_start event with version metadata.
+ *  - Schedule the recurring [ArticleSyncWorker] to keep local content fresh.
+ */
 @HiltAndroidApp
 class LiveWithoutBeliefApp : Application() {
     override fun onCreate() {
