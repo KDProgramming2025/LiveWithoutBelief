@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-package info.lwb.testfixtures
+package info.lwb.core.test.fixtures
 
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
