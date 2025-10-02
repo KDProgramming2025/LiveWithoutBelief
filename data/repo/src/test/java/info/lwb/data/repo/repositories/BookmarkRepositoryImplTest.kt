@@ -19,7 +19,8 @@ import org.robolectric.RuntimeEnvironment
 class BookmarkRepositoryImplTest {
     private val ctx = RuntimeEnvironment.getApplication()
 
-    private val db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
+    private val db = Room
+        .inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
         .allowMainThreadQueries()
         .build()
     private val session = object : UserSession {
