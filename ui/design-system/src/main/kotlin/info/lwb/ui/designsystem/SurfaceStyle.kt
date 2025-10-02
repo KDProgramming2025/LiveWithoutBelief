@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.toArgb
@@ -367,14 +368,14 @@ private fun Modifier.surfaceRim(
         drawRoundRect(
             color = colors.shadowLight.copy(alpha = metrics.rimLightAlpha),
             style = Stroke(width = metrics.strokeLightWidth.toPx()),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
+            cornerRadius = CornerRadius(r, r),
         )
         val inset = metrics.strokeLightWidth.toPx()
         withTransform({ translate(inset, inset) }) {
             drawRoundRect(
                 color = colors.shadowDark.copy(alpha = metrics.rimDarkAlpha),
                 style = Stroke(width = metrics.strokeDarkWidth.toPx()),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
+                cornerRadius = CornerRadius(r, r),
             )
         }
     }
