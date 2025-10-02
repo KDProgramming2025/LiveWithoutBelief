@@ -278,3 +278,59 @@ tasks.register("detektAggregateReport") {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Quality Gate: Fail assembleDebug / installDebug if any detekt findings exist
+// ---------------------------------------------------------------------------
+// Rationale:
+//  * We keep detekt tasks' ignoreFailures=true so reports are always generated for inspection.
+//  * This gate parses all SARIF report files produced by detekt tasks. If ANY ruleId entries are
+//    present, it throws a GradleException to fail the build prior to producing installable APKs.
+//  * spotlessCheck already fails on formatting violations, so we only need to depend on it.
+//  * Hooked into application module assembleDebug / installDebug tasks to enforce locally & in CI.
+//  * Uses dynamic file I/O -> not configuration cache compatible.
+tasks.register("qualityGate") {
+    group = "verification"
+    description = "Fails if detekt findings or formatting violations are present before debug build/install"
+    notCompatibleWithConfigurationCache("Scans generated SARIF report files at execution time")
+    // Ensure all analysis & formatting checks ran first
+    dependsOn("detektAll")
+    // Depend on every subproject's spotlessCheck (will fail automatically on issues)
+    subprojects.forEach { sp ->
+        dependsOn(":${sp.name}:spotlessCheck")
+    }
+    doLast {
+        // Collect SARIF files (root + subprojects) similar to detektAggregateReport logic
+        val sarifFiles = subprojects.mapNotNull { sp ->
+            sp.layout.buildDirectory.asFile.get().resolve("reports/detekt")
+                .listFiles { f -> f.extension == "sarif" }?.toList()
+        }.flatten() + rootProject.layout.buildDirectory.asFile.get()
+            .resolve("reports/detekt")
+            .listFiles { f -> f.extension == "sarif" }
+            .orEmpty()
+
+        if (sarifFiles.isEmpty()) {
+            logger.warn("[qualityGate] No SARIF files found. Did detekt run?")
+            return@doLast
+        }
+        val ruleRegex = Regex("\"ruleId\"\\s*:\\s*\"([^\"]+)\"")
+        val totalFindings = sarifFiles.sumOf { file ->
+            ruleRegex.findAll(file.readText()).count()
+        }
+        if (totalFindings > 0) {
+            throw GradleException("qualityGate failed: $totalFindings detekt findings detected. Fix before building.")
+        } else {
+            println("[qualityGate] Passed: 0 detekt findings and spotless clean.")
+        }
+    }
+}
+
+// Attach gate to application assembleDebug / installDebug tasks
+subprojects {
+    plugins.withId("com.android.application") {
+        // Only add dependency if tasks exist (lazy lookup via named/matching)
+        tasks.matching { it.name in setOf("assembleDebug", "installDebug") }.configureEach {
+            dependsOn(rootProject.tasks.named("qualityGate"))
+        }
+    }
+}
+
