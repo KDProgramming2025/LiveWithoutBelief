@@ -4,6 +4,7 @@
  */
 package info.lwb.feature.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,10 +25,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
+/**
+ * Top-level settings screen route composable.
+ *
+ * Exposes an [onBack] callback to support navigation; a [BackHandler] is installed so the system back
+ * button will invoke it when provided. The screen currently offers appearance (theme mode) controls.
+ */
 @Composable
 fun SettingsRoute(onBack: () -> Unit = {}) {
     val vm: SettingsViewModel = hiltViewModel()
     val mode by vm.themeMode.collectAsState()
+    BackHandler(enabled = onBack !== {}) { onBack() }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Appearance", style = MaterialTheme.typography.titleLarge)
