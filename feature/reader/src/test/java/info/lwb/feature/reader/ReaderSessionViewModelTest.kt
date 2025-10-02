@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader
 
 import app.cash.turbine.test
@@ -13,18 +17,14 @@ import org.junit.Before
 import org.junit.Test
 
 private class FakeReadingProgressRepo : ReadingProgressRepository {
-    data class Progress(var pageIndex: Int, var totalPages: Int)
-    private val map = mutableMapOf<String, Progress>()
-    private val flows = mutableMapOf<String, MutableStateFlow<ReadingProgressRepository.Progress?> >()
+    private val flows = mutableMapOf<String, MutableStateFlow<ReadingProgressRepository.Progress?>>()
 
-    override fun observe(articleId: String): StateFlow<ReadingProgressRepository.Progress?> {
-        val flow = flows.getOrPut(articleId) { MutableStateFlow(null) }
-        return flow
-    }
+    override fun observe(articleId: String): StateFlow<ReadingProgressRepository.Progress?> =
+        flows.getOrPut(articleId) { MutableStateFlow(null) }
 
     override suspend fun update(articleId: String, pageIndex: Int, totalPages: Int) {
-        val flow = flows.getOrPut(articleId) { MutableStateFlow(null) }
-        flow.value = ReadingProgressRepository.Progress(pageIndex, totalPages)
+        flows.getOrPut(articleId) { MutableStateFlow(null) }
+            .value = ReadingProgressRepository.Progress(pageIndex, totalPages)
     }
 }
 
@@ -36,8 +36,6 @@ private class FakeReaderSettingsRepository : ReaderSettingsRepositoryInterface {
     override suspend fun setLineHeight(v: Double) { lineHeight.value = v }
     override suspend fun setBackground(bg: ReaderSettingsRepository.ReaderBackground) { background.value = bg }
 }
-
-/** NOTE: Introduced thin interface for testing (ReaderSettingsRepositoryInterface) if not present. */
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReaderSessionViewModelTest {

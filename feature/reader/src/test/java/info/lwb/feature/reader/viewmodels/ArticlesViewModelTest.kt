@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.feature.reader.viewmodels
 
 import app.cash.turbine.test
@@ -8,7 +12,7 @@ import info.lwb.core.domain.RefreshArticlesUseCase
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
+// Removed unused Flow import
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
