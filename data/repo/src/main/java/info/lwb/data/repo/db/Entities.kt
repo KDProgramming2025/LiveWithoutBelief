@@ -9,12 +9,19 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.RoomDatabase
+import androidx.room.Dao
+import androidx.room.Query
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Article metadata persisted locally.
  *
  * Represents the immutable identifying & descriptive fields of an article. Content/body lives
- * in [ArticleContentEntity]. Assets (images/audio/video) live in [ArticleAssetEntity].
+ * in [ArticleContentEntity]. Assets (images/audio/video) live in [ArticleAssetEntity]. The fields
+ * [label], [order], [coverUrl] and [iconUrl] were added when unifying label-based filtering and
+ * guaranteeing non-null artwork references from the backend manifest.
  *
  * @property id Stable unique article identifier (UUID or slug hash from server)
  * @property title Human readable title
@@ -22,6 +29,10 @@ import androidx.room.RoomDatabase
  * @property version Monotonically increasing version for optimistic updates / cache invalidation
  * @property updatedAt ISO-8601 timestamp string of last server modification
  * @property wordCount Approximate plain text word count (used for reading time estimates)
+ * @property label Optional menu/category label (null if uncategorized)
+ * @property order Stable ordering integer (ascending) used for deterministic UI ordering
+ * @property coverUrl Non-null cover image URL provided by server
+ * @property iconUrl Non-null icon image URL provided by server
  */
 @Entity(tableName = "articles")
 data class ArticleEntity(
@@ -31,6 +42,10 @@ data class ArticleEntity(
     val version: Int,
     val updatedAt: String,
     val wordCount: Int,
+    val label: String?, // See KDoc
+    val `order`: Int, // Stable ordering
+    val coverUrl: String, // Cover image URL
+    val iconUrl: String, // Icon image URL
 )
 
 /**
@@ -184,13 +199,43 @@ data class ReadingProgressEntity(
     val updatedAt: String,
 )
 
+/** Offline-cached navigation menu item (table fully replaced on each successful sync). */
+@Entity(tableName = "menu_items")
+data class MenuItemEntity(
+    /** Stable backend identifier */
+    @PrimaryKey val id: String,
+    /** Display title */
+    val title: String,
+    /** Optional label/category tag */
+    val label: String?,
+    /** Stable ordering integer (ascending) */
+    val `order`: Int,
+    /** Optional icon URL or relative path */
+    val iconPath: String?,
+    /** ISO-8601 creation timestamp */
+    val createdAt: String,
+)
+
+/** DAO for persisted menu items enabling offline availability. */
+@Dao
+interface MenuDao {
+    /** Stream ordered menu items; emits on any table change. */
+    @Query("SELECT * FROM menu_items ORDER BY `order` ASC, title ASC")
+    fun observeMenu(): Flow<List<MenuItemEntity>>
+
+    /** Replace all rows with [items] in a single transaction. */
+    @Query("DELETE FROM menu_items")
+    suspend fun clearAll()
+
+    /** Insert or replace all [items] after clearing existing data. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<MenuItemEntity>)
+}
+
 /**
  * Main Room database entry point bundling all persistent entities.
  *
- * Version history:
- * 1 -> Initial schema
- * 2 -> Added thread messages & reading progress
- * 3 -> Added asset dimension + sizeBytes tracking
+ * Version history intentionally reset (pre-release, schema not stable). Single version = 1.
  */
 @Database(
     entities = [
@@ -202,8 +247,9 @@ data class ReadingProgressEntity(
         AnnotationEntity::class,
         ThreadMessageEntity::class,
         ReadingProgressEntity::class,
+        MenuItemEntity::class,
     ],
-    version = 3,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -224,4 +270,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     /** DAO for reading progress state */
     abstract fun readingProgressDao(): ReadingProgressDao
+
+    /** DAO for navigation menu items */
+    abstract fun menuDao(): MenuDao
 }

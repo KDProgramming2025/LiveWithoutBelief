@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-@file:Suppress("FunctionName")
 
 package info.lwb.feature.reader
 
@@ -47,8 +46,6 @@ internal data class ReaderSettingsState(
     val onFontScaleChange: (Double) -> Unit,
     val onLineHeightChange: (Double) -> Unit,
 )
-
-// ArticleWebView moved to ui/ReaderWebView.kt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -315,7 +312,3 @@ private fun ReaderScaffold(
         }
     }
 }
-
-// Duplicated paged/single content & overlays removed; authoritative versions live in
-// ReaderContent.kt and ReaderOverlays.kt. Utility helpers relocated to ReaderDeps.kt.
-// Previews live in ReaderScreenPreview.kt.

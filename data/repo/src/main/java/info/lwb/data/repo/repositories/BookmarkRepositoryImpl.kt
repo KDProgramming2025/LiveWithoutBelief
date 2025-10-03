@@ -175,4 +175,8 @@ private fun ArticleEntity.toDomain() = Article(
     version = version,
     updatedAt = updatedAt,
     wordCount = wordCount,
+    label = label,
+    order = order,
+    coverUrl = coverUrl,
+    iconUrl = iconUrl,
 )

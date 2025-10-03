@@ -356,8 +356,11 @@ private fun updateRemoteArticleWebView(
     reloadIfDifferentUrl(webView, url)
 }
 
+// Metadata object used as WebView.tag to avoid unchecked array casts.
+private data class WebViewMeta(var injectedCssRef: String?, var lastRequestedUrl: String?)
+
 private fun applyCssRef(webView: WebView, injectedCss: String?) {
-    (webView.tag as? Array<String?>)?.let { it[0] = injectedCss }
+    (webView.tag as? WebViewMeta)?.injectedCssRef = injectedCss
 }
 
 private fun injectDomHelpers(webView: WebView) {
@@ -429,9 +432,16 @@ private fun maybeRestoreScroll(
 }
 
 private fun reloadIfDifferentUrl(webView: WebView, url: String) {
-    if (webView.url != url) {
-        webView.loadUrl(url)
+    val meta = webView.tag as? WebViewMeta
+    if (meta?.lastRequestedUrl == url) {
+        return
     }
+    if (webView.url == url) {
+        meta?.lastRequestedUrl = url
+        return
+    }
+    meta?.lastRequestedUrl = url
+    webView.loadUrl(url)
 }
 
 private fun createConfiguredWebView(
@@ -458,8 +468,9 @@ private fun createConfiguredWebView(
     val (ready, firstLoad) = readyState()
     val webView = WebView(ctx)
     val isInlineContent = url.isNullOrBlank() && !htmlBody.isNullOrBlank()
-    val cssRef = arrayOf(injectedCss)
-    webView.tag = cssRef
+    // Store metadata instead of raw array to avoid unchecked casts.
+    val meta = WebViewMeta(injectedCssRef = injectedCss, lastRequestedUrl = null)
+    webView.tag = meta
     webView.configureBaseSettings(backgroundColor)
     webView.setupTouchHandlers(onTap)
     webView.setupScrollHandler(
@@ -474,7 +485,7 @@ private fun createConfiguredWebView(
     )
     webView.webViewClient = ArticleClient(
         isInlineContent = isInlineContent,
-        cssRef = cssRef,
+        cssRef = arrayOf(meta.injectedCssRef, meta.lastRequestedUrl),
         injectedCss = injectedCss,
         initialAnchor = initialAnchor,
         initialScrollY = initialScrollY ?: 0,
@@ -503,6 +514,7 @@ private fun createConfiguredWebView(
         evaluate = { js -> webView.evaluateJavascript(js, null) },
     )
     if (!url.isNullOrBlank()) {
+        (webView.tag as? WebViewMeta)?.lastRequestedUrl = url
         webView.loadUrl(url)
     } else {
         val finalHtml = buildInlineHtml(htmlBody, injectedCss)

@@ -70,9 +70,26 @@ class SearchArticlesUseCase(private val articleRepository: ArticleRepository) {
 /**
  * Lists articles associated with an arbitrary label/tag. Primarily used for taxonomy views.
  */
-class GetArticlesByLabelUseCase(private val repo: LabelArticleRepository) {
-    /** @param label tag/label token; must be non-empty. */
-    suspend operator fun invoke(label: String): List<Article> = repo.listByLabel(label)
+class GetArticlesByLabelUseCase(private val articleRepository: ArticleRepository) {
+    /**
+     * Returns a snapshot list filtered by label (case-insensitive contains semantics).
+     * Local snapshot only (offline friendly). Remote refresh is triggered elsewhere explicitly.
+     */
+    suspend operator fun invoke(label: String): List<Article> {
+        val q = label.trim()
+        if (q.isEmpty()) {
+            return emptyList()
+        }
+        val snapshot = articleRepository.snapshotArticles()
+        val filtered = snapshot.filter { a ->
+            val lbl = a.label?.trim().orEmpty()
+            lbl.equals(q, ignoreCase = true) || (lbl.isNotEmpty() && lbl.contains(q, ignoreCase = true))
+        }
+        return filtered.sortedWith(
+            compareBy<Article> { it.order }
+                .thenBy { it.title },
+        )
+    }
 }
 
 /**

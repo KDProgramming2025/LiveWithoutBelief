@@ -23,6 +23,9 @@ interface ArticleRepository {
     /** Emits the current list of articles (cached + remote refresh errors wrapped in [Result]). */
     fun getArticles(): Flow<Result<List<Article>>>
 
+    /** Returns a one-shot snapshot of currently cached articles (no remote call). */
+    suspend fun snapshotArticles(): List<Article>
+
     /** Emits the full parsed content (pages/blocks) for a given [articleId]. */
     fun getArticleContent(articleId: String): Flow<Result<ArticleContent>>
 
@@ -38,11 +41,7 @@ interface ArticleRepository {
     suspend fun searchLocal(query: String, limit: Int = 25, offset: Int = 0): List<Article>
 }
 
-/** Read-only repository for fetching articles filtered by menu label. Backed by admin manifest. */
-interface LabelArticleRepository {
-    /** Returns articles whose label equals the given label (case-insensitive match). */
-    suspend fun listByLabel(label: String): List<Article>
-}
+// Removed separate LabelArticleRepository – functionality unified in ArticleRepository via filtering helpers.
 
 /**
  * Manages user bookmarks and folders. Implementations persist state locally and/or remotely.

@@ -2,23 +2,21 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-@file:Suppress("FunctionName")
 
 package info.lwb
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -31,64 +29,55 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
-import info.lwb.auth.AltchaTokenProvider
-import info.lwb.auth.AuthFacade
 import info.lwb.auth.AuthViewModel
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.home.HomeRoute
 import info.lwb.feature.search.SearchRoute
 import info.lwb.feature.settings.SettingsRoute
+import info.lwb.feature.reader.ReaderByIdRoute
+import info.lwb.feature.reader.ArticleListByLabelRoute
 import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.LwbTheme
-import javax.inject.Inject
+import java.net.URLEncoder
+import java.net.URLDecoder
 
 /**
  * Root activity hosting the composable navigation graph.
  *
  * Responsibilities:
- * - Initialize dependency-injected authentication facade & Altcha provider.
- * - Dispatch deep links (future use via intent data string) into the composable hierarchy.
+ * - Dispatch deep links (future enhancement) into the composable hierarchy.
  * - Provide a themed root surface and navigation host.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    /** Authentication facade providing sign-in/up/logout operations. */
-    @Inject lateinit var authFacade: AuthFacade
-
-    /** Provider for Altcha challenge tokens used during sign-up / security flows. */
-    @Inject lateinit var altchaProvider: AltchaTokenProvider
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { appRoot(authFacade, altchaProvider) }
+        setContent { appRoot() }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        setContent { appRoot(authFacade, altchaProvider) }
+        setContent { appRoot() }
     }
 }
 
 @Composable
-private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider) {
+private fun appRoot() {
     val navController = rememberNavController()
-    // Observe theme preference using a lightweight VM scoped at root
     val settingsVm: SettingsViewModel = hiltViewModel()
     val theme by settingsVm.themeMode.collectAsState()
     val dark = when (theme) {
         ThemeMode.SYSTEM -> {
-            androidx.compose.foundation.isSystemInDarkTheme()
+            isSystemInDarkTheme()
         }
         ThemeMode.LIGHT -> {
             false
@@ -99,17 +88,7 @@ private fun appRoot(authFacade: AuthFacade, altchaProvider: AltchaTokenProvider)
     }
     LwbTheme(darkTheme = dark) {
         Surface(color = MaterialTheme.colorScheme.background) {
-            val vm: AuthViewModel = viewModel(
-                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                        @Suppress("UNCHECKED_CAST")
-                        return AuthViewModel(authFacade, altchaProvider) as T
-                    }
-                },
-            )
-            val state = vm.state.collectAsState() // retained for future UI wiring
-            val activity = LocalContext.current as android.app.Activity // reserved for potential back handling
-            // Temporarily hide authentication; always show Home main page
+            hiltViewModel<AuthViewModel>()
             appNavHost(navController)
         }
     }
@@ -187,14 +166,14 @@ private object Destinations {
 }
 
 @Composable
-private fun appNavHost(navController: NavHostController) {
+private fun appNavHost(navController: NavHostController) =
     NavHost(navController = navController, startDestination = Destinations.HOME) {
         composable(Destinations.HOME) {
-            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize()) {
                 HomeRoute(
                     onItemClick = { _, label ->
                         if (!label.isNullOrBlank()) {
-                            val enc = java.net.URLEncoder.encode(label, Charsets.UTF_8.name())
+                            val enc = URLEncoder.encode(label, Charsets.UTF_8.name())
                             navController.navigate("label_list/$enc")
                         } else {
                             // Fallback: no label mapping yet
@@ -204,19 +183,12 @@ private fun appNavHost(navController: NavHostController) {
                         // Placeholder: navigate to Reader screen (later, restore last position)
                         navController.navigate(Destinations.READER)
                     },
+                    onOpenSettings = { navController.navigate(Destinations.SETTINGS) },
                 )
-                FloatingActionButton(
-                    onClick = { navController.navigate(Destinations.SETTINGS) },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp),
-                ) {
-                    androidx.compose.material3.Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                }
             }
         }
         composable(Destinations.READER) {
-            info.lwb.feature.reader.ReaderByIdRoute(
+            ReaderByIdRoute(
                 articleId = "sample-1",
                 onNavigateBack = { navController.popBackStack() },
             )
@@ -224,7 +196,7 @@ private fun appNavHost(navController: NavHostController) {
         composable(Destinations.READER_BY_ID) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("articleId")
             if (id != null) {
-                info.lwb.feature.reader.ReaderByIdRoute(
+                ReaderByIdRoute(
                     articleId = id,
                     onNavigateBack = { navController.popBackStack() },
                 )
@@ -232,11 +204,11 @@ private fun appNavHost(navController: NavHostController) {
         }
         composable(Destinations.SEARCH) { SearchRoute() }
         composable(Destinations.BOOKMARKS) { BookmarksRoute() }
-        composable(Destinations.SETTINGS) { SettingsRoute() }
+        composable(Destinations.SETTINGS) { SettingsRoute(onBack = { navController.popBackStack() }) }
         composable(Destinations.LABEL_LIST) { backStackEntry ->
             val label = backStackEntry.arguments?.getString("label") ?: ""
-            info.lwb.feature.reader.ArticleListByLabelRoute(
-                label = java.net.URLDecoder.decode(label, Charsets.UTF_8.name()),
+            ArticleListByLabelRoute(
+                label = URLDecoder.decode(label, Charsets.UTF_8.name()),
                 onArticleClick = { article ->
                     // Prefer slug if stable; else id
                     val id = article.id.ifBlank { article.slug }
@@ -247,4 +219,3 @@ private fun appNavHost(navController: NavHostController) {
             )
         }
     }
-}

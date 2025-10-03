@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-@file:Suppress("FunctionName")
 
 package info.lwb.feature.bookmarks
 
@@ -18,7 +17,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
  *
  * @param vm The injected [BookmarksViewModel]; provided automatically via [hiltViewModel].
  */
-@Suppress("FunctionName")
 @Composable
 fun BookmarksRoute(vm: BookmarksViewModel = hiltViewModel()) {
     BookmarksScreen(vm)

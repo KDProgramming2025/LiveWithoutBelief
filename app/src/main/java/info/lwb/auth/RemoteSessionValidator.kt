@@ -17,6 +17,17 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
+private const val DEBUG_TAG = "AuthValidate"
+private const val AUTH_VALIDATE_PATH = "/v1/auth/google"
+private const val RETRY_AFTER = "Retry-After"
+private const val JSON = "application/json"
+private const val HTTP_OK = 200
+private const val HTTP_CREATED = 201
+private const val HTTP_BAD_REQUEST = 400
+private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_SERVER_MIN = 500
+private const val HTTP_SERVER_MAX = 599
+
 /**
  * Retry configuration governing exponential backoff for remote session validation.
  * @property maxAttempts Total validation attempts (must be >= 1).
@@ -243,15 +254,3 @@ class RemoteSessionValidator @Inject constructor(
 
     override suspend fun revoke(idToken: String) = withContext(Dispatchers.IO) { /* No-op (natural expiry). */ }
 }
-
-// Constants extracted from magic numbers and repeated strings for clarity & reuse
-private const val DEBUG_TAG = "AuthValidate"
-private const val AUTH_VALIDATE_PATH = "/v1/auth/google"
-private const val RETRY_AFTER = "Retry-After"
-private const val JSON = "application/json"
-private const val HTTP_OK = 200
-private const val HTTP_CREATED = 201
-private const val HTTP_BAD_REQUEST = 400
-private const val HTTP_UNAUTHORIZED = 401
-private const val HTTP_SERVER_MIN = 500
-private const val HTTP_SERVER_MAX = 599

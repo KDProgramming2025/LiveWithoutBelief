@@ -26,8 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import info.lwb.feature.reader.ui.ActionRail
-import info.lwb.feature.reader.ui.ActionRailItem
+import info.lwb.ui.designsystem.ActionRail
+import info.lwb.ui.designsystem.ActionRailItem
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ReaderAppearanceSheet
 

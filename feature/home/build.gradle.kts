@@ -45,6 +45,8 @@ dependencies {
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.coil)
+    // Official Compose (material) for pull-to-refresh APIs
+    implementation("androidx.compose.material:material")
 
     // Compose tooling for @Preview
     implementation(libs.compose.ui.tooling.preview)

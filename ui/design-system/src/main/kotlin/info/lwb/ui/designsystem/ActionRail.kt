@@ -1,8 +1,7 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2024 Live Without Belief
  */
-package info.lwb.feature.reader.ui
+package info.lwb.ui.designsystem
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
@@ -22,16 +21,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -53,20 +50,24 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * A floating action rail suitable for reading UIs.
+ * A floating, expandable vertical action rail for contextual quick actions.
  *
- * Behavior:
- * - Collapsed: shows only the main toggle button (defaults to a gear icon).
- * - Expanded: shows a vertical stack of pill-style actions (icon + label) above the main button,
- *   plus a light scrim that collapses the rail on outside tap.
- * - Items order: [items[0]] is closest to the main button (bottom-most), items grow upwards.
+ * Usage scenarios:
+ *  - Reader screen: per‑page or selection actions.
+ *  - Home/dashboard: quick creation or navigation actions.
+ *
+ * UX details:
+ *  - Collapsed: Only the toggle button is visible.
+ *  - Expanded: Actions appear in a vertical stack (first item in [items] nearest the toggle).
+ *  - Tapping outside (scrim) or selecting an action collapses the rail.
+ *  - Internal state keeps API minimal; can be lifted later if external control is needed.
  */
 @Composable
-internal fun ActionRail(
-    modifier: Modifier = Modifier,
+fun ActionRail(
     items: List<ActionRailItem>,
-    mainIcon: ImageVector = Icons.Filled.Settings,
-    mainContentDescription: String = DEFAULT_MAIN_CONTENT_DESCRIPTION,
+    modifier: Modifier = Modifier,
+    mainIcon: ImageVector,
+    mainContentDescription: String,
     itemHeight: Dp = DefaultDimensions.ItemHeight,
     itemSpacing: Dp = DefaultDimensions.ItemSpacing,
     railWidth: Dp = DefaultDimensions.RailWidth,
@@ -111,6 +112,14 @@ internal fun ActionRail(
         }
     }
 }
+
+/**
+ * Describes a single actionable pill displayed in [ActionRail].
+ * @property icon Vector icon rendered at start of the pill.
+ * @property label Short human readable label (single line, ellipsized if overflow).
+ * @property onClick Callback executed after haptic feedback when the pill is tapped.
+ */
+data class ActionRailItem(val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
 @Composable
 private fun RailScrim(expanded: Boolean, onCollapse: () -> Unit) {
@@ -229,10 +238,7 @@ private fun ActionRailPill(
     }
 }
 
-/** A single action item for [ActionRail]. items[0] is the bottom-most (closest to the main button). */
-internal data class ActionRailItem(val icon: ImageVector, val label: String, val onClick: () -> Unit)
-
-// Default dimensions consolidated as named constants for clarity and to eliminate magic numbers
+// Dimension defaults
 private object DefaultDimensions {
     val ItemHeight = 48.dp
     val ItemSpacing = 12.dp
@@ -240,7 +246,7 @@ private object DefaultDimensions {
     val CornerRadius = 24.dp
 }
 
-// Animation & UI constants extracted from previous inline magic numbers
+// Animation constants
 private const val ITEM_STAGGER_BASE_MS = 40
 private const val FADE_IN_DURATION_MS = 90
 private const val EXPAND_DURATION_MS = 160
@@ -251,4 +257,3 @@ private const val SCRIM_ALPHA = 0.32f
 private val TOGGLE_BUTTON_SIZE = 56.dp
 private val TOGGLE_SHADOW_ELEVATION = 6.dp
 private val TOGGLE_TONAL_ELEVATION = 3.dp
-private const val DEFAULT_MAIN_CONTENT_DESCRIPTION = "Reader actions"

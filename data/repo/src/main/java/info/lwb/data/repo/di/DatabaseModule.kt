@@ -6,8 +6,7 @@ package info.lwb.data.repo.di
 
 import android.content.Context
 import androidx.room.Room
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+// Removed migration imports as they are no longer needed
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,9 +15,7 @@ import dagger.hilt.components.SingletonComponent
 import info.lwb.core.domain.AnnotationRepository
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.domain.BookmarkRepository
-import info.lwb.core.domain.GetArticlesByLabelUseCase
 import info.lwb.core.domain.GetMenuUseCase
-import info.lwb.core.domain.LabelArticleRepository
 import info.lwb.core.domain.MenuRepository
 import info.lwb.core.domain.ReadingProgressRepository
 import info.lwb.core.domain.RefreshMenuUseCase
@@ -28,9 +25,9 @@ import info.lwb.data.repo.db.AppDatabase
 import info.lwb.data.repo.repositories.AnnotationRepositoryImpl
 import info.lwb.data.repo.repositories.ArticleRepositoryImpl
 import info.lwb.data.repo.repositories.BookmarkRepositoryImpl
-import info.lwb.data.repo.repositories.LabelArticleRepositoryImpl
 import info.lwb.data.repo.repositories.ReadingProgressRepositoryImpl
 import info.lwb.data.repo.repositories.menu.MenuRepositoryImpl
+import info.lwb.data.repo.db.MenuDao
 import javax.inject.Singleton
 
 /**
@@ -40,33 +37,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    private const val VERSION_1 = 1
-    private const val VERSION_2 = 2
-    private const val VERSION_3 = 3
-
-    private val MIGRATION_1_2 = object : Migration(VERSION_1, VERSION_2) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS reading_progress (
-                    articleId TEXT NOT NULL PRIMARY KEY,
-                    pageIndex INTEGER NOT NULL,
-                    totalPages INTEGER NOT NULL,
-                    progress REAL NOT NULL,
-                    updatedAt TEXT NOT NULL
-                )
-                """.trimIndent(),
-            )
-        }
-    }
-
-    private val MIGRATION_2_3 = object : Migration(VERSION_2, VERSION_3) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            // Add nullable indexUrl column to article_contents
-            db.execSQL("ALTER TABLE article_contents ADD COLUMN indexUrl TEXT")
-        }
-    }
-
     /** Provide the Room [AppDatabase] instance with registered migrations. */
     @Provides
     @Singleton
@@ -74,10 +44,8 @@ object DatabaseModule {
         @ApplicationContext context: Context,
     ): AppDatabase = Room
         .databaseBuilder(context, AppDatabase::class.java, DB_NAME)
-        .addMigrations(
-            MIGRATION_1_2,
-            MIGRATION_2_3,
-        ).build()
+        .fallbackToDestructiveMigration()
+        .build()
 
     /** DAO for articles table. */
     @Provides
@@ -115,6 +83,12 @@ object DatabaseModule {
         db: AppDatabase,
     ): info.lwb.data.repo.db.ReadingProgressDao = db.readingProgressDao()
 
+    /** DAO for menu items table. */
+    @Provides
+    fun provideMenuDao(
+        db: AppDatabase,
+    ): MenuDao = db.menuDao()
+
     /** Repository for articles syncing and persistence. */
     @Provides
     @Singleton
@@ -124,17 +98,6 @@ object DatabaseModule {
     ): ArticleRepository = ArticleRepositoryImpl(
         api = api,
         articleDao = db.articleDao(),
-    )
-
-    /** Repository for label -> articles relationships. */
-    @Provides
-    @Singleton
-    fun provideLabelArticleRepository(
-        api: ArticleApi,
-        db: AppDatabase,
-    ): LabelArticleRepository = LabelArticleRepositoryImpl(
-        api = api,
-        dao = db.articleDao(),
     )
 
     /** Repository for reading progress persistence. */
@@ -172,7 +135,8 @@ object DatabaseModule {
     @Singleton
     fun provideMenuRepository(
         api: MenuApi,
-    ): MenuRepository = MenuRepositoryImpl(api)
+        menuDao: MenuDao,
+    ): MenuRepository = MenuRepositoryImpl(api, menuDao)
 
     /** Use case to retrieve menu. */
     @Provides
@@ -186,11 +150,7 @@ object DatabaseModule {
         repo: MenuRepository,
     ): RefreshMenuUseCase = RefreshMenuUseCase(repo)
 
-    /** Use case to fetch articles by label. */
-    @Provides
-    fun provideGetArticlesByLabelUseCase(
-        repo: LabelArticleRepository,
-    ): GetArticlesByLabelUseCase = GetArticlesByLabelUseCase(repo)
+    // Label filtering now handled by unified ArticleRepository; dedicated provider removed.
 
     private const val DB_NAME = "lwb.db"
 }

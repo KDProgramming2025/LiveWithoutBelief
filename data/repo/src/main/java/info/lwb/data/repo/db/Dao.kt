@@ -99,7 +99,8 @@ interface ArticleDao {
      */
     @Query(
         "SELECT a.id AS id, a.title AS title, a.slug AS slug, a.version AS version, " +
-            "a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText " +
+            "a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText, " +
+            "a.label AS label, a.`order` AS ordering, a.coverUrl AS coverUrl, a.iconUrl AS iconUrl " +
             "FROM articles a JOIN article_contents c ON c.articleId = a.id " +
             "WHERE (c.plainText LIKE '%' || :q || '%' OR a.title LIKE '%' || :q || '%') " +
             "ORDER BY a.updatedAt DESC LIMIT :limit OFFSET :offset",
@@ -126,6 +127,14 @@ data class ArticleSearchRow(
     val wordCount: Int,
     /** Plain text body excerpt / full text used for LIKE search. */
     val plainText: String,
+    /** Optional category label for result ordering/filtering. */
+    val label: String?,
+    /** Explicit ordering index (matches ArticleEntity.`order`). */
+    val ordering: Int?,
+    /** Cover image URL (nullable if legacy rows). */
+    val coverUrl: String?,
+    /** Icon image URL (nullable if legacy rows). */
+    val iconUrl: String?,
 )
 
 /** Data access for per-user bookmarks of articles. */

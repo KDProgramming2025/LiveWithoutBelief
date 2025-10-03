@@ -34,22 +34,25 @@ class LoggingValidationObserver @Inject constructor() : ValidationObserver {
     }
 }
 
-/** Fan-out observer that delegates to multiple child observers. */
-class CompositeValidationObserver(private val delegates: List<ValidationObserver>) : ValidationObserver {
+/**
+ * Fan-out observer that delegates to multiple child observers.
+ * Exposes its delegate list via [children] so composition utilities avoid reflection & unsafe casts.
+ */
+class CompositeValidationObserver(internal val children: List<ValidationObserver>) : ValidationObserver {
     override fun onAttempt(attempt: Int, max: Int) {
-        delegates.forEach {
+        children.forEach {
             runCatching { it.onAttempt(attempt, max) }
         }
     }
 
     override fun onResult(result: ValidationResult) {
-        delegates.forEach {
+        children.forEach {
             runCatching { it.onResult(result) }
         }
     }
 
     override fun onRetry(delayMs: Long) {
-        delegates.forEach {
+        children.forEach {
             runCatching { it.onRetry(delayMs) }
         }
     }
@@ -104,24 +107,17 @@ fun ValidationObserver.and(other: ValidationObserver): ValidationObserver = when
         this
     }
     this is CompositeValidationObserver && other is CompositeValidationObserver -> {
-        CompositeValidationObserver(this.flatten() + other.flatten())
+        CompositeValidationObserver(this.children + other.children)
     }
     this is CompositeValidationObserver -> {
-        CompositeValidationObserver(this.flatten() + other)
+        CompositeValidationObserver(this.children + other)
     }
     other is CompositeValidationObserver -> {
-        CompositeValidationObserver(listOf(this) + other.flatten())
+        CompositeValidationObserver(listOf(this) + other.children)
     }
     else -> {
         CompositeValidationObserver(listOf(this, other))
     }
-}
-
-private fun CompositeValidationObserver.flatten(): List<ValidationObserver> {
-    val field = CompositeValidationObserver::class.java.getDeclaredField("delegates")
-    field.isAccessible = true
-    @Suppress("UNCHECKED_CAST")
-    return field.get(this) as List<ValidationObserver>
 }
 
 /** Sampling wrapper: forwards events only when random(0..999) < samplePermille (1==0.1%). */
@@ -151,12 +147,12 @@ class SamplingValidationObserver(
 }
 
 /** Export observer that periodically logs snapshot metrics (simple proof-of-concept). */
-@Suppress("BlankLineBeforeDeclaration")
 class SnapshotExportValidationObserver(
     private val metrics: MetricsValidationObserver,
-    private val intervalAttempts: Int = 50,
+    private val intervalAttempts: Int = 50
 ) : ValidationObserver {
     @Volatile private var counter = 0
+
     override fun onAttempt(attempt: Int, max: Int) {
         if (++counter % intervalAttempts == 0) {
             val snap = metrics.snapshot()

@@ -3,14 +3,11 @@ plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.android) apply false
-    // Removed kapt plugin (migrated fully to KSP across modules)
     alias(libs.plugins.hilt.android) apply false
-    
     alias(libs.plugins.paparazzi) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.compose) apply false
-    // Clean re-add of Detekt 2 alpha
     id("dev.detekt") version "2.0.0-alpha.0" apply true
     id("org.jetbrains.kotlinx.kover") version "0.9.0"
     id("com.diffplug.spotless") version "6.25.0"
@@ -291,7 +288,8 @@ tasks.register("detektAggregateReport") {
 tasks.register("qualityGate") {
     group = "verification"
     description = "Fails if detekt findings or formatting violations are present before debug build/install"
-    notCompatibleWithConfigurationCache("Scans generated SARIF report files at execution time")
+    // CC-compatible: all SARIF file enumeration occurs inside doLast (execution phase),
+    // so configuration cache reuse is safe and will not yield stale results.
     // Ensure all analysis & formatting checks ran first
     dependsOn("detektAll")
     // Depend only on subprojects that actually have a spotlessCheck task

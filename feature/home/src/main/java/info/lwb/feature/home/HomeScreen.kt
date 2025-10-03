@@ -7,8 +7,13 @@ package info.lwb.feature.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +27,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,6 +58,8 @@ import info.lwb.ui.designsystem.ProvideSurfaceStyle
 import info.lwb.ui.designsystem.RaisedButton
 import info.lwb.ui.designsystem.RaisedIconWell
 import info.lwb.ui.designsystem.RaisedSurface
+import info.lwb.ui.designsystem.ActionRail
+import info.lwb.ui.designsystem.ActionRailItem
 
 /**
  * Entry point composable for the Home feature.
@@ -64,12 +75,18 @@ import info.lwb.ui.designsystem.RaisedSurface
  * - Complexity kept low by delegating branches to separate composables.
  */
 @Composable
-fun HomeRoute(onItemClick: (String, String?) -> Unit = { _, _ -> }, onContinueReading: (() -> Unit)? = null) {
+fun HomeRoute(
+    onItemClick: (String, String?) -> Unit = { _, _ -> },
+    onContinueReading: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {},
+) {
     val viewModel: HomeViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
     val themeMode by settingsViewModel.themeMode.collectAsState()
     val uiState by viewModel.state.collectAsState()
-    LaunchedEffect(Unit) { viewModel.load() }
+    val refreshing by viewModel.refreshing.collectAsState()
+    // Idempotent initial load (will no-op on subsequent recompositions / returns to Home)
+    LaunchedEffect(Unit) { viewModel.ensureLoaded() }
 
     val darkTheme =
         when (themeMode) {
@@ -90,6 +107,9 @@ fun HomeRoute(onItemClick: (String, String?) -> Unit = { _, _ -> }, onContinueRe
             uploadsBaseUrl = viewModel.uploadsBaseUrl,
             onItemClick = onItemClick,
             onContinueReading = onContinueReading,
+            onOpenSettings = onOpenSettings,
+            refreshing = refreshing,
+            onRefresh = { viewModel.refresh() },
         )
     }
 }
@@ -114,35 +134,48 @@ private object HomeDimens {
  * High level screen that renders background & delegates to specific content state composables.
  */
 @Composable
+@OptIn(ExperimentalMaterialApi::class)
 internal fun HomeScreen(
     state: HomeUiState,
     uploadsBaseUrl: String,
     onItemClick: (String, String?) -> Unit,
     onContinueReading: (() -> Unit)?,
+    onOpenSettings: () -> Unit,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
 ) {
     val surface = LocalSurfaceStyle.current
+    val pullState = rememberPullRefreshState(refreshing = refreshing, onRefresh = onRefresh)
     Surface(Modifier.fillMaxSize()) {
-        GrainyBackground(Modifier.fillMaxSize())
-        when (state) {
-            is HomeUiState.Loading -> {
-                HomeLoading()
+        Box(Modifier.fillMaxSize().pullRefresh(pullState)) {
+            GrainyBackground(Modifier.fillMaxSize())
+            when (state) {
+                is HomeUiState.Loading -> {
+                    HomeLoading()
+                }
+                is HomeUiState.Error -> {
+                    HomeError(
+                        message = state.message,
+                        onRetry = onRefresh,
+                    )
+                }
+                is HomeUiState.Success -> {
+                    HomeSuccess(
+                        items = state.items,
+                        uploadsBaseUrl = uploadsBaseUrl,
+                        onItemClick = onItemClick,
+                        onContinueReading = onContinueReading,
+                        onOpenSettings = onOpenSettings,
+                        surfaceTextPrimary = surface.textPrimary,
+                        surfaceTextMuted = surface.textMuted,
+                    )
+                }
             }
-            is HomeUiState.Error -> {
-                HomeError(
-                    message = state.message,
-                    fallbackLabel = "Failed to load menu",
-                )
-            }
-            is HomeUiState.Success -> {
-                HomeSuccess(
-                    items = state.items,
-                    uploadsBaseUrl = uploadsBaseUrl,
-                    onItemClick = onItemClick,
-                    onContinueReading = onContinueReading,
-                    surfaceTextPrimary = surface.textPrimary,
-                    surfaceTextMuted = surface.textMuted,
-                )
-            }
+            PullRefreshIndicator(
+                refreshing = refreshing,
+                state = pullState,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
     }
 }
@@ -157,19 +190,16 @@ private fun HomeLoading() {
 }
 
 @Composable
-private fun HomeError(message: String, fallbackLabel: String) {
+private fun HomeError(message: String, onRetry: () -> Unit) {
     val surface = LocalSurfaceStyle.current
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(fallbackLabel, color = surface.textPrimary)
-        Text(
-            message,
-            style = MaterialTheme.typography.bodySmall,
-            color = surface.textMuted,
-        )
+        Text(message, color = surface.textPrimary)
+        Spacer(modifier = Modifier.height(8.dp))
+        RaisedButton(text = "Retry", onClick = onRetry)
     }
 }
 
@@ -179,30 +209,50 @@ private fun HomeSuccess(
     uploadsBaseUrl: String,
     onItemClick: (String, String?) -> Unit,
     onContinueReading: (() -> Unit)?,
+    onOpenSettings: () -> Unit,
     surfaceTextPrimary: androidx.compose.ui.graphics.Color,
     surfaceTextMuted: androidx.compose.ui.graphics.Color,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        Spacer(
-            modifier = Modifier.height(HomeDimens.TopSpacerLarge),
-        )
-        ContinueReadingBar(
-            onContinueReading = onContinueReading,
-            textColor = surfaceTextPrimary,
-        )
-        Spacer(
-            modifier = Modifier.height(HomeDimens.TopSpacerSmall),
-        )
-        MenuGrid(
-            items = items,
-            uploadsBaseUrl = uploadsBaseUrl,
-            onItemClick = onItemClick,
-            textPrimary = surfaceTextPrimary,
-            textMuted = surfaceTextMuted,
-        )
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Spacer(
+                modifier = Modifier.height(HomeDimens.TopSpacerLarge),
+            )
+            ContinueReadingBar(
+                onContinueReading = onContinueReading,
+                textColor = surfaceTextPrimary,
+            )
+            Spacer(
+                modifier = Modifier.height(HomeDimens.TopSpacerSmall),
+            )
+            MenuGrid(
+                items = items,
+                uploadsBaseUrl = uploadsBaseUrl,
+                onItemClick = onItemClick,
+                textPrimary = surfaceTextPrimary,
+                textMuted = surfaceTextMuted,
+            )
+        }
+        HomeActionsOverlay(onOpenSettings = onOpenSettings)
     }
+}
+
+@Composable
+private fun BoxScope.HomeActionsOverlay(onOpenSettings: () -> Unit) {
+    // Simple always-visible action rail; could be stateful later
+    ActionRail(
+        modifier = Modifier.align(Alignment.BottomEnd),
+        items = listOf(
+            ActionRailItem(Icons.Filled.Settings, "Settings") { onOpenSettings() },
+            ActionRailItem(Icons.Filled.Star, "Bookmarks") { /* TODO hook bookmarks */ },
+            ActionRailItem(Icons.Filled.PlayArrow, "Comments") { /* TODO hook comments */ },
+        ),
+        mainIcon = Icons.Filled.Settings,
+        mainContentDescription = "Home quick actions",
+        edgePadding = 16.dp,
+    )
 }
 
 @Composable
@@ -226,8 +276,8 @@ private fun ContinueReadingBar(onContinueReading: (() -> Unit)?, textColor: andr
         }
     }
 }
-// Menu grid presenting menu items in adaptive columns.
 
+// Menu grid presenting menu items in adaptive columns.
 @Composable
 private fun MenuGrid(
     items: List<MenuItem>,
@@ -371,6 +421,9 @@ private fun HomeMenuPreviewContent(dark: Boolean) {
             uploadsBaseUrl = "https://example.test/uploads",
             onItemClick = { _, _ -> },
             onContinueReading = {},
+            onOpenSettings = {},
+            refreshing = false,
+            onRefresh = {},
         )
     }
 }

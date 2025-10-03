@@ -2,12 +2,6 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-@file:Suppress(
-    "BlankLineBeforeDeclaration",
-    "ChainMethodContinuation",
-    "NoConsecutiveBlankLines",
-    "NoTrailingSpaces",
-)
 
 package info.lwb.feature.reader.ui.internal
 
@@ -72,40 +66,24 @@ internal fun numArg(v: Float?): String =
         String.format(Locale.US, "%.1f", v)
     }
 
-internal fun WebView.safeLoadAsset(path: String): String =
-    try {
-        context.assets
-            .open(path)
-            .use { input ->
-                BufferedReader(InputStreamReader(input)).readText()
-            }
-    } catch (_: Throwable) {
-        ""
-    }
+internal fun WebView.safeLoadAsset(path: String): String = try {
+    context
+        .assets
+        .open(path)
+        .use { input ->
+            BufferedReader(InputStreamReader(input)).readText()
+        }
+} catch (_: Throwable) {
+    ""
+}
 
 internal fun WebView.configureBaseSettings(backgroundColor: String?) {
     alpha = 0f
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
-    // databaseEnabled deprecated: still set for legacy content relying on Web SQL / local DB
-    @Suppress("DEPRECATION")
-    try {
-        settings.databaseEnabled = true
-    } catch (_: Throwable) {
-        // ignore (deprecated API guarded for legacy content relying on Web SQL)
-    }
     try {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, false)
-        }
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-            // force dark deprecated; explicitly disabling via compat API
-            @Suppress("DEPRECATION")
-            WebSettingsCompat.setForceDark(settings, WebSettingsCompat.FORCE_DARK_OFF)
-        }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            @Suppress("DEPRECATION")
-            settings.forceDark = WebSettings.FORCE_DARK_OFF
         }
     } catch (_: Throwable) {
         // ignored (feature probing)
@@ -136,7 +114,8 @@ internal fun WebView.setupTouchHandlers(onTap: (() -> Unit)?) {
     var downX = 0f
     var downY = 0f
     var downTs = 0L
-    val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+    val viewConfiguration = android.view.ViewConfiguration.get(context)
+    val slop = viewConfiguration.scaledTouchSlop
     setOnTouchListener { _, ev ->
         when (ev.actionMasked) {
             android.view.MotionEvent.ACTION_DOWN -> {
@@ -159,17 +138,16 @@ internal fun WebView.setupTouchHandlers(onTap: (() -> Unit)?) {
     }
 }
 
-internal fun WebView.setupScrollHandler(
-    enabled: () -> Boolean,
-    onScroll: (Int) -> Unit,
-    onAnchor: (String) -> Unit,
-) {
+internal fun WebView.setupScrollHandler(enabled: () -> Boolean, onScroll: (Int) -> Unit, onAnchor: (String) -> Unit) {
     var lastAnchorTs = 0L
+
     fun maybeEmitAnchor(now: Long) {
         if (now - lastAnchorTs <= ANCHOR_POLL_MIN_INTERVAL_MS) {
             return
         }
+
         lastAnchorTs = now
+
         try {
             evaluateJavascript("(window.lwbGetViewportAnchor && window.lwbGetViewportAnchor())||''") { res ->
                 val anchor = try {
@@ -232,51 +210,23 @@ internal class ArticleClient(
     private val assets: WebViewAssetScripts,
     private val evaluate: (String) -> Unit,
 ) : WebViewClient() {
-    override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-        super.onPageStarted(view, url, favicon)
-        if (firstLoad()) {
-            setReadyHidden()
-        }
-    }
+    // We must not call WebView.getUrl() off the main thread (shouldInterceptRequest runs on IO threads).
+    // Capture the last known main-frame URL during main-thread callbacks.
+    @Volatile private var lastMainFrameUrl: String? = null
 
-    
-    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-        if (url == null) {
-            return false
-        }
-        val allowExternal = !(isInlineContent && url.startsWith(ASSET_SCHEME_PREFIX))
-        return allowExternal && openExternal(view, url)
-    }
+    @Volatile private var injectedOnceForLoad: Boolean = false
 
-    
-    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-        val raw = request?.url?.toString()
-        if (raw == null) {
-            return false
-        }
-        val allowExternal = !(isInlineContent && raw.startsWith(ASSET_SCHEME_PREFIX))
-        val mainFrame = request.isForMainFrame
-        return allowExternal && mainFrame && openExternal(view, raw)
-    }
+    @Volatile private var lastAppliedFontScale: Float? = null
 
-    
-    override fun shouldInterceptRequest(view: WebView?, url: String?): WebResourceResponse? =
-        intercept(view, url) ?: super.shouldInterceptRequest(view, url)
+    @Volatile private var lastAppliedLineHeight: Float? = null
 
-    
-    override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-        val u = request?.url?.toString()
-        return intercept(view, u) ?: super.shouldInterceptRequest(view, request)
-    }
+    @Volatile private var lastAppliedBg: String? = null
 
-    
-    override fun onPageFinished(view: WebView?, url: String?) {
-        super.onPageFinished(view, url)
-        if (view == null) {
+    private fun performInitialInjectionIfNeeded(isInline: Boolean, css: String?) {
+        if (injectedOnceForLoad) {
             return
         }
-        val css = injectedCss
-        if (!isInlineContent) {
+        if (!isInline) {
             evaluate(assets.domHelpersJs)
             evaluate("lwbEnsureLightMeta()")
             evaluate("lwbEnsureThemeLink()")
@@ -288,10 +238,62 @@ internal class ArticleClient(
             val b64 = Base64.encodeToString(css.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
             evaluate("window.lwbApplyThemeCss('$b64')")
         }
-        val fsArg = numArg(fontScale)
-        val lhArg = numArg(lineHeight)
-        val bg = backgroundColor ?: ""
+        injectedOnceForLoad = true
+        // force re-application of reader vars after initial injection
+        lastAppliedFontScale = null
+        lastAppliedLineHeight = null
+        lastAppliedBg = null
+    }
+
+    private fun applyReaderVarsIfChanged(fs: Float?, lh: Float?, bgColor: String?) {
+        val bg = bgColor ?: ""
+        if (lastAppliedFontScale == fs && lastAppliedLineHeight == lh && lastAppliedBg == bg) {
+            return
+        }
+        val fsArg = numArg(fs)
+        val lhArg = numArg(lh)
         evaluate("lwbApplyReaderVars($fsArg, $lhArg, '$bg')")
+        lastAppliedFontScale = fs
+        lastAppliedLineHeight = lh
+        lastAppliedBg = bg
+    }
+
+    override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+        super.onPageStarted(view, url, favicon)
+        if (url != null) {
+            lastMainFrameUrl = url
+        }
+        injectedOnceForLoad = false
+        if (firstLoad()) {
+            setReadyHidden()
+        }
+    }
+
+    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+        val raw = request?.url?.toString()
+        if (raw == null) {
+            return false
+        }
+        val allowExternal = !(isInlineContent && raw.startsWith(ASSET_SCHEME_PREFIX))
+        val mainFrame = request.isForMainFrame
+        return allowExternal && mainFrame && openExternal(view, raw)
+    }
+
+    override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+        val u = request?.url?.toString()
+        return intercept(view, u) ?: super.shouldInterceptRequest(view, request)
+    }
+
+    override fun onPageFinished(view: WebView?, url: String?) {
+        super.onPageFinished(view, url)
+        if (view == null) {
+            return
+        }
+        if (url != null) {
+            lastMainFrameUrl = url
+        }
+        performInitialInjectionIfNeeded(isInlineContent, injectedCss)
+        applyReaderVarsIfChanged(fontScale, lineHeight, backgroundColor)
         if (firstLoad()) {
             onFirstReady()
             var usedAnchor = false
@@ -313,13 +315,12 @@ internal class ArticleClient(
             evaluate(assets.clampJs)
         }
     }
-    
-    
+
     private fun intercept(view: WebView?, url: String?): WebResourceResponse? {
         if (url == null) {
             return null
         }
-        val theme = resolveThemeCssResponse(view, url)
+        val theme = resolveThemeCssResponse(url)
         val asset = if (theme == null) {
             resolveInlineAssetResponse(view, url)
         } else {
@@ -328,10 +329,9 @@ internal class ArticleClient(
         return theme ?: asset
     }
 
-    
-    private fun resolveThemeCssResponse(view: WebView?, u: String): WebResourceResponse? {
+    private fun resolveThemeCssResponse(u: String): WebResourceResponse? {
         return try {
-            val current = view?.url ?: return null
+            val current = lastMainFrameUrl ?: return null
             if (current.isBlank()) {
                 return null
             }
@@ -350,7 +350,6 @@ internal class ArticleClient(
         }
     }
 
-    
     private fun resolveInlineAssetResponse(view: WebView?, u: String): WebResourceResponse? {
         if (!(isInlineContent && u.startsWith(ASSET_SCHEME_PREFIX))) {
             return null
@@ -380,8 +379,7 @@ internal class ArticleClient(
             null
         }
     }
-    
-    
+
     private fun openExternal(view: WebView?, u: String): Boolean {
         return try {
             val ctx = view?.context ?: return false

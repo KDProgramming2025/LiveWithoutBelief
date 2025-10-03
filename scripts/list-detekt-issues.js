@@ -16,7 +16,7 @@
  */
 
 const { spawn } = require('child_process');
-const { readdirSync, statSync, writeFileSync } = require('fs');
+const { readdirSync, statSync, writeFileSync, mkdirSync } = require('fs');
 const { join, sep } = require('path');
 
 const PROJECT_ROOT = process.cwd();
@@ -110,8 +110,12 @@ function parseDetektOutput(outText) {
   const summaryLine = `Total findings: ${totalFindings}`;
   const report = [header, ''.padEnd(header.length, '='), ...bodyLines, '', summaryLine].join('\n');
 
-  // Ensure build directory exists
-  try { statSync(join(PROJECT_ROOT, 'build')); } catch { /* ignore */ }
+  // Ensure output directory exists recursively
+  try {
+    mkdirSync(join(PROJECT_ROOT, 'build', 'reports', 'detekt'), { recursive: true });
+  } catch (e) {
+    console.error('Failed to create detekt report directory', e);
+  }
   writeFileSync(OUTPUT_FILE, report, 'utf8');
   console.log('Report written to', OUTPUT_FILE);
   console.log('Total findings:', totalFindings);

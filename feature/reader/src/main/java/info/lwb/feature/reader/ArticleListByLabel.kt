@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -94,6 +98,7 @@ fun ArticleListByLabelRoute(
                 state = state,
                 paddingValues = padding,
                 onRetry = { vm.load(state.label) },
+                onRefresh = { vm.refresh() },
                 onNavigateBack = onNavigateBack,
                 onArticleClick = onArticleClick,
             )
@@ -102,15 +107,19 @@ fun ArticleListByLabelRoute(
 }
 
 @Composable
+@OptIn(ExperimentalMaterialApi::class)
 private fun ArticleListByLabelContent(
     state: ArticleListByLabelViewModel.UiState,
     paddingValues: PaddingValues,
     onRetry: () -> Unit,
+    onRefresh: () -> Unit,
     onNavigateBack: () -> Unit,
     onArticleClick: (Article) -> Unit,
 ) {
     val neo = LocalSurfaceStyle.current
-    Box(Modifier.fillMaxSize()) {
+    val refreshing = state.refreshing
+    val refreshState = rememberPullRefreshState(refreshing = refreshing, onRefresh = onRefresh)
+    Box(Modifier.fillMaxSize().pullRefresh(refreshState)) {
         GrainyBackground(Modifier.matchParentSize())
         Column(
             Modifier
@@ -118,7 +127,7 @@ private fun ArticleListByLabelContent(
                 .padding(paddingValues),
         ) {
             when {
-                state.loading -> {
+                state.loading && state.items.isEmpty() -> {
                     LoadingState(neo)
                 }
                 state.error != null -> {
@@ -132,6 +141,11 @@ private fun ArticleListByLabelContent(
                 }
             }
         }
+        PullRefreshIndicator(
+            refreshing = refreshing,
+            state = refreshState,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 

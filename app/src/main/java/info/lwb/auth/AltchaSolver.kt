@@ -6,6 +6,11 @@ package info.lwb.auth
 
 import java.security.MessageDigest
 
+private const val HEX_TABLE: String = "0123456789abcdef"
+private const val BYTE_MASK: Int = 0xFF
+private const val HALF_BYTE_SHIFT: Int = 4
+private const val LOWER_NIBBLE_MASK: Int = 0x0F
+
 /**
  * Solve an ALTCHA-style puzzle by brute-forcing a number such that
  * hex(hash(salt + number)) starts with the provided challenge prefix.
@@ -41,11 +46,6 @@ internal fun solveAltcha(algorithm: String, challengePrefix: String, salt: Strin
     }
     error("ALTCHA solution not found up to max=$max")
 }
-
-private const val HEX_TABLE: String = "0123456789abcdef"
-private const val BYTE_MASK: Int = 0xFF
-private const val HALF_BYTE_SHIFT: Int = 4
-private const val LOWER_NIBBLE_MASK: Int = 0x0F
 
 private fun ByteArray.toHexLower(): String = joinToString(separator = "") { b ->
     val i = b.toInt() and BYTE_MASK

@@ -55,7 +55,6 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             val articles = articleDao
                 .listArticles()
                 .map { it.toDomain() }
-            @Suppress("UNCHECKED_CAST")
             emit(Result.Success(articles) as Result<List<Article>>)
         } catch (io: java.io.IOException) {
             emit(Result.Error(io))
@@ -64,6 +63,10 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         } catch (ise: IllegalStateException) {
             emit(Result.Error(ise))
         }
+    }
+
+    override suspend fun snapshotArticles(): List<Article> = withContext(Dispatchers.IO) {
+        articleDao.listArticles().map { it.toDomain() }
     }
 
     override fun getArticleContent(articleId: String): Flow<Result<ArticleContent>> = flow {
@@ -79,7 +82,6 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             }
             val domain = contentEntity?.toDomain()
             if (domain != null) {
-                @Suppress("UNCHECKED_CAST")
                 emit(Result.Success(domain) as Result<ArticleContent>)
             } else {
                 emit(Result.Error(IllegalStateException("Content not found")))
@@ -124,12 +126,12 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         localById: Map<String, ArticleEntity>,
     ) = coroutineScope {
         manifest
-            .map { item ->
-                async { upsertArticleAndMaybeContent(item, localById[item.id]) }
+            .mapIndexed { index, item ->
+                async { upsertArticleAndMaybeContent(item, localById[item.id], index) }
             }.awaitAll()
     }
 
-    private suspend fun upsertArticleAndMaybeContent(item: ManifestItemDto, local: ArticleEntity?) {
+    private suspend fun upsertArticleAndMaybeContent(item: ManifestItemDto, local: ArticleEntity?, orderIndex: Int) {
         val articleEntity = ArticleEntity(
             id = item.id,
             title = item.title,
@@ -137,6 +139,10 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             version = item.version,
             updatedAt = item.updatedAt,
             wordCount = item.wordCount,
+            label = item.label,
+            `order` = orderIndex,
+            coverUrl = item.coverUrl ?: "",
+            iconUrl = item.iconUrl ?: "",
         )
         val hasLocalContent = articleDao.getArticleContent(item.id) != null
         if (local?.version == item.version && hasLocalContent) {
@@ -204,7 +210,20 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         }
         return withContext(Dispatchers.IO) {
             val rows = articleDao.searchArticlesLike(query.trim(), limit, offset)
-            rows.map { Article(it.id, it.title, it.slug, it.version, it.updatedAt, it.wordCount) }
+            rows.map { row ->
+                Article(
+                    id = row.id,
+                    title = row.title,
+                    slug = row.slug,
+                    version = row.version,
+                    updatedAt = row.updatedAt,
+                    wordCount = row.wordCount,
+                    label = row.label,
+                    `order` = row.ordering ?: Int.MAX_VALUE,
+                    coverUrl = row.coverUrl ?: "",
+                    iconUrl = row.iconUrl ?: "",
+                )
+            }
         }
     }
 
@@ -241,6 +260,8 @@ private suspend fun fetchAndPersistContent(
     if (!checksumOk) {
         return null
     }
+    // Attempt to preserve existing metadata for artwork / ordering if we only fetched content.
+    val existing = articleDao.getArticle(articleId)
     val articleEntity = ArticleEntity(
         id = dto.id,
         title = dto.title,
@@ -248,6 +269,10 @@ private suspend fun fetchAndPersistContent(
         version = dto.version,
         updatedAt = dto.updatedAt,
         wordCount = dto.wordCount,
+        label = existing?.label,
+        `order` = existing?.`order` ?: Int.MAX_VALUE,
+        coverUrl = existing?.coverUrl ?: "",
+        iconUrl = existing?.iconUrl ?: "",
     )
     val newContent = ArticleContentEntity(
         articleId = dto.id,
@@ -260,7 +285,18 @@ private suspend fun fetchAndPersistContent(
     return newContent
 }
 
-private fun ArticleEntity.toDomain() = Article(id, title, slug, version, updatedAt, wordCount)
+private fun ArticleEntity.toDomain() = Article(
+    id = id,
+    title = title,
+    slug = slug,
+    version = version,
+    updatedAt = updatedAt,
+    wordCount = wordCount,
+    label = label,
+    order = `order`,
+    coverUrl = coverUrl,
+    iconUrl = iconUrl,
+)
 
 // Note: Manifest images are not persisted in ArticleEntity; domain mapping from repo-by-label uses DTO directly.
 private fun ArticleContentEntity.toDomain() = ArticleContent(articleId, htmlBody, plainText, textHash, indexUrl)

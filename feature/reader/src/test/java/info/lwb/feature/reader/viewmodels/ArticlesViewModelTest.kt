@@ -43,7 +43,6 @@ class ArticlesViewModelTest {
 
         getArticles = GetArticlesUseCase { articlesFlow }
         getArticleContent = GetArticleContentUseCase { id: String ->
-            @Suppress("UNUSED_PARAMETER")
             flow { contentFlow.collect { emit(it) } }
         }
         refreshArticles = RefreshArticlesUseCase { /* no-op */ }
@@ -59,8 +58,27 @@ class ArticlesViewModelTest {
     @Test
     fun emitsArticlesAndContent() = runTest(dispatcher) {
         val vm = ArticlesViewModel(getArticles, getArticleContent, refreshArticles)
-        val sampleArticles = listOf(Article(id = "a1", title = "T", slug = "s", summary = null))
-        val sampleContent = ArticleContent(id = "a1", html = "<p>Hi</p>", indexUrl = "http://example/index.html")
+        val sampleArticles = listOf(
+            Article(
+                id = "a1",
+                title = "T",
+                slug = "s",
+                version = 1,
+                updatedAt = "2025-01-01T00:00:00Z",
+                wordCount = 10,
+                label = "Test",
+                order = 1,
+                coverUrl = "https://example.com/cover.jpg",
+                iconUrl = "https://example.com/icon.png",
+            ),
+        )
+        val sampleContent = ArticleContent(
+            articleId = "a1",
+            htmlBody = "<p>Hi</p>",
+            plainText = "Hi",
+            textHash = "hash",
+            indexUrl = "http://example/index.html",
+        )
 
         // Collect one emission sequence for articles
         vm.articles.test {

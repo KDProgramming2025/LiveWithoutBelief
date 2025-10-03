@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-@file:Suppress("FunctionName")
 
 package info.lwb.feature.reader
 
@@ -20,6 +19,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -42,8 +45,8 @@ import info.lwb.feature.reader.ReaderSettingsRepository
 import info.lwb.core.common.Result
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
-import info.lwb.feature.reader.ui.ActionRail
-import info.lwb.feature.reader.ui.ActionRailItem
+import info.lwb.ui.designsystem.ActionRail
+import info.lwb.ui.designsystem.ActionRailItem
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ArticleWebView
 import info.lwb.feature.reader.ui.ReaderAppearanceSheet
@@ -66,11 +69,15 @@ private val ACTION_RAIL_EDGE_PADDING = 16.dp
  * complexity low and satisfy Detekt rules.
  */
 @Composable
+@OptIn(ExperimentalMaterialApi::class)
 fun ReaderByIdRoute(
     articleId: String,
     onNavigateBack: (() -> Unit)? = null,
 ) {
     val svcVm: info.lwb.feature.reader.viewmodels.ArticlesViewModel = hiltViewModel()
+    val refreshing by svcVm.refreshing.collectAsState()
+    LaunchedEffect(Unit) { svcVm.ensureLoaded() }
+    // Ensure articles list collection starts (idempotent) before requesting specific content.
     LaunchedEffect(articleId) { svcVm.loadArticleContent(articleId) }
     val contentRes by svcVm.articleContent.collectAsState()
     val articlesRes by svcVm.articles.collectAsState()
@@ -82,16 +89,24 @@ fun ReaderByIdRoute(
         resolveArticleUrl(articleId, contentRes, articlesRes, env.apiBaseUrl)
     }
 
-    if (!resolvedUrl.isNullOrBlank()) {
-        ReaderResolvedContent(
-            articleId = articleId,
-            resolvedUrl = resolvedUrl,
-            uiState = ui,
-            onNavigateBack = onNavigateBack,
-            readerViewModel = vm,
+    val pullState = rememberPullRefreshState(refreshing = refreshing, onRefresh = { svcVm.refreshArticles() })
+    Box(Modifier.fillMaxSize().pullRefresh(pullState)) {
+        if (!resolvedUrl.isNullOrBlank()) {
+            ReaderResolvedContent(
+                articleId = articleId,
+                resolvedUrl = resolvedUrl,
+                uiState = ui,
+                onNavigateBack = onNavigateBack,
+                readerViewModel = vm,
+            )
+        } else {
+            ReaderLoadingOrError(contentRes)
+        }
+        PullRefreshIndicator(
+            refreshing = refreshing,
+            state = pullState,
+            modifier = Modifier.align(Alignment.TopCenter),
         )
-    } else {
-        ReaderLoadingOrError(contentRes)
     }
 }
 

@@ -8,14 +8,17 @@ import kotlinx.serialization.Serializable
 
 /**
  * Represents a published article available to the reader.
+ * Fields mirror the manifest payload persisted locally to support offline filtering & ordering.
  * @property id Stable unique identifier.
  * @property title Human readable display title.
  * @property slug URL friendly slug used in links.
  * @property version Incrementing content version for cache busting.
  * @property updatedAt ISO-8601 last update timestamp.
  * @property wordCount Estimated word count for reading time heuristics.
- * @property coverUrl Optional large cover image URL.
- * @property iconUrl Optional small icon / thumbnail URL.
+ * @property label Optional short category / badge.
+ * @property order Display ordering index (lower first). Defaults to a large value if unspecified.
+ * @property coverUrl Non-null large cover image URL (server guarantees presence).
+ * @property iconUrl Non-null small icon / thumbnail URL (server guarantees presence).
  */
 @Serializable
 data class Article(
@@ -25,8 +28,14 @@ data class Article(
     val version: Int,
     val updatedAt: String,
     val wordCount: Int,
-    val coverUrl: String? = null,
-    val iconUrl: String? = null,
+    /** Optional short label/category; used for UI grouping & filtering. */
+    val label: String? = null,
+    /** Explicit display ordering index (lower first). */
+    val order: Int = Int.MAX_VALUE,
+    /** Non-null large/cover image URL (server guarantees presence). */
+    val coverUrl: String,
+    /** Non-null small/icon image URL (server guarantees presence). */
+    val iconUrl: String,
 )
 
 /**

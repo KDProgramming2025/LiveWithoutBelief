@@ -13,6 +13,7 @@ import info.lwb.core.domain.AnnotationRepository
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.domain.GetArticleContentUseCase
 import info.lwb.core.domain.GetArticlesUseCase
+import info.lwb.core.domain.GetArticlesByLabelUseCase
 import info.lwb.core.domain.RefreshArticlesUseCase
 
 /**
@@ -26,6 +27,11 @@ object ReaderModule {
     @Provides
     fun provideGetArticlesUseCase(articleRepository: ArticleRepository): GetArticlesUseCase =
         GetArticlesUseCase(articleRepository)
+
+    /** Provides a use case to retrieve a filtered snapshot of articles by label. */
+    @Provides
+    fun provideGetArticlesByLabelUseCase(articleRepository: ArticleRepository): GetArticlesByLabelUseCase =
+        GetArticlesByLabelUseCase(articleRepository)
 
     /** Provides a use case to load article HTML/content payload. */
     @Provides
