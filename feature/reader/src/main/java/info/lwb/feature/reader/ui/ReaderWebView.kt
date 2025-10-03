@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -119,8 +119,10 @@ private class ArticleWebState(
     val firstLoad: MutableState<Boolean>,
     val lastFontScale: MutableState<Float?>,
     val lastLineHeight: MutableState<Float?>,
+    // True only while a one-time initial scroll restore is executing.
     val restoreActive: MutableState<Boolean>,
-    val restoreTarget: MutableState<Int?>,
+    // Guards a fallback late restoration when initial scroll is learned after WebView creation.
+    val initialScrollApplied: MutableState<Boolean>,
 )
 
 @Composable
@@ -130,8 +132,8 @@ private fun rememberArticleWebState(url: String?, htmlBody: String?): ArticleWeb
     val lastFontScale = remember(url, htmlBody) { mutableStateOf<Float?>(null) }
     val lastLineHeight = remember(url, htmlBody) { mutableStateOf<Float?>(null) }
     val restoreActive = remember(url, htmlBody) { mutableStateOf(false) }
-    val restoreTarget = remember(url, htmlBody) { mutableStateOf<Int?>(null) }
-    return ArticleWebState(ready, firstLoad, lastFontScale, lastLineHeight, restoreActive, restoreTarget)
+    val initialScrollApplied = remember(url, htmlBody) { mutableStateOf(false) }
+    return ArticleWebState(ready, firstLoad, lastFontScale, lastLineHeight, restoreActive, initialScrollApplied)
 }
 
 @Composable
@@ -153,7 +155,7 @@ private fun ArticleWebAndroidView(
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
-            buildWebView(
+            createArticleWebView(
                 ctx = ctx,
                 state = state,
                 htmlBody = htmlBody,
@@ -171,7 +173,23 @@ private fun ArticleWebAndroidView(
             )
         },
         update = { webView ->
-            updateConfiguredWebView(
+            // Fallback late one-time restore: if the persisted scroll value arrived AFTER the WebView was created
+            // (common because we fetch it asynchronously) and the first load already finished without anchor restore,
+            // perform a single restore now. We avoid interfering while an active restore is running or if already done.
+            // Break the complex predicate into smaller nested checks to comply with detekt's ComplexCondition rule.
+            if (!state.initialScrollApplied.value) {
+                if (!state.restoreActive.value && state.ready.value && state.firstLoad.value) {
+                    val scrollTarget = initialScrollY ?: 0
+                    if (scrollTarget > 0 && initialAnchor.isNullOrBlank()) {
+                        state.initialScrollApplied.value = true
+                        state.restoreActive.value = true
+                        webView.postRestore(scrollTarget) {
+                            state.restoreActive.value = false
+                        }
+                    }
+                }
+            }
+            applyArticleWebViewUpdates(
                 webView = webView,
                 state = state,
                 url = url,
@@ -181,13 +199,12 @@ private fun ArticleWebAndroidView(
                 fontScale = fontScale,
                 lineHeight = lineHeight,
                 backgroundColor = backgroundColor,
-                initialScrollY = initialScrollY,
             )
         },
     )
 }
 
-private fun buildWebView(
+private fun createArticleWebView(
     ctx: android.content.Context,
     state: ArticleWebState,
     htmlBody: String?,
@@ -227,18 +244,16 @@ private fun buildWebView(
     },
     startRestore = { target ->
         if (target > 0) {
-            state.restoreTarget.value = target
             state.restoreActive.value = true
         }
     },
     finishRestore = {
         state.restoreActive.value = false
-        state.restoreTarget.value = null
     },
     restoreActiveProvider = { state.restoreActive.value },
 )
 
-private fun updateConfiguredWebView(
+private fun applyArticleWebViewUpdates(
     webView: WebView,
     state: ArticleWebState,
     url: String?,
@@ -248,8 +263,7 @@ private fun updateConfiguredWebView(
     fontScale: Float?,
     lineHeight: Float?,
     backgroundColor: String?,
-    initialScrollY: Int?,
-) = updateArticleWebView(
+) = applyArticleContent(
     webView = webView,
     url = url,
     htmlBody = htmlBody,
@@ -258,12 +272,6 @@ private fun updateConfiguredWebView(
     fontScale = fontScale,
     lineHeight = lineHeight,
     backgroundColor = backgroundColor,
-    initialScrollY = initialScrollY,
-    ready = state.ready.value,
-    restoreActive = state.restoreActive.value,
-    restoreTarget = state.restoreTarget.value,
-    setRestoreActive = { state.restoreActive.value = it },
-    setRestoreTarget = { state.restoreTarget.value = it },
     setLastValues = { fs, lh ->
         state.lastFontScale.value = fs
         state.lastLineHeight.value = lh
@@ -272,9 +280,7 @@ private fun updateConfiguredWebView(
 // The large helpers & client implementation were extracted into separate internal files to
 // reduce indentation depth and improve readability / maintainability.
 
-private const val SCROLL_RESTORE_DISTANCE_THRESHOLD = 12
-
-private fun updateArticleWebView(
+private fun applyArticleContent(
     webView: WebView,
     url: String?,
     htmlBody: String?,
@@ -283,58 +289,35 @@ private fun updateArticleWebView(
     fontScale: Float?,
     lineHeight: Float?,
     backgroundColor: String?,
-    initialScrollY: Int?,
-    ready: Boolean,
-    restoreActive: Boolean,
-    restoreTarget: Int?,
-    setRestoreActive: (Boolean) -> Unit,
-    setRestoreTarget: (Int?) -> Unit,
     setLastValues: (Float?, Float?) -> Unit,
 ) {
     if (url.isNullOrBlank()) {
         loadInlineArticle(webView, htmlBody, injectedCss, baseUrl)
         return
     }
-    updateRemoteArticleWebView(
+    applyRemoteArticleContent(
         webView = webView,
         url = url,
         injectedCss = injectedCss,
         fontScale = fontScale,
         lineHeight = lineHeight,
         backgroundColor = backgroundColor,
-        initialScrollY = initialScrollY,
-        ready = ready,
-        restoreActive = restoreActive,
-        restoreTarget = restoreTarget,
-        setRestoreActive = setRestoreActive,
-        setRestoreTarget = setRestoreTarget,
         setLastValues = setLastValues,
     )
 }
 
-private fun loadInlineArticle(
-    webView: WebView,
-    htmlBody: String?,
-    injectedCss: String?,
-    baseUrl: String?,
-) {
+private fun loadInlineArticle(webView: WebView, htmlBody: String?, injectedCss: String?, baseUrl: String?) {
     val finalHtml = buildInlineHtml(htmlBody, injectedCss)
     webView.loadDataWithBaseURL(baseUrl, finalHtml, "text/html", "utf-8", null)
 }
 
-private fun updateRemoteArticleWebView(
+private fun applyRemoteArticleContent(
     webView: WebView,
     url: String,
     injectedCss: String?,
     fontScale: Float?,
     lineHeight: Float?,
     backgroundColor: String?,
-    initialScrollY: Int?,
-    ready: Boolean,
-    restoreActive: Boolean,
-    restoreTarget: Int?,
-    setRestoreActive: (Boolean) -> Unit,
-    setRestoreTarget: (Int?) -> Unit,
     setLastValues: (Float?, Float?) -> Unit,
 ) {
     applyCssRef(webView, injectedCss)
@@ -344,15 +327,6 @@ private fun updateRemoteArticleWebView(
     applyInjectedCss(webView, injectedCss)
     applyReaderVars(webView, fontScale, lineHeight, backgroundColor)
     setLastValues(fontScale, lineHeight)
-    maybeRestoreScroll(
-        webView = webView,
-        initialScrollY = initialScrollY,
-        ready = ready,
-        restoreActive = restoreActive,
-        restoreTarget = restoreTarget,
-        setRestoreActive = setRestoreActive,
-        setRestoreTarget = setRestoreTarget,
-    )
     reloadIfDifferentUrl(webView, url)
 }
 
@@ -393,43 +367,14 @@ private fun applyInjectedCss(webView: WebView, injectedCss: String?) {
     }
 }
 
-private fun applyReaderVars(
-    webView: WebView,
-    fontScale: Float?,
-    lineHeight: Float?,
-    backgroundColor: String?,
-) {
+private fun applyReaderVars(webView: WebView, fontScale: Float?, lineHeight: Float?, backgroundColor: String?) {
     val fsArg = numArg(fontScale)
     val lhArg = numArg(lineHeight)
     val bg = backgroundColor ?: ""
     webView.evaluateJavascript("lwbApplyReaderVars($fsArg, $lhArg, '$bg')", null)
 }
 
-private fun maybeRestoreScroll(
-    webView: WebView,
-    initialScrollY: Int?,
-    ready: Boolean,
-    restoreActive: Boolean,
-    restoreTarget: Int?,
-    setRestoreActive: (Boolean) -> Unit,
-    setRestoreTarget: (Int?) -> Unit,
-) {
-    val desired = initialScrollY ?: 0
-    if (!ready || desired <= 0) {
-        return
-    }
-    val current = webView.scrollY
-    val isNewTarget = restoreTarget != desired
-    val far = kotlin.math.abs(current - desired) > SCROLL_RESTORE_DISTANCE_THRESHOLD
-    if (isNewTarget || (!restoreActive && far)) {
-        setRestoreTarget(desired)
-        setRestoreActive(true)
-        webView.postRestore(desired) {
-            setRestoreActive(false)
-            setRestoreTarget(null)
-        }
-    }
-}
+// One-time scroll restoration now handled exclusively by ArticleClient via startRestore/finishRestore.
 
 private fun reloadIfDifferentUrl(webView: WebView, url: String) {
     val meta = webView.tag as? WebViewMeta
