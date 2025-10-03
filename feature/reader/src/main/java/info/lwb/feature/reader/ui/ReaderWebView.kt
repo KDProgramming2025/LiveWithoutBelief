@@ -178,7 +178,8 @@ private fun ArticleWebAndroidView(
             // perform a single restore now. We avoid interfering while an active restore is running or if already done.
             // Break the complex predicate into smaller nested checks to comply with detekt's ComplexCondition rule.
             if (!state.initialScrollApplied.value) {
-                if (!state.restoreActive.value && state.ready.value && state.firstLoad.value) {
+                // Trigger only AFTER first load completes (firstLoad becomes false in setReady(true,false)).
+                if (!state.restoreActive.value && state.ready.value && !state.firstLoad.value) {
                     val scrollTarget = initialScrollY ?: 0
                     if (scrollTarget > 0 && initialAnchor.isNullOrBlank()) {
                         state.initialScrollApplied.value = true
@@ -245,6 +246,8 @@ private fun createArticleWebView(
     startRestore = { target ->
         if (target > 0) {
             state.restoreActive.value = true
+            // Mark applied so fallback late restore does not run.
+            state.initialScrollApplied.value = true
         }
     },
     finishRestore = {
