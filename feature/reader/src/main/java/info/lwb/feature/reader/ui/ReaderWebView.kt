@@ -4,7 +4,6 @@
  */
 package info.lwb.feature.reader.ui
 
-import android.util.Base64
 import android.webkit.WebView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,8 +21,6 @@ import info.lwb.feature.reader.ui.internal.ArticleClient
 import info.lwb.feature.reader.ui.internal.WebViewAssetScripts
 import info.lwb.feature.reader.ui.internal.buildInlineHtml
 import info.lwb.feature.reader.ui.internal.configureBaseSettings
-import info.lwb.feature.reader.ui.internal.numArg
-import info.lwb.feature.reader.ui.internal.postRestore
 import info.lwb.feature.reader.ui.internal.safeLoadAsset
 import info.lwb.feature.reader.ui.internal.setupScrollHandler
 import info.lwb.feature.reader.ui.internal.setupTouchHandlers
@@ -119,7 +116,6 @@ private class ArticleWebState(
     val firstLoad: MutableState<Boolean>,
     val lastFontScale: MutableState<Float?>,
     val lastLineHeight: MutableState<Float?>,
-    // No longer used for complex fallback logic; kept minimal to disable scroll callbacks while restoring.
     val restoreActive: MutableState<Boolean>,
 )
 
@@ -170,23 +166,6 @@ private fun ArticleWebAndroidView(
             )
         },
         update = { webView ->
-            // Fallback late one-time restore: if the persisted scroll value arrived AFTER the WebView was created
-            // (common because we fetch it asynchronously) and the first load already finished without anchor restore,
-            // perform a single restore now. We avoid interfering while an active restore is running or if already done.
-            // Break the complex predicate into smaller nested checks to comply with detekt's ComplexCondition rule.
-            if (!state.initialScrollApplied.value) {
-                // Trigger only AFTER first load completes (firstLoad becomes false in setReady(true,false)).
-                if (!state.restoreActive.value && state.ready.value && !state.firstLoad.value) {
-                    val scrollTarget = initialScrollY ?: 0
-                    if (scrollTarget > 0 && initialAnchor.isNullOrBlank()) {
-                        state.initialScrollApplied.value = true
-                        state.restoreActive.value = true
-                        webView.postRestore(scrollTarget) {
-                            state.restoreActive.value = false
-                        }
-                    }
-                }
-            }
             applyArticleWebViewUpdates(
                 webView = webView,
                 state = state,
@@ -243,12 +222,7 @@ private fun createArticleWebView(
     startRestore = { target ->
         if (target > 0) {
             state.restoreActive.value = true
-            // Mark applied so fallback late restore does not run.
-            state.initialScrollApplied.value = true
         }
-    },
-    finishRestore = {
-        state.restoreActive.value = false
     },
     restoreActiveProvider = { state.restoreActive.value },
 )
