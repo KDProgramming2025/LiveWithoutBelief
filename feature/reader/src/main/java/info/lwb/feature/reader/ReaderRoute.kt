@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-
 package info.lwb.feature.reader
 
 import androidx.activity.compose.BackHandler
@@ -11,18 +10,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -39,22 +38,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
-import javax.inject.Named
-import info.lwb.feature.reader.ReaderSettingsRepository
 import info.lwb.core.common.Result
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
-import info.lwb.ui.designsystem.ActionRail
-import info.lwb.ui.designsystem.ActionRailItem
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ArticleWebView
 import info.lwb.feature.reader.ui.ReaderAppearanceSheet
 import info.lwb.feature.reader.ui.loadAssetText
 import info.lwb.feature.reader.ui.readerPalette
 import info.lwb.feature.reader.ui.themeCssAssetPath
+import info.lwb.ui.designsystem.ActionRail
+import info.lwb.ui.designsystem.ActionRailItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Named
 
 private const val FAB_HIDE_DELAY_MS = 5_000L
 private val ACTION_RAIL_EDGE_PADDING = 16.dp
@@ -70,10 +68,7 @@ private val ACTION_RAIL_EDGE_PADDING = 16.dp
  */
 @Composable
 @OptIn(ExperimentalMaterialApi::class)
-fun ReaderByIdRoute(
-    articleId: String,
-    onNavigateBack: (() -> Unit)? = null,
-) {
+fun ReaderByIdRoute(articleId: String, onNavigateBack: (() -> Unit)? = null) {
     val svcVm: info.lwb.feature.reader.viewmodels.ArticlesViewModel = hiltViewModel()
     val refreshing by svcVm.refreshing.collectAsState()
     LaunchedEffect(Unit) { svcVm.ensureLoaded() }
@@ -187,10 +182,8 @@ private fun ReaderWebViewScaffold(
     css: String,
     uiState: ReaderUiState,
     initialScroll: Int,
-    initialAnchor: String?,
     onTap: () -> Unit,
     onScrollSave: (Int) -> Unit,
-    onAnchorSave: (String) -> Unit,
 ) {
     Scaffold { padding ->
         ArticleWebView(
@@ -202,9 +195,8 @@ private fun ReaderWebViewScaffold(
             modifier = Modifier.padding(padding),
             onTap = onTap,
             initialScrollY = initialScroll,
-            initialAnchor = initialAnchor?.takeIf { it.isNotBlank() },
             onScrollChanged = { y -> onScrollSave(y) },
-            onAnchorChanged = { a -> onAnchorSave(a) },
+            onAnchorChanged = { _ -> },
         )
     }
 }
@@ -249,7 +241,7 @@ private fun ReaderAppearanceOverlay(
     showAppearance: Boolean,
     uiState: ReaderUiState,
     readerViewModel: ReaderSessionViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     if (!showAppearance) {
         return
@@ -271,26 +263,20 @@ private fun ReaderAppearanceOverlay(
 
 //region Additional helpers to shorten ReaderResolvedContent
 
-private data class ScrollRestore(val initialScroll: Int, val initialAnchor: String?)
+private data class ScrollRestore(val initialScroll: Int)
 
 @Composable
 private fun rememberScrollRestore(articleId: String): ScrollRestore {
     val scrollVm: ScrollViewModel = hiltViewModel()
     var initialScroll by remember { mutableStateOf(0) }
-    var initialAnchor by remember { mutableStateOf("") }
     LaunchedEffect(articleId) {
         initialScroll = try {
             scrollVm.observe(articleId).first()
         } catch (_: Throwable) {
             0
         }
-        initialAnchor = try {
-            scrollVm.observeAnchor(articleId).first()
-        } catch (_: Throwable) {
-            ""
-        }
     }
-    return ScrollRestore(initialScroll, initialAnchor.takeIf { it.isNotBlank() })
+    return ScrollRestore(initialScroll)
 }
 
 private data class FabState(val visible: Boolean, val showAppearance: Boolean, val confirmExit: Boolean)
@@ -327,7 +313,7 @@ private fun ReaderResolvedContent(
     resolvedUrl: String,
     uiState: ReaderUiState,
     onNavigateBack: (() -> Unit)?,
-    readerViewModel: ReaderSessionViewModel
+    readerViewModel: ReaderSessionViewModel,
 ) {
     val (fabState, showFabTemporarily, setFabState) = rememberFabController()
     LaunchedEffect(resolvedUrl) { showFabTemporarily() }
@@ -387,10 +373,8 @@ private fun ReaderResolvedLayout(
             css = css,
             uiState = uiState,
             initialScroll = scrollRestore.initialScroll,
-            initialAnchor = scrollRestore.initialAnchor,
             onTap = { onShowFabTemp() },
             onScrollSave = { y -> scope.launch { scrollVm.save(articleId, y) } },
-            onAnchorSave = { a -> scope.launch { scrollVm.saveAnchor(articleId, a) } },
         )
         ReaderActionRailOverlay(
             visible = fabState.visible,

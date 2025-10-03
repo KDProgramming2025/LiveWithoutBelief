@@ -5,6 +5,7 @@
 package info.lwb.feature.reader.ui
 
 import android.webkit.WebView
+import android.util.Base64
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -21,6 +22,7 @@ import info.lwb.feature.reader.ui.internal.ArticleClient
 import info.lwb.feature.reader.ui.internal.WebViewAssetScripts
 import info.lwb.feature.reader.ui.internal.buildInlineHtml
 import info.lwb.feature.reader.ui.internal.configureBaseSettings
+import info.lwb.feature.reader.ui.internal.numArg
 import info.lwb.feature.reader.ui.internal.safeLoadAsset
 import info.lwb.feature.reader.ui.internal.setupScrollHandler
 import info.lwb.feature.reader.ui.internal.setupTouchHandlers
@@ -33,7 +35,7 @@ import info.lwb.feature.reader.ui.internal.setupTouchHandlers
  * Responsibilities:
  *  - Loads either [url] or provided [htmlBody] (with optional [injectedCss]).
  *  - Applies reader configuration: [fontScale], [lineHeight], [backgroundColor].
- *  - Restores scroll position by [initialScrollY] or [initialAnchor].
+ *  - Restores scroll position by numeric [initialScrollY] only (anchor logic removed).
  *  - Emits scroll changes and current anchor via [onScrollChanged] / [onAnchorChanged].
  *  - Detects taps and invokes [onTap].
  */
@@ -50,8 +52,7 @@ internal fun ArticleWebView(
     onTap: (() -> Unit)? = null,
     onScrollChanged: ((scrollY: Int) -> Unit)? = null,
     initialScrollY: Int? = null,
-    initialAnchor: String? = null,
-    onAnchorChanged: ((anchor: String) -> Unit)? = null,
+    onAnchorChanged: ((anchor: String) -> Unit)? = null, // retained param for backward compatibility (unused)
 ) {
     ArticleWebViewContent(
         htmlBody = htmlBody,
@@ -65,7 +66,6 @@ internal fun ArticleWebView(
         onTap = onTap,
         onScrollChanged = onScrollChanged,
         initialScrollY = initialScrollY,
-        initialAnchor = initialAnchor,
         onAnchorChanged = onAnchorChanged,
     )
 }
@@ -83,7 +83,6 @@ private fun ArticleWebViewContent(
     onTap: (() -> Unit)?,
     onScrollChanged: ((scrollY: Int) -> Unit)?,
     initialScrollY: Int?,
-    initialAnchor: String?,
     onAnchorChanged: ((anchor: String) -> Unit)?,
 ) {
     val state = rememberArticleWebState(url, htmlBody)
@@ -100,7 +99,6 @@ private fun ArticleWebViewContent(
             onTap = onTap,
             onScrollChanged = onScrollChanged,
             initialScrollY = initialScrollY,
-            initialAnchor = initialAnchor,
             onAnchorChanged = onAnchorChanged,
         )
         if (!state.ready.value) {
@@ -142,7 +140,6 @@ private fun ArticleWebAndroidView(
     onTap: (() -> Unit)?,
     onScrollChanged: ((scrollY: Int) -> Unit)?,
     initialScrollY: Int?,
-    initialAnchor: String?,
     onAnchorChanged: ((anchor: String) -> Unit)?,
 ) {
     AndroidView(
@@ -158,7 +155,6 @@ private fun ArticleWebAndroidView(
                 fontScale = fontScale,
                 lineHeight = lineHeight,
                 backgroundColor = backgroundColor,
-                initialAnchor = initialAnchor,
                 initialScrollY = initialScrollY,
                 onTap = onTap,
                 onScrollChanged = onScrollChanged,
@@ -191,7 +187,6 @@ private fun createArticleWebView(
     fontScale: Float?,
     lineHeight: Float?,
     backgroundColor: String?,
-    initialAnchor: String?,
     initialScrollY: Int?,
     onTap: (() -> Unit)?,
     onScrollChanged: ((Int) -> Unit)?,
@@ -205,7 +200,6 @@ private fun createArticleWebView(
     backgroundColor = backgroundColor,
     fontScale = fontScale,
     lineHeight = lineHeight,
-    initialAnchor = initialAnchor,
     initialScrollY = initialScrollY,
     onTap = onTap,
     onScrollChanged = onScrollChanged,
@@ -372,7 +366,6 @@ private fun createConfiguredWebView(
     backgroundColor: String?,
     fontScale: Float?,
     lineHeight: Float?,
-    initialAnchor: String?,
     initialScrollY: Int?,
     onTap: (() -> Unit)?,
     onScrollChanged: ((Int) -> Unit)?,
@@ -405,7 +398,6 @@ private fun createConfiguredWebView(
         isInlineContent = isInlineContent,
         cssRef = arrayOf(meta.injectedCssRef, meta.lastRequestedUrl),
         injectedCss = injectedCss,
-        initialAnchor = initialAnchor,
         initialScrollY = initialScrollY ?: 0,
         fontScale = fontScale,
         lineHeight = lineHeight,

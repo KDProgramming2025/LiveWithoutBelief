@@ -194,7 +194,6 @@ internal class ArticleClient(
     private val isInlineContent: Boolean,
     private val cssRef: Array<String?>,
     private val injectedCss: String?,
-    private val initialAnchor: String?,
     private val initialScrollY: Int,
     private val fontScale: Float?,
     private val lineHeight: Float?,
@@ -294,18 +293,7 @@ internal class ArticleClient(
         if (firstLoad()) {
             onFirstReady()
             // Single restoration point: after font/line-height applied.
-            val target = if (!initialAnchor.isNullOrBlank()) {
-                try {
-                    val escaped = org.json.JSONObject.quote(initialAnchor)
-                    evaluate("(window.lwbScrollToAnchor && window.lwbScrollToAnchor($escaped))")
-                } catch (_: Throwable) {
-                    // ignore
-                }
-                // Anchor handled; do not scroll numerically.
-                -1
-            } else {
-                initialScrollY
-            }
+            val target = initialScrollY
             if (target > 0) {
                 try {
                     // Use post to ensure DOM layout done.
