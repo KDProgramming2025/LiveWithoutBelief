@@ -2,7 +2,6 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-
 package info.lwb.feature.reader.ui.internal
 
 import android.graphics.Color
@@ -52,19 +51,17 @@ private val RESTORE_DELAYS_MS = longArrayOf(
 )
 // endregion
 
-internal fun buildInlineHtml(body: String?, css: String?): String =
-    if (!body.isNullOrBlank() && !css.isNullOrBlank()) {
-        mergeHtmlAndCss(body, css)
-    } else {
-        body.orEmpty()
-    }
+internal fun buildInlineHtml(body: String?, css: String?): String = if (!body.isNullOrBlank() && !css.isNullOrBlank()) {
+    mergeHtmlAndCss(body, css)
+} else {
+    body.orEmpty()
+}
 
-internal fun numArg(v: Float?): String =
-    if (v == null) {
-        "undefined"
-    } else {
-        String.format(Locale.US, "%.1f", v)
-    }
+internal fun numArg(v: Float?): String = if (v == null) {
+    "undefined"
+} else {
+    String.format(Locale.US, "%.1f", v)
+}
 
 internal fun WebView.safeLoadAsset(path: String): String = try {
     context
@@ -296,18 +293,27 @@ internal class ArticleClient(
         applyReaderVarsIfChanged(fontScale, lineHeight, backgroundColor)
         if (firstLoad()) {
             onFirstReady()
-            var usedAnchor = false
-            try {
-                if (!initialAnchor.isNullOrBlank()) {
-                    usedAnchor = true
+            // Single restoration point: after font/line-height applied.
+            val target = if (!initialAnchor.isNullOrBlank()) {
+                try {
                     val escaped = org.json.JSONObject.quote(initialAnchor)
                     evaluate("(window.lwbScrollToAnchor && window.lwbScrollToAnchor($escaped))")
+                } catch (_: Throwable) {
+                    // ignore
                 }
-            } catch (_: Throwable) {
-                // ignore anchor errors
+                // Anchor handled; do not scroll numerically.
+                -1
+            } else {
+                initialScrollY
             }
-            if (!usedAnchor) {
-                startRestore(initialScrollY)
+            if (target > 0) {
+                try {
+                    // Use post to ensure DOM layout done.
+                    view.postRestore(target) { }
+                    startRestore(target)
+                } catch (_: Throwable) {
+                    // ignore
+                }
             }
         }
         setLastValues(fontScale, lineHeight)

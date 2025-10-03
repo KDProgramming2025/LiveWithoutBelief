@@ -119,10 +119,8 @@ private class ArticleWebState(
     val firstLoad: MutableState<Boolean>,
     val lastFontScale: MutableState<Float?>,
     val lastLineHeight: MutableState<Float?>,
-    // True only while a one-time initial scroll restore is executing.
+    // No longer used for complex fallback logic; kept minimal to disable scroll callbacks while restoring.
     val restoreActive: MutableState<Boolean>,
-    // Guards a fallback late restoration when initial scroll is learned after WebView creation.
-    val initialScrollApplied: MutableState<Boolean>,
 )
 
 @Composable
@@ -132,8 +130,7 @@ private fun rememberArticleWebState(url: String?, htmlBody: String?): ArticleWeb
     val lastFontScale = remember(url, htmlBody) { mutableStateOf<Float?>(null) }
     val lastLineHeight = remember(url, htmlBody) { mutableStateOf<Float?>(null) }
     val restoreActive = remember(url, htmlBody) { mutableStateOf(false) }
-    val initialScrollApplied = remember(url, htmlBody) { mutableStateOf(false) }
-    return ArticleWebState(ready, firstLoad, lastFontScale, lastLineHeight, restoreActive, initialScrollApplied)
+    return ArticleWebState(ready, firstLoad, lastFontScale, lastLineHeight, restoreActive)
 }
 
 @Composable
@@ -410,7 +407,6 @@ private fun createConfiguredWebView(
     setReady: (ready: Boolean, firstLoad: Boolean) -> Unit,
     setLastValues: (Float?, Float?) -> Unit,
     startRestore: (Int) -> Unit,
-    finishRestore: () -> Unit,
     restoreActiveProvider: () -> Boolean,
 ): WebView {
     val (ready, firstLoad) = readyState()
@@ -452,9 +448,6 @@ private fun createConfiguredWebView(
         startRestore = { target ->
             if (target > 0) {
                 startRestore(target)
-                webView.postRestore(target) {
-                    finishRestore()
-                }
             }
         },
         setLastValues = setLastValues,
