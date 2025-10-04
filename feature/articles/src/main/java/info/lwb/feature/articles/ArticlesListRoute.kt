@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  */
-package info.lwb.feature.reader
+package info.lwb.feature.articles
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -40,8 +40,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import info.lwb.core.model.Article
-import info.lwb.feature.reader.viewmodels.ArticlesFilter
-import info.lwb.feature.reader.viewmodels.ArticlesViewModel
+import info.lwb.feature.articles.internal.ArticlesViewModel
 import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.GrainyBackground
@@ -51,9 +50,7 @@ import info.lwb.ui.designsystem.RaisedIconWell
 import info.lwb.ui.designsystem.RaisedSurface
 import info.lwb.ui.designsystem.SurfaceStyleColors
 
-/**
- * Generic route for displaying an article list filtered by [ArticlesFilter].
- */
+/** Generic route for displaying an article list filtered by [ArticlesFilter]. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticlesListRoute(
@@ -89,10 +86,7 @@ fun ArticlesListRoute(
                                 listOf(Crumb("Home", onNavigateHome), Crumb("Articles", null))
                             }
                             is ArticlesFilter.Label -> {
-                                listOf(
-                                    Crumb("Home", onNavigateHome),
-                                    Crumb("${filter.value}", null),
-                                )
+                                listOf(Crumb("Home", onNavigateHome), Crumb(filter.value, null))
                             }
                         }
                         Breadcrumb(segments = crumbs)

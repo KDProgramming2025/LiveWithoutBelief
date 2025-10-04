@@ -198,6 +198,7 @@ dependencies {
     implementation(project(":feature:search"))
     implementation(project(":feature:bookmarks"))
     implementation(project(":feature:annotations"))
+    implementation(project(":feature:articles"))
     implementation(project(":feature:home"))
     implementation(project(":feature:settings"))
 

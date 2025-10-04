@@ -39,8 +39,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import info.lwb.auth.AuthViewModel
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.home.HomeRoute
-import info.lwb.feature.reader.ArticlesListRoute
-import info.lwb.feature.reader.viewmodels.ArticlesFilter
+import info.lwb.feature.articles.ArticlesListRoute
+import info.lwb.feature.articles.ArticlesFilter
 import info.lwb.feature.reader.ReaderByIdRoute
 import info.lwb.feature.search.SearchRoute
 import info.lwb.feature.settings.SettingsRoute

@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  */
-package info.lwb.feature.reader.viewmodels
+package info.lwb.feature.articles
 
 /**
  * Filter describing which article collection should be displayed.

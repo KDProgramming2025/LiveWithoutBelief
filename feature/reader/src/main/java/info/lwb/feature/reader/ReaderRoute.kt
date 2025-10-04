@@ -39,7 +39,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import info.lwb.core.common.Result
-import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ArticleWebView
@@ -68,22 +67,19 @@ private val ACTION_RAIL_EDGE_PADDING = 16.dp
 @Composable
 @OptIn(ExperimentalMaterialApi::class)
 fun ReaderByIdRoute(articleId: String, onNavigateBack: (() -> Unit)? = null) {
-    val svcVm: info.lwb.feature.reader.viewmodels.ArticlesViewModel = hiltViewModel()
-    val refreshing by svcVm.refreshing.collectAsState()
-    LaunchedEffect(Unit) { svcVm.ensureLoaded() }
-    // Ensure articles list collection starts (idempotent) before requesting specific content.
-    LaunchedEffect(articleId) { svcVm.loadArticleContent(articleId) }
-    val contentRes by svcVm.articleContent.collectAsState()
-    val articlesRes by svcVm.articles.collectAsState()
+    val contentVm: ReaderContentViewModel = hiltViewModel()
+    LaunchedEffect(articleId) { contentVm.load(articleId) }
+    val refreshing by contentVm.refreshing.collectAsState()
+    val contentRes by contentVm.content.collectAsState()
     val env: ReaderEnv = hiltViewModel()
     val vm: ReaderSessionViewModel = hiltViewModel()
     val ui by vm.uiState.collectAsState()
 
-    val resolvedUrl = remember(contentRes, articlesRes, env.apiBaseUrl, articleId) {
-        resolveArticleUrl(articleId, contentRes, articlesRes, env.apiBaseUrl)
+    val resolvedUrl = remember(contentRes, env.apiBaseUrl, articleId) {
+        resolveArticleUrl(articleId, contentRes, env.apiBaseUrl)
     }
 
-    val pullState = rememberPullRefreshState(refreshing = refreshing, onRefresh = { svcVm.refreshArticles() })
+    val pullState = rememberPullRefreshState(refreshing = refreshing, onRefresh = { contentVm.refresh() })
     Box(Modifier.fillMaxSize().pullRefresh(pullState)) {
         if (!resolvedUrl.isNullOrBlank()) {
             ReaderResolvedContent(
@@ -113,21 +109,16 @@ internal class ReaderEnv @Inject constructor(@Named("apiBaseUrl") val apiBaseUrl
 private fun resolveArticleUrl(
     articleId: String,
     contentRes: Result<ArticleContent>?,
-    articlesRes: Result<List<Article>>?,
     apiBaseUrl: String,
 ): String? {
     val viaContent = (contentRes as? Result.Success<ArticleContent>)?.data?.indexUrl
     if (!viaContent.isNullOrBlank()) {
         return viaContent
     }
-    val list = (articlesRes as? Result.Success<List<Article>>)?.data
-    val slug = list?.firstOrNull { it.id == articleId }?.slug
-    if (slug.isNullOrBlank()) {
-        return null
-    }
+    // Fallback: construct path using id if indexUrl absent (slug no longer available here).
     val api = apiBaseUrl.trimEnd('/')
     val adminBase = api.replace(Regex("/API/?$"), "/Admin/").trimEnd('/')
-    return "$adminBase/web/articles/$slug/"
+    return "$adminBase/web/articles/$articleId/"
 }
 
 // (Removed older ReaderResolvedContent implementation replaced by shorter version below)

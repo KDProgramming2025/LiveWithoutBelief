@@ -1,19 +1,19 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2024 Live Without Belief
  */
-package info.lwb.feature.reader.viewmodels
+package info.lwb.feature.articles.internal
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import info.lwb.core.common.Result
 import info.lwb.core.domain.GetArticleContentUseCase
-import info.lwb.core.domain.GetArticlesUseCase
 import info.lwb.core.domain.GetArticlesByLabelUseCase
+import info.lwb.core.domain.GetArticlesUseCase
 import info.lwb.core.domain.RefreshArticlesUseCase
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
+import info.lwb.feature.articles.ArticlesFilter
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -22,61 +22,43 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel exposing article collections and individual article content streams.
- * Pure acquisition layer – no pagination or appearance concerns.
- */
+private const val MSG_FAILED_LOAD = "Failed to load"
+private const val MSG_REFRESH_FAILED = "Refresh failed"
+private const val MSG_CONTENT_REFRESH_FAILED = "Content refresh failed"
+
+/** Internal ViewModel exposing article collections and article content streams for the Articles feature. */
 @HiltViewModel
-class ArticlesViewModel @Inject constructor(
+internal class ArticlesViewModel @Inject constructor(
     private val getArticlesUseCase: GetArticlesUseCase,
     private val getArticleContentUseCase: GetArticleContentUseCase,
     private val refreshArticlesUseCase: RefreshArticlesUseCase,
     private val getArticlesByLabelUseCase: GetArticlesByLabelUseCase,
 ) : ViewModel() {
     private val _articles = MutableStateFlow<Result<List<Article>>>(Result.Loading)
-
-    /** Latest article list with loading / success / error states. */
     val articles: StateFlow<Result<List<Article>>> = _articles.asStateFlow()
 
     private val _articleContent = MutableStateFlow<Result<ArticleContent>>(Result.Loading)
-
-    /** Content result for the most recently requested article id. */
     val articleContent: StateFlow<Result<ArticleContent>> = _articleContent.asStateFlow()
 
     @Volatile private var started = false
 
     private val _refreshing = MutableStateFlow(false)
-
-    /** Exposed refreshing flag to drive pull-to-refresh indicator. */
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
 
     private val _snackbar = MutableSharedFlow<String>(extraBufferCapacity = 1)
-
-    /**
-     * Transient notifications (snackbar text) for recoverable refresh/content failures occurring
-     * while previously loaded data remains visible.
-     */
     val snackbar: SharedFlow<String> = _snackbar
 
-    /** UI model for generic article list screen. */
     data class ArticlesListUiState(
-        /** Currently active logical filter. */
         val filter: ArticlesFilter = ArticlesFilter.All,
-        /** True while an initial or non user‑initiated load is in progress. */
         val loading: Boolean = false,
-        /** True while a user pull-to-refresh operation is executing. */
         val refreshing: Boolean = false,
-        /** Loaded immutable snapshot of articles (may be empty). */
         val items: List<Article> = emptyList(),
-        /** Optional user‑readable error for empty‑state failures. */
         val error: String? = null,
     )
 
     private val _listState = MutableStateFlow(ArticlesListUiState())
-    /** Exposed article list UI state (all or filtered). */
     val listState: StateFlow<ArticlesListUiState> = _listState.asStateFlow()
 
-    /** Idempotent starter: begins collecting articles flow and launches one background refresh. */
     fun ensureLoaded() {
         if (started) {
             return
@@ -87,7 +69,7 @@ class ArticlesViewModel @Inject constructor(
     }
 
     private fun collectArticles() = viewModelScope.launch {
-        getArticlesUseCase().collect { result: Result<List<Article>> ->
+        getArticlesUseCase().collect { result ->
             when (result) {
                 is Result.Loading -> {
                     handleArticlesLoadingForList()
@@ -125,7 +107,7 @@ class ArticlesViewModel @Inject constructor(
         handleArticlesError(result)
         if (_listState.value.filter is ArticlesFilter.All) {
             val listState = _listState.value
-            val message = result.throwable.message ?: "Failed to load"
+            val message = result.throwable.message ?: MSG_FAILED_LOAD
             if (listState.items.isNotEmpty()) {
                 _snackbar.tryEmit(message)
                 _listState.value = listState.copy(loading = false)
@@ -145,7 +127,7 @@ class ArticlesViewModel @Inject constructor(
     private fun handleArticlesError(result: Result.Error) {
         val current = _articles.value
         if (current is Result.Success && current.data.isNotEmpty()) {
-            _snackbar.tryEmit(result.throwable.message ?: "Refresh failed")
+            _snackbar.tryEmit(result.throwable.message ?: MSG_REFRESH_FAILED)
         } else {
             _articles.value = result
         }
@@ -157,15 +139,14 @@ class ArticlesViewModel @Inject constructor(
         } catch (ce: kotlinx.coroutines.CancellationException) {
             throw ce
         } catch (_: Throwable) {
-            // Initial background refresh failure will surface through articles flow; safe to ignore here.
+            // ignore other failures
         }
     }
 
-    /** Requests content for [articleId] and emits progressive states to [articleContent]. */
     fun loadArticleContent(articleId: String) {
         viewModelScope.launch {
-            getArticleContentUseCase(articleId = articleId).collect { result: Result<ArticleContent> ->
-                processArticleContentResult(result = result)
+            getArticleContentUseCase(articleId = articleId).collect { result ->
+                processArticleContentResult(result)
             }
         }
     }
@@ -183,10 +164,12 @@ class ArticlesViewModel @Inject constructor(
             }
             is Result.Error -> {
                 val current = _articleContent.value
-                val hasBody = current is Result.Success &&
-                    (current.data.htmlBody.isNotBlank() || current.data.plainText.isNotBlank())
+                val hasBody = current is Result.Success && (
+                    current.data.htmlBody.isNotBlank() ||
+                        current.data.plainText.isNotBlank()
+                    )
                 if (hasBody) {
-                    _snackbar.tryEmit(result.throwable.message ?: "Content refresh failed")
+                    _snackbar.tryEmit(result.throwable.message ?: MSG_CONTENT_REFRESH_FAILED)
                 } else {
                     _articleContent.value = result
                 }
@@ -194,7 +177,6 @@ class ArticlesViewModel @Inject constructor(
         }
     }
 
-    /** Triggers a remote refresh of the article list (idempotent if backend unchanged). */
     fun refreshArticles() {
         if (_refreshing.value) {
             return
@@ -207,29 +189,30 @@ class ArticlesViewModel @Inject constructor(
                 _refreshing.value = false
                 throw ce
             } catch (_: Throwable) {
-                // Error surfaced through upstream flows or snackbar; swallow after state reset.
+                // ignore
             } finally {
                 _refreshing.value = false
             }
         }
     }
 
-    /** Alias for UI pull-to-refresh semantics; always attempts refresh. */
     fun refresh() = refreshArticles()
 
-    // ——— Generic list (all / filtered) -------------------------------------------------------
-
-    /** Load list for [filter]; idempotent for identical active filter already loaded. */
     fun loadList(filter: ArticlesFilter) {
         val current = _listState.value
         val alreadyLoaded = current.items.isNotEmpty() && !current.loading && !current.refreshing
         if (current.filter == filter && alreadyLoaded) {
             return
         }
-        _listState.value = current.copy(filter = filter, loading = true, error = null, refreshing = false)
+        _listState.value = current.copy(
+            filter = filter,
+            loading = true,
+            error = null,
+            refreshing = false,
+        )
         when (filter) {
             ArticlesFilter.All -> {
-                ensureLoaded() // reactive updates will flow via collectArticles
+                ensureLoaded()
             }
             is ArticlesFilter.Label -> {
                 fetchLabel(filter.value, isRefresh = false)
@@ -237,10 +220,11 @@ class ArticlesViewModel @Inject constructor(
         }
     }
 
-    /** Refresh current list if possible. */
     fun refreshList() {
         val current = _listState.value
-        if (current.refreshing || current.loading) return
+        if (current.refreshing || current.loading) {
+            return
+        }
         val f = current.filter
         if (f is ArticlesFilter.All) {
             refreshArticles()
@@ -264,11 +248,14 @@ class ArticlesViewModel @Inject constructor(
         } catch (ce: kotlinx.coroutines.CancellationException) {
             throw ce
         } catch (t: IllegalStateException) {
-            val message = t.message ?: "Failed to load"
+            val message = t.message ?: MSG_FAILED_LOAD
             val existing = _listState.value.items
             if (existing.isNotEmpty()) {
                 _snackbar.tryEmit(message)
-                _listState.value = _listState.value.copy(loading = false, refreshing = false)
+                _listState.value = _listState.value.copy(
+                    loading = false,
+                    refreshing = false,
+                )
             } else {
                 _listState.value = _listState.value.copy(
                     loading = false,
