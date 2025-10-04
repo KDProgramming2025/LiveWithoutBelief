@@ -4,18 +4,18 @@
  */
 package info.lwb.auth
 
-import java.util.concurrent.ConcurrentHashMap
-import javax.inject.Inject
-import javax.inject.Singleton
+import android.util.Log
+import info.lwb.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import android.util.Log
-import info.lwb.BuildConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private const val DEBUG_TAG = "AuthValidate"
 private const val AUTH_VALIDATE_PATH = "/v1/auth/google"
@@ -192,20 +192,19 @@ class RemoteSessionValidator @Inject constructor(
     private inline fun execute(
         request: Request,
         map: (code: Int, retryAfterHeaderPresent: Boolean) -> ValidationResult,
-    ): ValidationResult =
-        try {
-            client
-                .newCall(request)
-                .execute()
-                .use { r ->
-                    val retryAfterValue = r.header(RETRY_AFTER) ?: "<none>"
-                    debugLog("response code=${r.code} retryAfter=$retryAfterValue")
-                    val retryableHeader = r.header(RETRY_AFTER) != null
-                    map(r.code, retryableHeader)
-                }
-        } catch (_: Exception) {
-            ValidationResult(false, ValidationError.Network)
-        }
+    ): ValidationResult = try {
+        client
+            .newCall(request)
+            .execute()
+            .use { r ->
+                val retryAfterValue = r.header(RETRY_AFTER) ?: "<none>"
+                debugLog("response code=${r.code} retryAfter=$retryAfterValue")
+                val retryableHeader = r.header(RETRY_AFTER) != null
+                map(r.code, retryableHeader)
+            }
+    } catch (_: Exception) {
+        ValidationResult(false, ValidationError.Network)
+    }
 
     private fun evaluateStatus(code: Int): ValidationResult = when {
         code == HTTP_OK || code == HTTP_CREATED -> {
@@ -234,14 +233,13 @@ class RemoteSessionValidator @Inject constructor(
         }
     }
 
-    private fun computeDelay(attempt: Int): Long =
-        if (attempt == 0) {
-            0L
-        } else {
-            val factor = Math
-                .pow(retryPolicy.backoffMultiplier, (attempt - 1).toDouble())
-            (retryPolicy.baseDelayMs * factor).toLong()
-        }
+    private fun computeDelay(attempt: Int): Long = if (attempt == 0) {
+        0L
+    } else {
+        val factor = Math
+            .pow(retryPolicy.backoffMultiplier, (attempt - 1).toDouble())
+        (retryPolicy.baseDelayMs * factor).toLong()
+    }
 
     private fun debugLog(message: String) = if (BuildConfig.DEBUG) {
         runCatching {

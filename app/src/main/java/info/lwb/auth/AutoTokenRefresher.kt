@@ -61,17 +61,16 @@ class AutoTokenRefresher(
         job = null
     }
 
-    private suspend fun performIteration(refresh: suspend () -> Unit, didInitialValidation: Boolean): Boolean =
-        try {
-            if (!didInitialValidation) {
-                validateExistingOnce()
-            }
-            maybeRefresh(refresh)
-            true
-        } catch (_: Exception) {
-            // Swallow all exceptions – background best-effort policy.
-            true
+    private suspend fun performIteration(refresh: suspend () -> Unit, didInitialValidation: Boolean): Boolean = try {
+        if (!didInitialValidation) {
+            validateExistingOnce()
         }
+        maybeRefresh(refresh)
+        true
+    } catch (_: Exception) {
+        // Swallow all exceptions – background best-effort policy.
+        true
+    }
 
     private suspend fun validateExistingOnce() {
         val existing = storage.getIdToken()

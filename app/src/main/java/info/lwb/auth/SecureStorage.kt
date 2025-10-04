@@ -87,12 +87,11 @@ class EncryptedPrefsSecureStorage(context: Context) : SecureStorage {
             .apply()
     }
 
-    override fun getProfile(): Triple<String?, String?, String?> =
-        Triple(
-            prefs.getString(KEY_NAME, null),
-            prefs.getString(KEY_EMAIL, null),
-            prefs.getString(KEY_AVATAR, null),
-        )
+    override fun getProfile(): Triple<String?, String?, String?> = Triple(
+        prefs.getString(KEY_NAME, null),
+        prefs.getString(KEY_EMAIL, null),
+        prefs.getString(KEY_AVATAR, null),
+    )
 
     private companion object {
         const val PREFS_FILE = "auth.secure.prefs"

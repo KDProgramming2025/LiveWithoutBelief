@@ -120,19 +120,18 @@ class RemotePasswordAuthApi @Inject constructor(
         )
     }
 
-    override suspend fun login(username: String, password: String): AuthUser =
-        withContext(Dispatchers.IO) {
-            val request = buildLoginRequest(username, password)
-            http.newCall(request).execute().use { response ->
-                if (response.code == STATUS_UNAUTHORIZED) {
-                    error(ERR_INVALID_CREDENTIALS)
-                }
-                if (response.code != STATUS_OK) {
-                    error("$ERR_LOGIN_FAILED ${response.code}")
-                }
-                parseUser(response)
+    override suspend fun login(username: String, password: String): AuthUser = withContext(Dispatchers.IO) {
+        val request = buildLoginRequest(username, password)
+        http.newCall(request).execute().use { response ->
+            if (response.code == STATUS_UNAUTHORIZED) {
+                error(ERR_INVALID_CREDENTIALS)
             }
+            if (response.code != STATUS_OK) {
+                error("$ERR_LOGIN_FAILED ${response.code}")
+            }
+            parseUser(response)
         }
+    }
 
     private fun buildLoginRequest(username: String, password: String): Request {
         val payload = json.encodeToString(

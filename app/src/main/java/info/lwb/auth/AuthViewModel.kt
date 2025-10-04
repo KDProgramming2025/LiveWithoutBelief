@@ -6,11 +6,12 @@ package info.lwb.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CoroutineDispatcher
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /** Auth UI finite-state representation consumed by the UI layer. */
 sealed interface AuthUiState {
@@ -31,22 +32,22 @@ sealed interface AuthUiState {
 }
 
 /**
- * ViewModel orchestrating authentication flows and exposing a single immutable [state] stream.
+ * Authentication ViewModel orchestrating sign-in/out and password flows exposing a single immutable [state] stream.
  *
  * Responsibilities:
- * - Delegates auth operations to [AuthFacade]
- * - Applies simple state machine transitions to drive UI.
- * - Performs optional ALTCHA challenge solving before password registration.
+ *  - Delegates auth operations to [AuthFacade].
+ *  - Applies simple state machine transitions to drive UI.
+ *  - Performs optional ALTCHA challenge solving before password registration.
  *
- * Threading: public methods post work on [mainDispatcher] (defaults to [Dispatchers.Main]).
+ * Threading: public methods launch coroutines on [Dispatchers.Main].
  */
-class AuthViewModel(
-    private val facade: AuthFacade,
-    private val altcha: AltchaTokenProvider? = null,
-    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+@HiltViewModel
+class AuthViewModel @Inject constructor(
+    private val authFacade: AuthFacade,
+    private val altchaProvider: AltchaTokenProvider?,
 ) : ViewModel() {
     private val _state = MutableStateFlow<AuthUiState>(
-        facade.currentUser()?.let { AuthUiState.SignedIn(it) } ?: AuthUiState.SignedOut,
+        authFacade.currentUser()?.let { AuthUiState.SignedIn(it) } ?: AuthUiState.SignedOut,
     )
 
     /** Observable immutable authentication state for UI consumption. */
@@ -60,8 +61,8 @@ class AuthViewModel(
             return
         }
         _state.value = AuthUiState.Loading
-        viewModelScope.launch(mainDispatcher) {
-            facade
+        viewModelScope.launch(Dispatchers.Main) {
+            authFacade
                 .oneTapSignIn(activityProvider())
                 .onSuccess { user -> _state.value = AuthUiState.SignedIn(user) }
                 .onFailure { e ->
@@ -83,12 +84,12 @@ class AuthViewModel(
             return
         }
         _state.value = AuthUiState.Loading
-        viewModelScope.launch(mainDispatcher) {
-            val token = runCatching { altcha?.solve(activityProvider()) }.getOrNull()
+        viewModelScope.launch(Dispatchers.Main) {
+            val token = runCatching { altchaProvider?.solve(activityProvider()) }.getOrNull()
             if (token.isNullOrEmpty()) {
                 _state.value = AuthUiState.Error("ALTCHA failed; please try again")
             } else {
-                facade
+                authFacade
                     .register(username, password, token)
                     .onSuccess { _state.value = AuthUiState.SignedIn(it) }
                     .onFailure { _state.value = AuthUiState.Error(it.message ?: "Register failed") }
@@ -102,8 +103,8 @@ class AuthViewModel(
             return
         }
         _state.value = AuthUiState.Loading
-        viewModelScope.launch(mainDispatcher) {
-            facade
+        viewModelScope.launch(Dispatchers.Main) {
+            authFacade
                 .passwordLogin(username, password)
                 .onSuccess { _state.value = AuthUiState.SignedIn(it) }
                 .onFailure { _state.value = AuthUiState.Error(it.message ?: "Login failed") }
@@ -116,8 +117,8 @@ class AuthViewModel(
             return
         }
         _state.value = AuthUiState.Loading
-        viewModelScope.launch(mainDispatcher) {
-            runCatching { facade.signOut() }
+        viewModelScope.launch(Dispatchers.Main) {
+            runCatching { authFacade.signOut() }
                 .onSuccess { _state.value = AuthUiState.SignedOut }
                 .onFailure { e -> _state.value = AuthUiState.Error(e.message ?: "Sign-out failed") }
         }

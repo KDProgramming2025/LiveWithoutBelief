@@ -113,11 +113,10 @@ object AuthProvisionModule {
     @Provides
     @Singleton
     @AuthClient
-    fun provideAuthOkHttp(): OkHttpClient =
-        OkHttpClient
-            .Builder()
-            .callTimeout(AUTH_OKHTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .build()
+    fun provideAuthOkHttp(): OkHttpClient = OkHttpClient
+        .Builder()
+        .callTimeout(AUTH_OKHTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build()
 
     /** Provides base URL for auth service (switchable via build config). */
     @Provides
@@ -138,14 +137,13 @@ object AuthProvisionModule {
         sessionValidator: SessionValidator,
         appScope: CoroutineScope,
         refreshConfig: TokenRefreshConfig,
-    ): AutoTokenRefresher =
-        AutoTokenRefresher(
-            storage,
-            authFacade,
-            sessionValidator,
-            appScope,
-            refreshConfig,
-        ).apply { start() }
+    ): AutoTokenRefresher = AutoTokenRefresher(
+        storage,
+        authFacade,
+        sessionValidator,
+        appScope,
+        refreshConfig,
+    ).apply { start() }
 
     /** Ensures server client id is configured correctly and exposes it as a qualified String. */
     @Provides
@@ -197,12 +195,11 @@ object AuthValidationModule {
     /** Provides retry & backoff policy for remote validation attempts. */
     @Provides
     @Singleton
-    fun provideDynamicValidationRetryPolicy(): ValidationRetryPolicy =
-        ValidationRetryPolicy(
-            maxAttempts = info.lwb.BuildConfig.AUTH_VALIDATION_MAX_ATTEMPTS,
-            baseDelayMs = info.lwb.BuildConfig.AUTH_VALIDATION_BASE_DELAY_MS,
-            backoffMultiplier = info.lwb.BuildConfig.AUTH_VALIDATION_BACKOFF_MULT,
-        )
+    fun provideDynamicValidationRetryPolicy(): ValidationRetryPolicy = ValidationRetryPolicy(
+        maxAttempts = info.lwb.BuildConfig.AUTH_VALIDATION_MAX_ATTEMPTS,
+        baseDelayMs = info.lwb.BuildConfig.AUTH_VALIDATION_BASE_DELAY_MS,
+        backoffMultiplier = info.lwb.BuildConfig.AUTH_VALIDATION_BACKOFF_MULT,
+    )
 }
 
 /** Qualifier for injecting the authentication service base URL. */

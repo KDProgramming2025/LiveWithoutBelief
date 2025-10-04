@@ -4,15 +4,15 @@
  */
 package info.lwb.data.repo.db
 
+import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Index
-import androidx.room.PrimaryKey
-import androidx.room.RoomDatabase
-import androidx.room.Dao
-import androidx.room.Query
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
+import androidx.room.PrimaryKey
+import androidx.room.Query
+import androidx.room.RoomDatabase
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -42,10 +42,14 @@ data class ArticleEntity(
     val version: Int,
     val updatedAt: String,
     val wordCount: Int,
-    val label: String?, // See KDoc
-    val `order`: Int, // Stable ordering
-    val coverUrl: String, // Cover image URL
-    val iconUrl: String, // Icon image URL
+    // Optional menu/category label (null if uncategorized)
+    val label: String?,
+    // Stable ordering integer (ascending) used for deterministic UI ordering
+    val `order`: Int,
+    // Cover image URL provided by server (non-null)
+    val coverUrl: String,
+    // Icon image URL provided by server (non-null)
+    val iconUrl: String,
 )
 
 /**

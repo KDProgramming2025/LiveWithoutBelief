@@ -15,8 +15,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import javax.inject.Singleton
 import javax.inject.Named
+import javax.inject.Singleton
 
 /**
  * Hilt module providing network stack singletons: JSON serializer, OkHttp client,
@@ -47,7 +47,7 @@ object NetworkModule {
         builder.addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BASIC
-            }
+            },
         )
         return builder.build()
     }
@@ -61,11 +61,7 @@ object NetworkModule {
      */
     @Provides
     @Singleton
-    fun provideRetrofit(
-        json: Json,
-        client: OkHttpClient,
-        @Named("apiBaseUrl") baseUrl: String
-    ): Retrofit {
+    fun provideRetrofit(json: Json, client: OkHttpClient, @Named("apiBaseUrl") baseUrl: String): Retrofit {
         val builder = Retrofit.Builder()
         builder.baseUrl(baseUrl)
         builder.addConverterFactory(json.asConverterFactory("application/json".toMediaType()))

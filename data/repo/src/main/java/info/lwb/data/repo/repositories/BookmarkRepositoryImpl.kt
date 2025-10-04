@@ -17,9 +17,9 @@ import info.lwb.data.repo.db.BookmarkFolderEntity
 import info.lwb.data.repo.db.FolderDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
 import java.time.Instant
 import java.util.UUID
+import javax.inject.Inject
 
 /**
  * Concrete implementation of [BookmarkRepository] backed by local Room DAOs.

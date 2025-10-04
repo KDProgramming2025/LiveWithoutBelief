@@ -85,7 +85,9 @@ subprojects {
                     "max_line_length" to "120",
                     // Instruct ktlint to skip function-naming checks when annotated with these (Compose style).
                     // This mirrors detekt.yml's FunctionNaming.ignoreAnnotated.
-                    "ktlint_function_naming_ignore_when_annotated_with" to "Composable,Preview"
+                    "ktlint_function_naming_ignore_when_annotated_with" to "Composable,Preview",
+                    // Enforce multiline class signature when parameter count >= 2 for readability & consistency
+                    "ktlint_class_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than" to "2"
                 )
             )
             licenseHeaderFile(

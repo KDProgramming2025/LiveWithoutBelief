@@ -13,19 +13,15 @@ import info.lwb.core.model.ArticleContent
  */
 object Builders {
     /** Build an [Article] with overridable identifiers and version. */
-    fun article(
-        id: String = "a1",
-        title: String = "Title",
-        slug: String = "title",
-        version: Int = 1,
-    ): Article = Article(
-        id = id,
-        title = title,
-        slug = slug,
-        version = version,
-        updatedAt = "2025-01-01T00:00:00Z",
-        wordCount = 1000,
-    )
+    fun article(id: String = "a1", title: String = "Title", slug: String = "title", version: Int = 1): Article =
+        Article(
+            id = id,
+            title = title,
+            slug = slug,
+            version = version,
+            updatedAt = "2025-01-01T00:00:00Z",
+            wordCount = 1000,
+        )
 
     /** Build [ArticleContent] for an article. */
     fun content(articleId: String = "a1"): ArticleContent = ArticleContent(

@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.feature.reader
 
@@ -16,15 +17,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,11 +37,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import info.lwb.feature.reader.ui.AudioBlock
-import info.lwb.feature.reader.ui.YouTubeBlock
-import info.lwb.feature.reader.ui.ParagraphBlock
-import info.lwb.feature.reader.ui.HeadingBlock
 import info.lwb.feature.annotations.DiscussionThreadSheet
+import info.lwb.feature.reader.ui.AudioBlock
+import info.lwb.feature.reader.ui.HeadingBlock
+import info.lwb.feature.reader.ui.ParagraphBlock
+import info.lwb.feature.reader.ui.YouTubeBlock
 import kotlinx.coroutines.launch
 
 /**
@@ -88,16 +89,10 @@ internal fun ReaderScreenContent(
 }
 
 // Highlight + typography scaling constants extracted from magic numbers previously inline
-private const val ACTIVE_HIGHLIGHT_ALPHA = 0.55f
-private const val INACTIVE_HIGHLIGHT_ALPHA = 0.30f
-private const val MIN_FONT_SIZE_SP = 10.0
-private const val MIN_LINE_HEIGHT_SP = 12.0
+// Removed unused constants (highlight alphas, min font/line height, toc width, spacing) flagged by detekt
 private val IMAGE_BLOCK_HEIGHT = 220.dp
 private val BLOCK_SPACING = 12.dp
 private val TOC_SPACING = 2.dp
-private val TOC_ITEM_VERTICAL_PADDING = 4.dp
-private val TOC_WIDTH = 220.dp
-private val SMALL_SPACING = 8.dp
 
 @Composable
 internal fun ReaderPagedContent(
@@ -132,30 +127,26 @@ internal fun ReaderPagedContent(
 }
 
 @Composable
-private fun ReaderPagedHeader(
-    currentPageIndex: Int,
-    pages: List<Page>,
-    onPageChange: (Int) -> Unit,
-) {
+private fun ReaderPagedHeader(currentPageIndex: Int, pages: List<Page>, onPageChange: (Int) -> Unit) {
     Row(
-        Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            "Page ${currentPageIndex + 1} / ${pages.size}",
+            text = "Page ${currentPageIndex + 1} / ${pages.size}",
             style = MaterialTheme.typography.labelMedium,
         )
         Row {
             androidx.compose.material3.Button(
                 enabled = currentPageIndex > 0,
                 onClick = { onPageChange((currentPageIndex - 1).coerceAtLeast(0)) },
-            ) { Text("Prev") }
-            Spacer(Modifier.width(8.dp))
+            ) { Text(text = "Prev") }
+            Spacer(modifier = Modifier.width(8.dp))
             androidx.compose.material3.Button(
                 enabled = currentPageIndex < pages.lastIndex,
                 onClick = { onPageChange((currentPageIndex + 1).coerceAtMost(pages.lastIndex)) },
-            ) { Text("Next") }
+            ) { Text(text = "Next") }
         }
     }
 }
@@ -181,9 +172,22 @@ private fun ReaderPagedBody(
     }
     val listState = rememberLazyListState()
     val scrollVm: ScrollViewModel = hiltViewModel()
-    LaunchedEffect(articleTitle) { restoreListPosition(scrollVm, articleTitle, listState) }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        scrollVm.saveList(articleTitle, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+    LaunchedEffect(articleTitle) {
+        restoreListPosition(
+            scrollVm = scrollVm,
+            articleTitle = articleTitle,
+            state = listState,
+        )
+    }
+    LaunchedEffect(
+        listState.firstVisibleItemIndex,
+        listState.firstVisibleItemScrollOffset,
+    ) {
+        scrollVm.saveList(
+            articleId = articleTitle,
+            index = listState.firstVisibleItemIndex,
+            offset = listState.firstVisibleItemScrollOffset,
+        )
     }
     LaunchedEffect(currentSearchIndex, searchHits, currentPageIndex) {
         val hit = searchHits.getOrNull(currentSearchIndex)
@@ -192,7 +196,7 @@ private fun ReaderPagedBody(
         }
     }
     val toc: List<HeadingItem> = remember(pages) { buildHeadingItems(pages) }
-    Row(Modifier.fillMaxSize()) {
+    Row(modifier = Modifier.fillMaxSize()) {
         if (isWide && toc.isNotEmpty()) {
             TableOfContents(toc = toc, onSelect = { onPageChange(it.pageIndex) })
         }
@@ -228,9 +232,22 @@ internal fun ReaderSingleContent(
 ) {
     val listState = rememberLazyListState()
     val scrollVm: ScrollViewModel = hiltViewModel()
-    LaunchedEffect(articleTitle) { restoreListPosition(scrollVm, articleTitle, listState) }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        scrollVm.saveList(articleTitle, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+    LaunchedEffect(articleTitle) {
+        restoreListPosition(
+            scrollVm = scrollVm,
+            articleTitle = articleTitle,
+            state = listState,
+        )
+    }
+    LaunchedEffect(
+        listState.firstVisibleItemIndex,
+        listState.firstVisibleItemScrollOffset,
+    ) {
+        scrollVm.saveList(
+            articleId = articleTitle,
+            index = listState.firstVisibleItemIndex,
+            offset = listState.firstVisibleItemScrollOffset,
+        )
     }
     LaunchedEffect(currentSearchIndex, searchHits) {
         val hit = searchHits.getOrNull(currentSearchIndex)
@@ -265,7 +282,7 @@ internal fun BlocksList(
     val listState = rememberLazyListState()
     val deps = hiltViewModel<ReaderDeps>()
     var openAnnotationFor by remember { mutableStateOf<String?>(null) }
-    LazyColumn(listModifier, state = listState) {
+    LazyColumn(modifier = listModifier, state = listState) {
         items(blocks.size) { idx ->
             val b = blocks[idx]
             when (b) {
@@ -284,7 +301,7 @@ internal fun BlocksList(
                     )
                 }
                 is ContentBlock.Heading -> {
-                    HeadingBlock(b.level, b.text)
+                    HeadingBlock(level = b.level, text = b.text)
                 }
                 is ContentBlock.Image -> {
                     AsyncImage(
@@ -296,18 +313,18 @@ internal fun BlocksList(
                     )
                 }
                 is ContentBlock.Audio -> {
-                    AudioBlock(b.url)
+                    AudioBlock(url = b.url)
                 }
                 is ContentBlock.YouTube -> {
-                    YouTubeBlock(b.videoId)
+                    YouTubeBlock(videoId = b.videoId)
                 }
             }
-            Spacer(Modifier.height(BLOCK_SPACING))
+            Spacer(modifier = Modifier.height(BLOCK_SPACING))
         }
     }
-    if (openAnnotationFor != null) {
+    openAnnotationFor?.let { annotationId ->
         ModalBottomSheet(onDismissRequest = { openAnnotationFor = null }) {
-            DiscussionThreadSheet(annotationId = openAnnotationFor!!)
+            DiscussionThreadSheet(annotationId = annotationId)
         }
     }
 }
@@ -335,24 +352,27 @@ internal fun ParagraphWithActions(
                 hit.blockIndex == idx
             }
         }?.range
-    Column(Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         ParagraphBlock(
             text = block.text,
             query = searchQuery,
             settings = settings,
             activeRange = activeRange,
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
             androidx.compose.material3.IconButton(
                 onClick = {
                     val articleId = articleTitle
                     val range = 0 to block.text.length
                     deps.scope.launch {
                         val res = deps.addAnnotation(
-                            articleId,
-                            range.first,
-                            range.second,
-                            block.text.hashCode().toString(),
+                            articleId = articleId,
+                            start = range.first,
+                            end = range.second,
+                            hash = block.text.hashCode().toString(),
                         )
                         if (res is info.lwb.core.common.Result.Success) {
                             onOpenAnnotation(res.data)
@@ -360,7 +380,10 @@ internal fun ParagraphWithActions(
                     }
                 },
             ) {
-                androidx.compose.material3.Icon(Icons.Filled.Edit, contentDescription = "Annotate")
+                androidx.compose.material3.Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = "Annotate",
+                )
             }
         }
     }
@@ -372,7 +395,11 @@ internal fun TableOfContents(toc: List<HeadingItem>, onSelect: (HeadingItem) -> 
         tonalElevation = 1.dp,
         modifier = Modifier.width(220.dp).fillMaxHeight(),
     ) {
-        LazyColumn(Modifier.fillMaxSize().padding(8.dp)) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+        ) {
             items(toc.size) { i ->
                 val h = toc[i]
                 Text(
@@ -393,7 +420,7 @@ internal fun TableOfContents(toc: List<HeadingItem>, onSelect: (HeadingItem) -> 
                         .clickable { onSelect(h) }
                         .padding(vertical = 4.dp),
                 )
-                Spacer(Modifier.height(TOC_SPACING))
+                Spacer(modifier = Modifier.height(TOC_SPACING))
             }
         }
     }

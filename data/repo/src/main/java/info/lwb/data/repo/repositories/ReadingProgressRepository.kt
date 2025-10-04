@@ -21,8 +21,7 @@ class ReadingProgressRepository(private val dao: ReadingProgressDao) {
     /**
      * Observe progress updates for the given [articleId]. Emits null if no stored progress exists yet.
      */
-    fun observe(articleId: String): Flow<ReadingProgress?> =
-        dao.observe(articleId).map { entity -> entity?.toDomain() }
+    fun observe(articleId: String): Flow<ReadingProgress?> = dao.observe(articleId).map { entity -> entity?.toDomain() }
 
     /**
      * Persist (upsert) the current reading position defined by [pageIndex] within [totalPages].

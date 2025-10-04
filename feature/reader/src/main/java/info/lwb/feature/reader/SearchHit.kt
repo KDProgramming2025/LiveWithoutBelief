@@ -19,7 +19,11 @@ internal fun buildSearchHits(pages: List<Page>?, allBlocks: List<ContentBlock>, 
             page.blocks.forEachIndexed { blockIdx, block ->
                 if (block is ContentBlock.Paragraph) {
                     regex.findAll(block.text).forEach { m ->
-                        hits += SearchHit(page.index, blockIdx, m.range)
+                        hits += SearchHit(
+                            pageIndex = page.index,
+                            blockIndex = blockIdx,
+                            range = m.range,
+                        )
                     }
                 }
             }
@@ -29,7 +33,11 @@ internal fun buildSearchHits(pages: List<Page>?, allBlocks: List<ContentBlock>, 
         allBlocks.forEachIndexed { blockIdx, block ->
             if (block is ContentBlock.Paragraph) {
                 regex.findAll(block.text).forEach { m ->
-                    hits += SearchHit(0, blockIdx, m.range)
+                    hits += SearchHit(
+                        pageIndex = 0,
+                        blockIndex = blockIdx,
+                        range = m.range,
+                    )
                 }
             }
         }

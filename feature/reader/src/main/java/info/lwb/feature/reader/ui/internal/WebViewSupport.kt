@@ -64,12 +64,9 @@ internal fun numArg(v: Float?): String = if (v == null) {
 }
 
 internal fun WebView.safeLoadAsset(path: String): String = try {
-    context
-        .assets
+    context.assets
         .open(path)
-        .use { input ->
-            BufferedReader(InputStreamReader(input)).readText()
-        }
+        .use { input -> BufferedReader(InputStreamReader(input)).readText() }
 } catch (_: Throwable) {
     ""
 }
@@ -202,6 +199,7 @@ internal class ArticleClient(
     private val firstLoad: () -> Boolean,
     private val setReadyHidden: () -> Unit,
     private val startRestore: (Int) -> Unit,
+    private val finishRestore: () -> Unit,
     private val setLastValues: (Float?, Float?) -> Unit,
     private val assets: WebViewAssetScripts,
     private val evaluate: (String) -> Unit,
@@ -242,7 +240,7 @@ internal class ArticleClient(
     }
 
     private fun applyReaderVarsIfChanged(fs: Float?, lh: Float?, bgColor: String?) {
-        val bg = bgColor ?: ""
+        val bg = bgColor.orEmpty()
         if (lastAppliedFontScale == fs && lastAppliedLineHeight == lh && lastAppliedBg == bg) {
             return
         }
@@ -296,9 +294,10 @@ internal class ArticleClient(
             val target = initialScrollY
             if (target > 0) {
                 try {
-                    // Use post to ensure DOM layout done.
-                    view.postRestore(target) { }
                     startRestore(target)
+                    view.postRestore(target) {
+                        finishRestore()
+                    }
                 } catch (_: Throwable) {
                     // ignore
                 }
@@ -325,7 +324,7 @@ internal class ArticleClient(
 
     private fun resolveThemeCssResponse(u: String): WebResourceResponse? {
         return try {
-            val current = lastMainFrameUrl ?: return null
+            val current = lastMainFrameUrl.orEmpty()
             if (current.isBlank()) {
                 return null
             }
@@ -361,9 +360,7 @@ internal class ArticleClient(
                     "application/octet-stream"
                 }
             }
-            val ctx = view?.context
-            val assets = ctx?.assets
-            val stream = assets?.open(path)
+            val stream = view?.context?.assets?.open(path)
             if (stream == null) {
                 null
             } else {

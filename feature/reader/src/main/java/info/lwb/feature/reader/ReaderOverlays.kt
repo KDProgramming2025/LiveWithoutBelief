@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.feature.reader
 
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Slider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
@@ -19,17 +19,19 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import java.util.Locale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import info.lwb.ui.designsystem.ActionRail
-import info.lwb.ui.designsystem.ActionRailItem
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ReaderAppearanceSheet
+import info.lwb.ui.designsystem.ActionRail
+import info.lwb.ui.designsystem.ActionRailItem
 
 private const val FONT_SCALE_MIN = 0.8
 private const val FONT_SCALE_MAX = 1.6
@@ -99,7 +101,10 @@ internal fun ReaderControlsBar(settings: ReaderSettingsState, onChange: (Double,
     ) {
         Column(Modifier.fillMaxWidth().padding(8.dp)) {
             Text(
-                "Font: ${"%.2f".format(settings.fontScale)}  Line: ${"%.2f".format(settings.lineHeight)}",
+                text = "Font: " +
+                    String.format(Locale.US, "%.2f", settings.fontScale) +
+                    "  Line: " +
+                    String.format(Locale.US, "%.2f", settings.lineHeight),
                 style = MaterialTheme.typography.labelSmall,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {

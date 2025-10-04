@@ -19,8 +19,6 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
-
-
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
@@ -33,5 +31,5 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:${libs.versions.lifecycle.get()}")
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
-        ksp(libs.hilt.android.compiler)
+    ksp(libs.hilt.android.compiler)
 }

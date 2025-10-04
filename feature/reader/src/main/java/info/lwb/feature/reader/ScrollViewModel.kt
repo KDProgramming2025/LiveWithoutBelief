@@ -16,20 +16,23 @@ import javax.inject.Inject
  * Keeps UI layer unaware of underlying storage implementation.
  */
 @HiltViewModel
-internal class ScrollViewModel @Inject constructor(@ApplicationContext appContext: Context) : ViewModel() {
-    private val scrollRepository: ScrollRepository = ScrollRepository(appContext)
+internal class ScrollViewModel @Inject constructor(@ApplicationContext context: Context) : ViewModel() {
+    private val scrollRepository: ScrollRepository = ScrollRepository(context = context)
 
     /** Observe vertical scroll Y position for an article. */
     fun observe(articleId: String): Flow<Int> = scrollRepository.observe(articleId)
 
     /** Persist latest vertical scroll Y position for an article. */
-    suspend fun save(articleId: String, y: Int) = scrollRepository.save(articleId, y)
+    suspend fun save(articleId: String, y: Int) = scrollRepository.save(articleId = articleId, scrollY = y)
 
     /** Observe anchor id (e.g., element id) near current position. */
     fun observeAnchor(articleId: String): Flow<String> = scrollRepository.observeAnchor(articleId)
 
     /** Persist anchor id near current position (nullable to clear). */
-    suspend fun saveAnchor(articleId: String, anchor: String?) = scrollRepository.saveAnchor(articleId, anchor)
+    suspend fun saveAnchor(articleId: String, anchor: String?) = scrollRepository.saveAnchor(
+        articleId = articleId,
+        anchor = anchor,
+    )
 
     /** Observe list index of currently visible item. */
     fun observeListIndex(articleId: String): Flow<Int> = scrollRepository.observeListIndex(articleId)
@@ -38,11 +41,7 @@ internal class ScrollViewModel @Inject constructor(@ApplicationContext appContex
     fun observeListOffset(articleId: String): Flow<Int> = scrollRepository.observeListOffset(articleId)
 
     /** Persist list index + offset snapshot for current position. */
-    suspend fun saveList(
-        articleId: String,
-        index: Int,
-        offset: Int,
-    ) = scrollRepository.saveList(
+    suspend fun saveList(articleId: String, index: Int, offset: Int) = scrollRepository.saveList(
         articleId = articleId,
         index = index,
         offset = offset,

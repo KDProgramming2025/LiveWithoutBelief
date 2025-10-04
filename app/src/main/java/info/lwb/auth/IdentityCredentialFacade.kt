@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
 package info.lwb.auth
 
 import androidx.activity.ComponentActivity
@@ -39,26 +43,25 @@ interface IdentityCredentialFacade {
  * Runs work on [Dispatchers.IO] to avoid blocking the main thread during credential resolution.
  */
 class DefaultIdentityCredentialFacade : IdentityCredentialFacade {
-    override suspend fun getIdToken(activity: ComponentActivity): GoogleIdTokenResult =
-        withContext(Dispatchers.IO) {
-            val cm = CredentialManager.create(activity)
-            val googleOption =
-                GetGoogleIdOption
-                    .Builder()
-                    .setFilterByAuthorizedAccounts(false)
-                    .setAutoSelectEnabled(true)
-                    .build()
-            val request =
-                GetCredentialRequest
-                    .Builder()
-                    .addCredentialOption(googleOption)
-                    .build()
-            val response: GetCredentialResponse = cm.getCredential(activity, request)
-            val credential = GoogleIdTokenCredential.createFrom(response.credential.data)
-            GoogleIdTokenResult(
-                idToken = credential.idToken,
-                displayName = credential.displayName,
-                email = credential.id,
-            )
-        }
+    override suspend fun getIdToken(activity: ComponentActivity): GoogleIdTokenResult = withContext(Dispatchers.IO) {
+        val cm = CredentialManager.create(activity)
+        val googleOption =
+            GetGoogleIdOption
+                .Builder()
+                .setFilterByAuthorizedAccounts(false)
+                .setAutoSelectEnabled(true)
+                .build()
+        val request =
+            GetCredentialRequest
+                .Builder()
+                .addCredentialOption(googleOption)
+                .build()
+        val response: GetCredentialResponse = cm.getCredential(activity, request)
+        val credential = GoogleIdTokenCredential.createFrom(response.credential.data)
+        GoogleIdTokenResult(
+            idToken = credential.idToken,
+            displayName = credential.displayName,
+            email = credential.id,
+        )
+    }
 }

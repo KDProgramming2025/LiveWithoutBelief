@@ -1,12 +1,12 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.feature.reader
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import info.lwb.feature.reader.ui.AppearanceState
-import info.lwb.feature.reader.ReaderSettingsRepository
 // Use shared constants from ReaderViewModel.kt
 
 @Preview(name = "Reader Light", showBackground = true)

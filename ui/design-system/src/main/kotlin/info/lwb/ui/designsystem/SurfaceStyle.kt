@@ -21,12 +21,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.toArgb
@@ -233,10 +233,7 @@ val LocalIsDarkTheme = staticCompositionLocalOf { true }
  * @param content Composable content that can read the provided locals.
  */
 @Composable
-fun ProvideSurfaceStyle(
-    dark: Boolean,
-    content: @Composable () -> Unit,
-) {
+fun ProvideSurfaceStyle(dark: Boolean, content: @Composable () -> Unit) {
     val colors =
         if (dark) {
             DarkColors
@@ -291,10 +288,7 @@ fun GrainyBackground(modifier: Modifier = Modifier) {
  * @param content BoxScope content inside the elevated surface.
  */
 @Composable
-fun RaisedSurface(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit,
-) {
+fun RaisedSurface(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val colors = LocalSurfaceStyle.current
     val metrics = LocalSurfaceMetrics.current
     val isDark = LocalIsDarkTheme.current
@@ -390,11 +384,7 @@ private fun Modifier.surfaceRim(
  * @param content Button content (icon / text) aligned within the raised surface.
  */
 @Composable
-fun RaisedButton(
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    content: @Composable BoxScope.() -> Unit,
-) {
+fun RaisedButton(modifier: Modifier = Modifier, onClick: () -> Unit, content: @Composable BoxScope.() -> Unit) {
     RaisedSurface(
         modifier
             .clickable(onClick = onClick),
@@ -412,11 +402,7 @@ fun RaisedButton(
  * @param content Content (typically an Icon) centered inside.
  */
 @Composable
-fun InsetIconWell(
-    modifier: Modifier = Modifier,
-    wellSize: Dp = 56.dp,
-    content: @Composable BoxScope.() -> Unit,
-) {
+fun InsetIconWell(modifier: Modifier = Modifier, wellSize: Dp = 56.dp, content: @Composable BoxScope.() -> Unit) {
     val c = LocalSurfaceStyle.current
     val m = LocalSurfaceMetrics.current
     val wellCorner = (m.cornerRadius - CORNER_ADJUST).coerceAtLeast(MIN_WELL_CORNER)

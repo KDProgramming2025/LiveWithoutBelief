@@ -24,13 +24,13 @@ private val Context.scrollStore by preferencesDataStore(name = "reader_scroll")
  * namespaced by article id. IOExceptions during read are converted to empty prefs.
  */
 internal class ScrollRepository(private val context: Context) {
-    private fun key(articleId: String) = intPreferencesKey("scroll_$articleId")
+    private fun key(articleId: String) = intPreferencesKey(name = "scroll_$articleId")
 
-    private fun keyAnchor(articleId: String) = stringPreferencesKey("anchor_$articleId")
+    private fun keyAnchor(articleId: String) = stringPreferencesKey(name = "anchor_$articleId")
 
-    private fun keyIndex(articleId: String) = intPreferencesKey("list_index_$articleId")
+    private fun keyIndex(articleId: String) = intPreferencesKey(name = "list_index_$articleId")
 
-    private fun keyOffset(articleId: String) = intPreferencesKey("list_offset_$articleId")
+    private fun keyOffset(articleId: String) = intPreferencesKey(name = "list_offset_$articleId")
 
     /** Observe scroll Y for an article. */
     fun observe(articleId: String): Flow<Int> {
@@ -48,7 +48,7 @@ internal class ScrollRepository(private val context: Context) {
     /** Persist scroll Y (clamped to >= 0). */
     suspend fun save(articleId: String, scrollY: Int) {
         context.scrollStore.edit { prefs ->
-            prefs[key(articleId)] = scrollY.coerceAtLeast(0)
+            prefs[key(articleId = articleId)] = scrollY.coerceAtLeast(0)
         }
     }
 
@@ -69,9 +69,9 @@ internal class ScrollRepository(private val context: Context) {
     suspend fun saveAnchor(articleId: String, anchor: String?) {
         context.scrollStore.edit { prefs ->
             if (anchor.isNullOrBlank()) {
-                prefs.remove(keyAnchor(articleId))
+                prefs.remove(keyAnchor(articleId = articleId))
             } else {
-                prefs[keyAnchor(articleId)] = anchor
+                prefs[keyAnchor(articleId = articleId)] = anchor
             }
         }
     }
@@ -105,8 +105,8 @@ internal class ScrollRepository(private val context: Context) {
     /** Persist list index and offset (coerced to >= 0). */
     suspend fun saveList(articleId: String, index: Int, offset: Int) {
         context.scrollStore.edit { prefs ->
-            prefs[keyIndex(articleId)] = index.coerceAtLeast(0)
-            prefs[keyOffset(articleId)] = offset.coerceAtLeast(0)
+            prefs[keyIndex(articleId = articleId)] = index.coerceAtLeast(0)
+            prefs[keyOffset(articleId = articleId)] = offset.coerceAtLeast(0)
         }
     }
 }

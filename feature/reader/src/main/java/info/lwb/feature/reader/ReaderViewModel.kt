@@ -57,14 +57,14 @@ internal class ReaderSessionViewModel @Inject constructor(
 
     // Reverted to original inline chain layout
     private val pagesState = combine(blocksState, fontScale) { blocks, scale ->
-        paginate(blocks, fontScale = scale)
+        paginate(blocks = blocks, fontScale = scale)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(WHILE_SUB_TIMEOUT_MS),
         emptyList(),
     )
 
-    val headings = pagesState.map { buildHeadingItems(it) }
+    val headings = pagesState.map { pageList -> buildHeadingItems(pages = pageList) }
 
     private val appearanceState = combine(fontScale, lineHeight, background) { f, l, b -> Triple(f, l, b) }
 
@@ -92,10 +92,10 @@ internal class ReaderSessionViewModel @Inject constructor(
     fun loadArticle(articleId: String, htmlBody: String) {
         articleIdState.value = articleId
         htmlBodyState.value = htmlBody
-        blocksState.value = parseHtmlToBlocks(htmlBody)
+        blocksState.value = parseHtmlToBlocks(html = htmlBody)
         // Observe existing progress
         viewModelScope.launch {
-            progressRepo.observe(articleId).collect { p ->
+            progressRepo.observe(articleId = articleId).collect { p ->
                 if (p != null && p.totalPages > 0) {
                     pageIndexState.value = p.pageIndex.coerceIn(0, p.totalPages - 1)
                 }
@@ -123,7 +123,11 @@ internal class ReaderSessionViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            progressRepo.update(articleId, pageIndexState.value, pages.size)
+            progressRepo.update(
+                articleId = articleId,
+                pageIndex = pageIndexState.value,
+                totalPages = pages.size,
+            )
         }
     }
 }

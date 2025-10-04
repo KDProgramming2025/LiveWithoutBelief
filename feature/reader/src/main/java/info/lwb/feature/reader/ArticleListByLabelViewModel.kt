@@ -1,5 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.feature.reader
 
@@ -8,10 +9,10 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import info.lwb.core.domain.GetArticlesByLabelUseCase
 import info.lwb.core.model.Article
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -64,7 +65,7 @@ class ArticleListByLabelViewModel @Inject constructor(private val getByLabel: Ge
             return
         }
         _state.value = _state.value.copy(label = label, loading = true, error = null, refreshing = false)
-        fetch(label)
+        fetch(label = label)
     }
 
     /** Force a refresh even if the current label matches; shows pull-to-refresh indicator. */
@@ -75,45 +76,50 @@ class ArticleListByLabelViewModel @Inject constructor(private val getByLabel: Ge
             return
         }
         _state.value = _state.value.copy(refreshing = true, error = null)
-        fetch(current, isRefresh = true)
+        fetch(label = current, isRefresh = true)
     }
 
     private fun fetch(label: String, isRefresh: Boolean = false) {
         viewModelScope.launch {
-            val result = runCatching { getByLabel(label) }
-            result.onSuccess { list ->
+            try {
+                val list = getByLabel(label = label)
                 _state.value = _state.value.copy(
                     loading = false,
                     refreshing = false,
                     items = list,
                     error = null,
                 )
+            } catch (ce: kotlinx.coroutines.CancellationException) {
+                throw ce
+            } catch (ioe: java.io.IOException) {
+                handleLoadFailure(isRefresh = isRefresh, throwable = ioe)
+            } catch (ise: IllegalStateException) {
+                handleLoadFailure(isRefresh = isRefresh, throwable = ise)
             }
-            result.onFailure { t ->
-                val currentItems = _state.value.items
-                val message = t.message ?: "Failed to load"
-                if (currentItems.isNotEmpty()) {
-                    // Keep existing items; surface transient message only.
-                    _snackbar.tryEmit(message)
-                    val newRefreshing = if (isRefresh) {
-                        false
-                    } else {
-                        _state.value.refreshing
-                    }
-                    _state.value = _state.value.copy(
-                        loading = false,
-                        refreshing = newRefreshing,
-                    )
-                    // Do not clear items or set error; silent fallback.
-                } else {
-                    _state.value = _state.value.copy(
-                        loading = false,
-                        refreshing = false,
-                        items = emptyList(),
-                        error = message,
-                    )
-                }
+        }
+    }
+
+    private fun handleLoadFailure(isRefresh: Boolean, throwable: Throwable) {
+        val currentItems = _state.value.items
+        val message = throwable.message ?: "Failed to load"
+        if (currentItems.isNotEmpty()) {
+            _snackbar.tryEmit(message)
+            val newRefreshing = if (isRefresh) {
+                false
+            } else {
+                _state.value.refreshing
             }
+            _state.value = _state.value.copy(
+                loading = false,
+                refreshing = newRefreshing,
+            )
+        } else {
+            _state.value = _state.value.copy(
+                loading = false,
+                refreshing = false,
+                items = emptyList(),
+                error = message,
+            )
         }
     }
 }

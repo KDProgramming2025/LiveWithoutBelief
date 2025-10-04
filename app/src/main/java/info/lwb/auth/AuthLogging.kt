@@ -1,10 +1,11 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.auth
 
-import info.lwb.BuildConfig
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import info.lwb.BuildConfig
 
 private const val AUTH_LOG_TAG = "AuthFlow"
 private const val CLIENT_ID_SAMPLE = 12

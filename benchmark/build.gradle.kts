@@ -8,8 +8,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-    minSdk = 26
-    // targetSdk removed (library module); app module declares targetSdk.
+        minSdk = 26
+        // targetSdk removed (library module); app module declares targetSdk.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

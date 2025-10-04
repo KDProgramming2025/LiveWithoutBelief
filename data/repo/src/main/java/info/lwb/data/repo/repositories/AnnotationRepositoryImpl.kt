@@ -42,12 +42,11 @@ class AnnotationRepositoryImpl @Inject constructor(
                 }
         } ?: flowOf(Result.Error(IllegalStateException(ERROR_UNAUTHENTICATED)))
 
-    override fun getThreadMessages(annotationId: String): Flow<Result<List<ThreadMessage>>> =
-        threadDao
-            .observeMessages(annotationId)
-            .map { list ->
-                Result.Success(list.map { it.toModel() })
-            }
+    override fun getThreadMessages(annotationId: String): Flow<Result<List<ThreadMessage>>> = threadDao
+        .observeMessages(annotationId)
+        .map { list ->
+            Result.Success(list.map { it.toModel() })
+        }
 
     override suspend fun addAnnotation(
         articleId: String,
@@ -105,8 +104,7 @@ private fun ThreadMessageEntity.toModel() = ThreadMessage(
     createdAt = createdAt,
 )
 
-private fun nowIso(): String =
-    java.time
-        .OffsetDateTime
-        .now()
-        .toString()
+private fun nowIso(): String = java.time
+    .OffsetDateTime
+    .now()
+    .toString()

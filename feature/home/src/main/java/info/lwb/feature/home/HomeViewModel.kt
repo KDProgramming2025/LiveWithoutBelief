@@ -12,10 +12,10 @@ import info.lwb.core.domain.GetMenuUseCase
 import info.lwb.core.domain.RefreshMenuUseCase
 import info.lwb.core.model.MenuItem
 import info.lwb.feature.home.network.ConnectivityProvider
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject

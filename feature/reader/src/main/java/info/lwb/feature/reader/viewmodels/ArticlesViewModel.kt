@@ -13,10 +13,10 @@ import info.lwb.core.domain.GetArticlesUseCase
 import info.lwb.core.domain.RefreshArticlesUseCase
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleContent
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -62,37 +62,57 @@ class ArticlesViewModel @Inject constructor(
             return
         }
         started = true
-        viewModelScope.launch {
-            getArticlesUseCase().collect { result ->
-                when (result) {
-                    is Result.Loading -> {
-                        val current = _articles.value
-                        if (current !is Result.Success) {
-                            _articles.value = result
-                        }
-                    }
-                    is Result.Success -> {
-                        _articles.value = result
-                    }
-                    is Result.Error -> {
-                        val current = _articles.value
-                        if (current is Result.Success && current.data.isNotEmpty()) {
-                            _snackbar.tryEmit(result.throwable.message ?: "Refresh failed")
-                        } else {
-                            _articles.value = result
-                        }
-                    }
+        collectArticles()
+        launchInitialBackgroundRefresh()
+    }
+
+    private fun collectArticles() = viewModelScope.launch {
+        getArticlesUseCase().collect { result: Result<List<Article>> ->
+            when (result) {
+                is Result.Loading -> {
+                    handleArticlesLoading(result)
+                }
+                is Result.Success -> {
+                    _articles.value = result
+                }
+                is Result.Error -> {
+                    handleArticlesError(result)
                 }
             }
         }
-        viewModelScope.launch { runCatching { refreshArticlesUseCase() } }
+    }
+
+    private fun handleArticlesLoading(result: Result.Loading) {
+        val current = _articles.value
+        if (current !is Result.Success) {
+            _articles.value = result
+        }
+    }
+
+    private fun handleArticlesError(result: Result.Error) {
+        val current = _articles.value
+        if (current is Result.Success && current.data.isNotEmpty()) {
+            _snackbar.tryEmit(result.throwable.message ?: "Refresh failed")
+        } else {
+            _articles.value = result
+        }
+    }
+
+    private fun launchInitialBackgroundRefresh() = viewModelScope.launch {
+        try {
+            refreshArticlesUseCase()
+        } catch (ce: kotlinx.coroutines.CancellationException) {
+            throw ce
+        } catch (_: Throwable) {
+            // Initial background refresh failure will surface through articles flow; safe to ignore here.
+        }
     }
 
     /** Requests content for [articleId] and emits progressive states to [articleContent]. */
     fun loadArticleContent(articleId: String) {
         viewModelScope.launch {
-            getArticleContentUseCase(articleId).collect { result ->
-                processArticleContentResult(result)
+            getArticleContentUseCase(articleId = articleId).collect { result: Result<ArticleContent> ->
+                processArticleContentResult(result = result)
             }
         }
     }
@@ -128,8 +148,16 @@ class ArticlesViewModel @Inject constructor(
         }
         _refreshing.value = true
         viewModelScope.launch {
-            runCatching { refreshArticlesUseCase() }
-            _refreshing.value = false
+            try {
+                refreshArticlesUseCase()
+            } catch (ce: kotlinx.coroutines.CancellationException) {
+                _refreshing.value = false
+                throw ce
+            } catch (_: Throwable) {
+                // Error surfaced through upstream flows or snackbar; swallow after state reset.
+            } finally {
+                _refreshing.value = false
+            }
         }
     }
 

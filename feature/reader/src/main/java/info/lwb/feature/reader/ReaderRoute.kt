@@ -49,7 +49,6 @@ import info.lwb.feature.reader.ui.readerPalette
 import info.lwb.feature.reader.ui.themeCssAssetPath
 import info.lwb.ui.designsystem.ActionRail
 import info.lwb.ui.designsystem.ActionRailItem
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Named
@@ -178,15 +177,15 @@ private fun loadCssOrBlank(uiStateBackground: ReaderSettingsRepository.ReaderBac
 
 @Composable
 private fun ReaderWebViewScaffold(
+    articleId: String,
     resolvedUrl: String,
     css: String,
     uiState: ReaderUiState,
-    initialScroll: Int,
     onTap: () -> Unit,
-    onScrollSave: (Int) -> Unit,
 ) {
     Scaffold { padding ->
         ArticleWebView(
+            articleId = articleId,
             url = resolvedUrl,
             injectedCss = css,
             fontScale = uiState.fontScale.toFloat(),
@@ -194,8 +193,7 @@ private fun ReaderWebViewScaffold(
             backgroundColor = readerPalette(uiState.background).background,
             modifier = Modifier.padding(padding),
             onTap = onTap,
-            initialScrollY = initialScroll,
-            onScrollChanged = { y -> onScrollSave(y) },
+            onScrollChanged = { _ -> },
             onAnchorChanged = { _ -> },
         )
     }
@@ -263,21 +261,7 @@ private fun ReaderAppearanceOverlay(
 
 //region Additional helpers to shorten ReaderResolvedContent
 
-private data class ScrollRestore(val initialScroll: Int)
-
-@Composable
-private fun rememberScrollRestore(articleId: String): ScrollRestore {
-    val scrollVm: ScrollViewModel = hiltViewModel()
-    var initialScroll by remember { mutableStateOf(0) }
-    LaunchedEffect(articleId) {
-        initialScroll = try {
-            scrollVm.observe(articleId).first()
-        } catch (_: Throwable) {
-            0
-        }
-    }
-    return ScrollRestore(initialScroll)
-}
+// Scroll persistence now handled internally by ArticleWebView.
 
 private data class FabState(val visible: Boolean, val showAppearance: Boolean, val confirmExit: Boolean)
 
@@ -318,7 +302,6 @@ private fun ReaderResolvedContent(
     val (fabState, showFabTemporarily, setFabState) = rememberFabController()
     LaunchedEffect(resolvedUrl) { showFabTemporarily() }
 
-    val scrollRestore = rememberScrollRestore(articleId)
     // Cache CSS per background setting
     val css = loadCssOrBlank(uiState.background)
 
@@ -341,7 +324,6 @@ private fun ReaderResolvedContent(
         resolvedUrl = resolvedUrl,
         css = css,
         uiState = uiState,
-        scrollRestore = scrollRestore,
         fabState = fabState,
         onSetFabState = setFabState,
         onShowFabTemp = showFabTemporarily,
@@ -356,25 +338,20 @@ private fun ReaderResolvedLayout(
     resolvedUrl: String,
     css: String,
     uiState: ReaderUiState,
-    scrollRestore: ScrollRestore,
     fabState: FabState,
     onSetFabState: (FabState) -> Unit,
     onShowFabTemp: () -> Unit,
     onNavigateBack: (() -> Unit)?,
     readerViewModel: ReaderSessionViewModel,
 ) {
-    val scope = rememberCoroutineScope()
-    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-    // Obtain once inside composition; do not call inside non-composable lambdas
-    val scrollVm: ScrollViewModel = hiltViewModel()
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.run { onBackPressedDispatcher }
     Box(Modifier.fillMaxSize()) {
         ReaderWebViewScaffold(
+            articleId = articleId,
             resolvedUrl = resolvedUrl,
             css = css,
             uiState = uiState,
-            initialScroll = scrollRestore.initialScroll,
             onTap = { onShowFabTemp() },
-            onScrollSave = { y -> scope.launch { scrollVm.save(articleId, y) } },
         )
         ReaderActionRailOverlay(
             visible = fabState.visible,

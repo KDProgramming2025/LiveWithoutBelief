@@ -12,8 +12,8 @@ import info.lwb.core.domain.AddAnnotationUseCase
 import info.lwb.core.domain.AnnotationRepository
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.domain.GetArticleContentUseCase
-import info.lwb.core.domain.GetArticlesUseCase
 import info.lwb.core.domain.GetArticlesByLabelUseCase
+import info.lwb.core.domain.GetArticlesUseCase
 import info.lwb.core.domain.RefreshArticlesUseCase
 
 /**
@@ -26,25 +26,25 @@ object ReaderModule {
     /** Provides use cases for reader-related domain operations. */
     @Provides
     fun provideGetArticlesUseCase(articleRepository: ArticleRepository): GetArticlesUseCase =
-        GetArticlesUseCase(articleRepository)
+        GetArticlesUseCase(articleRepository = articleRepository)
 
     /** Provides a use case to retrieve a filtered snapshot of articles by label. */
     @Provides
     fun provideGetArticlesByLabelUseCase(articleRepository: ArticleRepository): GetArticlesByLabelUseCase =
-        GetArticlesByLabelUseCase(articleRepository)
+        GetArticlesByLabelUseCase(articleRepository = articleRepository)
 
     /** Provides a use case to load article HTML/content payload. */
     @Provides
     fun provideGetArticleContentUseCase(articleRepository: ArticleRepository): GetArticleContentUseCase =
-        GetArticleContentUseCase(articleRepository)
+        GetArticleContentUseCase(articleRepository = articleRepository)
 
     /** Provides a use case to refresh remote + cache article list. */
     @Provides
     fun provideRefreshArticlesUseCase(articleRepository: ArticleRepository): RefreshArticlesUseCase =
-        RefreshArticlesUseCase(articleRepository)
+        RefreshArticlesUseCase(articleRepository = articleRepository)
 
     /** Provides a use case to create and persist a new annotation for an article. */
     @Provides
     fun provideAddAnnotationUseCase(annotationRepository: AnnotationRepository): AddAnnotationUseCase =
-        AddAnnotationUseCase(annotationRepository)
+        AddAnnotationUseCase(annotationRepository = annotationRepository)
 }

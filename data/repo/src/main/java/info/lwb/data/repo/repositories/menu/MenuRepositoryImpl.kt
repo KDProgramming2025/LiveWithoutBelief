@@ -14,9 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import java.io.IOException
 import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
+import java.io.IOException
 
 /**
  * Concrete implementation of [MenuRepository] that delegates to a Retrofit-backed [MenuApi].

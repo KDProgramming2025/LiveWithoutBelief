@@ -11,8 +11,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-    minSdk = 26
-    // targetSdk removed (library module); app module declares targetSdk.
+        minSdk = 26
+        // targetSdk removed (library module); app module declares targetSdk.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -26,8 +26,6 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 }
-
-
 
 dependencies {
     implementation(platform(libs.compose.bom))

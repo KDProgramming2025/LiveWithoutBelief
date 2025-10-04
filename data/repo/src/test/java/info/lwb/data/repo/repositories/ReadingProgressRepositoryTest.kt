@@ -9,8 +9,8 @@ import androidx.test.core.app.ApplicationProvider
 import info.lwb.data.repo.db.AppDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.Assume.assumeTrue
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class ReadingProgressRepositoryTest {

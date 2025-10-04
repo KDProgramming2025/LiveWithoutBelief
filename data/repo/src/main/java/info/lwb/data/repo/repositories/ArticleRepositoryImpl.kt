@@ -116,20 +116,17 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             .items
     }
 
-    private suspend fun snapshotLocalArticles(): Map<String, ArticleEntity> =
-        articleDao
-            .listArticles()
-            .associateBy { it.id }
+    private suspend fun snapshotLocalArticles(): Map<String, ArticleEntity> = articleDao
+        .listArticles()
+        .associateBy { it.id }
 
-    private suspend fun processManifest(
-        manifest: List<ManifestItemDto>,
-        localById: Map<String, ArticleEntity>,
-    ) = coroutineScope {
-        manifest
-            .mapIndexed { index, item ->
-                async { upsertArticleAndMaybeContent(item, localById[item.id], index) }
-            }.awaitAll()
-    }
+    private suspend fun processManifest(manifest: List<ManifestItemDto>, localById: Map<String, ArticleEntity>) =
+        coroutineScope {
+            manifest
+                .mapIndexed { index, item ->
+                    async { upsertArticleAndMaybeContent(item, localById[item.id], index) }
+                }.awaitAll()
+        }
 
     private suspend fun upsertArticleAndMaybeContent(item: ManifestItemDto, local: ArticleEntity?, orderIndex: Int) {
         val articleEntity = ArticleEntity(

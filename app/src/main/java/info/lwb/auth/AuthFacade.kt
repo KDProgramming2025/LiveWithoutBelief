@@ -164,11 +164,7 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         return authUser
     }
 
-    private suspend fun registerInternal(
-        username: String,
-        password: String,
-        altchaPayload: String?,
-    ): AuthUser {
+    private suspend fun registerInternal(username: String, password: String, altchaPayload: String?): AuthUser {
         val token = altchaPayload ?: throw IllegalStateException("ALTCHA required")
         val user = passwordApi.register(username, password, token)
         secureStorage.putIdToken("pwd:${'$'}{user.uid}")

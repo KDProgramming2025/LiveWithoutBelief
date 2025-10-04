@@ -19,10 +19,9 @@ import info.lwb.core.model.ReadingProgress as DomainModel
  * A non-positive total page count short-circuits to 0.0 to avoid division by zero.
  */
 class ReadingProgressRepositoryImpl(private val dao: ReadingProgressDao) : DomainRepo {
-    override fun observe(articleId: String): Flow<DomainModel?> =
-        dao
-            .observe(articleId)
-            .map { it?.toDomain() }
+    override fun observe(articleId: String): Flow<DomainModel?> = dao
+        .observe(articleId)
+        .map { it?.toDomain() }
 
     override suspend fun update(articleId: String, pageIndex: Int, totalPages: Int) {
         val progress = if (totalPages <= 0) {

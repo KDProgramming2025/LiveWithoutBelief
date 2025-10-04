@@ -24,10 +24,7 @@ private val DarkColors = darkColorScheme()
  * @param content Composable content rendered within the themed surface hierarchy.
  */
 @Composable
-fun LwbTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun LwbTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val scheme = if (darkTheme) {
         DarkColors
     } else {

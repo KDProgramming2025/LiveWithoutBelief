@@ -149,7 +149,7 @@ class SamplingValidationObserver(
 /** Export observer that periodically logs snapshot metrics (simple proof-of-concept). */
 class SnapshotExportValidationObserver(
     private val metrics: MetricsValidationObserver,
-    private val intervalAttempts: Int = 50
+    private val intervalAttempts: Int = 50,
 ) : ValidationObserver {
     @Volatile private var counter = 0
 

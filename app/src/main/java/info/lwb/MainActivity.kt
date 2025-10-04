@@ -2,15 +2,14 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-
 package info.lwb
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,15 +39,15 @@ import dagger.hilt.android.AndroidEntryPoint
 import info.lwb.auth.AuthViewModel
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.home.HomeRoute
+import info.lwb.feature.reader.ArticleListByLabelRoute
+import info.lwb.feature.reader.ReaderByIdRoute
 import info.lwb.feature.search.SearchRoute
 import info.lwb.feature.settings.SettingsRoute
-import info.lwb.feature.reader.ReaderByIdRoute
-import info.lwb.feature.reader.ArticleListByLabelRoute
 import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.LwbTheme
-import java.net.URLEncoder
 import java.net.URLDecoder
+import java.net.URLEncoder
 
 /**
  * Root activity hosting the composable navigation graph.

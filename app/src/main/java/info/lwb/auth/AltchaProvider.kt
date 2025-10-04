@@ -10,13 +10,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 private const val BASE64_FLAGS = Base64.NO_WRAP
 
@@ -41,7 +41,7 @@ interface AltchaTokenProvider {
 @Singleton
 class WebViewAltchaProvider @Inject constructor(
     @AuthBaseUrl private val baseUrl: String,
-    @AuthClient private val http: OkHttpClient
+    @AuthClient private val http: OkHttpClient,
 ) : AltchaTokenProvider {
     // No blank first line per style
     @Serializable
@@ -50,7 +50,7 @@ class WebViewAltchaProvider @Inject constructor(
         val challenge: String,
         val maxnumber: Long,
         val salt: String,
-        val signature: String
+        val signature: String,
     )
 
     override suspend fun solve(activity: Activity): String? = withContext(Dispatchers.IO) {
@@ -63,7 +63,7 @@ class WebViewAltchaProvider @Inject constructor(
                     challenge.algorithm,
                     challenge.challenge,
                     challenge.salt,
-                    challenge.maxnumber
+                    challenge.maxnumber,
                 )
                 val payloadJson = buildSolutionPayload(challenge, number)
                 val bytes = payloadJson.toByteArray(Charsets.UTF_8)
@@ -92,7 +92,7 @@ class WebViewAltchaProvider @Inject constructor(
         }
         val encoded = Json.encodeToString(
             JsonObject.serializer(),
-            json
+            json,
         )
         return encoded
     }
@@ -111,7 +111,7 @@ class WebViewAltchaProvider @Inject constructor(
             val bodyStr = response.body?.string() ?: return null
             val parsed = Json.decodeFromString(
                 Challenge.serializer(),
-                bodyStr
+                bodyStr,
             )
             return parsed
         }

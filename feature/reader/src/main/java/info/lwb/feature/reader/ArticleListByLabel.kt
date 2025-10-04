@@ -18,11 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -45,10 +45,10 @@ import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.GrainyBackground
 import info.lwb.ui.designsystem.LocalSurfaceStyle
-import info.lwb.ui.designsystem.SurfaceStyleColors
 import info.lwb.ui.designsystem.ProvideSurfaceStyle
 import info.lwb.ui.designsystem.RaisedIconWell
 import info.lwb.ui.designsystem.RaisedSurface
+import info.lwb.ui.designsystem.SurfaceStyleColors
 
 /**
  * High level route composable that wires up the [ArticleListByLabelViewModel] and renders the
@@ -119,10 +119,10 @@ private fun ArticleListByLabelContent(
     val neo = LocalSurfaceStyle.current
     val refreshing = state.refreshing
     val refreshState = rememberPullRefreshState(refreshing = refreshing, onRefresh = onRefresh)
-    Box(Modifier.fillMaxSize().pullRefresh(refreshState)) {
-        GrainyBackground(Modifier.matchParentSize())
+    Box(modifier = Modifier.fillMaxSize().pullRefresh(refreshState)) {
+        GrainyBackground(modifier = Modifier.matchParentSize())
         Column(
-            Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
@@ -131,7 +131,8 @@ private fun ArticleListByLabelContent(
                     LoadingState(neo)
                 }
                 state.error != null -> {
-                    ErrorState(message = state.error ?: "Error", neo = neo, onRetry = onRetry)
+                    // state.error is guaranteed non-null in this branch; avoid unsafe not-null assertion
+                    ErrorState(message = state.error, neo = neo, onRetry = onRetry)
                 }
                 state.items.isEmpty() -> {
                     EmptyState(neo = neo, onNavigateBack = onNavigateBack)
@@ -152,14 +153,14 @@ private fun ArticleListByLabelContent(
 @Composable
 private fun LoadingState(neo: SurfaceStyleColors) {
     Column(
-        Modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
     ) {
         CircularProgressIndicator()
         Spacer(Modifier.height(12.dp))
         Text(
-            "Loading articles…",
+            text = "Loading articles…",
             style = MaterialTheme.typography.bodyMedium,
             color = neo.textPrimary,
         )
@@ -168,34 +169,34 @@ private fun LoadingState(neo: SurfaceStyleColors) {
 
 @Composable
 private fun ErrorState(message: String, neo: SurfaceStyleColors, onRetry: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
             color = neo.textPrimary,
         )
         Spacer(Modifier.height(12.dp))
-        Button(onClick = onRetry) { Text("Retry") }
+        Button(onClick = onRetry) { Text(text = "Retry") }
     }
 }
 
 @Composable
 private fun EmptyState(neo: SurfaceStyleColors, onNavigateBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text(
-            "No articles found.",
+            text = "No articles found.",
             style = MaterialTheme.typography.bodyMedium,
             color = neo.textPrimary,
         )
         Spacer(Modifier.height(8.dp))
-        Button(onClick = onNavigateBack) { Text("Go back") }
+        Button(onClick = onNavigateBack) { Text(text = "Go back") }
     }
 }
 
 @Composable
 private fun ArticlesList(items: List<Article>, onArticleClick: (Article) -> Unit) {
     LazyColumn(
-        Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
     ) {
         items(items) { a ->
@@ -216,7 +217,7 @@ private data class Crumb(val label: String, val onClick: (() -> Unit)?)
 
 @Composable
 private fun Breadcrumb(segments: List<Crumb>) {
-    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth()) {
+    androidx.compose.foundation.layout.Row(modifier = Modifier.fillMaxWidth()) {
         segments.forEachIndexed { index, crumb ->
             val isLast = index == segments.lastIndex
             FilterChip(
@@ -243,7 +244,7 @@ private fun ArticleCard(title: String, coverUrl: String?, iconUrl: String?, onCl
             .fillMaxWidth()
             .clickable(onClick = onClick),
     ) {
-        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
             ArticleCover(coverUrl = coverUrl, iconUrl = iconUrl)
             ArticleTitleRow(title = title, iconUrl = iconUrl)
         }
@@ -275,7 +276,7 @@ private fun ArticleCover(coverUrl: String?, iconUrl: String?) {
         }
         else -> {
             Spacer(
-                Modifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp),
             )
@@ -287,7 +288,7 @@ private fun ArticleCover(coverUrl: String?, iconUrl: String?) {
 private fun ArticleTitleRow(title: String, iconUrl: String?) {
     val neo = LocalSurfaceStyle.current
     Row(
-        Modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(top = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -302,11 +303,11 @@ private fun ArticleTitleRow(title: String, iconUrl: String?) {
                 )
             } else {
                 androidx.compose.foundation.layout.Box(
-                    Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        title.take(1).uppercase(),
+                        text = title.take(1).uppercase(),
                         color = neo.textMuted,
                         style = MaterialTheme.typography.titleSmall,
                     )

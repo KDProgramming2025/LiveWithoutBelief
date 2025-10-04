@@ -44,9 +44,9 @@ internal class ReaderSettingsRepository @Inject constructor(@ApplicationContext 
     }
 
     private object Keys {
-        val FONT_SCALE = doublePreferencesKey("font_scale")
-        val LINE_HEIGHT = doublePreferencesKey("line_height")
-        val BACKGROUND = stringPreferencesKey("background_theme")
+        val FONT_SCALE = doublePreferencesKey(name = "font_scale")
+        val LINE_HEIGHT = doublePreferencesKey(name = "line_height")
+        val BACKGROUND = stringPreferencesKey(name = "background_theme")
     }
 
     private val backgroundByKey: Map<String, ReaderBackground> = ReaderBackground
@@ -79,15 +79,21 @@ internal class ReaderSettingsRepository @Inject constructor(@ApplicationContext 
 
     /** Persist a new font scale (coerced to allowed range). */
     suspend fun setFontScale(v: Double) {
-        context.dataStore.edit { it[Keys.FONT_SCALE] = v.coerceIn(MIN_FONT_SCALE, MAX_FONT_SCALE) }
+        context.dataStore.edit { prefs ->
+            prefs[Keys.FONT_SCALE] = v.coerceIn(minimumValue = MIN_FONT_SCALE, maximumValue = MAX_FONT_SCALE)
+        }
     }
 
     /** Persist a new line height (coerced to allowed range). */
     suspend fun setLineHeight(v: Double) {
-        context.dataStore.edit { it[Keys.LINE_HEIGHT] = v.coerceIn(MIN_LINE_HEIGHT, MAX_LINE_HEIGHT) }
+        context.dataStore.edit { prefs ->
+            prefs[Keys.LINE_HEIGHT] = v.coerceIn(minimumValue = MIN_LINE_HEIGHT, maximumValue = MAX_LINE_HEIGHT)
+        }
     }
 
     suspend fun setBackground(bg: ReaderBackground) {
-        context.dataStore.edit { it[Keys.BACKGROUND] = bg.key }
+        context.dataStore.edit { prefs ->
+            prefs[Keys.BACKGROUND] = bg.key
+        }
     }
 }
