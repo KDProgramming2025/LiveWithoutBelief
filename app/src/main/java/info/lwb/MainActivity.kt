@@ -39,7 +39,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import info.lwb.auth.AuthViewModel
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.home.HomeRoute
-import info.lwb.feature.reader.ArticleListByLabelRoute
+import info.lwb.feature.reader.ArticlesListRoute
+import info.lwb.feature.reader.viewmodels.ArticlesFilter
 import info.lwb.feature.reader.ReaderByIdRoute
 import info.lwb.feature.search.SearchRoute
 import info.lwb.feature.settings.SettingsRoute
@@ -206,10 +207,10 @@ private fun appNavHost(navController: NavHostController) =
         composable(Destinations.SETTINGS) { SettingsRoute(onBack = { navController.popBackStack() }) }
         composable(Destinations.LABEL_LIST) { backStackEntry ->
             val label = backStackEntry.arguments?.getString("label") ?: ""
-            ArticleListByLabelRoute(
-                label = URLDecoder.decode(label, Charsets.UTF_8.name()),
+            val decoded = URLDecoder.decode(label, Charsets.UTF_8.name())
+            ArticlesListRoute(
+                filter = ArticlesFilter.Label(decoded),
                 onArticleClick = { article ->
-                    // Prefer slug if stable; else id
                     val id = article.id.ifBlank { article.slug }
                     navController.navigate("reader/$id")
                 },

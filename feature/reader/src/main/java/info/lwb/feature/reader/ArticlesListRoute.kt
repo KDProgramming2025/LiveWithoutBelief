@@ -1,6 +1,5 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.feature.reader
 
@@ -41,6 +40,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import info.lwb.core.model.Article
+import info.lwb.feature.reader.viewmodels.ArticlesFilter
+import info.lwb.feature.reader.viewmodels.ArticlesViewModel
 import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.GrainyBackground
@@ -51,20 +52,19 @@ import info.lwb.ui.designsystem.RaisedSurface
 import info.lwb.ui.designsystem.SurfaceStyleColors
 
 /**
- * High level route composable that wires up the [ArticleListByLabelViewModel] and renders the
- * appropriate UI state (loading, error, empty, list). Theme selection follows user settings.
+ * Generic route for displaying an article list filtered by [ArticlesFilter].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArticleListByLabelRoute(
-    label: String,
+fun ArticlesListRoute(
+    filter: ArticlesFilter,
     onArticleClick: (Article) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
 ) {
-    val vm: ArticleListByLabelViewModel = hiltViewModel()
-    LaunchedEffect(label) { vm.load(label) }
-    val state by vm.state.collectAsState()
+    val vm: ArticlesViewModel = hiltViewModel()
+    LaunchedEffect(filter) { vm.loadList(filter) }
+    val listState by vm.listState.collectAsState()
     val settingsVm: SettingsViewModel = hiltViewModel()
     val themeMode by settingsVm.themeMode.collectAsState()
     val dark = when (themeMode) {
@@ -84,21 +84,27 @@ fun ArticleListByLabelRoute(
             topBar = {
                 TopAppBar(
                     title = {
-                        Breadcrumb(
-                            segments = listOf(
-                                Crumb("Home", onNavigateHome),
-                                Crumb("Articles", null),
-                            ),
-                        )
+                        val crumbs = when (filter) {
+                            ArticlesFilter.All -> {
+                                listOf(Crumb("Home", onNavigateHome), Crumb("Articles", null))
+                            }
+                            is ArticlesFilter.Label -> {
+                                listOf(
+                                    Crumb("Home", onNavigateHome),
+                                    Crumb("${filter.value}", null),
+                                )
+                            }
+                        }
+                        Breadcrumb(segments = crumbs)
                     },
                 )
             },
         ) { padding ->
-            ArticleListByLabelContent(
-                state = state,
+            ArticlesListContent(
+                state = listState,
                 paddingValues = padding,
-                onRetry = { vm.load(state.label) },
-                onRefresh = { vm.refresh() },
+                onRetry = { vm.loadList(filter) },
+                onRefresh = { vm.refreshList() },
                 onNavigateBack = onNavigateBack,
                 onArticleClick = onArticleClick,
             )
@@ -108,8 +114,8 @@ fun ArticleListByLabelRoute(
 
 @Composable
 @OptIn(ExperimentalMaterialApi::class)
-private fun ArticleListByLabelContent(
-    state: ArticleListByLabelViewModel.UiState,
+private fun ArticlesListContent(
+    state: ArticlesViewModel.ArticlesListUiState,
     paddingValues: PaddingValues,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
@@ -131,7 +137,6 @@ private fun ArticleListByLabelContent(
                     LoadingState(neo)
                 }
                 state.error != null -> {
-                    // state.error is guaranteed non-null in this branch; avoid unsafe not-null assertion
                     ErrorState(message = state.error, neo = neo, onRetry = onRetry)
                 }
                 state.items.isEmpty() -> {
@@ -211,13 +216,11 @@ private fun ArticlesList(items: List<Article>, onArticleClick: (Article) -> Unit
     }
 }
 
-// ——— UI bits
-// Internal only: keep private to avoid unnecessary public API & documentation requirements.
 private data class Crumb(val label: String, val onClick: (() -> Unit)?)
 
 @Composable
 private fun Breadcrumb(segments: List<Crumb>) {
-    androidx.compose.foundation.layout.Row(modifier = Modifier.fillMaxWidth()) {
+    Row(modifier = Modifier.fillMaxWidth()) {
         segments.forEachIndexed { index, crumb ->
             val isLast = index == segments.lastIndex
             FilterChip(
@@ -302,7 +305,7 @@ private fun ArticleTitleRow(title: String, iconUrl: String?) {
                     contentScale = ContentScale.Fit,
                 )
             } else {
-                androidx.compose.foundation.layout.Box(
+                Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
