@@ -49,6 +49,7 @@ import info.lwb.ui.designsystem.ProvideSurfaceStyle
 import info.lwb.ui.designsystem.RaisedIconWell
 import info.lwb.ui.designsystem.RaisedSurface
 import info.lwb.ui.designsystem.SurfaceStyleColors
+import info.lwb.ui.designsystem.image.ArticleImage
 
 /** Generic route for displaying an article list filtered by [ArticlesFilter]. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -252,7 +253,7 @@ private fun ArticleCard(title: String, coverUrl: String?, iconUrl: String?, onCl
 private fun ArticleCover(coverUrl: String?, iconUrl: String?) {
     when {
         !coverUrl.isNullOrBlank() -> {
-            coil.compose.AsyncImage(
+            ArticleImage(
                 model = coverUrl,
                 contentDescription = null,
                 modifier = Modifier
@@ -262,7 +263,7 @@ private fun ArticleCover(coverUrl: String?, iconUrl: String?) {
             )
         }
         !iconUrl.isNullOrBlank() -> {
-            coil.compose.AsyncImage(
+            ArticleImage(
                 model = iconUrl,
                 contentDescription = null,
                 modifier = Modifier
@@ -292,7 +293,7 @@ private fun ArticleTitleRow(title: String, iconUrl: String?) {
     ) {
         RaisedIconWell(wellSize = 48.dp, innerPadding = 6.dp) {
             if (!iconUrl.isNullOrBlank()) {
-                coil.compose.AsyncImage(
+                ArticleImage(
                     model = iconUrl,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
