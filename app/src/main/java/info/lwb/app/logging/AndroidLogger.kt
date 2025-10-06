@@ -9,17 +9,29 @@ class AndroidLogger(globalTag: String) : AppLogger {
     private val tag: String = globalTag
 
     private fun callerFileLine(): String {
-        // Skip stack frames until outside this logger class.
         val stack = Exception("capture").stackTrace
+        val loggerPkg = this::class.java.packageName
         for (el in stack) {
             val cn = el.className
-            if (!cn.startsWith(this::class.java.name)) {
+            // Skip frames from logger package, logger facade, kotlin reflection or synthetic '$' classes
+            val skip = cn.startsWith(loggerPkg) ||
+                cn.contains("LoggerFacade") ||
+                cn.contains("kotlin.reflect") ||
+                cn.contains("$")
+            if (!skip) {
                 val file = el.fileName ?: cn.substringAfterLast('.')
                 val line = el.lineNumber.takeIf { it >= 0 } ?: 0
                 return "$file:$line"
             }
         }
-        return "?" // Fallback
+        // Fallback: last non-null filename in stack
+        val alt = stack.lastOrNull { it.fileName != null }
+        return if (alt != null) {
+            val line = alt.lineNumber.takeIf { it >= 0 } ?: 0
+            "${alt.fileName}:$line"
+        } else {
+            "?"
+        }
     }
 
     private fun format(ref: String, message: String): String {
