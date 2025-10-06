@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
@@ -202,41 +203,49 @@ private fun ArticleWebAndroidView(
     onAnchorChanged: ((anchor: String) -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)? = null,
 ) {
-    AndroidView(
-        modifier = Modifier
-            .fillMaxSize(),
-        factory = { ctx ->
-            createArticleWebView(
-                ctx = ctx,
-                state = state,
-                htmlBody = htmlBody,
-                baseUrl = baseUrl,
-                url = url,
-                injectedCss = injectedCss,
-                fontScale = fontScale,
-                lineHeight = lineHeight,
-                backgroundColor = backgroundColor,
-                initialScrollY = initialScrollY,
-                onTap = onTap,
-                onScrollChanged = onScrollChanged,
-                onAnchorChanged = onAnchorChanged,
-                onWebViewCreated = onWebViewCreated,
-            )
-        },
-        update = { webView ->
-            applyArticleWebViewUpdates(
-                webView = webView,
-                state = state,
-                url = url,
-                htmlBody = htmlBody,
-                injectedCss = injectedCss,
-                baseUrl = baseUrl,
-                fontScale = fontScale,
-                lineHeight = lineHeight,
-                backgroundColor = backgroundColor,
-            )
-        },
-    )
+    // Recreate WebView exactly once when a non-zero initialScrollY becomes available after first composition.
+    val recreateKey = if (initialScrollY != null && initialScrollY > 0) {
+        initialScrollY
+    } else {
+        0
+    }
+    key(recreateKey) {
+        AndroidView(
+            modifier = Modifier
+                .fillMaxSize(),
+            factory = { ctx ->
+                createArticleWebView(
+                    ctx = ctx,
+                    state = state,
+                    htmlBody = htmlBody,
+                    baseUrl = baseUrl,
+                    url = url,
+                    injectedCss = injectedCss,
+                    fontScale = fontScale,
+                    lineHeight = lineHeight,
+                    backgroundColor = backgroundColor,
+                    initialScrollY = initialScrollY,
+                    onTap = onTap,
+                    onScrollChanged = onScrollChanged,
+                    onAnchorChanged = onAnchorChanged,
+                    onWebViewCreated = onWebViewCreated,
+                )
+            },
+            update = { webView ->
+                applyArticleWebViewUpdates(
+                    webView = webView,
+                    state = state,
+                    url = url,
+                    htmlBody = htmlBody,
+                    injectedCss = injectedCss,
+                    baseUrl = baseUrl,
+                    fontScale = fontScale,
+                    lineHeight = lineHeight,
+                    backgroundColor = backgroundColor,
+                )
+            },
+        )
+    }
 }
 
 private fun createArticleWebView(
