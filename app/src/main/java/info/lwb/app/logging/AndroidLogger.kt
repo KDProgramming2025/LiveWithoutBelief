@@ -4,9 +4,28 @@ import android.util.Log
 import info.lwb.core.common.log.AppLogger
 import info.lwb.BuildConfig
 
-/** Android implementation of [AppLogger] delegating to `android.util.Log`. */
-class AndroidLogger(private val tag: String) : AppLogger {
-    private fun format(ref: String, message: String): String = "[$ref] $message"
+/** Android implementation of [AppLogger] delegating to `android.util.Log` with a single global tag. */
+class AndroidLogger(globalTag: String) : AppLogger {
+    private val tag: String = globalTag
+
+    private fun callerFileLine(): String {
+        // Skip stack frames until outside this logger class.
+        val stack = Exception("capture").stackTrace
+        for (el in stack) {
+            val cn = el.className
+            if (!cn.startsWith(this::class.java.name)) {
+                val file = el.fileName ?: cn.substringAfterLast('.')
+                val line = el.lineNumber.takeIf { it >= 0 } ?: 0
+                return "$file:$line"
+            }
+        }
+        return "?" // Fallback
+    }
+
+    private fun format(ref: String, message: String): String {
+        val loc = callerFileLine()
+        return "[$loc][$ref] $message"
+    }
 
     /** Debug message. */
     override fun d(ref: String, msg: () -> String) {
