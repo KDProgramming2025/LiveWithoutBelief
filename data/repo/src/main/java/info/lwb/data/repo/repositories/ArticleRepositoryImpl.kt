@@ -67,6 +67,12 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             Log.d(TAG, "prefetch:empty-db -> triggering refresh before collection")
             runCatching { refreshArticles() }
                 .onFailure { Log.d(TAG, "prefetch:refresh failed msg=" + it.message) }
+            // Re-read after refresh attempt
+            val after = articleDao.listArticles()
+            if (after.isEmpty()) {
+                // Emit an explicit empty success so UI can transition out of loading instead of spinning.
+                emit(Result.Success(emptyList()))
+            }
         }
         articleDao
             .observeArticles()
