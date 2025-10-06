@@ -11,7 +11,7 @@ private const val AUTH_LOG_TAG = "AuthFlow"
 private const val CLIENT_ID_SAMPLE = 12
 
 // region logging helpers (no-op in release) extracted from AuthFacade to lower function count and isolate logging.
-private inline fun logDebug(tag: String, msg: () -> String) {
+private fun logDebug(tag: String, msg: () -> String) {
     if (BuildConfig.DEBUG) {
         info.lwb.core.common.log.Logger
             .d(tag) { msg() }

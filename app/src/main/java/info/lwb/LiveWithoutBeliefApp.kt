@@ -23,7 +23,7 @@ import info.lwb.app.logging.AndroidLogger
 class LiveWithoutBeliefApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        Logger.install(AndroidLogger(tag = "LWB"))
+        Logger.install(AndroidLogger("LWB"))
         Telemetry.init(this)
         Telemetry.logEvent("app_start", mapOf("ver" to BuildConfig.VERSION_NAME))
     }
