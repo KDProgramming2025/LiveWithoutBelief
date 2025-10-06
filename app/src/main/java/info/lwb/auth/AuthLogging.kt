@@ -13,7 +13,8 @@ private const val CLIENT_ID_SAMPLE = 12
 // region logging helpers (no-op in release) extracted from AuthFacade to lower function count and isolate logging.
 private inline fun logDebug(tag: String, msg: () -> String) {
     if (BuildConfig.DEBUG) {
-        runCatching { android.util.Log.d(tag, msg()) }
+        info.lwb.core.common.log.Logger
+            .d(tag) { msg() }
     }
 }
 
@@ -37,12 +38,18 @@ internal fun FirebaseCredentialAuthFacade.logDebugSuccess(user: AuthUser) = logD
 
 internal fun logDebugFailure(mapped: Throwable?, original: Throwable) {
     if (BuildConfig.DEBUG) {
-        runCatching {
-            if (mapped != null) {
-                android.util.Log.e(AUTH_LOG_TAG, "oneTapSignIn:failure(region-block)", mapped)
-            } else {
-                android.util.Log.e(AUTH_LOG_TAG, "oneTapSignIn:failure", original)
-            }
+        if (mapped != null) {
+            info.lwb.core.common.log.Logger.e(
+                AUTH_LOG_TAG,
+                { "oneTapSignIn:failure(region-block)" },
+                mapped,
+            )
+        } else {
+            info.lwb.core.common.log.Logger.e(
+                AUTH_LOG_TAG,
+                { "oneTapSignIn:failure" },
+                original,
+            )
         }
     }
 }

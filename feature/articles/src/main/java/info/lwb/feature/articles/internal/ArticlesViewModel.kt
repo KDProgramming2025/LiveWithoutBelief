@@ -3,7 +3,7 @@
  */
 package info.lwb.feature.articles.internal
 
-import android.util.Log
+import info.lwb.core.common.log.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,34 +60,34 @@ internal class ArticlesViewModel @Inject constructor(
     init {
         // Automatically start collection and initial refresh.
         // Host routes no longer need to invoke ensureLoaded manually.
-        Log.d(TAG, "init:auto-start")
+        Logger.d(TAG) { "init:auto-start" }
         ensureLoaded()
     }
 
     fun ensureLoaded() {
         if (started) {
-            Log.d(TAG, "ensureLoaded:already-started")
+            Logger.d(TAG) { "ensureLoaded:already-started" }
             return
         }
-        Log.d(TAG, "ensureLoaded:start collecting & trigger initial refresh")
+        Logger.d(TAG) { "ensureLoaded:start collecting & trigger initial refresh" }
         started = true
         collectArticles()
     }
 
     private fun collectArticles() = viewModelScope.launch {
-        Log.d(TAG, "collectArticles:start")
+        Logger.d(TAG) { "collectArticles:start" }
         getArticlesUseCase().collect { result ->
             when (result) {
                 is Result.Loading -> {
-                    Log.d(TAG, "collectArticles:emission=Loading")
+                    Logger.d(TAG) { "collectArticles:emission=Loading" }
                     handleArticlesLoadingForList()
                 }
                 is Result.Success -> {
-                    Log.d(TAG, "collectArticles:emission=Success size=" + result.data.size)
+                    Logger.d(TAG) { "collectArticles:emission=Success size=" + result.data.size }
                     handleArticlesSuccessForList(result)
                 }
                 is Result.Error -> {
-                    Log.d(TAG, "collectArticles:emission=Error msg=" + (result.throwable.message ?: "?"))
+                    Logger.d(TAG) { "collectArticles:emission=Error msg=" + (result.throwable.message ?: "?") }
                     handleArticlesErrorForList(result)
                 }
             }
@@ -146,26 +146,26 @@ internal class ArticlesViewModel @Inject constructor(
         onComplete: ((emptyAfter: Boolean) -> Unit)? = null, // callback retained for UI refresh list
     ) {
         if (_refreshing.value) {
-            Log.d(TAG, "refresh:ignored already refreshing")
+            Logger.d(TAG) { "refresh:ignored already refreshing" }
             // If already refreshing we can't know emptiness yet; only the active refresh will callback.
             return
         }
-        Log.d(TAG, "refresh:start trigger")
+        Logger.d(TAG) { "refresh:start trigger" }
         _refreshing.value = true
         viewModelScope.launch {
             try {
-                Log.d(TAG, "refresh:invoke useCase")
+                Logger.d(TAG) { "refresh:invoke useCase" }
                 refreshArticlesUseCase()
-                Log.d(TAG, "refresh:useCase completed")
+                Logger.d(TAG) { "refresh:useCase completed" }
             } catch (ce: kotlinx.coroutines.CancellationException) {
-                Log.d(TAG, "refresh:cancelled")
+                Logger.d(TAG) { "refresh:cancelled" }
                 throw ce
             } catch (_: Throwable) {
                 // ignore
-                Log.d(TAG, "refresh:failed silently")
+                Logger.d(TAG) { "refresh:failed silently" }
             } finally {
                 _refreshing.value = false
-                Log.d(TAG, "refresh:finalize refreshing=" + _refreshing.value)
+                Logger.d(TAG) { "refresh:finalize refreshing=" + _refreshing.value }
                 val emptyNow = (_articles.value as? Result.Success)?.data?.isEmpty() ?: true
                 onComplete?.invoke(emptyNow)
             }
@@ -197,27 +197,27 @@ internal class ArticlesViewModel @Inject constructor(
 
     fun refreshList() {
         val current = _listState.value
-        Log.d(TAG, "refreshList:entered label=" + current.label)
-        Log.d(TAG, "refreshList:state loading=" + current.loading + " refreshing=" + _refreshing.value)
+        Logger.d(TAG) { "refreshList:entered label=" + current.label }
+        Logger.d(TAG) { "refreshList:state loading=" + current.loading + " refreshing=" + _refreshing.value }
         if (_refreshing.value || current.loading) {
-            Log.d(TAG, "refreshList:ignored busy")
+            Logger.d(TAG) { "refreshList:ignored busy" }
             return
         }
         val f = current.label
         if (f.isBlank()) {
-            Log.d(TAG, "refreshList:root -> delegate refreshArticles")
+            Logger.d(TAG) { "refreshList:root -> delegate refreshArticles" }
             refreshArticles()
             return
         }
         if (f.isNotBlank()) {
-            Log.d(TAG, "refreshList:label -> force network then fetchLabel")
+            Logger.d(TAG) { "refreshList:label -> force network then fetchLabel" }
             _listState.value = current.copy(error = null)
             viewModelScope.launch {
                 // Trigger a manifest refresh first so label results reflect latest data.
                 runCatching {
-                    Log.d(TAG, "refreshList:label -> invoking refreshArticlesUseCase before label fetch")
+                    Logger.d(TAG) { "refreshList:label -> invoking refreshArticlesUseCase before label fetch" }
                     refreshArticlesUseCase()
-                    Log.d(TAG, "refreshList:label -> manifest refreshed")
+                    Logger.d(TAG) { "refreshList:label -> manifest refreshed" }
                 }
                 fetchLabel(f)
             }

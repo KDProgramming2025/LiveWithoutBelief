@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import android.util.Log
+import info.lwb.core.common.log.Logger
 import javax.inject.Inject
 import javax.inject.Named
 
@@ -42,10 +42,10 @@ fun ReaderByIdRoute(
         return
     }
     val vm: ReaderSessionViewModel = hiltViewModel()
-    LaunchedEffect(Unit) { Log.d(TAG, "Entered ReaderByIdRoute (navUrl) articleId=" + articleId) }
+    LaunchedEffect(Unit) { Logger.d(TAG) { "Entered ReaderByIdRoute (navUrl) articleId=" + articleId } }
     // Record active article id for appearance persistence (content body not used).
     LaunchedEffect(articleId) { vm.loadArticle(articleId, "") }
-    Log.d(TAG, "Using navIndexUrl articleId=" + articleId + " url=" + url)
+    Logger.d(TAG) { "Using navIndexUrl articleId=" + articleId + " url=" + url }
     ReaderIndexScreen(url = url, vm = vm, onNavigateBack = onNavigateBack)
 }
 

@@ -3,7 +3,7 @@
  */
 package info.lwb.feature.articles
 
-import android.util.Log
+import info.lwb.core.common.log.Logger
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -100,7 +100,7 @@ fun ArticlesListRoute(
                 paddingValues = padding,
                 onRetry = { vm.loadList(label) },
                 onRefresh = {
-                    Log.d("ArticlesRoute", "pullRefresh:onRefresh")
+                    Logger.d("ArticlesRoute") { "pullRefresh:onRefresh" }
                     vm.refreshList()
                 },
                 onNavigateBack = onNavigateBack,

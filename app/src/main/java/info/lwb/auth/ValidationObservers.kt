@@ -4,7 +4,7 @@
  */
 package info.lwb.auth
 
-import android.util.Log
+import info.lwb.core.common.log.Logger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,15 +18,15 @@ private const val PERMILLE_MAX = 1000
 @Singleton
 class LoggingValidationObserver @Inject constructor() : ValidationObserver {
     override fun onAttempt(attempt: Int, max: Int) {
-        Log.d(TAG, "attempt=$attempt max=$max")
+        Logger.d(TAG) { "attempt=$attempt max=$max" }
     }
 
     override fun onResult(result: ValidationResult) {
-        Log.d(TAG, "result valid=${result.isValid} error=${result.error}")
+        Logger.d(TAG) { "result valid=${result.isValid} error=${result.error}" }
     }
 
     override fun onRetry(delayMs: Long) {
-        Log.d(TAG, "retry delayMs=$delayMs")
+        Logger.d(TAG) { "retry delayMs=$delayMs" }
     }
 
     private companion object {
@@ -156,7 +156,7 @@ class SnapshotExportValidationObserver(
     override fun onAttempt(attempt: Int, max: Int) {
         if (++counter % intervalAttempts == 0) {
             val snap = metrics.snapshot()
-            android.util.Log.d("AuthMetrics", "snapshot=$snap")
+            Logger.d("AuthMetrics") { "snapshot=$snap" }
         }
     }
 

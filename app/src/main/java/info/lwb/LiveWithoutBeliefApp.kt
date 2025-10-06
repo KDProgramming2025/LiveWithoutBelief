@@ -8,6 +8,8 @@ package info.lwb
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 import info.lwb.telemetry.Telemetry
+import info.lwb.core.common.log.Logger
+import info.lwb.app.logging.AndroidLogger
 
 /**
  * Application entry point initializing telemetry and scheduling periodic background sync.
@@ -21,6 +23,7 @@ import info.lwb.telemetry.Telemetry
 class LiveWithoutBeliefApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        Logger.install(AndroidLogger(tag = "LWB"))
         Telemetry.init(this)
         Telemetry.logEvent("app_start", mapOf("ver" to BuildConfig.VERSION_NAME))
     }

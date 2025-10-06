@@ -119,7 +119,11 @@ class WebViewAltchaProvider @Inject constructor(
 
     private fun logDebug(msg: String, t: Throwable) {
         if (info.lwb.BuildConfig.DEBUG) {
-            runCatching { android.util.Log.w("Altcha", msg, t) }
+            info.lwb.core.common.log.Logger.w(
+                "Altcha",
+                { msg },
+                t,
+            )
         }
     }
 }

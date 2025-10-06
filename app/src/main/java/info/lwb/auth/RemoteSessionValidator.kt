@@ -4,7 +4,7 @@
  */
 package info.lwb.auth
 
-import android.util.Log
+import info.lwb.core.common.log.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -242,7 +242,7 @@ class RemoteSessionValidator @Inject constructor(
 
     private fun debugLog(message: String) {
         try {
-            Log.d(DEBUG_TAG, message)
+            Logger.d(DEBUG_TAG) { message }
         } catch (_: Exception) {
             // ignore
         }

@@ -157,7 +157,11 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
         secureStorage.putProfile(authUser.displayName, authUser.email, authUser.photoUrl)
         runCatching { tokenRefresher.refresh(user, false) }.onFailure { err ->
             if (BuildConfig.DEBUG) {
-                android.util.Log.w("AuthFlow", "tokenRefreshFailed", err)
+                info.lwb.core.common.log.Logger.w(
+                    "AuthFlow",
+                    { "tokenRefreshFailed" },
+                    err,
+                )
             }
         }
         logDebugSuccess(authUser)

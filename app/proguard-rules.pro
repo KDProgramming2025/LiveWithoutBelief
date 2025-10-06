@@ -19,3 +19,14 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- LWB logging strip (release) ---
+# Remove all calls to logging methods (bodies are trivial; safe to strip) in release builds.
+# We only emit logs in debug anyway, but this guarantees dead code removal.
+-assumenosideeffects class info.lwb.app.logging.AndroidLogger {
+	public void d(...);
+	public void i(...);
+	public void w(...);
+	public void e(...);
+	public void v(...);
+}

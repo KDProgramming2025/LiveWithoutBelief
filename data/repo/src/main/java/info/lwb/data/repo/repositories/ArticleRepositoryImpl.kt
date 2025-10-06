@@ -4,7 +4,7 @@
  */
 package info.lwb.data.repo.repositories
 
-import android.util.Log
+import info.lwb.core.common.log.Logger
 import info.lwb.core.common.Result
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.model.Article
@@ -56,16 +56,16 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
     }
 
     init {
-        Log.d(TAG, "init")
+        Logger.d(TAG) { "init" }
     }
 
     override fun getArticles(): Flow<Result<List<Article>>> = flow {
         emit(Result.Loading)
         val initial = withContext(Dispatchers.IO) { articleDao.listArticles() }
         if (initial.isEmpty()) {
-            Log.d(TAG, "prefetch:snapshot empty -> refreshArticles")
+            Logger.d(TAG) { "prefetch:snapshot empty -> refreshArticles" }
             runCatching { refreshArticles() }
-                .onFailure { Log.d(TAG, "prefetch:refresh failed msg=" + it.message) }
+                .onFailure { Logger.d(TAG) { "prefetch:refresh failed msg=" + it.message } }
         }
         articleDao
             .observeArticles()
@@ -100,17 +100,17 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
     }
 
     override suspend fun refreshArticles() {
-        Log.d(TAG, "refresh:start")
+        Logger.d(TAG) { "refresh:start" }
         val manifest = fetchManifestInternal()
         if (manifest == null) {
-            Log.d(TAG, "refresh:manifest=null (failed after retries)")
+            Logger.d(TAG) { "refresh:manifest=null (failed after retries)" }
             return
         }
         if (manifest.isEmpty()) {
-            Log.d(TAG, "refresh:manifest=empty")
+            Logger.d(TAG) { "refresh:manifest=empty" }
             return
         }
-        Log.d(TAG, "refresh:manifest.size=" + manifest.size)
+        Logger.d(TAG) { "refresh:manifest.size=" + manifest.size }
         withContext(Dispatchers.IO) {
             val localById = snapshotLocalArticles()
             processManifest(
@@ -119,13 +119,13 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             )
             applyEvictionPolicy(manifest)
         }
-        Log.d(TAG, "refresh:applied size=" + manifest.size)
+        Logger.d(TAG) { "refresh:applied size=" + manifest.size }
     }
 
     private suspend fun fetchManifestInternal(): List<ManifestItemDto>? = retryWithBackoff {
-        Log.d(TAG, "fetchManifest:request")
+        Logger.d(TAG) { "fetchManifest:request" }
         api.getManifest().items.also { list ->
-            Log.d(TAG, "fetchManifest:success count=" + list.size)
+            Logger.d(TAG) { "fetchManifest:success count=" + list.size }
         }
     }
 
@@ -255,10 +255,10 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         api: ArticleApi,
         articleDao: ArticleDao,
     ): ArticleContentEntity? {
-        Log.d(TAG, "fetch id=$articleId")
+        Logger.d(TAG) { "fetch id=$articleId" }
         val dto = retryWithBackoff { api.getArticle(articleId) }
         if (dto == null) {
-            Log.d(TAG, "fetchNull id=$articleId")
+            Logger.d(TAG) { "fetchNull id=$articleId" }
             return null
         }
         val plain = dto.text ?: ""
@@ -266,7 +266,7 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         val textHash = sha256(plain)
         val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
         if (!checksumOk) {
-            Log.d(TAG, "checksumFail id=$articleId")
+            Logger.d(TAG) { "checksumFail id=$articleId" }
             return null
         }
         // Attempt to preserve existing metadata for artwork / ordering if we only fetched content.
@@ -292,10 +292,7 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             indexUrl = dto.indexUrl,
         )
         articleDao.upsertArticleWithContent(articleEntity, newContent)
-        Log.d(
-            TAG,
-            "persisted id=" + articleId + " hasIndexUrl=" + !newContent.indexUrl.isNullOrBlank(),
-        )
+        Logger.d(TAG) { "persisted id=" + articleId + " hasIndexUrl=" + !newContent.indexUrl.isNullOrBlank() }
         return newContent
     }
 }

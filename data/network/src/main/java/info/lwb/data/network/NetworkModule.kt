@@ -15,7 +15,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Interceptor
 import okhttp3.Response
-import android.util.Log
+import info.lwb.core.common.log.Logger
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import javax.inject.Named
@@ -69,21 +69,19 @@ object NetworkModule {
                         val length = body?.contentLength() ?: -1
                         val contentType = body?.contentType()?.toString() ?: "(no-body)"
                         if (peek.isNotEmpty()) {
-                            Log.d(
-                                ARTICLES_LOG_TAG,
+                            Logger.d(ARTICLES_LOG_TAG) {
                                 "code=" + code +
                                     ", type=" + contentType +
                                     ", length=" + length +
-                                    "\n" + peek,
-                            )
+                                    "\n" + peek
+                            }
                         } else {
-                            Log.d(
-                                ARTICLES_LOG_TAG,
+                            Logger.d(ARTICLES_LOG_TAG) {
                                 "code=" + code +
                                     ", type=" + contentType +
                                     ", length=" + length +
-                                    " (empty body)",
-                            )
+                                    " (empty body)"
+                            }
                         }
                     }
                     res

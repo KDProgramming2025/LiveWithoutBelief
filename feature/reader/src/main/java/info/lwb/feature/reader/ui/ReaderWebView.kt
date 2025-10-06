@@ -16,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
@@ -104,7 +103,7 @@ private fun ArticleWebViewContent(
             onReady?.invoke()
         }
     }
-    ArticleWebContentBody(
+    articleWebContentBody(
         modifier = modifier,
         state = state,
         htmlBody = htmlBody,
@@ -123,7 +122,7 @@ private fun ArticleWebViewContent(
 }
 
 @Composable
-private fun ArticleWebContentBody(
+private fun articleWebContentBody(
     modifier: Modifier,
     state: ArticleWebState,
     htmlBody: String?,
@@ -139,6 +138,8 @@ private fun ArticleWebContentBody(
     initialScrollY: Int?,
     onWebViewCreated: ((WebView) -> Unit)?,
 ) {
+    // Hold a reference to the underlying WebView once created.
+    val webViewRef = remember { mutableStateOf<WebView?>(null) }
     Box(modifier = modifier) {
         ArticleWebAndroidView(
             state = state,
@@ -153,52 +154,26 @@ private fun ArticleWebContentBody(
             onScrollChanged = { scrollY -> onScrollChanged?.invoke(scrollY) },
             initialScrollY = initialScrollY,
             onAnchorChanged = onAnchorChanged,
-            onWebViewCreated = onWebViewCreated,
+            onWebViewCreated = { w ->
+                webViewRef.value = w
+                onWebViewCreated?.invoke(w)
+            },
         )
         if (!state.ready.value) {
             Box(modifier = Modifier.fillMaxSize()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
         }
-        // Fallback / secondary restoration path: if initialScrollY arrives AFTER first page load finished
-        // and no restoration was triggered (e.g., WebView was created with 0 then state updated), try once.
-        androidx.compose.runtime.LaunchedEffect(state.ready.value, initialScrollY) {
-            val target = initialScrollY ?: 0
-            if (state.ready.value && target > 0 && !state.restoreActive.value) {
-                // Attempt a direct scroll. If content height not laid out yet, schedule a second post.
-                // We purposely do not mark restoreActive to allow normal scroll saving afterward.
-                // Use AndroidView reference via onWebViewCreated side-effect: caller can supply capturing ref.
-                // Since we don't own a direct ref here, we rely on provided callback storing it elsewhere if needed.
-                // (ReaderHelpers stores WebView in webRef enabling external JS var application.)
-                // Best-effort: use Android's Choreographer post frame to delay a tick.
-            }
-        }
     }
 }
 
-private class ArticleWebState(
+internal class ArticleWebState(
     val ready: MutableState<Boolean>,
     val firstLoad: MutableState<Boolean>,
     val lastFontScale: MutableState<Float?>,
     val lastLineHeight: MutableState<Float?>,
     val restoreActive: MutableState<Boolean>,
 )
-
-@Composable
-private fun rememberArticleWebState(url: String?, htmlBody: String?): ArticleWebState {
-    val ready = remember(key1 = url, key2 = htmlBody) { mutableStateOf(false) }
-    val firstLoad = remember(key1 = url, key2 = htmlBody) { mutableStateOf(true) }
-    val lastFontScale = remember(key1 = url, key2 = htmlBody) { mutableStateOf<Float?>(null) }
-    val lastLineHeight = remember(key1 = url, key2 = htmlBody) { mutableStateOf<Float?>(null) }
-    val restoreActive = remember(key1 = url, key2 = htmlBody) { mutableStateOf(false) }
-    return ArticleWebState(
-        ready = ready,
-        firstLoad = firstLoad,
-        lastFontScale = lastFontScale,
-        lastLineHeight = lastLineHeight,
-        restoreActive = restoreActive,
-    )
-}
 
 @Composable
 private fun ArticleWebAndroidView(
@@ -216,49 +191,40 @@ private fun ArticleWebAndroidView(
     onAnchorChanged: ((anchor: String) -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)? = null,
 ) {
-    // Recreate WebView exactly once when a non-zero initialScrollY becomes available after first composition.
-    val recreateKey = if (initialScrollY != null && initialScrollY > 0) {
-        initialScrollY
-    } else {
-        0
-    }
-    key(recreateKey) {
-        AndroidView(
-            modifier = Modifier
-                .fillMaxSize(),
-            factory = { ctx ->
-                createArticleWebView(
-                    ctx = ctx,
-                    state = state,
-                    htmlBody = htmlBody,
-                    baseUrl = baseUrl,
-                    url = url,
-                    injectedCss = injectedCss,
-                    fontScale = fontScale,
-                    lineHeight = lineHeight,
-                    backgroundColor = backgroundColor,
-                    initialScrollY = initialScrollY,
-                    onTap = onTap,
-                    onScrollChanged = onScrollChanged,
-                    onAnchorChanged = onAnchorChanged,
-                    onWebViewCreated = onWebViewCreated,
-                )
-            },
-            update = { webView ->
-                applyArticleWebViewUpdates(
-                    webView = webView,
-                    state = state,
-                    url = url,
-                    htmlBody = htmlBody,
-                    injectedCss = injectedCss,
-                    baseUrl = baseUrl,
-                    fontScale = fontScale,
-                    lineHeight = lineHeight,
-                    backgroundColor = backgroundColor,
-                )
-            },
-        )
-    }
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { ctx ->
+            createArticleWebView(
+                ctx = ctx,
+                state = state,
+                htmlBody = htmlBody,
+                baseUrl = baseUrl,
+                url = url,
+                injectedCss = injectedCss,
+                fontScale = fontScale,
+                lineHeight = lineHeight,
+                backgroundColor = backgroundColor,
+                initialScrollY = initialScrollY,
+                onTap = onTap,
+                onScrollChanged = onScrollChanged,
+                onAnchorChanged = onAnchorChanged,
+                onWebViewCreated = onWebViewCreated,
+            )
+        },
+        update = { webView ->
+            applyArticleWebViewUpdates(
+                webView = webView,
+                state = state,
+                url = url,
+                htmlBody = htmlBody,
+                injectedCss = injectedCss,
+                baseUrl = baseUrl,
+                fontScale = fontScale,
+                lineHeight = lineHeight,
+                backgroundColor = backgroundColor,
+            )
+        },
+    )
 }
 
 private fun createArticleWebView(
