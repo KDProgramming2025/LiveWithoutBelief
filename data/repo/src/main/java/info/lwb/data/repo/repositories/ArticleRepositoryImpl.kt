@@ -61,25 +61,16 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
 
     override fun getArticles(): Flow<Result<List<Article>>> = flow {
         emit(Result.Loading)
-        // One-time prefetch: if database empty at first subscription attempt a remote refresh.
-        val initial = articleDao.listArticles()
+        val initial = withContext(Dispatchers.IO) { articleDao.listArticles() }
         if (initial.isEmpty()) {
-            Log.d(TAG, "prefetch:empty-db -> triggering refresh before collection")
+            Log.d(TAG, "prefetch:snapshot empty -> refreshArticles")
             runCatching { refreshArticles() }
                 .onFailure { Log.d(TAG, "prefetch:refresh failed msg=" + it.message) }
-            // Re-read after refresh attempt
-            val after = articleDao.listArticles()
-            if (after.isEmpty()) {
-                // Emit an explicit empty success so UI can transition out of loading instead of spinning.
-                emit(Result.Success(emptyList()))
-            }
         }
         articleDao
             .observeArticles()
             .map { rows -> rows.map { it.toDomain() } }
-            .collect { list ->
-                emit(Result.Success(list))
-            }
+            .collect { list -> emit(Result.Success(list)) }
     }
 
     override suspend fun snapshotArticles(): List<Article> = withContext(Dispatchers.IO) {
