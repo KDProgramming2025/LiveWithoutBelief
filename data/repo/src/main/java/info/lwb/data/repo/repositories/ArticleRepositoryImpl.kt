@@ -61,10 +61,19 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
 
     override fun getArticles(): Flow<Result<List<Article>>> = flow {
         emit(Result.Loading)
+        // One-time prefetch: if database empty at first subscription attempt a remote refresh.
+        val initial = articleDao.listArticles()
+        if (initial.isEmpty()) {
+            Log.d(TAG, "prefetch:empty-db -> triggering refresh before collection")
+            runCatching { refreshArticles() }
+                .onFailure { Log.d(TAG, "prefetch:refresh failed msg=" + it.message) }
+        }
         articleDao
             .observeArticles()
             .map { rows -> rows.map { it.toDomain() } }
-            .collect { list -> emit(Result.Success(list)) }
+            .collect { list ->
+                emit(Result.Success(list))
+            }
     }
 
     override suspend fun snapshotArticles(): List<Article> = withContext(Dispatchers.IO) {

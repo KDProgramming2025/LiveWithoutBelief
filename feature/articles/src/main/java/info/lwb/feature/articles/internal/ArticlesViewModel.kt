@@ -23,6 +23,7 @@ import javax.inject.Inject
 private const val MSG_FAILED_LOAD = "Failed to load"
 private const val MSG_REFRESH_FAILED = "Refresh failed"
 private const val TAG = "ArticlesVM"
+// Initial refresh timeout constant removed after moving prefetch logic into repository.
 
 /** Internal ViewModel exposing article collections and article content streams for the Articles feature. */
 @HiltViewModel
@@ -34,9 +35,10 @@ internal class ArticlesViewModel @Inject constructor(
     private val _articles = MutableStateFlow<Result<List<Article>>>(Result.Loading)
     val articles: StateFlow<Result<List<Article>>> = _articles.asStateFlow()
 
-    @Volatile private var started = false
+    @Volatile
+    private var started = false
 
-    @Volatile private var initialRefreshAttempted = false // ensures we only auto-refresh once when cache empty
+    // Removed explicit initial refresh flags; repository now handles first-install prefetch.
 
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
@@ -70,12 +72,6 @@ internal class ArticlesViewModel @Inject constructor(
         Log.d(TAG, "ensureLoaded:start collecting & trigger initial refresh")
         started = true
         collectArticles()
-        // Trigger an immediate refresh attempt; internal guard in refreshArticles prevents overlap.
-        if (!initialRefreshAttempted) {
-            initialRefreshAttempted = true
-            Log.d(TAG, "ensureLoaded:dispatching immediate refresh")
-            refreshArticles()
-        }
     }
 
     private fun collectArticles() = viewModelScope.launch {
@@ -108,22 +104,12 @@ internal class ArticlesViewModel @Inject constructor(
 
     private fun handleArticlesSuccessForList(result: Result.Success<List<Article>>) {
         _articles.value = result
-        // Auto-refresh logic: if local DB is empty on first success, trigger a one-time remote refresh
-        if (!initialRefreshAttempted && result.data.isEmpty()) {
-            initialRefreshAttempted = true
-            Log.d(TAG, "autoRefresh:empty-local -> triggering refreshArticlesUseCase")
-            viewModelScope.launch {
-                runCatching { refreshArticlesUseCase() }
-                    .onSuccess { Log.d(TAG, "autoRefresh:completed") }
-                    .onFailure { Log.d(TAG, "autoRefresh:failed msg=" + it.message) }
-            }
-        }
         if (_listState.value.label.isBlank()) {
             _listState.value = _listState.value.copy(
                 loading = false,
                 items = result.data,
                 error = null,
-                initializing = _listState.value.initializing && result.data.isEmpty(),
+                initializing = false,
             )
         }
     }
@@ -158,9 +144,12 @@ internal class ArticlesViewModel @Inject constructor(
         }
     }
 
-    fun refreshArticles() {
+    fun refreshArticles(
+        onComplete: ((emptyAfter: Boolean) -> Unit)? = null, // callback retained for UI refresh list
+    ) {
         if (_refreshing.value) {
             Log.d(TAG, "refresh:ignored already refreshing")
+            // If already refreshing we can't know emptiness yet; only the active refresh will callback.
             return
         }
         Log.d(TAG, "refresh:start trigger")
@@ -179,6 +168,8 @@ internal class ArticlesViewModel @Inject constructor(
             } finally {
                 _refreshing.value = false
                 Log.d(TAG, "refresh:finalize refreshing=" + _refreshing.value)
+                val emptyNow = (_articles.value as? Result.Success)?.data?.isEmpty() ?: true
+                onComplete?.invoke(emptyNow)
             }
         }
     }
