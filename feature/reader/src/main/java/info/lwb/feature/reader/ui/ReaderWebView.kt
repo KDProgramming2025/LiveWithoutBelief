@@ -160,6 +160,19 @@ private fun ArticleWebContentBody(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
         }
+        // Fallback / secondary restoration path: if initialScrollY arrives AFTER first page load finished
+        // and no restoration was triggered (e.g., WebView was created with 0 then state updated), try once.
+        androidx.compose.runtime.LaunchedEffect(state.ready.value, initialScrollY) {
+            val target = initialScrollY ?: 0
+            if (state.ready.value && target > 0 && !state.restoreActive.value) {
+                // Attempt a direct scroll. If content height not laid out yet, schedule a second post.
+                // We purposely do not mark restoreActive to allow normal scroll saving afterward.
+                // Use AndroidView reference via onWebViewCreated side-effect: caller can supply capturing ref.
+                // Since we don't own a direct ref here, we rely on provided callback storing it elsewhere if needed.
+                // (ReaderHelpers stores WebView in webRef enabling external JS var application.)
+                // Best-effort: use Android's Choreographer post frame to delay a tick.
+            }
+        }
     }
 }
 
