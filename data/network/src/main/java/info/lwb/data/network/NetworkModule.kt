@@ -16,7 +16,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Interceptor
 import okhttp3.Response
 import info.lwb.core.common.log.Logger
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import javax.inject.Named
 import javax.inject.Singleton
@@ -91,9 +90,7 @@ object NetworkModule {
             }
         })
         builder.addInterceptor(
-            HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BASIC
-            },
+            LwbOkHttpLoggingInterceptor(LwbOkHttpLoggingInterceptor.Level.BASIC),
         )
         return builder.build()
     }
