@@ -244,11 +244,8 @@ dependencies {
     androidTestImplementation("androidx.test:core:1.6.1")
 
     implementation(libs.navigation.compose)
-    // Background periodic sync
-    implementation(libs.work.runtime)
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
-    testImplementation("androidx.work:work-testing:${libs.versions.work.get()}")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
 }

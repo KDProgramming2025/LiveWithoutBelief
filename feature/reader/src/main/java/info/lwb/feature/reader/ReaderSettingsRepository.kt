@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -64,36 +65,45 @@ internal class ReaderSettingsRepository @Inject constructor(@ApplicationContext 
             }
         }
 
+    private companion object {
+        const val TAG = "ReaderSettings"
+    }
+
     val fontScale: Flow<Double> = basePrefsFlow.map { prefs ->
-        prefs[Keys.FONT_SCALE] ?: DEFAULT_FONT_SCALE
+        val v = prefs[Keys.FONT_SCALE] ?: DEFAULT_FONT_SCALE
+        Log.d(TAG, "load fontScale=$v")
+        v
     }
 
     val lineHeight: Flow<Double> = basePrefsFlow.map { prefs ->
-        prefs[Keys.LINE_HEIGHT] ?: DEFAULT_LINE_HEIGHT
+        val v = prefs[Keys.LINE_HEIGHT] ?: DEFAULT_LINE_HEIGHT
+        Log.d(TAG, "load lineHeight=$v")
+        v
     }
 
     val background: Flow<ReaderBackground> = basePrefsFlow.map { prefs ->
         val key = prefs[Keys.BACKGROUND]
-        backgroundByKey[key] ?: ReaderBackground.Paper
+        val bg = backgroundByKey[key] ?: ReaderBackground.Paper
+        Log.d(TAG, "load background=${bg.key}")
+        bg
     }
 
     /** Persist a new font scale (coerced to allowed range). */
     suspend fun setFontScale(v: Double) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.FONT_SCALE] = v.coerceIn(minimumValue = MIN_FONT_SCALE, maximumValue = MAX_FONT_SCALE)
-        }
+        val coerced = v.coerceIn(minimumValue = MIN_FONT_SCALE, maximumValue = MAX_FONT_SCALE)
+        Log.d(TAG, "save fontScale=$coerced")
+        context.dataStore.edit { prefs -> prefs[Keys.FONT_SCALE] = coerced }
     }
 
     /** Persist a new line height (coerced to allowed range). */
     suspend fun setLineHeight(v: Double) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.LINE_HEIGHT] = v.coerceIn(minimumValue = MIN_LINE_HEIGHT, maximumValue = MAX_LINE_HEIGHT)
-        }
+        val coerced = v.coerceIn(minimumValue = MIN_LINE_HEIGHT, maximumValue = MAX_LINE_HEIGHT)
+        Log.d(TAG, "save lineHeight=$coerced")
+        context.dataStore.edit { prefs -> prefs[Keys.LINE_HEIGHT] = coerced }
     }
 
     suspend fun setBackground(bg: ReaderBackground) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.BACKGROUND] = bg.key
-        }
+        Log.d(TAG, "save background=${bg.key}")
+        context.dataStore.edit { prefs -> prefs[Keys.BACKGROUND] = bg.key }
     }
 }

@@ -3,6 +3,7 @@
  */
 package info.lwb.feature.articles
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -51,18 +52,19 @@ import info.lwb.ui.designsystem.RaisedSurface
 import info.lwb.ui.designsystem.SurfaceStyleColors
 import info.lwb.ui.designsystem.image.ArticleImage
 
-/** Generic route for displaying an article list filtered by [ArticlesFilter]. */
+/** Generic route for displaying an article list filtered by label. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticlesListRoute(
-    filter: ArticlesFilter,
+    label: String,
     onArticleClick: (Article) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
 ) {
     val vm: ArticlesViewModel = hiltViewModel()
-    LaunchedEffect(filter) { vm.loadList(filter) }
+    LaunchedEffect(label) { vm.loadList(label) }
     val listState by vm.listState.collectAsState()
+    val refreshing by vm.refreshing.collectAsState()
     val settingsVm: SettingsViewModel = hiltViewModel()
     val themeMode by settingsVm.themeMode.collectAsState()
     val dark = when (themeMode) {
@@ -82,13 +84,10 @@ fun ArticlesListRoute(
             topBar = {
                 TopAppBar(
                     title = {
-                        val crumbs = when (filter) {
-                            ArticlesFilter.All -> {
-                                listOf(Crumb("Home", onNavigateHome), Crumb("Articles", null))
-                            }
-                            is ArticlesFilter.Label -> {
-                                listOf(Crumb("Home", onNavigateHome), Crumb(filter.value, null))
-                            }
+                        val crumbs = if (label.isBlank()) {
+                            listOf(Crumb("Home", onNavigateHome), Crumb("Articles", null))
+                        } else {
+                            listOf(Crumb("Home", onNavigateHome), Crumb(label, null))
                         }
                         Breadcrumb(segments = crumbs)
                     },
@@ -97,9 +96,13 @@ fun ArticlesListRoute(
         ) { padding ->
             ArticlesListContent(
                 state = listState,
+                refreshing = refreshing,
                 paddingValues = padding,
-                onRetry = { vm.loadList(filter) },
-                onRefresh = { vm.refreshList() },
+                onRetry = { vm.loadList(label) },
+                onRefresh = {
+                    Log.d("ArticlesRoute", "pullRefresh:onRefresh")
+                    vm.refreshList()
+                },
                 onNavigateBack = onNavigateBack,
                 onArticleClick = onArticleClick,
             )
@@ -111,6 +114,7 @@ fun ArticlesListRoute(
 @OptIn(ExperimentalMaterialApi::class)
 private fun ArticlesListContent(
     state: ArticlesViewModel.ArticlesListUiState,
+    refreshing: Boolean,
     paddingValues: PaddingValues,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
@@ -118,7 +122,6 @@ private fun ArticlesListContent(
     onArticleClick: (Article) -> Unit,
 ) {
     val neo = LocalSurfaceStyle.current
-    val refreshing = state.refreshing
     val refreshState = rememberPullRefreshState(refreshing = refreshing, onRefresh = onRefresh)
     Box(modifier = Modifier.fillMaxSize().pullRefresh(refreshState)) {
         GrainyBackground(modifier = Modifier.matchParentSize())
@@ -133,6 +136,9 @@ private fun ArticlesListContent(
                 }
                 state.error != null -> {
                     ErrorState(message = state.error, neo = neo, onRetry = onRetry)
+                }
+                state.items.isEmpty() && state.initializing -> {
+                    LoadingState(neo)
                 }
                 state.items.isEmpty() -> {
                     EmptyState(neo = neo, onNavigateBack = onNavigateBack)

@@ -179,7 +179,7 @@ private const val COLOR_DARK_SHADOW_DARK = 0xFF0E0B09
 private const val COLOR_DARK_SHADOW_LIGHT = 0xFF34373D
 private const val COLOR_DARK_TEXT_PRIMARY = 0xFFEEE7DF
 private const val COLOR_DARK_TEXT_MUTED = 0xFFB9AEA6
-private const val COLOR_DARK_REFLECTION_TINT = 0xFFE0F0FF
+private const val COLOR_DARK_REFLECTION_TINT = 0x88E0F0FF
 
 private val DarkColors = SurfaceStyleColors(
     bgTop = Color(COLOR_DARK_BG_TOP.toInt()),

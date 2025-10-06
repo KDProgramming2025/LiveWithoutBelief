@@ -179,4 +179,5 @@ private fun ArticleEntity.toDomain() = Article(
     order = order,
     coverUrl = coverUrl,
     iconUrl = iconUrl,
+    indexUrl = indexUrl,
 )

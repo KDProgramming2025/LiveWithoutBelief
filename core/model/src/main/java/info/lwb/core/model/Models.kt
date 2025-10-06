@@ -19,6 +19,7 @@ import kotlinx.serialization.Serializable
  * @property order Display ordering index (lower first). Defaults to a large value if unspecified.
  * @property coverUrl Non-null large cover image URL (server guarantees presence).
  * @property iconUrl Non-null small icon / thumbnail URL (server guarantees presence).
+ * @property indexUrl Non-null exported HTML index URL for direct WebView loading.
  */
 @Serializable
 data class Article(
@@ -36,6 +37,8 @@ data class Article(
     val coverUrl: String,
     /** Non-null small/icon image URL (server guarantees presence). */
     val iconUrl: String,
+    /** Full index URL for fast-path WebView loading (mandatory). */
+    val indexUrl: String,
 )
 
 /**
@@ -142,23 +145,6 @@ data class ThreadMessage(
     val type: String,
     val contentRef: String,
     val createdAt: String,
-)
-
-/**
- * Snapshot of reading progress for an article.
- * @property articleId Article id.
- * @property pageIndex Current page index (0-based).
- * @property totalPages Total pages recorded.
- * @property progress Fractional completion 0.0..1.0.
- * @property updatedAt ISO-8601 last update timestamp.
- */
-@Serializable
-data class ReadingProgress(
-    val articleId: String,
-    val pageIndex: Int,
-    val totalPages: Int,
-    val progress: Double,
-    val updatedAt: String,
 )
 
 /**

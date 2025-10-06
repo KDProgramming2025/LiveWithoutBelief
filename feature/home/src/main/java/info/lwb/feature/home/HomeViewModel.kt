@@ -66,31 +66,46 @@ class HomeViewModel @Inject constructor(
         started = true
         viewModelScope.launch {
             getMenu().collectLatest { res ->
-                when (res) {
-                    is Result.Loading -> {
-                        // Do not override an already successful state with a loading spinner; keeps
-                        // cached data visible during background refresh attempts.
-                        if (_state.value !is HomeUiState.Success) {
-                            _state.value = HomeUiState.Loading
-                        }
-                    }
-                    is Result.Success -> {
-                        _state.value = HomeUiState.Success(res.data)
-                    }
-                    is Result.Error -> {
-                        val current = _state.value
-                        val userMessage = classifyError()
-                        if (current is HomeUiState.Success && current.items.isNotEmpty()) {
-                            // Only emit sanitized message in snackbar
-                            _snackbar.tryEmit(userMessage)
-                        } else {
-                            _state.value = HomeUiState.Error(userMessage)
-                        }
-                    }
-                }
+                handleMenuResult(res)
             }
         }
-        viewModelScope.launch { runCatching { refreshMenu() } }
+    }
+
+    private fun handleMenuResult(res: Result<List<MenuItem>>) {
+        when (res) {
+            is Result.Loading -> {
+                handleLoading()
+            }
+            is Result.Success -> {
+                handleSuccess(res.data)
+            }
+            is Result.Error -> {
+                handleError()
+            }
+        }
+    }
+
+    private fun handleLoading() {
+        if (_state.value !is HomeUiState.Success) {
+            _state.value = HomeUiState.Loading
+        }
+    }
+
+    private fun handleSuccess(items: List<MenuItem>) {
+        _state.value = HomeUiState.Success(items)
+        if (items.isEmpty() && !_refreshing.value) {
+            forceRefresh()
+        }
+    }
+
+    private fun handleError() {
+        val current = _state.value
+        val userMessage = classifyError()
+        if (current is HomeUiState.Success && current.items.isNotEmpty()) {
+            _snackbar.tryEmit(userMessage)
+        } else {
+            _state.value = HomeUiState.Error(userMessage)
+        }
     }
 
     /** Explicit refresh entry point (e.g., future pull-to-refresh) still allowed. */

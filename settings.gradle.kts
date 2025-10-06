@@ -30,7 +30,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "LiveWithoutBelief"
 include(":app")
-// Android core + feature modules
 include(":core:model")
 include(":core:common")
 include(":core:domain")

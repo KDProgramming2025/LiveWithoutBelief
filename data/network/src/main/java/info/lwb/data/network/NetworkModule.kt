@@ -13,6 +13,9 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.Interceptor
+import okhttp3.Response
+import android.util.Log
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import javax.inject.Named
@@ -26,6 +29,10 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+    // Peek limit (bytes) for logging the articles list JSON response body without flooding logs.
+    private const val ARTICLES_LIST_BODY_PEEK_LIMIT_BYTES: Long = 256 * 1024
+    private const val ARTICLES_LOG_TAG = "ArticlesRaw"
+
     /**
      * Provides a configured [Json] instance for kotlinx serialization.
      *
@@ -44,6 +51,47 @@ object NetworkModule {
     @Singleton
     fun provideOkHttp(): OkHttpClient {
         val builder = OkHttpClient.Builder()
+        // Interceptor to log raw (or empty) responses for any article-related endpoints
+        builder.addInterceptor(object : Interceptor {
+            override fun intercept(chain: Interceptor.Chain): Response {
+                val req = chain.request()
+                val res = chain.proceed(req)
+                return try {
+                    val urlStr = req.url.toString()
+                    if (urlStr.contains("/articles")) {
+                        val code = res.code
+                        val body = res.body
+                        val peek = if (body != null) {
+                            res.peekBody(ARTICLES_LIST_BODY_PEEK_LIMIT_BYTES).string()
+                        } else {
+                            ""
+                        }
+                        val length = body?.contentLength() ?: -1
+                        val contentType = body?.contentType()?.toString() ?: "(no-body)"
+                        if (peek.isNotEmpty()) {
+                            Log.d(
+                                ARTICLES_LOG_TAG,
+                                "code=" + code +
+                                    ", type=" + contentType +
+                                    ", length=" + length +
+                                    "\n" + peek,
+                            )
+                        } else {
+                            Log.d(
+                                ARTICLES_LOG_TAG,
+                                "code=" + code +
+                                    ", type=" + contentType +
+                                    ", length=" + length +
+                                    " (empty body)",
+                            )
+                        }
+                    }
+                    res
+                } catch (_: Throwable) {
+                    res
+                }
+            }
+        })
         builder.addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BASIC

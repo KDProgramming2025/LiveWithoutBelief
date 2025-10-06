@@ -16,7 +16,6 @@ import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.domain.BookmarkRepository
 import info.lwb.core.domain.GetMenuUseCase
 import info.lwb.core.domain.MenuRepository
-import info.lwb.core.domain.ReadingProgressRepository
 import info.lwb.core.domain.RefreshMenuUseCase
 import info.lwb.core.domain.UserSession
 import info.lwb.data.network.ArticleApi
@@ -27,12 +26,10 @@ import info.lwb.data.repo.db.ArticleDao
 import info.lwb.data.repo.db.BookmarkDao
 import info.lwb.data.repo.db.FolderDao
 import info.lwb.data.repo.db.MenuDao
-import info.lwb.data.repo.db.ReadingProgressDao
 import info.lwb.data.repo.db.ThreadMessageDao
 import info.lwb.data.repo.repositories.AnnotationRepositoryImpl
 import info.lwb.data.repo.repositories.ArticleRepositoryImpl
 import info.lwb.data.repo.repositories.BookmarkRepositoryImpl
-import info.lwb.data.repo.repositories.ReadingProgressRepositoryImpl
 import info.lwb.data.repo.repositories.menu.MenuRepositoryImpl
 import javax.inject.Singleton
 
@@ -71,10 +68,6 @@ object DatabaseModule {
     @Provides
     fun provideThreadMessageDao(db: AppDatabase): ThreadMessageDao = db.threadMessageDao()
 
-    /** DAO for reading progress entries. */
-    @Provides
-    fun provideReadingProgressDao(db: AppDatabase): ReadingProgressDao = db.readingProgressDao()
-
     /** DAO for menu items table. */
     @Provides
     fun provideMenuDao(db: AppDatabase): MenuDao = db.menuDao()
@@ -85,12 +78,6 @@ object DatabaseModule {
     fun provideArticleRepository(api: ArticleApi, db: AppDatabase): ArticleRepository = ArticleRepositoryImpl(
         api = api,
         articleDao = db.articleDao(),
-    )
-
-    /** Repository for reading progress persistence. */
-    @Provides
-    fun provideReadingProgressRepository(db: AppDatabase): ReadingProgressRepository = ReadingProgressRepositoryImpl(
-        db.readingProgressDao(),
     )
 
     /** Repository for bookmarks and folders. */

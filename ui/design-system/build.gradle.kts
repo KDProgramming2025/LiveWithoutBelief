@@ -3,6 +3,9 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.paparazzi)
+    // Hilt & KSP needed because this module defines a @Module for ImageLoader
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -23,6 +26,20 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.compose.foundation)
+
+    // Shared model types (Article) used by image prefetch helper
+    implementation(project(":core:model"))
+
+    // Coil (compose + svg decoder) for image loading infrastructure
+    implementation(libs.coil)
+    implementation("io.coil-kt:coil-svg:${libs.versions.coil.get()}")
+
+    // Hilt DI for ImageLoaderModule
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
+
+    // Coroutines for prefetch logic
+    implementation(libs.coroutines.core)
 
     // Compose previews
     implementation(libs.compose.ui.tooling.preview)

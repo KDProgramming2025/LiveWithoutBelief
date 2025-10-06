@@ -50,7 +50,9 @@ class GetArticleContentUseCase(private val articleRepository: ArticleRepository)
  */
 class RefreshArticlesUseCase(private val articleRepository: ArticleRepository) {
     /** Execute a refresh. Propagates any exception thrown by the repository. */
-    suspend operator fun invoke() = articleRepository.refreshArticles()
+    suspend operator fun invoke() {
+        articleRepository.refreshArticles()
+    }
 }
 
 /**

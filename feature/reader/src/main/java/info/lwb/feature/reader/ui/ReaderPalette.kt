@@ -5,7 +5,6 @@
 package info.lwb.feature.reader.ui
 
 import android.content.Context
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import info.lwb.feature.reader.ReaderSettingsRepository
@@ -78,9 +77,10 @@ private val backgroundToPaletteMap: Map<ReaderSettingsRepository.ReaderBackgroun
     ),
 )
 
-/** Map settings background + dark mode to a concrete palette. */
-@Composable
-internal fun readerPalette(bg: ReaderSettingsRepository.ReaderBackground): ReaderPalette =
+/** Map settings background + mode to a concrete palette (pure function, not composable). */
+internal fun readerPalette(
+    bg: ReaderSettingsRepository.ReaderBackground,
+): ReaderPalette =
     backgroundToPaletteMap.getValue(bg)
 
 /** Resolve the asset path for the CSS file corresponding to this palette. */

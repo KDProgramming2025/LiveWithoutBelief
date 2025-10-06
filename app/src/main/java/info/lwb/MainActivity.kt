@@ -40,7 +40,6 @@ import info.lwb.auth.AuthViewModel
 import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.home.HomeRoute
 import info.lwb.feature.articles.ArticlesListRoute
-import info.lwb.feature.articles.ArticlesFilter
 import info.lwb.feature.reader.ReaderByIdRoute
 import info.lwb.feature.search.SearchRoute
 import info.lwb.feature.settings.SettingsRoute
@@ -157,8 +156,9 @@ private fun PasswordAuthSection(onRegister: (String, String) -> Unit, onLogin: (
 
 private object Destinations {
     const val HOME = "home"
-    const val READER = "reader"
-    const val READER_BY_ID = "reader/{articleId}"
+
+    // indexUrl passed as query param (encoded) to bypass repository fetch (mandatory).
+    const val READER_BY_ID = "reader/{articleId}?indexUrl={indexUrl}"
     const val SEARCH = "search"
     const val BOOKMARKS = "bookmarks"
     const val SETTINGS = "settings"
@@ -166,56 +166,76 @@ private object Destinations {
 }
 
 @Composable
-private fun appNavHost(navController: NavHostController) =
-    NavHost(navController = navController, startDestination = Destinations.HOME) {
-        composable(Destinations.HOME) {
-            Box(Modifier.fillMaxSize()) {
-                HomeRoute(
-                    onItemClick = { _, label ->
-                        if (!label.isNullOrBlank()) {
-                            val enc = URLEncoder.encode(label, Charsets.UTF_8.name())
-                            navController.navigate("label_list/$enc")
-                        } else {
-                            // Fallback: no label mapping yet
-                        }
-                    },
-                    onContinueReading = {
-                        // Placeholder: navigate to Reader screen (later, restore last position)
-                        navController.navigate(Destinations.READER)
-                    },
-                    onOpenSettings = { navController.navigate(Destinations.SETTINGS) },
-                )
-            }
-        }
-        composable(Destinations.READER) {
-            ReaderByIdRoute(
-                articleId = "sample-1",
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable(Destinations.READER_BY_ID) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("articleId")
-            if (id != null) {
-                ReaderByIdRoute(
-                    articleId = id,
-                    onNavigateBack = { navController.popBackStack() },
-                )
-            }
-        }
-        composable(Destinations.SEARCH) { SearchRoute() }
-        composable(Destinations.BOOKMARKS) { BookmarksRoute() }
-        composable(Destinations.SETTINGS) { SettingsRoute(onBack = { navController.popBackStack() }) }
-        composable(Destinations.LABEL_LIST) { backStackEntry ->
-            val label = backStackEntry.arguments?.getString("label") ?: ""
-            val decoded = URLDecoder.decode(label, Charsets.UTF_8.name())
-            ArticlesListRoute(
-                filter = ArticlesFilter.Label(decoded),
-                onArticleClick = { article ->
-                    val id = article.id.ifBlank { article.slug }
-                    navController.navigate("reader/$id")
-                },
-                onNavigateHome = { navController.popBackStack(Destinations.HOME, inclusive = false) },
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
+private fun HomeDestination(navController: NavHostController) {
+    Box(Modifier.fillMaxSize()) {
+        HomeRoute(
+            onItemClick = { _, label ->
+                if (!label.isNullOrBlank()) {
+                    val enc = URLEncoder.encode(label, Charsets.UTF_8.name())
+                    navController.navigate("label_list/$enc")
+                } else {
+                    // Fallback: no label mapping yet
+                }
+            },
+            onContinueReading = {
+                // Disabled: no default article id. User must pick an article explicitly.
+            },
+            onOpenSettings = { navController.navigate(Destinations.SETTINGS) },
+        )
     }
+}
+
+@Composable
+private fun ReaderByIdDestination(
+    navController: NavHostController,
+    backStackEntry: androidx.navigation.NavBackStackEntry,
+) {
+    val id = backStackEntry.arguments?.getString("articleId")
+    val rawIndexUrl = backStackEntry.arguments?.getString("indexUrl")
+    val decodedIndexUrl = rawIndexUrl?.let {
+        kotlin.runCatching { URLDecoder.decode(it, Charsets.UTF_8.name()) }.getOrNull()
+    }
+    if (id != null) {
+        ReaderByIdRoute(
+            articleId = id,
+            navIndexUrl = decodedIndexUrl,
+            onNavigateBack = { navController.popBackStack() },
+        )
+    }
+}
+
+@Composable
+private fun LabelListDestination(
+    navController: NavHostController,
+    backStackEntry: androidx.navigation.NavBackStackEntry,
+) {
+    val label = backStackEntry.arguments?.getString("label") ?: ""
+    val decoded = URLDecoder.decode(label, Charsets.UTF_8.name())
+    ArticlesListRoute(
+        label = decoded,
+        onArticleClick = { article ->
+            val id = article.id.ifBlank { article.slug }
+            val enc = URLEncoder.encode(article.indexUrl, Charsets.UTF_8.name())
+            navController.navigate("reader/" + id + "?indexUrl=" + enc)
+        },
+        onNavigateHome = { navController.popBackStack(Destinations.HOME, inclusive = false) },
+        onNavigateBack = { navController.popBackStack() },
+    )
+}
+
+@Composable
+private fun appNavHost(navController: NavHostController) = NavHost(
+    navController = navController,
+    startDestination = Destinations.HOME,
+) {
+    composable(Destinations.HOME) { HomeDestination(navController) }
+    composable(Destinations.READER_BY_ID) { backStackEntry ->
+        ReaderByIdDestination(navController, backStackEntry)
+    }
+    composable(Destinations.SEARCH) { SearchRoute() }
+    composable(Destinations.BOOKMARKS) { BookmarksRoute() }
+    composable(Destinations.SETTINGS) { SettingsRoute(onBack = { navController.popBackStack() }) }
+    composable(Destinations.LABEL_LIST) { backStackEntry ->
+        LabelListDestination(navController, backStackEntry)
+    }
+}

@@ -18,21 +18,22 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Article metadata persisted locally.
  *
- * Represents the immutable identifying & descriptive fields of an article. Content/body lives
- * in [ArticleContentEntity]. Assets (images/audio/video) live in [ArticleAssetEntity]. The fields
- * [label], [order], [coverUrl] and [iconUrl] were added when unifying label-based filtering and
- * guaranteeing non-null artwork references from the backend manifest.
+ * Immutable identifying & descriptive fields of an article. Body content resides in
+ * [ArticleContentEntity]; media assets in [ArticleAssetEntity]. Fields [label], [order],
+ * [coverUrl], [iconUrl] and [indexUrl] originate from the remote manifest enabling offline list
+ * rendering and direct WebView fast-path loading when a pre-rendered HTML export exists.
  *
- * @property id Stable unique article identifier (UUID or slug hash from server)
- * @property title Human readable title
- * @property slug Human readable url slug (used for deep links / indexing)
- * @property version Monotonically increasing version for optimistic updates / cache invalidation
- * @property updatedAt ISO-8601 timestamp string of last server modification
- * @property wordCount Approximate plain text word count (used for reading time estimates)
- * @property label Optional menu/category label (null if uncategorized)
- * @property order Stable ordering integer (ascending) used for deterministic UI ordering
- * @property coverUrl Non-null cover image URL provided by server
- * @property iconUrl Non-null icon image URL provided by server
+ * @property id Stable unique article identifier.
+ * @property title Human readable title.
+ * @property slug URL-safe slug for deep links.
+ * @property version Monotonically increasing version for cache invalidation.
+ * @property updatedAt ISO-8601 last modification timestamp.
+ * @property wordCount Approximate word count for reading time heuristics.
+ * @property label Optional category / badge label.
+ * @property order Stable ascending ordering index for deterministic UI ordering.
+ * @property coverUrl Cover image URL (mandatory, server guaranteed).
+ * @property iconUrl Icon image URL (mandatory, server guaranteed).
+ * @property indexUrl Pre-rendered static HTML index URL for direct WebView loading (mandatory).
  */
 @Entity(tableName = "articles")
 data class ArticleEntity(
@@ -50,6 +51,8 @@ data class ArticleEntity(
     val coverUrl: String,
     // Icon image URL provided by server (non-null)
     val iconUrl: String,
+    // Pre-rendered index URL for fast reader loading (mandatory in current architecture)
+    val indexUrl: String,
 )
 
 /**
@@ -184,25 +187,6 @@ data class ThreadMessageEntity(
     val createdAt: String,
 )
 
-/**
- * Reading progress state for a given article (one row per article per user scope if multi-user DB).
- *
- * @property articleId FK to [ArticleEntity.id]
- * @property pageIndex Current page index within pagination (starting at 0)
- * @property totalPages Total pages at the time of recording
- * @property progress Normalized progress fraction [0.0, 1.0]
- * @property updatedAt Last update timestamp (ISO-8601)
- */
-@Entity(tableName = "reading_progress")
-data class ReadingProgressEntity(
-    @PrimaryKey val articleId: String,
-    val pageIndex: Int,
-    val totalPages: Int,
-    // Progress fraction in range [0.0, 1.0]
-    val progress: Double,
-    val updatedAt: String,
-)
-
 /** Offline-cached navigation menu item (table fully replaced on each successful sync). */
 @Entity(tableName = "menu_items")
 data class MenuItemEntity(
@@ -250,10 +234,9 @@ interface MenuDao {
         BookmarkEntity::class,
         AnnotationEntity::class,
         ThreadMessageEntity::class,
-        ReadingProgressEntity::class,
         MenuItemEntity::class,
     ],
-    version = 2,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -271,9 +254,6 @@ abstract class AppDatabase : RoomDatabase() {
 
     /** DAO for annotation thread messages */
     abstract fun threadMessageDao(): ThreadMessageDao
-
-    /** DAO for reading progress state */
-    abstract fun readingProgressDao(): ReadingProgressDao
 
     /** DAO for navigation menu items */
     abstract fun menuDao(): MenuDao

@@ -316,7 +316,10 @@ private fun MenuGrid(
             NeoMenuCard(
                 title = item.title,
                 imageUrl = imageUrl,
-                onClick = { onItemClick(item.id, item.label) },
+                onClick = {
+                    val fallbackLabel = item.label?.takeIf { l -> l.isNotBlank() } ?: item.id
+                    onItemClick(item.id, fallbackLabel)
+                },
                 textPrimary = textPrimary,
                 textMuted = textMuted,
             )

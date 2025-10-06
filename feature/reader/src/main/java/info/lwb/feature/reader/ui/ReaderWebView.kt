@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.flow.first
+// Removed scroll persistence + related coroutine scope usage.
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,7 +43,6 @@ import info.lwb.feature.reader.ui.internal.setupTouchHandlers
  */
 @Composable
 internal fun ArticleWebView(
-    articleId: String,
     htmlBody: String? = null,
     baseUrl: String? = null,
     url: String? = null,
@@ -54,13 +50,15 @@ internal fun ArticleWebView(
     fontScale: Float? = null,
     lineHeight: Float? = null,
     backgroundColor: String? = null,
+    initialScrollY: Int? = null,
     modifier: Modifier = Modifier,
     onTap: (() -> Unit)? = null,
     onScrollChanged: ((scrollY: Int) -> Unit)? = null,
-    onAnchorChanged: ((anchor: String) -> Unit)? = null, // retained param for backward compatibility (unused)
+    onAnchorChanged: ((anchor: String) -> Unit)? = null,
+    onReady: (() -> Unit)? = null,
+    onWebViewCreated: ((WebView) -> Unit)? = null,
 ) {
     ArticleWebViewContent(
-        articleId = articleId,
         htmlBody = htmlBody,
         baseUrl = baseUrl,
         url = url,
@@ -68,16 +66,18 @@ internal fun ArticleWebView(
         fontScale = fontScale,
         lineHeight = lineHeight,
         backgroundColor = backgroundColor,
+        initialScrollY = initialScrollY,
         modifier = modifier,
         onTap = onTap,
         onScrollChanged = onScrollChanged,
         onAnchorChanged = onAnchorChanged,
+        onReady = onReady,
+        onWebViewCreated = onWebViewCreated,
     )
 }
 
 @Composable
 private fun ArticleWebViewContent(
-    articleId: String,
     htmlBody: String?,
     baseUrl: String?,
     url: String?,
@@ -85,37 +85,24 @@ private fun ArticleWebViewContent(
     fontScale: Float?,
     lineHeight: Float?,
     backgroundColor: String?,
+    initialScrollY: Int?,
     modifier: Modifier,
     onTap: (() -> Unit)?,
     onScrollChanged: ((scrollY: Int) -> Unit)?,
     onAnchorChanged: ((anchor: String) -> Unit)?,
+    onReady: (() -> Unit)?,
+    onWebViewCreated: ((WebView) -> Unit)?,
 ) {
-    val scrollVmProvider =
-        androidx.hilt.navigation.compose
-            .hiltViewModel<info.lwb.feature.reader.ScrollViewModel>()
-    val scrollVm: info.lwb.feature.reader.ScrollViewModel = scrollVmProvider
-    val scope = rememberCoroutineScope()
-    var initialScroll by remember(key1 = articleId) { mutableStateOf<Int?>(null) }
-    LaunchedEffect(key1 = articleId) {
-        initialScroll = try {
-            scrollVm.observe(articleId).first()
-        } catch (_: Throwable) {
-            0
-        }
-    }
     val state = rememberArticleWebState(
         url = url,
         htmlBody = htmlBody,
     )
-
-    // Early return for loading state reduces cognitive complexity
-    if (initialScroll == null) {
-        Box(modifier = modifier.fillMaxSize()) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+    // Fire onReady exactly once after first ready transition
+    androidx.compose.runtime.LaunchedEffect(state.ready.value) {
+        if (state.ready.value) {
+            onReady?.invoke()
         }
-        return
     }
-
     ArticleWebContentBody(
         modifier = modifier,
         state = state,
@@ -129,10 +116,8 @@ private fun ArticleWebViewContent(
         onTap = onTap,
         onScrollChanged = onScrollChanged,
         onAnchorChanged = onAnchorChanged,
-        initialScroll = initialScroll,
-        articleId = articleId,
-        scope = scope,
-        scrollVm = scrollVm,
+        initialScrollY = initialScrollY,
+        onWebViewCreated = onWebViewCreated,
     )
 }
 
@@ -150,10 +135,8 @@ private fun ArticleWebContentBody(
     onTap: (() -> Unit)?,
     onScrollChanged: ((scrollY: Int) -> Unit)?,
     onAnchorChanged: ((anchor: String) -> Unit)?,
-    initialScroll: Int?,
-    articleId: String,
-    scope: kotlinx.coroutines.CoroutineScope,
-    scrollVm: info.lwb.feature.reader.ScrollViewModel,
+    initialScrollY: Int?,
+    onWebViewCreated: ((WebView) -> Unit)?,
 ) {
     Box(modifier = modifier) {
         ArticleWebAndroidView(
@@ -166,20 +149,10 @@ private fun ArticleWebContentBody(
             lineHeight = lineHeight,
             backgroundColor = backgroundColor,
             onTap = onTap,
-            onScrollChanged = { scrollY ->
-                if (scrollY >= 0) {
-                    scope.launch {
-                        try {
-                            scrollVm.save(articleId, scrollY)
-                        } catch (_: Throwable) {
-                            // ignore persistence errors
-                        }
-                    }
-                }
-                onScrollChanged?.invoke(scrollY)
-            },
-            initialScrollY = initialScroll,
+            onScrollChanged = { scrollY -> onScrollChanged?.invoke(scrollY) },
+            initialScrollY = initialScrollY,
             onAnchorChanged = onAnchorChanged,
+            onWebViewCreated = onWebViewCreated,
         )
         if (!state.ready.value) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -227,6 +200,7 @@ private fun ArticleWebAndroidView(
     onScrollChanged: ((scrollY: Int) -> Unit)?,
     initialScrollY: Int?,
     onAnchorChanged: ((anchor: String) -> Unit)?,
+    onWebViewCreated: ((WebView) -> Unit)? = null,
 ) {
     AndroidView(
         modifier = Modifier
@@ -246,6 +220,7 @@ private fun ArticleWebAndroidView(
                 onTap = onTap,
                 onScrollChanged = onScrollChanged,
                 onAnchorChanged = onAnchorChanged,
+                onWebViewCreated = onWebViewCreated,
             )
         },
         update = { webView ->
@@ -278,6 +253,7 @@ private fun createArticleWebView(
     onTap: (() -> Unit)?,
     onScrollChanged: ((Int) -> Unit)?,
     onAnchorChanged: ((String) -> Unit)?,
+    onWebViewCreated: ((WebView) -> Unit)?,
 ): WebView = createConfiguredWebView(
     ctx = ctx,
     url = url,
@@ -291,6 +267,7 @@ private fun createArticleWebView(
     onTap = onTap,
     onScrollChanged = onScrollChanged,
     onAnchorChanged = onAnchorChanged,
+    onWebViewCreated = onWebViewCreated,
     readyState = { state.ready.value to state.firstLoad.value },
     setReady = { isReady, isFirst ->
         state.ready.value = isReady
@@ -479,6 +456,7 @@ private fun createConfiguredWebView(
     onTap: (() -> Unit)?,
     onScrollChanged: ((Int) -> Unit)?,
     onAnchorChanged: ((String) -> Unit)?,
+    onWebViewCreated: ((WebView) -> Unit)?,
     readyState: () -> Pair<Boolean, Boolean>,
     setReady: (ready: Boolean, firstLoad: Boolean) -> Unit,
     setLastValues: (Float?, Float?) -> Unit,
@@ -498,6 +476,7 @@ private fun createConfiguredWebView(
         onScroll = { y -> onScrollChanged?.invoke(y) },
         onAnchor = { a -> onAnchorChanged?.invoke(a) },
     )
+    onWebViewCreated?.invoke(webView)
     val assets = WebViewAssetScripts(
         clampJs = webView.safeLoadAsset(path = "webview/inject_clamp.js"),
         themeJs = webView.safeLoadAsset(path = "webview/inject_theme.js"),

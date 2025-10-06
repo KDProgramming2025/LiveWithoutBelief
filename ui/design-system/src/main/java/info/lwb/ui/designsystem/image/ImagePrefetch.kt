@@ -30,7 +30,7 @@ fun prefetchArticleImages(
         limited
     }
     return scope.launch {
-        val deferred: MutableList<Deferred<Unit>> = ArrayList(slice.size)
+        val deferred: MutableList<Deferred<*>> = ArrayList(slice.size)
         for (a in slice) {
             val job = async {
                 val coverBuilder = ImageRequest.Builder(context)

@@ -278,51 +278,23 @@ tasks.register("detektAggregateReport") {
 }
 
 // ---------------------------------------------------------------------------
-// Quality Gate: Fail assembleDebug / installDebug if any detekt findings exist
+// Quality Gate (configuration-cache compatible)
 // ---------------------------------------------------------------------------
-// Rationale:
-//  * We keep detekt tasks' ignoreFailures=true so reports are always generated for inspection.
-//  * This gate parses all SARIF report files produced by detekt tasks. If ANY ruleId entries are
-//    present, it throws a GradleException to fail the build prior to producing installable APKs.
-//  * spotlessCheck already fails on formatting violations, so we only need to depend on it.
-//  * Hooked into application module assembleDebug / installDebug tasks to enforce locally & in CI.
-//  * Uses dynamic file I/O -> not configuration cache compatible.
-tasks.register("qualityGate") {
+// Implemented as a typed task (see buildSrc/QualityGateTask) with declared inputs so Gradle can
+// safely snapshot task configuration. Sarif file discovery uses lazy providers; no Project
+// objects are captured in the task state. This allows reuse of the configuration cache across
+// successive builds while enforcing a zero-detekt-findings rule.
+tasks.register<QualityGateTask>("qualityGate") {
     group = "verification"
     description = "Fails if detekt findings or formatting violations are present before debug build/install"
-    // CC-compatible: all SARIF file enumeration occurs inside doLast (execution phase),
-    // so configuration cache reuse is safe and will not yield stale results.
-    // Ensure all analysis & formatting checks ran first
     dependsOn("detektAll")
-    // Depend only on subprojects that actually have a spotlessCheck task
+    // Collect SARIF outputs from root + subprojects (lazy providers)
+    val rootSarifDir = layout.buildDirectory.dir("reports/detekt")
+    sarifFiles.from(rootSarifDir.map { it.asFileTree.matching { include("*.sarif") } })
     subprojects.forEach { sp ->
-        sp.tasks.matching { it.name == "spotlessCheck" }.configureEach {
-            this@register.dependsOn(this)
-        }
-    }
-    doLast {
-        // Collect SARIF files (root + subprojects) similar to detektAggregateReport logic
-        val sarifFiles = subprojects.mapNotNull { sp ->
-            sp.layout.buildDirectory.asFile.get().resolve("reports/detekt")
-                .listFiles { f -> f.extension == "sarif" }?.toList()
-        }.flatten() + rootProject.layout.buildDirectory.asFile.get()
-            .resolve("reports/detekt")
-            .listFiles { f -> f.extension == "sarif" }
-            .orEmpty()
-
-        if (sarifFiles.isEmpty()) {
-            logger.warn("[qualityGate] No SARIF files found. Did detekt run?")
-            return@doLast
-        }
-        val ruleRegex = Regex("\"ruleId\"\\s*:\\s*\"([^\"]+)\"")
-        val totalFindings = sarifFiles.sumOf { file ->
-            ruleRegex.findAll(file.readText()).count()
-        }
-        if (totalFindings > 0) {
-            throw GradleException("qualityGate failed: $totalFindings detekt findings detected. Fix before building.")
-        } else {
-            println("[qualityGate] Passed: 0 detekt findings and spotless clean.")
-        }
+        val spSarifDir = sp.layout.buildDirectory.dir("reports/detekt")
+        sarifFiles.from(spSarifDir.map { it.asFileTree.matching { include("*.sarif") } })
+        sp.tasks.matching { it.name == "spotlessCheck" }.configureEach { dependsOn(this) }
     }
 }
 

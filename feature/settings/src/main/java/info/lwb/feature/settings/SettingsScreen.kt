@@ -2,6 +2,8 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
+@file:Suppress("DEPRECATION")
+
 package info.lwb.feature.settings
 
 import androidx.activity.compose.BackHandler
@@ -12,11 +14,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -45,7 +44,7 @@ fun SettingsRoute(onBack: () -> Unit = {}) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, enabled = onBack !== {}) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    Text("Back")
                 }
                 Text(
                     text = "Settings",

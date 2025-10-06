@@ -1,9 +1,10 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
+ * SPDY-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.data.repo.repositories
 
+import android.util.Log
 import info.lwb.core.common.Result
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.model.Article
@@ -21,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+// removed unused onStart/catch imports after flow refactor
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import kotlin.math.min
@@ -49,20 +51,20 @@ import kotlin.random.Random
  *  - Optional checksum verification (plain text) prevents persisting corrupt payloads if mismatch occurs.
  */
 class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao: ArticleDao) : ArticleRepository {
+    private companion object {
+        const val TAG = "ArticleRepo"
+    }
+
+    init {
+        Log.d(TAG, "init")
+    }
+
     override fun getArticles(): Flow<Result<List<Article>>> = flow {
         emit(Result.Loading)
-        try {
-            val articles = articleDao
-                .listArticles()
-                .map { it.toDomain() }
-            emit(Result.Success(articles) as Result<List<Article>>)
-        } catch (io: java.io.IOException) {
-            emit(Result.Error(io))
-        } catch (sql: java.sql.SQLException) {
-            emit(Result.Error(sql))
-        } catch (ise: IllegalStateException) {
-            emit(Result.Error(ise))
-        }
+        articleDao
+            .observeArticles()
+            .map { rows -> rows.map { it.toDomain() } }
+            .collect { list -> emit(Result.Success(list)) }
     }
 
     override suspend fun snapshotArticles(): List<Article> = withContext(Dispatchers.IO) {
@@ -74,15 +76,11 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         try {
             var contentEntity = articleDao.getArticleContent(articleId)
             if (contentEntity == null) {
-                contentEntity = fetchAndPersistContent(
-                    articleId = articleId,
-                    api = api,
-                    articleDao = articleDao,
-                )
+                contentEntity = fetchAndPersistContent(articleId, api, articleDao)
             }
             val domain = contentEntity?.toDomain()
             if (domain != null) {
-                emit(Result.Success(domain) as Result<ArticleContent>)
+                emit(Result.Success(domain))
             } else {
                 emit(Result.Error(IllegalStateException("Content not found")))
             }
@@ -96,10 +94,17 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
     }
 
     override suspend fun refreshArticles() {
-        val manifest = fetchManifestInternal() ?: return
-        if (manifest.isEmpty()) {
+        Log.d(TAG, "refresh:start")
+        val manifest = fetchManifestInternal()
+        if (manifest == null) {
+            Log.d(TAG, "refresh:manifest=null (failed after retries)")
             return
         }
+        if (manifest.isEmpty()) {
+            Log.d(TAG, "refresh:manifest=empty")
+            return
+        }
+        Log.d(TAG, "refresh:manifest.size=" + manifest.size)
         withContext(Dispatchers.IO) {
             val localById = snapshotLocalArticles()
             processManifest(
@@ -108,12 +113,14 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             )
             applyEvictionPolicy(manifest)
         }
+        Log.d(TAG, "refresh:applied size=" + manifest.size)
     }
 
     private suspend fun fetchManifestInternal(): List<ManifestItemDto>? = retryWithBackoff {
-        api
-            .getManifest()
-            .items
+        Log.d(TAG, "fetchManifest:request")
+        api.getManifest().items.also { list ->
+            Log.d(TAG, "fetchManifest:success count=" + list.size)
+        }
     }
 
     private suspend fun snapshotLocalArticles(): Map<String, ArticleEntity> = articleDao
@@ -137,9 +144,10 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             updatedAt = item.updatedAt,
             wordCount = item.wordCount,
             label = item.label,
-            `order` = orderIndex,
-            coverUrl = item.coverUrl ?: "",
-            iconUrl = item.iconUrl ?: "",
+            order = orderIndex,
+            coverUrl = item.coverUrl,
+            iconUrl = item.iconUrl,
+            indexUrl = item.indexUrl,
         )
         val hasLocalContent = articleDao.getArticleContent(item.id) != null
         if (local?.version == item.version && hasLocalContent) {
@@ -196,11 +204,6 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         }
     }
 
-    /** Public helper to retrieve the current manifest snapshot without performing a full refresh. */
-    suspend fun syncManifest(): List<ManifestItemDto> = withContext(Dispatchers.IO) {
-        runCatching { api.getManifest().items }.getOrElse { emptyList() }
-    }
-
     override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> {
         if (query.isBlank()) {
             return emptyList()
@@ -216,9 +219,10 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
                     updatedAt = row.updatedAt,
                     wordCount = row.wordCount,
                     label = row.label,
-                    `order` = row.ordering ?: Int.MAX_VALUE,
-                    coverUrl = row.coverUrl ?: "",
-                    iconUrl = row.iconUrl ?: "",
+                    order = row.ordering ?: Int.MAX_VALUE,
+                    coverUrl = row.coverUrl ?: "", // projection nullable only for legacy rows
+                    iconUrl = row.iconUrl ?: "", // projection nullable only for legacy rows
+                    indexUrl = row.indexUrl ?: "",
                 )
             }
         }
@@ -239,48 +243,59 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             // Swallow DB state issues during eviction.
         }
     }
-}
 
-// Keep most recent N content cached
-private const val KEEP_RECENT_COUNT = 4
-
-private suspend fun fetchAndPersistContent(
-    articleId: String,
-    api: ArticleApi,
-    articleDao: ArticleDao,
-): ArticleContentEntity? {
-    val dto = retryWithBackoff { api.getArticle(articleId) } ?: return null
-    val plain = dto.text ?: ""
-    val html = dto.html ?: ""
-    val textHash = sha256(plain)
-    val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
-    if (!checksumOk) {
-        return null
+    private suspend fun fetchAndPersistContent(
+        articleId: String,
+        api: ArticleApi,
+        articleDao: ArticleDao,
+    ): ArticleContentEntity? {
+        Log.d(TAG, "fetch id=$articleId")
+        val dto = retryWithBackoff { api.getArticle(articleId) }
+        if (dto == null) {
+            Log.d(TAG, "fetchNull id=$articleId")
+            return null
+        }
+        val plain = dto.text ?: ""
+        val html = dto.html ?: ""
+        val textHash = sha256(plain)
+        val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
+        if (!checksumOk) {
+            Log.d(TAG, "checksumFail id=$articleId")
+            return null
+        }
+        // Attempt to preserve existing metadata for artwork / ordering if we only fetched content.
+        val existing = articleDao.getArticle(articleId)
+        val articleEntity = ArticleEntity(
+            id = dto.id,
+            title = dto.title,
+            slug = dto.slug,
+            version = dto.version,
+            updatedAt = dto.updatedAt,
+            wordCount = dto.wordCount,
+            label = existing?.label,
+            order = existing?.order ?: Int.MAX_VALUE,
+            coverUrl = existing?.coverUrl ?: "",
+            iconUrl = existing?.iconUrl ?: "",
+            indexUrl = existing?.indexUrl ?: (dto.indexUrl ?: ""),
+        )
+        val newContent = ArticleContentEntity(
+            articleId = dto.id,
+            htmlBody = html,
+            plainText = plain,
+            textHash = textHash,
+            indexUrl = dto.indexUrl,
+        )
+        articleDao.upsertArticleWithContent(articleEntity, newContent)
+        Log.d(
+            TAG,
+            "persisted id=" + articleId + " hasIndexUrl=" + !newContent.indexUrl.isNullOrBlank(),
+        )
+        return newContent
     }
-    // Attempt to preserve existing metadata for artwork / ordering if we only fetched content.
-    val existing = articleDao.getArticle(articleId)
-    val articleEntity = ArticleEntity(
-        id = dto.id,
-        title = dto.title,
-        slug = dto.slug,
-        version = dto.version,
-        updatedAt = dto.updatedAt,
-        wordCount = dto.wordCount,
-        label = existing?.label,
-        `order` = existing?.`order` ?: Int.MAX_VALUE,
-        coverUrl = existing?.coverUrl ?: "",
-        iconUrl = existing?.iconUrl ?: "",
-    )
-    val newContent = ArticleContentEntity(
-        articleId = dto.id,
-        htmlBody = html,
-        plainText = plain,
-        textHash = textHash,
-        indexUrl = dto.indexUrl,
-    )
-    articleDao.upsertArticleWithContent(articleEntity, newContent)
-    return newContent
 }
+
+// Exposed constant at top-level (if referenced elsewhere)
+private const val KEEP_RECENT_COUNT = 4
 
 private fun ArticleEntity.toDomain() = Article(
     id = id,
@@ -290,9 +305,10 @@ private fun ArticleEntity.toDomain() = Article(
     updatedAt = updatedAt,
     wordCount = wordCount,
     label = label,
-    order = `order`,
+    order = order,
     coverUrl = coverUrl,
     iconUrl = iconUrl,
+    indexUrl = indexUrl,
 )
 
 // Note: Manifest images are not persisted in ArticleEntity; domain mapping from repo-by-label uses DTO directly.

@@ -99,10 +99,12 @@ data class ManifestItemDto(
     val wordCount: Int = 0,
     /** Optional short label (e.g., category badge). */
     val label: String? = null,
-    /** Optional cover image URL for previews/cards. */
-    val coverUrl: String? = null,
-    /** Optional icon URL representing the article or its category. */
-    val iconUrl: String? = null,
+    /** Cover image URL for previews/cards (mandatory). */
+    val coverUrl: String,
+    /** Icon URL representing the article or its category (mandatory). */
+    val iconUrl: String,
+    /** Mandatory full index URL (pre-rendered HTML root) for fast-path reader loading. */
+    val indexUrl: String,
 )
 
 /**

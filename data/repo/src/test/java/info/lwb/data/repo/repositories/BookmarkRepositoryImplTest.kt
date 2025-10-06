@@ -11,13 +11,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 
-@RunWith(RobolectricTestRunner::class)
 class BookmarkRepositoryImplTest {
-    private val ctx = RuntimeEnvironment.getApplication()
+    private val ctx = androidx.test.core.app.ApplicationProvider
+        .getApplicationContext<android.content.Context>()
 
     private val db = Room
         .inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
@@ -54,6 +51,11 @@ class BookmarkRepositoryImplTest {
                 version = 1,
                 updatedAt = "2024-01-01",
                 wordCount = 1000,
+                label = null,
+                order = 0,
+                coverUrl = "https://example.com/covers/a1.jpg",
+                iconUrl = "https://example.com/icons/a1.png",
+                indexUrl = "https://example.com/a1/index.html",
             ),
         )
         articleDao.upsertContent(
@@ -72,6 +74,11 @@ class BookmarkRepositoryImplTest {
                 version = 1,
                 updatedAt = "2024-01-02",
                 wordCount = 900,
+                label = null,
+                order = 1,
+                coverUrl = "https://example.com/covers/a2.jpg",
+                iconUrl = "https://example.com/icons/a2.png",
+                indexUrl = "https://example.com/a2/index.html",
             ),
         )
         articleDao.upsertContent(

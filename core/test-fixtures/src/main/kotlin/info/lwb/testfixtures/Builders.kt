@@ -13,22 +13,36 @@ import info.lwb.core.model.ArticleContent
  */
 object Builders {
     /** Build an [Article] with overridable identifiers and version. */
-    fun article(id: String = "a1", title: String = "Title", slug: String = "title", version: Int = 1): Article =
-        Article(
-            id = id,
-            title = title,
-            slug = slug,
-            version = version,
-            updatedAt = "2025-01-01T00:00:00Z",
-            wordCount = 1000,
-        )
+    fun article(
+        id: String = "a1",
+        title: String = "Title",
+        slug: String = "title",
+        version: Int = 1,
+        coverUrl: String = "https://example.com/covers/$id.jpg",
+        iconUrl: String = "https://example.com/icons/$id.png",
+        indexUrl: String = "https://example.com/$slug/index.html",
+    ): Article = Article(
+        id = id,
+        title = title,
+        slug = slug,
+        version = version,
+        updatedAt = "2025-01-01T00:00:00Z",
+        wordCount = 1000,
+        coverUrl = coverUrl,
+        iconUrl = iconUrl,
+        indexUrl = indexUrl,
+    )
 
     /** Build [ArticleContent] for an article. */
-    fun content(articleId: String = "a1"): ArticleContent = ArticleContent(
+    fun content(
+        articleId: String = "a1",
+        indexUrl: String? = "https://example.com/a1/index.html",
+    ): ArticleContent = ArticleContent(
         articleId = articleId,
         htmlBody = "<p>Hello</p>",
         plainText = "Hello",
         textHash = "deadbeef",
+        indexUrl = indexUrl,
     )
 
     /** Build an [ArticleAsset] (image by default). */

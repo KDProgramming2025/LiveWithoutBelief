@@ -4,17 +4,18 @@
  */
 package info.lwb.testfixtures
 
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 
 /** Utility object providing a shared dispatcher and factory for test scopes. */
 object Fixtures {
-    /** Shared [StandardTestDispatcher] for deterministic virtual-time unit tests. */
-    val dispatcher: StandardTestDispatcher = StandardTestDispatcher()
+    /** Shared dispatcher for tests; using Unconfined to avoid version mismatches. */
+    val dispatcher: CoroutineDispatcher = Dispatchers.Unconfined
 
     /**
      * Creates a new [TestScope] bound to the shared [dispatcher] so tests can coordinate time advancement
      * without spinning their own dispatcher instances.
      */
-    fun testScope(): TestScope = TestScope(dispatcher)
+    fun testScope(): CoroutineScope = CoroutineScope(dispatcher)
 }

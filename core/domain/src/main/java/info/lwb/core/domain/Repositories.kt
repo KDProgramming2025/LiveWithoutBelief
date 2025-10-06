@@ -11,7 +11,6 @@ import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
 import info.lwb.core.model.MenuItem
-import info.lwb.core.model.ReadingProgress
 import info.lwb.core.model.ThreadMessage
 import kotlinx.coroutines.flow.Flow
 
@@ -88,15 +87,6 @@ interface AnnotationRepository {
 
     /** Adds a message (different [type] variants) to an existing annotation thread. */
     suspend fun addThreadMessage(annotationId: String, type: String, contentRef: String): Result<String>
-}
-
-/** Persists and observes per-article reading progress (page index & total pages snapshot). */
-interface ReadingProgressRepository {
-    /** Emits progress updates for a specific article or null if none recorded. */
-    fun observe(articleId: String): Flow<ReadingProgress?>
-
-    /** Upserts the current page index and total pages for an article. */
-    suspend fun update(articleId: String, pageIndex: Int, totalPages: Int)
 }
 
 /** Lightweight user identity provider for repositories. Implemented in app layer via AuthFacade. */

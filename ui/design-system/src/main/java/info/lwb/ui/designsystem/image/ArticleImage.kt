@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageScope
 
@@ -49,7 +49,7 @@ fun ArticleImage(
 @Composable
 private fun SubcomposeAsyncImageScope.LoadingState() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(strokeWidth = 2.sp.value)
+        CircularProgressIndicator(strokeWidth = 2.dp)
     }
 }
 

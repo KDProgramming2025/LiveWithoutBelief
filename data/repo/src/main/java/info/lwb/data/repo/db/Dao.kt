@@ -35,6 +35,10 @@ interface ArticleDao {
     @Query("SELECT * FROM articles")
     suspend fun listArticles(): List<ArticleEntity>
 
+    /** Observe all article rows; emits on every table change. */
+    @Query("SELECT * FROM articles")
+    fun observeArticles(): Flow<List<ArticleEntity>>
+
     /** Insert or replace a single article metadata record. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertArticle(article: ArticleEntity)
@@ -100,7 +104,8 @@ interface ArticleDao {
     @Query(
         "SELECT a.id AS id, a.title AS title, a.slug AS slug, a.version AS version, " +
             "a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText, " +
-            "a.label AS label, a.`order` AS ordering, a.coverUrl AS coverUrl, a.iconUrl AS iconUrl " +
+            "a.label AS label, a.`order` AS ordering, a.coverUrl AS coverUrl, " +
+            "a.iconUrl AS iconUrl, a.indexUrl AS indexUrl " +
             "FROM articles a JOIN article_contents c ON c.articleId = a.id " +
             "WHERE (c.plainText LIKE '%' || :q || '%' OR a.title LIKE '%' || :q || '%') " +
             "ORDER BY a.updatedAt DESC LIMIT :limit OFFSET :offset",
@@ -135,6 +140,8 @@ data class ArticleSearchRow(
     val coverUrl: String?,
     /** Icon image URL (nullable if legacy rows). */
     val iconUrl: String?,
+    /** Pre-rendered index HTML URL (nullable if legacy rows). */
+    val indexUrl: String?,
 )
 
 /** Data access for per-user bookmarks of articles. */
@@ -192,28 +199,4 @@ interface AnnotationDao {
     /** Upsert (add or replace) an annotation row. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun add(annotation: AnnotationEntity)
-}
-
-/** Data access for discussion thread messages associated with an annotation. */
-@Dao
-interface ThreadMessageDao {
-    /** Observe all messages in ascending chronological order for an annotation. */
-    @Query("SELECT * FROM thread_messages WHERE annotationId = :annotationId ORDER BY createdAt ASC")
-    fun observeMessages(annotationId: String): Flow<List<ThreadMessageEntity>>
-
-    /** Upsert (add or replace) a message row. */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun add(message: ThreadMessageEntity)
-}
-
-/** Data access for per-article reading progress state (e.g., scroll position). */
-@Dao
-interface ReadingProgressDao {
-    /** Observe the reading progress entry for an article if present. */
-    @Query("SELECT * FROM reading_progress WHERE articleId = :articleId")
-    fun observe(articleId: String): Flow<ReadingProgressEntity?>
-
-    /** Insert or replace a reading progress snapshot. */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(progress: ReadingProgressEntity)
 }
