@@ -11,12 +11,19 @@ class AndroidLogger(globalTag: String) : AppLogger {
     private fun callerFileLine(): String {
         val stack = Exception("capture").stackTrace
         val loggerPkg = this::class.java.packageName
+        val skipPrefixes = listOf(
+            loggerPkg, // this logger's package
+            "info.lwb.core.common.log", // core logging facade
+            "dalvik.system.VMStack",
+            "java.lang.Thread",
+        )
         for (el in stack) {
             val cn = el.className
-            // Skip frames from logger package, logger facade, kotlin reflection or synthetic '$' classes
-            val skip = cn.startsWith(loggerPkg) ||
+            // Skip frames: logger, facade, kotlin reflect, coroutines, synthetic '$', system helpers
+            val skip = skipPrefixes.any { cn.startsWith(it) } ||
                 cn.contains("LoggerFacade") ||
                 cn.contains("kotlin.reflect") ||
+                cn.contains("kotlinx.coroutines") ||
                 cn.contains("$")
             if (!skip) {
                 val file = el.fileName ?: cn.substringAfterLast('.')
