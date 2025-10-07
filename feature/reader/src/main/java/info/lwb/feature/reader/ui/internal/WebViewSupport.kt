@@ -16,9 +16,15 @@ import android.webkit.WebViewClient
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import info.lwb.feature.reader.ui.mergeHtmlAndCss
+import info.lwb.core.common.log.Logger
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.Locale
+
+// region logging
+private const val SCROLL_PREFIX = "Scroll:"
+private const val LOG_TAG = "ReaderWeb"
+// endregion
 
 /**
  * Lightweight container for JS snippets loaded from assets. Splitting keeps primary composable short.
@@ -28,7 +34,6 @@ internal data class WebViewAssetScripts(val clampJs: String, val themeJs: String
 // region internal constants
 private const val THEME_CSS_PATH_SUFFIX = "/lwb-theme.css"
 private const val ASSET_SCHEME_PREFIX = "lwb-assets://"
-private const val ANCHOR_POLL_MIN_INTERVAL_MS = 200L
 private const val RESTORE_CLOSE_DISTANCE_PX = 12
 private const val TAP_MAX_DURATION_MS = 250L
 private const val TAP_MIN_DURATION_MS = 1L
@@ -132,38 +137,17 @@ internal fun WebView.setupTouchHandlers(onTap: (() -> Unit)?) {
     }
 }
 
-internal fun WebView.setupScrollHandler(enabled: () -> Boolean, onScroll: (Int) -> Unit, onAnchor: (String) -> Unit) {
-    var lastAnchorTs = 0L
-
-    fun maybeEmitAnchor(now: Long) {
-        if (now - lastAnchorTs <= ANCHOR_POLL_MIN_INTERVAL_MS) {
-            return
-        }
-
-        lastAnchorTs = now
-
-        try {
-            evaluateJavascript("(window.lwbGetViewportAnchor && window.lwbGetViewportAnchor())||''") { res ->
-                val anchor = try {
-                    res?.trim('"')?.replace("\\n", "") ?: ""
-                } catch (_: Throwable) {
-                    ""
-                }
-                if (anchor.isNotBlank()) {
-                    onAnchor(anchor)
-                }
-            }
-        } catch (_: Throwable) {
-            // ignore js eval errors
-        }
-    }
+internal fun WebView.setupScrollHandler(
+    enabled: () -> Boolean,
+    onScroll: (Int) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onAnchor: (String) -> Unit,
+) {
     setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
         if (scrollX != ZERO) {
             v.scrollTo(0, scrollY)
         }
         if (enabled()) {
             onScroll(scrollY)
-            maybeEmitAnchor(System.currentTimeMillis())
         }
     }
 }
@@ -171,20 +155,24 @@ internal fun WebView.setupScrollHandler(enabled: () -> Boolean, onScroll: (Int) 
 internal fun WebView.postRestore(target: Int, onDone: () -> Unit) {
     fun step(i: Int) {
         scrollTo(0, target)
+        val closeNow = kotlin.math.abs(scrollY - target) <= RESTORE_CLOSE_DISTANCE_PX
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX restore:step i=$i y=$scrollY target=$target close=$closeNow" }
+        if (closeNow && i > 0) {
+            onDone()
+            return
+        }
         if (i >= RESTORE_DELAYS_MS.lastIndex) {
             onDone()
             return
         }
         postDelayed({
-            val close = kotlin.math.abs(scrollY - target) <= RESTORE_CLOSE_DISTANCE_PX
-            if (close) {
-                onDone()
-            } else {
-                step(i + 1)
-            }
+            step(i + 1)
         }, RESTORE_DELAYS_MS[i + 1])
     }
-    post { step(0) }
+    post {
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX restore:start target=$target" }
+        step(0)
+    }
 }
 
 internal class ArticleClient(
@@ -220,6 +208,7 @@ internal class ArticleClient(
         if (injectedOnceForLoad) {
             return
         }
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:start inline=$isInline cssPresent=${!css.isNullOrBlank()}" }
         if (!isInline) {
             evaluate(assets.domHelpersJs)
             evaluate("lwbEnsureLightMeta()")
@@ -231,12 +220,14 @@ internal class ArticleClient(
         if (!css.isNullOrBlank()) {
             val b64 = Base64.encodeToString(css.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
             evaluate("window.lwbApplyThemeCss('$b64')")
+            Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:themeCss applied size=${css.length}" }
         }
         injectedOnceForLoad = true
         // force re-application of reader vars after initial injection
         lastAppliedFontScale = null
         lastAppliedLineHeight = null
         lastAppliedBg = null
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:done" }
     }
 
     private fun applyReaderVarsIfChanged(fs: Float?, lh: Float?, bgColor: String?) {
@@ -246,6 +237,7 @@ internal class ArticleClient(
         }
         val fsArg = numArg(fs)
         val lhArg = numArg(lh)
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX applyVars fs=$fs lh=$lh bg='${bgColor ?: ""}'" }
         evaluate("lwbApplyReaderVars($fsArg, $lhArg, '$bg')")
         lastAppliedFontScale = fs
         lastAppliedLineHeight = lh
@@ -258,6 +250,7 @@ internal class ArticleClient(
             lastMainFrameUrl = url
         }
         injectedOnceForLoad = false
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX onPageStarted url=$url firstLoad=${firstLoad()}" }
         if (firstLoad()) {
             setReadyHidden()
         }
@@ -286,21 +279,27 @@ internal class ArticleClient(
         if (url != null) {
             lastMainFrameUrl = url
         }
+        Logger.d(LOG_TAG) {
+            "$SCROLL_PREFIX onPageFinished url=$url firstLoad=${firstLoad()} initScroll=$initialScrollY"
+        }
         performInitialInjectionIfNeeded(isInlineContent, injectedCss)
         applyReaderVarsIfChanged(fontScale, lineHeight, backgroundColor)
         if (firstLoad()) {
             onFirstReady()
-            // Single restoration point: after font/line-height applied.
             val target = initialScrollY
             if (target > 0) {
                 try {
+                    Logger.d(LOG_TAG) { "$SCROLL_PREFIX restore:schedule target=$target" }
                     startRestore(target)
                     view.postRestore(target) {
+                        Logger.d(LOG_TAG) { "$SCROLL_PREFIX restore:done target=$target final=${view.scrollY}" }
                         finishRestore()
                     }
                 } catch (_: Throwable) {
-                    // ignore
+                    Logger.d(LOG_TAG) { "$SCROLL_PREFIX restore:error target=$target" }
                 }
+            } else {
+                Logger.d(LOG_TAG) { "$SCROLL_PREFIX restore:skip target=$target" }
             }
         }
         setLastValues(fontScale, lineHeight)

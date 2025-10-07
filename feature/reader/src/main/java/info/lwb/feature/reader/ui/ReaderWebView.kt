@@ -19,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalContext
+import info.lwb.core.common.log.Logger
 import info.lwb.feature.reader.ui.internal.ArticleClient
 import info.lwb.feature.reader.ui.internal.WebViewAssetScripts
 import info.lwb.feature.reader.ui.internal.buildInlineHtml
@@ -27,6 +29,16 @@ import info.lwb.feature.reader.ui.internal.numArg
 import info.lwb.feature.reader.ui.internal.safeLoadAsset
 import info.lwb.feature.reader.ui.internal.setupScrollHandler
 import info.lwb.feature.reader.ui.internal.setupTouchHandlers
+
+// region logging
+private const val SCROLL_PREFIX = "Scroll:"
+private const val LOG_TAG = "ReaderWeb"
+private const val ZERO_SCROLL = 0
+private const val INLINE_PREFIX = "inline:"
+private const val NO_HTML_FALLBACK = "nohtml"
+private const val RADIX_HEX = 16
+private const val UNKNOWN_URL_LENGTH = -1
+// endregion
 
 /**
  * Reader WebView composable for displaying either a remote URL or inline HTML content produced from a
@@ -140,6 +152,34 @@ private fun articleWebContentBody(
 ) {
     // Hold a reference to the underlying WebView once created.
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
+    val context = LocalContext.current.applicationContext
+    // Derive a stable key for scroll restoration: prefer remote URL, else a hashed inline body identity.
+    val scrollKey = remember(url, htmlBody) {
+        url ?: run {
+            val bodyHash = htmlBody?.hashCode()?.toUInt()?.toString(RADIX_HEX) ?: NO_HTML_FALLBACK
+            INLINE_PREFIX + bodyHash
+        }
+    }
+    val providedInit = initialScrollY ?: ZERO_SCROLL
+    // Only use stored scroll if caller didn't explicitly provide a non-zero initialScrollY.
+    val storedScroll = remember(scrollKey, providedInit) {
+        if (providedInit > ZERO_SCROLL) {
+            ZERO_SCROLL
+        } else {
+            ScrollFileStore.get(context, scrollKey)
+        }
+    }
+    val effectiveInit = if (providedInit > ZERO_SCROLL) {
+        providedInit
+    } else {
+        storedScroll
+    }
+    val shortKey = shortenKeyForLog(scrollKey)
+    Logger.d(LOG_TAG) {
+        "$SCROLL_PREFIX compose:init key=$shortKey saved=$storedScroll provided=$providedInit effective=$effectiveInit"
+    }
+    val urlDescriptor = url ?: htmlBody?.length?.toString() ?: UNKNOWN_URL_LENGTH.toString()
+    Logger.d(LOG_TAG) { "$SCROLL_PREFIX compose:ArticleWebContentBody enter url=$urlDescriptor" }
     Box(modifier = modifier) {
         ArticleWebAndroidView(
             state = state,
@@ -151,8 +191,10 @@ private fun articleWebContentBody(
             lineHeight = lineHeight,
             backgroundColor = backgroundColor,
             onTap = onTap,
-            onScrollChanged = { scrollY -> onScrollChanged?.invoke(scrollY) },
-            initialScrollY = initialScrollY,
+            onScrollChanged = { scrollY ->
+                onScrollChanged?.invoke(scrollY)
+            },
+            initialScrollY = effectiveInit,
             onAnchorChanged = onAnchorChanged,
             onWebViewCreated = { w ->
                 webViewRef.value = w
@@ -452,29 +494,119 @@ private fun createConfiguredWebView(
     finishRestore: () -> Unit,
     restoreActiveProvider: () -> Boolean,
 ): WebView {
-    val (_, firstLoad) = readyState() // ignore current ready flag value
+    val (_, firstLoadFlag) = readyState()
+    Logger.d(LOG_TAG) {
+        "$SCROLL_PREFIX webview:create start url=$url inline=${!url.isNullOrBlank()} initScroll=$initialScrollY"
+    }
     val webView = WebView(ctx)
+    // base setup
+    initializeWebViewBase(
+        webView = webView,
+        injectedCss = injectedCss,
+        backgroundColor = backgroundColor,
+        onTap = onTap,
+        restoreActiveProvider = restoreActiveProvider,
+        onScrollChanged = onScrollChanged,
+        onAnchorChanged = onAnchorChanged,
+    )
+    // client
     val isInlineContent = url.isNullOrBlank() && !htmlBody.isNullOrBlank()
-    val meta = WebViewMeta(injectedCssRef = injectedCss, lastRequestedUrl = null)
-    webView.tag = meta
+    val assets = loadAssetScripts(webView)
+    installArticleClient(
+        webView = webView,
+        isInlineContent = isInlineContent,
+        injectedCss = injectedCss,
+        initialScrollY = initialScrollY ?: 0,
+        fontScale = fontScale,
+        lineHeight = lineHeight,
+        backgroundColor = backgroundColor,
+        firstLoad = { firstLoadFlag },
+        setReady = setReady,
+        setLastValues = setLastValues,
+        startRestore = startRestore,
+        finishRestore = finishRestore,
+        assets = assets,
+    )
+    // content load
+    onWebViewCreated?.invoke(webView)
+    loadInitialContent(
+        webView = webView,
+        url = url,
+        htmlBody = htmlBody,
+        injectedCss = injectedCss,
+        baseUrl = baseUrl,
+    )
+    return webView
+}
+
+private fun initializeWebViewBase(
+    webView: WebView,
+    injectedCss: String?,
+    backgroundColor: String?,
+    onTap: (() -> Unit)?,
+    restoreActiveProvider: () -> Boolean,
+    onScrollChanged: ((Int) -> Unit)?,
+    onAnchorChanged: ((String) -> Unit)?,
+) {
+    webView.tag = WebViewMeta(injectedCssRef = injectedCss, lastRequestedUrl = null)
     webView.configureBaseSettings(backgroundColor = backgroundColor)
     webView.setupTouchHandlers(onTap = onTap)
     webView.setupScrollHandler(
-        enabled = { !restoreActiveProvider() },
-        onScroll = { y -> onScrollChanged?.invoke(y) },
-        onAnchor = { a -> onAnchorChanged?.invoke(a) },
+        enabled = {
+            val enabledFlag = !restoreActiveProvider()
+            if (!enabledFlag) {
+                Logger.d(LOG_TAG) { "$SCROLL_PREFIX ignoring scroll during restore" }
+            }
+            enabledFlag
+        },
+        onScroll = { y ->
+            val key = (webView.tag as? WebViewMeta)?.lastRequestedUrl ?: "inline"
+            val saved = ScrollFileStore.saveIfChanged(
+                ctx = webView.context,
+                key = key,
+                y = y,
+            )
+            if (saved) {
+                Logger.d(LOG_TAG) { "$SCROLL_PREFIX emit scrollY=$y (saved key=${shortenKeyForLog(key)})" }
+            }
+            onScrollChanged?.invoke(y)
+        },
+        onAnchor = { a ->
+            Logger.d(LOG_TAG) { "$SCROLL_PREFIX anchor a=$a" }
+            onAnchorChanged?.invoke(a)
+        },
     )
-    onWebViewCreated?.invoke(webView)
-    val assets = WebViewAssetScripts(
-        clampJs = webView.safeLoadAsset(path = "webview/inject_clamp.js"),
-        themeJs = webView.safeLoadAsset(path = "webview/inject_theme.js"),
-        domHelpersJs = webView.safeLoadAsset(path = "webview/dom_helpers.js"),
-    )
+}
+
+private fun loadAssetScripts(webView: WebView): WebViewAssetScripts = WebViewAssetScripts(
+    clampJs = webView.safeLoadAsset(path = "webview/inject_clamp.js"),
+    themeJs = webView.safeLoadAsset(path = "webview/inject_theme.js"),
+    domHelpersJs = webView.safeLoadAsset(path = "webview/dom_helpers.js"),
+)
+
+private fun installArticleClient(
+    webView: WebView,
+    isInlineContent: Boolean,
+    injectedCss: String?,
+    initialScrollY: Int,
+    fontScale: Float?,
+    lineHeight: Float?,
+    backgroundColor: String?,
+    firstLoad: () -> Boolean,
+    setReady: (Boolean, Boolean) -> Unit,
+    setLastValues: (Float?, Float?) -> Unit,
+    startRestore: (Int) -> Unit,
+    finishRestore: () -> Unit,
+    assets: WebViewAssetScripts,
+) {
     webView.webViewClient = ArticleClient(
         isInlineContent = isInlineContent,
-        cssRef = arrayOf(meta.injectedCssRef, meta.lastRequestedUrl),
+        cssRef = arrayOf(
+            (webView.tag as? WebViewMeta)?.injectedCssRef,
+            (webView.tag as? WebViewMeta)?.lastRequestedUrl,
+        ),
         injectedCss = injectedCss,
-        initialScrollY = initialScrollY ?: 0,
+        initialScrollY = initialScrollY,
         fontScale = fontScale,
         lineHeight = lineHeight,
         backgroundColor = backgroundColor,
@@ -482,14 +614,19 @@ private fun createConfiguredWebView(
             setReady(true, false)
             webView.alpha = 1f
         },
-        firstLoad = { firstLoad },
+        firstLoad = firstLoad,
         setReadyHidden = {
-            setReady(false, firstLoad)
+            // Preserve original semantics: pass current firstLoad() flag as second param
+            val first = firstLoad()
+            setReady(false, first)
             webView.alpha = 0f
         },
         startRestore = { target ->
             if (target > 0) {
+                Logger.d(LOG_TAG) { "$SCROLL_PREFIX start target=$target" }
                 startRestore(target)
+            } else {
+                Logger.d(LOG_TAG) { "$SCROLL_PREFIX start skipped target=$target" }
             }
         },
         finishRestore = finishRestore,
@@ -497,12 +634,22 @@ private fun createConfiguredWebView(
         assets = assets,
         evaluate = { js -> webView.evaluateJavascript(js, null) },
     )
+}
+
+private fun loadInitialContent(
+    webView: WebView,
+    url: String?,
+    htmlBody: String?,
+    injectedCss: String?,
+    baseUrl: String?,
+) {
     if (!url.isNullOrBlank()) {
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX load remote url=$url" }
         (webView.tag as? WebViewMeta)?.lastRequestedUrl = url
         webView.loadUrl(url)
     } else {
         val finalHtml = buildInlineHtml(body = htmlBody, css = injectedCss)
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX load inline len=${finalHtml.length}" }
         webView.loadDataWithBaseURL(baseUrl, finalHtml, "text/html", "utf-8", null)
     }
-    return webView
 }

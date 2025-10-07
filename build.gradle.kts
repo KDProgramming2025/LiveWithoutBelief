@@ -284,10 +284,26 @@ tasks.register("detektAggregateReport") {
 // safely snapshot task configuration. Sarif file discovery uses lazy providers; no Project
 // objects are captured in the task state. This allows reuse of the configuration cache across
 // successive builds while enforcing a zero-detekt-findings rule.
+// Clean existing detekt report directories before running detektAll to avoid stale or missing SARIF confusion.
+tasks.register("cleanDetektReports") {
+    group = "verification"
+    description = "Deletes all detekt report directories"
+    notCompatibleWithConfigurationCache("Deletes build outputs dynamically")
+    doLast {
+        val dirs = mutableListOf<File>()
+        dirs += layout.buildDirectory.dir("reports/detekt").get().asFile
+        subprojects.forEach { sp -> dirs += sp.layout.buildDirectory.dir("reports/detekt").get().asFile }
+        dirs.filter { it.exists() }.forEach { if (!it.deleteRecursively()) println("[cleanDetektReports] Failed to delete ${it}") }
+    }
+}
+
 tasks.register<QualityGateTask>("qualityGate") {
     group = "verification"
     description = "Fails if detekt findings or formatting violations are present before debug build/install"
+    // Order enforced separately: detektAll dependsOn cleanDetektReports (declared below)
     dependsOn("detektAll")
+    // Avoid configuration cache reuse for this aggregation task to prevent stale SARIF lists when files are deleted.
+    notCompatibleWithConfigurationCache("qualityGate must always re-scan SARIF outputs to reflect file deletions/renames")
     // Collect SARIF outputs from root + subprojects (lazy providers)
     val rootSarifDir = layout.buildDirectory.dir("reports/detekt")
     sarifFiles.from(rootSarifDir.map { it.asFileTree.matching { include("*.sarif") } })
@@ -295,6 +311,11 @@ tasks.register<QualityGateTask>("qualityGate") {
         val spSarifDir = sp.layout.buildDirectory.dir("reports/detekt")
         sarifFiles.from(spSarifDir.map { it.asFileTree.matching { include("*.sarif") } })
         sp.tasks.matching { it.name == "spotlessCheck" }.configureEach { dependsOn(this) }
+    }
+    doLast {
+        if (sarifFiles.files.isEmpty()) {
+            throw GradleException("qualityGate: No SARIF files produced after detektAll. detekt may have been skipped; failing.")
+        }
     }
 }
 
@@ -304,7 +325,15 @@ subprojects {
         // Only add dependency if tasks exist (lazy lookup via named/matching)
         tasks.matching { it.name in setOf("assembleDebug", "installDebug") }.configureEach {
             dependsOn(rootProject.tasks.named("qualityGate"))
+            dependsOn(rootProject.tasks.named("detektAll"))
         }
     }
+}
+
+// Ensure detektAll always runs after cleaning reports (prevents race where cleaning deletes freshly generated SARIF)
+tasks.named("detektAll") {
+    dependsOn("cleanDetektReports")
+    // Always rerun detektAll so SARIF is freshly produced even if sources unchanged.
+    outputs.upToDateWhen { false }
 }
 
