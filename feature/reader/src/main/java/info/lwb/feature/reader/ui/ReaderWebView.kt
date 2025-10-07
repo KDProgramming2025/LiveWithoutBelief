@@ -4,22 +4,20 @@
  */
 package info.lwb.feature.reader.ui
 
-import android.webkit.WebView
+// Removed scroll persistence + related coroutine scope usage.
 import android.util.Base64
+import android.webkit.WebView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-// Removed scroll persistence + related coroutine scope usage.
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import info.lwb.core.common.log.Logger
 import info.lwb.feature.reader.ui.internal.ArticleClient
 import info.lwb.feature.reader.ui.internal.WebViewAssetScripts
@@ -54,7 +52,6 @@ private const val UNKNOWN_URL_LENGTH = -1
  *  - Detects taps and invokes [onTap].
  */
 @Composable
-@Suppress("UnusedParameter")
 internal fun ArticleWebView(
     htmlBody: String? = null,
     baseUrl: String? = null,

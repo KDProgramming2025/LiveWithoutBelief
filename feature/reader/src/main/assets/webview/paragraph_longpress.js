@@ -43,6 +43,12 @@
     try {
       const id = activeP.getAttribute('data-lwb-pid') || '';
       const text = (activeP.innerText || activeP.textContent || '').trim();
+      // highlight immediately
+      if (id) {
+        if (typeof window.lwbHighlightParagraph === 'function') {
+          window.lwbHighlightParagraph(id);
+        }
+      }
       if (id && text && window.LwbBridge && typeof window.LwbBridge.onParagraphLongPress === 'function') {
         firedForPress = true;
         window.LwbBridge.onParagraphLongPress(id, text);
@@ -89,22 +95,50 @@
     if (document.getElementById(STYLE_ID)) return;
     const st = document.createElement('style');
     st.id = STYLE_ID;
-    st.textContent = `.${HIGHLIGHT_CLASS}{background:rgba(255,215,0,0.28);transition:background .3s ease}`;
+    // Use !important and add outline as fallback in case page CSS overrides background.
+    st.textContent = `.${HIGHLIGHT_CLASS}{background:rgba(255,215,0,0.34)!important;outline:2px solid rgba(255,215,0,0.8)!important;transition:background .25s ease, outline-color .25s ease}`;
     document.head.appendChild(st);
   }
   ensureHighlightStyle();
   let lastHighlighted = null;
+  function highlightNow(pid) {
+    ensureIds();
+    const sel = document.querySelector('p[data-lwb-pid="'+pid+'"]');
+    if (!sel) return false;
+    if (lastHighlighted && lastHighlighted !== sel) {
+      lastHighlighted.classList.remove(HIGHLIGHT_CLASS);
+    }
+    sel.classList.add(HIGHLIGHT_CLASS);
+    lastHighlighted = sel;
+    return true;
+  }
   window.lwbHighlightParagraph = function(pid) {
     try {
-      ensureIds();
-      const sel = document.querySelector('p[data-lwb-pid="'+pid+'"]');
-      if (!sel) return false;
-      if (lastHighlighted && lastHighlighted !== sel) {
+      if (highlightNow(pid)) return true;
+      // Retry shortly after in case DOM not ready for this paragraph yet.
+      setTimeout(() => highlightNow(pid), 50);
+      setTimeout(() => highlightNow(pid), 150);
+      return false;
+    } catch(_) { return false; }
+  };
+  // Reapply highlight on DOMContentLoaded/load if lastHighlighted lost styling due to reflow.
+  function reapplyLast() {
+    if (lastHighlighted && !lastHighlighted.classList.contains(HIGHLIGHT_CLASS)) {
+      lastHighlighted.classList.add(HIGHLIGHT_CLASS);
+    }
+  }
+  window.addEventListener('DOMContentLoaded', reapplyLast, false);
+  window.addEventListener('load', reapplyLast, false);
+  // Debug helper
+  window.__lwbDebugHighlightInfo = function() { return { lastId: lastHighlighted?.getAttribute('data-lwb-pid') || null }; };
+  // Clear highlight externally
+  window.lwbClearParagraphHighlight = function() {
+    try {
+      if (lastHighlighted) {
         lastHighlighted.classList.remove(HIGHLIGHT_CLASS);
       }
-      sel.classList.add(HIGHLIGHT_CLASS);
-      lastHighlighted = sel;
+      lastHighlighted = null;
       return true;
     } catch(_) { return false; }
-  }
+  };
 })();

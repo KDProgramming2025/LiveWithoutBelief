@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ArticleWebView
@@ -162,30 +163,32 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderActionRail(
         return
     }
     val fabMargin = Dp(FAB_MARGIN_DP)
-    val railModifier = Modifier.padding(end = fabMargin, bottom = fabMargin)
-    ActionRail(
-        modifier = railModifier
-            .align(Alignment.BottomEnd),
-        items = listOf(
-            ActionRailItem(
-                icon = Icons.Filled.Settings,
-                label = "Appearance",
-                onClick = { onAppearance() },
+    // Keep any scrim / backdrop fullscreen; only inset the actual rail cluster.
+    Box(Modifier.fillMaxSize()) {
+        ActionRail(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            items = listOf(
+                ActionRailItem(
+                    icon = Icons.Filled.Settings,
+                    label = "Appearance",
+                    onClick = { onAppearance() },
+                ),
+                ActionRailItem(
+                    icon = Icons.Filled.Edit,
+                    label = "Bookmark",
+                    onClick = { onBookmark() },
+                ),
+                ActionRailItem(
+                    icon = Icons.Filled.PlayArrow,
+                    label = "Listen",
+                    onClick = { onListen() },
+                ),
             ),
-            ActionRailItem(
-                icon = Icons.Filled.Edit,
-                label = "Bookmark",
-                onClick = { onBookmark() },
-            ),
-            ActionRailItem(
-                icon = Icons.Filled.PlayArrow,
-                label = "Listen",
-                onClick = { onListen() },
-            ),
-        ),
-        mainIcon = Icons.Filled.Settings,
-        mainContentDescription = "Reader actions",
-    )
+            mainIcon = Icons.Filled.Settings,
+            mainContentDescription = "Reader actions",
+            edgePadding = fabMargin,
+        )
+    }
 }
 // endregion
 
@@ -269,15 +272,16 @@ internal fun ReaderIndexScreen(
                 ready = ready,
                 webRef = webRef,
                 onParagraph = { id, text ->
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    paraDialog = id to text
-                    try {
-                        webRef.value?.evaluateJavascript("window.lwbHighlightParagraph('" + id + "')", null)
-                    } catch (_: Throwable) {
-                        // ignore highlight errors
-                    }
+                    handleParagraphLongPress(
+                        id = id,
+                        text = text,
+                        haptics = haptics,
+                        setDialog = { paraDialog = it },
+                        webRef = webRef,
+                    )
                 },
             )
+            // Overlays (dialogs, rails, etc.) rendered above WebView
             ReaderOverlays(
                 fab = fab,
                 setFab = setFab,
@@ -288,8 +292,42 @@ internal fun ReaderIndexScreen(
                 backDispatcher = backDispatcher,
                 paraDialog = paraDialog,
                 clearDialog = { paraDialog = null },
+                webRef = webRef,
             )
         }
+    }
+}
+
+private fun handleParagraphLongPress(
+    id: String,
+    text: String,
+    haptics: HapticFeedback,
+    setDialog: (Pair<String, String>?) -> Unit,
+    webRef: androidx.compose.runtime.MutableState<android.webkit.WebView?>,
+) {
+    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    try {
+        info.lwb.core.common.log.Logger.d("ReaderWeb") {
+            "ParaDialog: launching id=$id len=${text.length}"
+        }
+    } catch (_: Throwable) {
+        // ignore
+    }
+    setDialog(id to text)
+    try {
+        webRef.value?.evaluateJavascript(
+            "(function(){return window.lwbHighlightParagraph('" + id + "');})()",
+        ) { res ->
+            try {
+                info.lwb.core.common.log.Logger.d("ReaderWeb") {
+                    "ParaDialog: highlight result id=" + id + " res=" + res
+                }
+            } catch (_: Throwable) {
+                // ignore
+            }
+        }
+    } catch (_: Throwable) {
+        // ignore highlight errors
     }
 }
 
@@ -350,6 +388,7 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
     backDispatcher: androidx.activity.OnBackPressedDispatcher?,
     paraDialog: Pair<String, String>?,
     clearDialog: () -> Unit,
+    webRef: androidx.compose.runtime.MutableState<android.webkit.WebView?>,
 ) {
     ReaderActionRail(
         show = fab.visible,
@@ -371,7 +410,16 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
             onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
         },
     )
-    ParagraphDialog(paraDialog) { clearDialog() }
+    ParagraphDialog(paraDialog) {
+        // Clear dialog state
+        clearDialog()
+        // Also clear highlight via JS (fire and forget)
+        try {
+            webRef.value?.evaluateJavascript("window.lwbClearParagraphHighlight()", null)
+        } catch (_: Throwable) {
+            // ignore
+        }
+    }
 }
 
 @Composable

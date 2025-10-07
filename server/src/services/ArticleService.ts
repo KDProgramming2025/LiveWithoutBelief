@@ -123,9 +123,10 @@ export class ArticleService {
       html = removeOleIconBlocksBeforePlaceholders(html, allPlaceholders)
     }
     // Load snippet templates
-    const [videoItemTpl, audioItemTpl, ytEmbedTpl, ytLinkTpl, mediaSectionTpl] = await Promise.all([
+    const [videoItemTpl, audioItemTpl, imageItemTpl, ytEmbedTpl, ytLinkTpl, mediaSectionTpl] = await Promise.all([
       this.templateResolver('articles', 'media-item-video.html'),
       this.templateResolver('articles', 'media-item-audio.html'),
+      this.templateResolver('articles', 'media-item-image.html'),
       this.templateResolver('articles', 'youtube-embed.html'),
       this.templateResolver('articles', 'youtube-link.html'),
       this.templateResolver('articles', 'media-section.html'),
@@ -139,6 +140,15 @@ export class ArticleService {
       const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
       html = html.replace(pattern, tag)
     }
+    // Wrap plain <img ...> tags with image template containing question button.
+    // Only wrap standalone <img> elements not already inside a figure.media__item to avoid double-wrapping.
+      html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi, (full: string, pre: string, src: string, post: string): string => {
+      // Skip data URI images and images already in a media__item figure (heuristic: look backwards 150 chars)
+      if (/^data:/i.test(src)) return full
+      // If already inside figure with class media__item, skip
+      // (Simplistic: check if preceding substring contains '<figure class="media__item"' without its closing tag yet)
+        return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+    })
     // Replace YouTube placeholders with iframe embeds
     if (ytResult && ytResult.embeds.length > 0) {
       for (const yt of ytResult.embeds) {
@@ -522,6 +532,13 @@ export class ArticleService {
 
 function escapeHtml(s: string){
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] as string))
+}
+
+// Extract alt attribute from an <img ...> tag markup (very lightweight; no full HTML parse)
+function extractAltFromImg(tag: string): string {
+  const m = tag.match(/\balt="([^"]*)"/i)
+  if (!m) return ''
+  return escapeHtml(m[1])
 }
 
 // Template resolver to load static HTML/CSS/JS from files instead of inline strings

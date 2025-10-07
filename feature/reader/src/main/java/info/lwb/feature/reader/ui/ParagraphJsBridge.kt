@@ -6,7 +6,10 @@ package info.lwb.feature.reader.ui
 import android.webkit.JavascriptInterface
 import info.lwb.core.common.log.Logger
 
-internal class ParagraphJsBridge(private val onParagraphLongPress: (id: String, text: String) -> Unit) {
+internal class ParagraphJsBridge(
+    // Callback invoked on main thread after JS long press event passes validation & throttle.
+    private val onParagraphLongPressCallback: (id: String, text: String) -> Unit,
+) {
     private val tag = "ReaderWeb"
     private val prefix = "ParaLongPress:"
 
@@ -37,7 +40,7 @@ internal class ParagraphJsBridge(private val onParagraphLongPress: (id: String, 
         Logger.d(tag) { "$prefix id=$pid len=${body.length}" }
         mainHandler.post {
             try {
-                onParagraphLongPress(pid, body)
+                onParagraphLongPressCallback(pid, body)
             } catch (_: Throwable) {
                 // swallow to avoid JS callback crash
             }
