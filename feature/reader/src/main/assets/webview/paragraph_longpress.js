@@ -81,4 +81,30 @@
   document.addEventListener('pointermove', onPointerMove, true);
   document.addEventListener('pointerup', onPointerEnd, true);
   document.addEventListener('pointercancel', onPointerEnd, true);
+
+  // Highlight support
+  const HIGHLIGHT_CLASS = 'lwb-paragraph-highlight';
+  const STYLE_ID = 'lwb-paragraph-highlight-style';
+  function ensureHighlightStyle() {
+    if (document.getElementById(STYLE_ID)) return;
+    const st = document.createElement('style');
+    st.id = STYLE_ID;
+    st.textContent = `.${HIGHLIGHT_CLASS}{background:rgba(255,215,0,0.28);transition:background .3s ease}`;
+    document.head.appendChild(st);
+  }
+  ensureHighlightStyle();
+  let lastHighlighted = null;
+  window.lwbHighlightParagraph = function(pid) {
+    try {
+      ensureIds();
+      const sel = document.querySelector('p[data-lwb-pid="'+pid+'"]');
+      if (!sel) return false;
+      if (lastHighlighted && lastHighlighted !== sel) {
+        lastHighlighted.classList.remove(HIGHLIGHT_CLASS);
+      }
+      sel.classList.add(HIGHLIGHT_CLASS);
+      lastHighlighted = sel;
+      return true;
+    } catch(_) { return false; }
+  }
 })();

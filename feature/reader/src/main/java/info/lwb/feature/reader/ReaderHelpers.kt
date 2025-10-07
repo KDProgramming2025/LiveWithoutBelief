@@ -26,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.hilt.navigation.compose.hiltViewModel
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ArticleWebView
@@ -243,6 +245,7 @@ internal fun ReaderIndexScreen(
     val (fab, showFabTemp, setFab) = rememberFabController()
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     var paraDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val haptics = LocalHapticFeedback.current
 
     ReaderBackHandler(
         fab = fab,
@@ -256,42 +259,36 @@ internal fun ReaderIndexScreen(
     Scaffold { inner ->
         Box(Modifier.fillMaxSize().padding(inner)) {
             // Back navigation callback consumed in BackHandler above
-            ArticleWebView(
+            ReaderArticleWeb(
                 url = url,
-                injectedCss = css,
-                fontScale = ui.fontScale.toFloat(),
-                lineHeight = ui.lineHeight.toFloat(),
-                backgroundColor = readerPalette(ui.background).background,
-                initialScrollY = scroll.initialY,
-                modifier = Modifier.fillMaxSize(),
-                onTap = { showFabTemp() },
-                onScrollChanged = { scroll.onScroll(it) },
-                onAnchorChanged = {},
-                onReady = { ready.value = true },
-                onWebViewCreated = { w -> webRef.value = w },
-                onParagraphLongPress = { id, text -> paraDialog = id to text },
-            )
-            ReaderActionRail(
-                show = fab.visible,
-                onAppearance = { setFab(fab.copy(showAppearance = true)) },
-                onBookmark = { showFabTemp() },
-                onListen = { showFabTemp() },
-            )
-            AppearanceSheetOverlay(
-                visible = fab.showAppearance,
+                css = css,
                 ui = ui,
-                vm = vm,
-                onDismiss = { setFab(fab.copy(showAppearance = false)) },
-            )
-            ConfirmExitDialog(
-                show = fab.confirmExit,
-                onDismiss = { setFab(fab.copy(confirmExit = false)) },
-                onConfirm = {
-                    setFab(fab.copy(confirmExit = false))
-                    onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
+                scrollInitial = scroll.initialY,
+                onTap = showFabTemp,
+                onScroll = scroll.onScroll,
+                ready = ready,
+                webRef = webRef,
+                onParagraph = { id, text ->
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    paraDialog = id to text
+                    try {
+                        webRef.value?.evaluateJavascript("window.lwbHighlightParagraph('" + id + "')", null)
+                    } catch (_: Throwable) {
+                        // ignore highlight errors
+                    }
                 },
             )
-            ParagraphDialog(paraDialog) { paraDialog = null }
+            ReaderOverlays(
+                fab = fab,
+                setFab = setFab,
+                ui = ui,
+                vm = vm,
+                showFabTemp = showFabTemp,
+                onNavigateBack = onNavigateBack,
+                backDispatcher = backDispatcher,
+                paraDialog = paraDialog,
+                clearDialog = { paraDialog = null },
+            )
         }
     }
 }
@@ -312,6 +309,70 @@ private fun ParagraphDialog(data: Pair<String, String>?, onDismiss: () -> Unit) 
 
 private const val PARAGRAPH_DIALOG_MAX = 500
 // EOF
+
+@Composable
+private fun ReaderArticleWeb(
+    url: String,
+    css: String,
+    ui: ReaderUiState,
+    scrollInitial: Int,
+    onTap: () -> Unit,
+    onScroll: (Int) -> Unit,
+    ready: androidx.compose.runtime.MutableState<Boolean>,
+    webRef: androidx.compose.runtime.MutableState<android.webkit.WebView?>,
+    onParagraph: (String, String) -> Unit,
+) {
+    ArticleWebView(
+        url = url,
+        injectedCss = css,
+        fontScale = ui.fontScale.toFloat(),
+        lineHeight = ui.lineHeight.toFloat(),
+        backgroundColor = readerPalette(ui.background).background,
+        initialScrollY = scrollInitial,
+        modifier = Modifier.fillMaxSize(),
+        onTap = { onTap() },
+        onScrollChanged = { onScroll(it) },
+        onAnchorChanged = {},
+        onReady = { ready.value = true },
+        onWebViewCreated = { w -> webRef.value = w },
+        onParagraphLongPress = { id, text -> onParagraph(id, text) },
+    )
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
+    fab: FabState,
+    setFab: (FabState) -> Unit,
+    ui: ReaderUiState,
+    vm: ReaderSessionViewModel,
+    showFabTemp: () -> Unit,
+    onNavigateBack: (() -> Unit)?,
+    backDispatcher: androidx.activity.OnBackPressedDispatcher?,
+    paraDialog: Pair<String, String>?,
+    clearDialog: () -> Unit,
+) {
+    ReaderActionRail(
+        show = fab.visible,
+        onAppearance = { setFab(fab.copy(showAppearance = true)) },
+        onBookmark = { showFabTemp() },
+        onListen = { showFabTemp() },
+    )
+    AppearanceSheetOverlay(
+        visible = fab.showAppearance,
+        ui = ui,
+        vm = vm,
+        onDismiss = { setFab(fab.copy(showAppearance = false)) },
+    )
+    ConfirmExitDialog(
+        show = fab.confirmExit,
+        onDismiss = { setFab(fab.copy(confirmExit = false)) },
+        onConfirm = {
+            setFab(fab.copy(confirmExit = false))
+            onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
+        },
+    )
+    ParagraphDialog(paraDialog) { clearDialog() }
+}
 
 @Composable
 private fun ReaderBackHandler(

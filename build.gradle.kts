@@ -162,6 +162,7 @@ tasks.register("detektAll") {
     // Now that detekt is applied unconditionally, depend on every subproject's detekt task.
     dependsOn(subprojects.map { "${it.path}:detekt" })
     dependsOn(":detekt")
+    notCompatibleWithConfigurationCache("Aggregates dynamic subproject tasks and lists SARIF outputs")
 }
 
 // Coverage verification: stable overall rule. Layered thresholds TODO via custom XML parsing script.
@@ -325,7 +326,6 @@ subprojects {
         // Only add dependency if tasks exist (lazy lookup via named/matching)
         tasks.matching { it.name in setOf("assembleDebug", "installDebug") }.configureEach {
             dependsOn(rootProject.tasks.named("qualityGate"))
-            dependsOn(rootProject.tasks.named("detektAll"))
         }
     }
 }
@@ -335,5 +335,28 @@ tasks.named("detektAll") {
     dependsOn("cleanDetektReports")
     // Always rerun detektAll so SARIF is freshly produced even if sources unchanged.
     outputs.upToDateWhen { false }
+    doLast {
+        val sarifFiles = subprojects.mapNotNull { sp ->
+            sp.layout.buildDirectory.asFile.get().resolve("reports/detekt").listFiles { f -> f.extension == "sarif" }?.toList()
+        }.flatten() + rootProject.layout.buildDirectory.asFile.get()
+            .resolve("reports/detekt")
+            .listFiles { f -> f.extension == "sarif" }
+            .orEmpty()
+        println("[detektAll] Generated SARIF count=${sarifFiles.size}")
+        sarifFiles.forEach { println("[detektAll] SARIF: ${it.relativeTo(rootProject.projectDir)}") }
+    }
+}
+
+// Ensure every per-module detekt task re-runs (some modules may have been skipped earlier if considered up-to-date)
+subprojects {
+    tasks.matching { it.name == "detekt" }.configureEach {
+        outputs.upToDateWhen { false }
+        doFirst { println("[detekt-task] Forcing run: ${project.path}") }
+        notCompatibleWithConfigurationCache("Detekt task uses project APIs at execution time")
+    }
+}
+
+tasks.matching { it.name == "detekt" }.configureEach {
+    notCompatibleWithConfigurationCache("Root detekt task uses project APIs at execution time")
 }
 
