@@ -54,6 +54,7 @@ private const val UNKNOWN_URL_LENGTH = -1
  *  - Detects taps and invokes [onTap].
  */
 @Composable
+@Suppress("UnusedParameter")
 internal fun ArticleWebView(
     htmlBody: String? = null,
     baseUrl: String? = null,
@@ -69,6 +70,7 @@ internal fun ArticleWebView(
     onAnchorChanged: ((anchor: String) -> Unit)? = null,
     onReady: (() -> Unit)? = null,
     onWebViewCreated: ((WebView) -> Unit)? = null,
+    onParagraphLongPress: ((id: String, text: String) -> Unit)? = null,
 ) {
     ArticleWebViewContent(
         htmlBody = htmlBody,
@@ -85,6 +87,7 @@ internal fun ArticleWebView(
         onAnchorChanged = onAnchorChanged,
         onReady = onReady,
         onWebViewCreated = onWebViewCreated,
+        onParagraphLongPress = onParagraphLongPress,
     )
 }
 
@@ -104,6 +107,7 @@ private fun ArticleWebViewContent(
     onAnchorChanged: ((anchor: String) -> Unit)?,
     onReady: (() -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)?,
+    onParagraphLongPress: ((id: String, text: String) -> Unit)?,
 ) {
     val state = rememberArticleWebState(
         url = url,
@@ -130,6 +134,7 @@ private fun ArticleWebViewContent(
         onAnchorChanged = onAnchorChanged,
         initialScrollY = initialScrollY,
         onWebViewCreated = onWebViewCreated,
+        onParagraphLongPress = onParagraphLongPress,
     )
 }
 
@@ -149,6 +154,7 @@ private fun articleWebContentBody(
     onAnchorChanged: ((anchor: String) -> Unit)?,
     initialScrollY: Int?,
     onWebViewCreated: ((WebView) -> Unit)?,
+    onParagraphLongPress: ((id: String, text: String) -> Unit)?,
 ) {
     // Hold a reference to the underlying WebView once created.
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
@@ -200,6 +206,7 @@ private fun articleWebContentBody(
                 webViewRef.value = w
                 onWebViewCreated?.invoke(w)
             },
+            onParagraphLongPress = onParagraphLongPress,
         )
         if (!state.ready.value) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -232,6 +239,7 @@ private fun ArticleWebAndroidView(
     initialScrollY: Int?,
     onAnchorChanged: ((anchor: String) -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)? = null,
+    onParagraphLongPress: ((id: String, text: String) -> Unit)? = null,
 ) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
@@ -251,6 +259,7 @@ private fun ArticleWebAndroidView(
                 onScrollChanged = onScrollChanged,
                 onAnchorChanged = onAnchorChanged,
                 onWebViewCreated = onWebViewCreated,
+                onParagraphLongPress = onParagraphLongPress,
             )
         },
         update = { webView ->
@@ -284,6 +293,7 @@ private fun createArticleWebView(
     onScrollChanged: ((Int) -> Unit)?,
     onAnchorChanged: ((String) -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)?,
+    onParagraphLongPress: ((id: String, text: String) -> Unit)?,
 ): WebView = createConfiguredWebView(
     ctx = ctx,
     url = url,
@@ -298,6 +308,7 @@ private fun createArticleWebView(
     onScrollChanged = onScrollChanged,
     onAnchorChanged = onAnchorChanged,
     onWebViewCreated = onWebViewCreated,
+    onParagraphLongPress = onParagraphLongPress,
     readyState = { state.ready.value to state.firstLoad.value },
     setReady = { isReady, isFirst ->
         state.ready.value = isReady
@@ -433,6 +444,10 @@ private fun ensureBaseRuntime(webView: WebView) {
     webView.evaluateJavascript("lwbRefreshThemeLink()", null)
     webView.evaluateJavascript("lwbEnsureBgOverride()", null)
     webView.evaluateJavascript("lwbDisableColorSchemeDarkening()", null)
+    val lp = webView.safeLoadAsset("webview/paragraph_longpress.js")
+    if (lp.isNotBlank()) {
+        webView.evaluateJavascript(lp, null)
+    }
 }
 
 private fun injectThemeJs(webView: WebView) {
@@ -487,6 +502,7 @@ private fun createConfiguredWebView(
     onScrollChanged: ((Int) -> Unit)?,
     onAnchorChanged: ((String) -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)?,
+    onParagraphLongPress: ((id: String, text: String) -> Unit)?,
     readyState: () -> Pair<Boolean, Boolean>,
     setReady: (ready: Boolean, firstLoad: Boolean) -> Unit,
     setLastValues: (Float?, Float?) -> Unit,
@@ -526,6 +542,7 @@ private fun createConfiguredWebView(
         startRestore = startRestore,
         finishRestore = finishRestore,
         assets = assets,
+        onParagraphLongPress = onParagraphLongPress,
     )
     // content load
     onWebViewCreated?.invoke(webView)
@@ -598,7 +615,15 @@ private fun installArticleClient(
     startRestore: (Int) -> Unit,
     finishRestore: () -> Unit,
     assets: WebViewAssetScripts,
+    onParagraphLongPress: ((id: String, text: String) -> Unit)?,
 ) {
+    if (onParagraphLongPress != null) {
+        try {
+            webView.addJavascriptInterface(ParagraphJsBridge(onParagraphLongPress), "LwbBridge")
+        } catch (_: Throwable) {
+            // ignore
+        }
+    }
     webView.webViewClient = ArticleClient(
         isInlineContent = isInlineContent,
         cssRef = arrayOf(

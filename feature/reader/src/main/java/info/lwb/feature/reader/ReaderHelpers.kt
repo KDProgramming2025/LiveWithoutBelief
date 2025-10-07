@@ -242,17 +242,14 @@ internal fun ReaderIndexScreen(
     val css = rememberCss(ui.background)
     val (fab, showFabTemp, setFab) = rememberFabController()
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    var paraDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    BackHandler(enabled = true) {
-        if (fab.confirmExit) {
-            setFab(fab.copy(confirmExit = false))
-            onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
-        } else if (fab.showAppearance) {
-            setFab(fab.copy(showAppearance = false))
-        } else {
-            setFab(fab.copy(confirmExit = true))
-        }
-    }
+    ReaderBackHandler(
+        fab = fab,
+        setFab = setFab,
+        onNavigateBack = onNavigateBack,
+        backDispatcher = backDispatcher,
+    )
 
     ApplyRuntimeAppearance(ready = ready.value, ui = ui, webRef = webRef)
 
@@ -272,6 +269,7 @@ internal fun ReaderIndexScreen(
                 onAnchorChanged = {},
                 onReady = { ready.value = true },
                 onWebViewCreated = { w -> webRef.value = w },
+                onParagraphLongPress = { id, text -> paraDialog = id to text },
             )
             ReaderActionRail(
                 show = fab.visible,
@@ -293,7 +291,43 @@ internal fun ReaderIndexScreen(
                     onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
                 },
             )
+            ParagraphDialog(paraDialog) { paraDialog = null }
         }
     }
 }
+
+@Composable
+private fun ParagraphDialog(data: Pair<String, String>?, onDismiss: () -> Unit) {
+    if (data == null) {
+        return
+    }
+    val (_, text) = data
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Paragraph") },
+        text = { Text(text.take(PARAGRAPH_DIALOG_MAX)) },
+        confirmButton = { TextButton(onClick = { onDismiss() }) { Text("Close") } },
+    )
+}
+
+private const val PARAGRAPH_DIALOG_MAX = 500
 // EOF
+
+@Composable
+private fun ReaderBackHandler(
+    fab: FabState,
+    setFab: (FabState) -> Unit,
+    onNavigateBack: (() -> Unit)?,
+    backDispatcher: androidx.activity.OnBackPressedDispatcher?,
+) {
+    BackHandler(enabled = true) {
+        if (fab.confirmExit) {
+            setFab(fab.copy(confirmExit = false))
+            onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
+        } else if (fab.showAppearance) {
+            setFab(fab.copy(showAppearance = false))
+        } else {
+            setFab(fab.copy(confirmExit = true))
+        }
+    }
+}
