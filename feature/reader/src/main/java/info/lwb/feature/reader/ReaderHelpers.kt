@@ -36,11 +36,13 @@ import info.lwb.feature.reader.ui.themeCssAssetPath
 import info.lwb.ui.designsystem.ActionRail
 import info.lwb.ui.designsystem.ActionRailItem
 import kotlinx.coroutines.Job
+import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val SCROLL_SAVE_DELAY_MS = 400L
 private const val FAB_HIDE_DELAY_MS = 5_000L
+private const val FAB_MARGIN_DP = 16f
 
 // Holds scroll persistence callbacks.
 
@@ -157,8 +159,11 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderActionRail(
     if (!show) {
         return
     }
+    val fabMargin = Dp(FAB_MARGIN_DP)
+    val railModifier = Modifier.padding(end = fabMargin, bottom = fabMargin)
     ActionRail(
-        modifier = Modifier.align(Alignment.BottomEnd),
+        modifier = railModifier
+            .align(Alignment.BottomEnd),
         items = listOf(
             ActionRailItem(
                 icon = Icons.Filled.Settings,
