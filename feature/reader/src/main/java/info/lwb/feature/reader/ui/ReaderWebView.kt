@@ -54,7 +54,6 @@ internal fun ArticleWebView(
     initialScrollY: Int? = null,
     onTap: (() -> Unit)? = null,
     onScrollChanged: ((scrollY: Int) -> Unit)? = null,
-    onAnchorChanged: ((anchor: String) -> Unit)? = null,
     onReady: (() -> Unit)? = null,
     onWebViewCreated: ((WebView) -> Unit)? = null,
     onParagraphLongPress: ((id: String, text: String) -> Unit)? = null,
@@ -68,7 +67,6 @@ internal fun ArticleWebView(
         initialScrollY = initialScrollY,
         onTap = onTap,
         onScrollChanged = onScrollChanged,
-        onAnchorChanged = onAnchorChanged,
         onReady = onReady,
         onWebViewCreated = onWebViewCreated,
         onParagraphLongPress = onParagraphLongPress,
@@ -85,7 +83,6 @@ private fun ArticleWebViewContent(
     initialScrollY: Int?,
     onTap: (() -> Unit)?,
     onScrollChanged: ((scrollY: Int) -> Unit)?,
-    onAnchorChanged: ((anchor: String) -> Unit)?,
     onReady: (() -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)?,
     onParagraphLongPress: ((id: String, text: String) -> Unit)?,
@@ -106,7 +103,6 @@ private fun ArticleWebViewContent(
         backgroundColor = backgroundColor,
         onTap = onTap,
         onScrollChanged = onScrollChanged,
-        onAnchorChanged = onAnchorChanged,
         initialScrollY = initialScrollY,
         onWebViewCreated = onWebViewCreated,
         onParagraphLongPress = onParagraphLongPress,
@@ -123,7 +119,6 @@ private fun articleWebContentBody(
     backgroundColor: String?,
     onTap: (() -> Unit)?,
     onScrollChanged: ((scrollY: Int) -> Unit)?,
-    onAnchorChanged: ((anchor: String) -> Unit)?,
     initialScrollY: Int?,
     onWebViewCreated: ((WebView) -> Unit)?,
     onParagraphLongPress: ((id: String, text: String) -> Unit)?,
@@ -165,7 +160,6 @@ private fun articleWebContentBody(
                 onScrollChanged?.invoke(scrollY)
             },
             initialScrollY = effectiveInit,
-            onAnchorChanged = onAnchorChanged,
             onWebViewCreated = { w ->
                 webViewRef.value = w
                 onWebViewCreated?.invoke(w)
@@ -199,7 +193,6 @@ private fun ArticleWebAndroidView(
     onTap: (() -> Unit)?,
     onScrollChanged: ((scrollY: Int) -> Unit)?,
     initialScrollY: Int?,
-    onAnchorChanged: ((anchor: String) -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)? = null,
     onParagraphLongPress: ((id: String, text: String) -> Unit)? = null,
 ) {
@@ -217,7 +210,6 @@ private fun ArticleWebAndroidView(
                 initialScrollY = initialScrollY,
                 onTap = onTap,
                 onScrollChanged = onScrollChanged,
-                onAnchorChanged = onAnchorChanged,
                 onWebViewCreated = onWebViewCreated,
                 onParagraphLongPress = onParagraphLongPress,
             )
@@ -252,7 +244,6 @@ private fun createArticleWebView(
     initialScrollY: Int?,
     onTap: (() -> Unit)?,
     onScrollChanged: ((Int) -> Unit)?,
-    onAnchorChanged: ((String) -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)?,
     onParagraphLongPress: ((id: String, text: String) -> Unit)?,
 ): WebView = createConfiguredWebView(
@@ -265,7 +256,6 @@ private fun createArticleWebView(
     initialScrollY = initialScrollY,
     onTap = onTap,
     onScrollChanged = onScrollChanged,
-    onAnchorChanged = onAnchorChanged,
     onWebViewCreated = onWebViewCreated,
     onParagraphLongPress = onParagraphLongPress,
     readyState = { state.ready.value to state.firstLoad.value },
@@ -388,7 +378,6 @@ private fun createConfiguredWebView(
     initialScrollY: Int?,
     onTap: (() -> Unit)?,
     onScrollChanged: ((Int) -> Unit)?,
-    onAnchorChanged: ((String) -> Unit)?,
     onWebViewCreated: ((WebView) -> Unit)?,
     onParagraphLongPress: ((id: String, text: String) -> Unit)?,
     readyState: () -> Pair<Boolean, Boolean>,
@@ -411,7 +400,6 @@ private fun createConfiguredWebView(
         onTap = onTap,
         restoreActiveProvider = restoreActiveProvider,
         onScrollChanged = onScrollChanged,
-        onAnchorChanged = onAnchorChanged,
     )
     // client
     val assets = loadAssetScripts(webView)
@@ -447,7 +435,6 @@ private fun initializeWebViewBase(
     onTap: (() -> Unit)?,
     restoreActiveProvider: () -> Boolean,
     onScrollChanged: ((Int) -> Unit)?,
-    onAnchorChanged: ((String) -> Unit)?,
 ) {
     webView.tag = WebViewMeta(injectedCssRef = injectedCss, lastRequestedUrl = null)
     webView.configureBaseSettings(backgroundColor = backgroundColor)
@@ -471,11 +458,7 @@ private fun initializeWebViewBase(
                 Logger.d(LOG_TAG) { "$SCROLL_PREFIX emit scrollY=$y (saved key=${shortenKeyForLog(key)})" }
             }
             onScrollChanged?.invoke(y)
-        },
-        onAnchor = { a ->
-            Logger.d(LOG_TAG) { "$SCROLL_PREFIX anchor a=$a" }
-            onAnchorChanged?.invoke(a)
-        },
+        }
     )
 }
 

@@ -17,10 +17,11 @@ import kotlinx.coroutines.flow.Flow
  * Provides access to article metadata: stream, snapshot refresh and local search.
  * Implementations coordinate local cache and remote synchronization.
  */
-@Suppress("BlankLineBeforeDeclaration", "SpacingBetweenDeclarationsWithComments")
+
 interface ArticleRepository {
     /** Emits the current list of articles (cached + remote refresh errors wrapped in [Result]). */
     fun getArticles(): Flow<Result<List<Article>>>
+
     /** Returns a one-shot snapshot of currently cached articles (no remote call). */
     suspend fun snapshotArticles(): List<Article>
 
@@ -36,11 +37,10 @@ interface ArticleRepository {
     suspend fun searchLocal(query: String, limit: Int = 25, offset: Int = 0): List<Article>
 }
 
-// Removed separate LabelArticleRepository – functionality unified in ArticleRepository via filtering helpers.
-
 /**
  * Manages user bookmarks and folders. Implementations persist state locally and/or remotely.
  */
+
 interface BookmarkRepository {
     /** Stream of all bookmarks with loading/error encapsulated. */
     fun getBookmarks(): Flow<Result<List<Bookmark>>>
@@ -68,6 +68,7 @@ interface BookmarkRepository {
  * Handles user-private annotations and their per-annotation discussion threads.
  * All data is private to the creating user (no shared visibility yet).
  */
+
 interface AnnotationRepository {
     /** Stream of annotations for an article (add/remove/update events cause re-emission). */
     fun getAnnotations(articleId: String): Flow<Result<List<Annotation>>>
@@ -86,12 +87,14 @@ interface AnnotationRepository {
 }
 
 /** Lightweight user identity provider for repositories. Implemented in app layer via AuthFacade. */
+
 interface UserSession {
     /** Returns the current authenticated user id or null if signed out. */
     fun currentUserId(): String?
 }
 
 /** Provides the dynamic navigation / category menu items shown in the app. */
+
 interface MenuRepository {
     /** Stream of current menu items (cached + remote refresh errors wrapped). */
     fun getMenuItems(): Flow<Result<List<MenuItem>>>

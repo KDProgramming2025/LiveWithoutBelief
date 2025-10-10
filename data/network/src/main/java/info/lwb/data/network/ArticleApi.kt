@@ -23,15 +23,6 @@ interface ArticleApi {
      */
     @GET("v1/articles/manifest")
     suspend fun getManifest(): ManifestResponse
-
-    /**
-     * Fetches a single article payload by its server identifier.
-     *
-     * @param id Stable unique server-side article identifier (path segment).
-     * @return [ArticleDto] including core textual content, sections, media references and integrity signature.
-     */
-    @GET("v1/articles/{id}")
-    suspend fun getArticle(@retrofit2.http.Path("id") id: String): ArticleDto
 }
 
 /**
@@ -105,73 +96,4 @@ data class ManifestItemDto(
     val iconUrl: String,
     /** Mandatory full index URL (pre-rendered HTML root) for fast-path reader loading. */
     val indexUrl: String,
-)
-
-/**
- * Represents a logical section of an article (heading, paragraph, media reference, etc.).
- * Either `text` or `html` can supply the body content. `mediaRefId` links to a [MediaDto] when kind denotes media.
- */
-data class SectionDto(
-    /** Display ordering index inside the article. */
-    val order: Int,
-    /** Logical kind (e.g., heading, paragraph, image, code). */
-    val kind: String,
-    /** Optional hierarchical level (e.g., heading level). */
-    val level: Int? = null,
-    /** Plain text content if available (may be null when only HTML exists). */
-    val text: String? = null,
-    /** Raw HTML fragment (sanitized server-side) alternative to plain text. */
-    val html: String? = null,
-    /** Optional reference id pointing to a media element within the article's media list. */
-    val mediaRefId: String? = null,
-)
-
-/**
- * Metadata describing an associated media asset referenced by article sections.
- */
-data class MediaDto(
-    /** Stable media identifier referenced by sections. */
-    val id: String,
-    /** Media type classification (image, audio, video, etc.). */
-    val type: String,
-    /** Original file name if provided. */
-    val filename: String? = null,
-    /** MIME content type (e.g., image/png). */
-    val contentType: String? = null,
-    /** Resolved absolute or relative source URL for the media resource. */
-    val src: String? = null,
-    /** Optional integrity checksum (hash string) for validation/caching. */
-    val checksum: String? = null,
-)
-
-/**
- * Full article payload including textual content, structural sections, and referenced media.
- */
-data class ArticleDto(
-    /** Server stable article id. */
-    val id: String,
-    /** Slug for constructing shareable links. */
-    val slug: String,
-    /** Reader facing primary title. */
-    val title: String,
-    /** Version number used to detect updates. */
-    val version: Int,
-    /** Total word count of the article body content. */
-    val wordCount: Int,
-    /** ISO-8601 last update timestamp. */
-    val updatedAt: String,
-    /** Integrity checksum over canonical textual representation. */
-    val checksum: String,
-    /** Optional cryptographic or server signature for verification. */
-    val signature: String? = null,
-    /** Full article HTML (optional when only plain text is supplied). */
-    val html: String? = null,
-    /** Plain text rendition (optional, may be derived). */
-    val text: String? = null,
-    /** Optional canonical URL of the exported static HTML index for this article. */
-    val indexUrl: String? = null,
-    /** Ordered structural sections. */
-    val sections: List<SectionDto> = emptyList(),
-    /** Associated media assets referenced by sections. */
-    val media: List<MediaDto> = emptyList(),
 )

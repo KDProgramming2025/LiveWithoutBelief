@@ -33,29 +33,7 @@ interface ArticleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertArticle(article: ArticleEntity)
 
-    // ----- Asset management -----
-
-    /** Batch upsert of zero or more media asset references for an article. */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertAssets(assets: List<ArticleAssetEntity>)
-
-    /** Remove obsolete assets for an article keeping only the provided id set. */
-    @Query("DELETE FROM article_assets WHERE articleId = :articleId AND id NOT IN (:keepIds)")
-    suspend fun pruneAssetsForArticle(articleId: String, keepIds: List<String>)
-
-    /** List all asset rows associated with the given article id. */
-    @Query("SELECT * FROM article_assets WHERE articleId = :articleId")
-    suspend fun listAssets(articleId: String): List<ArticleAssetEntity>
-
-    // ----- Eviction helpers -----
-
-    /** Delete asset rows whose owning article id is not in the keep set. */
-    @Query("DELETE FROM article_assets WHERE articleId NOT IN (:keepIds)")
-    suspend fun deleteAssetsNotIn(keepIds: List<String>)
-
-    /** Remove all article asset rows (cache reset). */
-    @Query("DELETE FROM article_assets")
-    suspend fun clearAllAssets()
+    // Asset management removed
 
     /** Delete article rows whose id is not in the keep set (authoritative pruning). */
     @Query("DELETE FROM articles WHERE id NOT IN (:keepIds)")

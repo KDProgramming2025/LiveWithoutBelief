@@ -231,7 +231,6 @@ private fun ConfirmExitDialog(show: Boolean, onDismiss: () -> Unit, onConfirm: (
 
 @Composable
 // Entry point composable
-@Suppress("UnusedParameter")
 internal fun ReaderIndexScreen(
     url: String,
     vm: ReaderSessionViewModel,
@@ -369,7 +368,6 @@ private fun ReaderArticleWeb(
         initialScrollY = scrollInitial,
         onTap = { onTap() },
         onScrollChanged = { onScroll(it) },
-        onAnchorChanged = {},
         onReady = { ready.value = true },
         onWebViewCreated = { w -> webRef.value = w },
         onParagraphLongPress = { id, text -> onParagraph(id, text) },

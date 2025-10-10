@@ -30,6 +30,15 @@ subprojects {
         autoCorrect = false
         parallel = true
     }
+        // Reintroduce a CC-friendly aggregate task name expected by helper scripts
+        tasks.register("detektAll") {
+            group = "verification"
+            description = "Run detekt on all modules (aggregate)"
+            dependsOn(":detekt")
+            subprojects.forEach { sp ->
+                dependsOn(sp.tasks.named("detekt"))
+            }
+        }
     // Attach additional rule set plugins (ktlint wrapper, coroutines). Removed libraries ruleset since project is an app, not a published library.
     dependencies {
         add("detektPlugins", "dev.detekt:detekt-rules-ktlint-wrapper:2.0.0-alpha.0")
@@ -76,14 +85,9 @@ subprojects {
             ktlint().editorConfigOverride(
                 mapOf(
                     // Re-enabled rules after indentation cleanup phase completed.
-                    // Enforce standard function naming (custom composable naming now aligned with guidance).
-                    // Remove previous disables so ktlint applies defaults.
-                    // Note: If some Preview/@Composable functions intentionally use PascalCase beyond spec,
-                    // consider adding @Suppress or updating names individually instead of globally disabling.
                     "indent_size" to "4",
                     // Reinstate line length guard at 120 chars for readability.
                     "max_line_length" to "120",
-                    // Instruct ktlint to skip function-naming checks when annotated with these (Compose style).
                     // This mirrors detekt.yml's FunctionNaming.ignoreAnnotated.
                     "ktlint_function_naming_ignore_when_annotated_with" to "Composable,Preview",
                     // Enforce multiline class signature when parameter count >= 2 for readability & consistency
@@ -155,8 +159,6 @@ detekt {
     parallel = true
 }
 
-// Aggregate detekt task removed to improve configuration-cache compatibility
-
 // Coverage verification: stable overall rule. Layered thresholds TODO via custom XML parsing script.
 kover {
     reports {
@@ -165,8 +167,6 @@ kover {
         }
     }
 }
-
-// detektAll task removed; will be recreated
 
 tasks.register("quality") {
     group = "verification"
@@ -312,9 +312,4 @@ subprojects {
         }
     }
 }
-
-// detektAll removal means we no longer add extra printing logic here
-
-// Ensure every per-module detekt task re-runs (some modules may have been skipped earlier if considered up-to-date)
-// Do not mutate detekt tasks with execution-time prints; keep them configuration-cache friendly
 

@@ -19,9 +19,9 @@ import kotlinx.coroutines.flow.Flow
  * Article metadata persisted locally.
  *
  * Immutable identifying & descriptive fields of an article.
- * Media assets in [ArticleAssetEntity]. Fields [label], [order],
- * [coverUrl], [iconUrl] and [indexUrl] originate from the remote manifest enabling offline list
- * rendering and direct WebView fast-path loading when a pre-rendered HTML export exists.
+ * Fields [label], [order], [coverUrl], [iconUrl] and [indexUrl] originate from the remote manifest
+ * enabling offline list rendering and direct WebView fast-path loading when a pre-rendered
+ * HTML export exists.
  *
  * @property id Stable unique article identifier.
  * @property title Human readable title.
@@ -53,34 +53,6 @@ data class ArticleEntity(
     val iconUrl: String,
     // Pre-rendered index URL for fast reader loading (mandatory in current architecture)
     val indexUrl: String,
-)
-
-// ArticleContentEntity removed: no local HTML/plain text storage.
-
-/**
- * Media / auxiliary assets belonging to an article.
- *
- * Each asset can be lazily fetched or cached (image, audio, video, etc.)
- *
- * @property id Unique asset id (may be derived from URL or server issued)
- * @property articleId FK to [ArticleEntity.id]
- * @property type Media type/category (image, audio, video, etc.)
- * @property uri Local or remote URI string
- * @property checksum Optional checksum for integrity validation
- * @property width Original pixel width (nullable if not applicable)
- * @property height Original pixel height (nullable if not applicable)
- * @property sizeBytes Approximate size for storage/statistics (nullable if unknown)
- */
-@Entity(tableName = "article_assets")
-data class ArticleAssetEntity(
-    @PrimaryKey val id: String,
-    val articleId: String,
-    val type: String,
-    val uri: String,
-    val checksum: String,
-    val width: Int?,
-    val height: Int?,
-    val sizeBytes: Long?,
 )
 
 /**
@@ -208,14 +180,13 @@ interface MenuDao {
 @Database(
     entities = [
         ArticleEntity::class,
-        ArticleAssetEntity::class,
         BookmarkFolderEntity::class,
         BookmarkEntity::class,
         AnnotationEntity::class,
         ThreadMessageEntity::class,
         MenuItemEntity::class,
     ],
-    version = 4,
+    version = 1,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -235,7 +235,7 @@ export class ArticleService {
       coverUrl,
       iconUrl,
       docxPath: docxFinal,
-  indexUrl: this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/` : null,
+      indexUrl: this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/` : null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now
     }

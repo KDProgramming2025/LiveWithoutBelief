@@ -133,7 +133,6 @@ internal fun WebView.setupTouchHandlers(onTap: (() -> Unit)?) {
 internal fun WebView.setupScrollHandler(
     enabled: () -> Boolean,
     onScroll: (Int) -> Unit,
-    @Suppress("UNUSED_PARAMETER") onAnchor: (String) -> Unit,
 ) {
     setOnScrollChangeListener { v, scrollX, scrollY, _, _ ->
         if (scrollX != ZERO) {

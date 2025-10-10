@@ -41,7 +41,6 @@ import kotlin.random.Random
  *
  * Failure Handling:
  *  - Individual article detail fetch failures do not abort the entire refresh—metadata upsert still occurs.
- *  - Eviction failures are swallowed to avoid failing the refresh (logged externally if needed later).
  *  - Retry with backoff (see [retryWithBackoff]) is used for manifest and detail retrieval.
  *
  * Integrity:
@@ -85,7 +84,6 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             Logger.d(TAG) { "refresh:manifest=empty -> clearing all local articles & related tables" }
             withContext(Dispatchers.IO) {
                 // Full reset so UI immediately reflects authoritative empty state
-                articleDao.clearAllAssets()
                 articleDao.clearAllArticles()
             }
             return
@@ -100,8 +98,6 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             // Authoritative pruning: remove any locally cached articles absent from the manifest
             val keepIds = manifest.map { it.id }
             articleDao.deleteArticlesNotIn(keepIds)
-            articleDao.deleteAssetsNotIn(keepIds)
-            applyEvictionPolicy(manifest)
         }
         Logger.d(TAG) { "refresh:applied size=" + manifest.size }
     }
@@ -143,35 +139,7 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             articleDao.upsertArticle(articleEntity)
             return
         }
-        val dto = retryWithBackoff { api.getArticle(item.id) }
-        if (dto == null) {
-            articleDao.upsertArticle(articleEntity)
-            return
-        }
-        // Only metadata persisted (body/plain text no longer stored).
         articleDao.upsertArticle(articleEntity)
-        persistAndPruneMedia(dto, item.id)
-    }
-
-    private suspend fun persistAndPruneMedia(dto: info.lwb.data.network.ArticleDto, articleId: String) {
-        val mediaEntities = dto.media.map { m ->
-            info.lwb.data.repo.db.ArticleAssetEntity(
-                id = m.id,
-                articleId = articleId,
-                type = m.type,
-                uri = m.src ?: (m.filename ?: ""),
-                checksum = m.checksum ?: "",
-                width = null,
-                height = null,
-                sizeBytes = null,
-            )
-        }
-        if (mediaEntities.isNotEmpty()) {
-            articleDao.upsertAssets(mediaEntities)
-            articleDao.pruneAssetsForArticle(articleId, mediaEntities.map { it.id })
-        } else {
-            articleDao.pruneAssetsForArticle(articleId, emptyList())
-        }
     }
 
     override suspend fun searchLocal(query: String, limit: Int, offset: Int): List<Article> {
@@ -197,27 +165,7 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             }
         }
     }
-
-    // Keep the most recent 'KEEP_RECENT_COUNT' articles' assets; evict older ones.
-    private suspend fun applyEvictionPolicy(manifest: List<ManifestItemDto>) {
-        val keepIds = manifest
-            .sortedByDescending { it.updatedAt }
-            .take(KEEP_RECENT_COUNT)
-            .map { it.id }
-        try {
-            articleDao.deleteAssetsNotIn(keepIds)
-        } catch (_: java.sql.SQLException) {
-            // Swallow DB pruning issues; refresh already succeeded.
-        } catch (_: IllegalStateException) {
-            // Swallow DB state issues during eviction.
-        }
-    }
-
-    // (Content persistence removed.)
 }
-
-// Exposed constant at top-level (if referenced elsewhere)
-private const val KEEP_RECENT_COUNT = 4
 
 private fun ArticleEntity.toDomain() = Article(
     id = id,
@@ -232,8 +180,6 @@ private fun ArticleEntity.toDomain() = Article(
     iconUrl = iconUrl,
     indexUrl = indexUrl,
 )
-
-// Note: Manifest images are not persisted in ArticleEntity; domain mapping uses DTO directly.
 
 // Retry with exponential backoff and jitter. Returns null if all attempts fail.
 private suspend fun <T> retryWithBackoff(
