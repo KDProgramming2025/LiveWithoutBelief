@@ -160,16 +160,7 @@ export class ArticleService {
       const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
       html = html.replace(pattern, tag)
     }
-    // Wrap plain <img ...> tags with image template containing question button.
-    // Only wrap standalone <img> elements not already inside a figure.media__item to avoid double-wrapping.
-      html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi, (full: string, pre: string, src: string, post: string): string => {
-      // Skip data URI images and images already in a media__item figure (heuristic: look backwards 150 chars)
-      if (/^data:/i.test(src)) return full
-      // If already inside figure with class media__item, skip
-      // (Simplistic: check if preceding substring contains '<figure class="media__item"' without its closing tag yet)
-        return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
-    })
-    // Replace YouTube placeholders with iframe embeds
+    // Replace YouTube placeholders with iframe embeds (before image wrapping to avoid wrapping thumbnails)
     if (ytResult && ytResult.embeds.length > 0) {
       for (const yt of ytResult.embeds) {
         const id = yt.videoId || yt.videoId || ''
@@ -221,6 +212,27 @@ export class ArticleService {
         return `<h${level}${attrs}>${updated}</h${level}>`
       })
     }
+    // Now wrap plain <img ...> tags with image template containing question button.
+    // Only wrap standalone <img> elements not already inside a figure.media__item to avoid double-wrapping
+    // and skip data URIs and images within YouTube embed blocks.
+    html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+      (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+        if (/^data:/i.test(src)) return full
+        // Skip if inside an existing media__item figure (look back a bit for an opening figure without a closing one)
+        const lookBehind = whole.lastIndexOf('<figure', offset)
+        if (lookBehind !== -1) {
+          const closeAfter = whole.indexOf('</figure>', lookBehind)
+          if (closeAfter === -1 || closeAfter > offset) {
+            // inside an open figure; skip if it's a media__item
+            const openTag = whole.slice(lookBehind, Math.min(lookBehind + 200, whole.length))
+            if (/class\s*=\s*"[^"]*\bmedia__item\b/i.test(openTag)) {
+              return full
+            }
+          }
+        }
+        return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+      }
+    )
     // Append extracted media players (if any)
     let bodyHtml = html
     const remaining = extractedMedia.filter(x => !mediaResult.inline.some(i => i.filename === x.filename))
@@ -424,9 +436,10 @@ export class ArticleService {
       if (allPlaceholders.length > 0) {
         html = removeOleIconBlocksBeforePlaceholders(html, allPlaceholders)
       }
-      const [videoItemTpl, audioItemTpl, ytEmbedTpl, ytLinkTpl, mediaSectionTpl] = await Promise.all([
+      const [videoItemTpl, audioItemTpl, imageItemTpl, ytEmbedTpl, ytLinkTpl, mediaSectionTpl] = await Promise.all([
         this.templateResolver('articles', 'media-item-video.html'),
         this.templateResolver('articles', 'media-item-audio.html'),
+        this.templateResolver('articles', 'media-item-image.html'),
         this.templateResolver('articles', 'youtube-embed.html'),
         this.templateResolver('articles', 'youtube-link.html'),
         this.templateResolver('articles', 'media-section.html'),
@@ -445,6 +458,23 @@ export class ArticleService {
           html = html.replace(pattern, iframe)
         }
       }
+      // After YouTube replacement, wrap standalone images with question button (avoid wrapping when already inside media__item)
+      html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+        (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+          if (/^data:/i.test(src)) return full
+          const lookBehind = whole.lastIndexOf('<figure', offset)
+          if (lookBehind !== -1) {
+            const closeAfter = whole.indexOf('</figure>', lookBehind)
+            if (closeAfter === -1 || closeAfter > offset) {
+              const openTag = whole.slice(lookBehind, Math.min(lookBehind + 200, whole.length))
+              if (/class\s*=\s*"[^"]*\bmedia__item\b/i.test(openTag)) {
+                return full
+              }
+            }
+          }
+          return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+        }
+      )
       const remaining = mediaResult.items.filter(x => !mediaResult.inline.some(i => i.filename === x.filename))
       if (remaining.length > 0) {
         const itemsHtml = remaining.map((m: ExtractedMedia) => {
