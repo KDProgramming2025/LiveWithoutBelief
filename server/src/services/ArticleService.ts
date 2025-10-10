@@ -140,15 +140,25 @@ export class ArticleService {
       const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
       html = html.replace(pattern, tag)
     }
-    // Wrap plain <img ...> tags with image template containing question button.
-    // Only wrap standalone <img> elements not already inside a figure.media__item to avoid double-wrapping.
-    html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi, (full: string, pre: string, src: string, post: string): string => {
-      // Skip data URI images and images already in a media__item figure (heuristic: look backwards 150 chars)
-      if (/^data:/i.test(src)) return full
-      // If already inside figure with class media__item, skip
-      // (Simplistic: check if preceding substring contains '<figure class="media__item"' without its closing tag yet)
-      return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
-    })
+    // Wrap plain <img ...> tags with the image template (adds the question button),
+    // but avoid double-wrapping if the image already sits inside our media figure wrapper
+    // produced by templates (i.e., <figure class="media__item ..."> ... </figure>).
+    html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+      (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+        // Skip data URI images
+        if (/^data:/i.test(src)) return full
+        // Heuristic double-wrap guard: if the matched <img> occurs inside a figure.media__item,
+        // leave it as-is. We'll look backwards/forwards within a small window for surrounding figure tags.
+        const lookBehindStart = Math.max(0, offset - 800)
+        const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
+        const before = whole.slice(lookBehindStart, offset)
+        const after = whole.slice(offset + full.length, lookAheadEnd)
+        const figureOpenIdx = before.lastIndexOf('<figure')
+        const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class="[^"]*\bmedia__item\b[^"]*"/i.test(before.slice(figureOpenIdx))
+        const figureCloseAfter = /<\/figure>/i.test(after)
+        if (hasMediaClass && figureCloseAfter) return full
+        return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+      })
     // Replace YouTube placeholders with iframe embeds
     if (ytResult && ytResult.embeds.length > 0) {
       for (const yt of ytResult.embeds) {
@@ -378,9 +388,10 @@ export class ArticleService {
       if (allPlaceholders.length > 0) {
         html = removeOleIconBlocksBeforePlaceholders(html, allPlaceholders)
       }
-      const [videoItemTpl, audioItemTpl, ytEmbedTpl, ytLinkTpl] = await Promise.all([
+      const [videoItemTpl, audioItemTpl, imageItemTpl, ytEmbedTpl, ytLinkTpl] = await Promise.all([
         this.templateResolver('articles', 'media-item-video.html'),
         this.templateResolver('articles', 'media-item-audio.html'),
+        this.templateResolver('articles', 'media-item-image.html'),
         this.templateResolver('articles', 'youtube-embed.html'),
         this.templateResolver('articles', 'youtube-link.html'),
       ])
@@ -390,6 +401,20 @@ export class ArticleService {
         const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
         html = html.replace(pattern, tag)
       }
+      // Wrap plain <img> tags with the image template; avoid double-wrapping if already inside our media figure
+      html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+        (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+          if (/^data:/i.test(src)) return full
+          const lookBehindStart = Math.max(0, offset - 800)
+          const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
+          const before = whole.slice(lookBehindStart, offset)
+          const after = whole.slice(offset + full.length, lookAheadEnd)
+          const figureOpenIdx = before.lastIndexOf('<figure')
+          const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class="[^"]*\bmedia__item\b[^"]*"/i.test(before.slice(figureOpenIdx))
+          const figureCloseAfter = /<\/figure>/i.test(after)
+          if (hasMediaClass && figureCloseAfter) return full
+          return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+        })
       if (ytResult && ytResult.embeds.length > 0) {
         for (const yt of ytResult.embeds) {
           const id = yt.videoId || yt.videoId || ''
