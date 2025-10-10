@@ -104,11 +104,30 @@ export class ArticleService {
 
     // Convert docx → HTML using mammoth
     const mammothInput: any = workingBuffer ? { buffer: workingBuffer } : { path: docxFinal }
+    // Ensure images are extracted to ./media and referenced via relative paths so we can wrap them
+    let imageSeq = 0
     const { value: initialHtml } = await mammoth.convertToHtml(mammothInput, {
       styleMap: [
         "p[style-name='Title'] => h1:fresh",
         "p[style-name='Subtitle'] => h2:fresh",
-      ]
+      ],
+      // Store images under articleDir/media and rewrite <img src> accordingly
+      convertImage: (mammoth as any).images.imgElement(async (image: any) => {
+        try {
+          const ct = String(image.contentType || '').toLowerCase()
+          const ext = ct.endsWith('png') ? '.png' : (ct.endsWith('jpeg') || ct.endsWith('jpg')) ? '.jpg' : ct.endsWith('gif') ? '.gif' : '.bin'
+          const filename = `image-${imageSeq++}${ext}`
+          const b64 = await image.read('base64')
+          const buf = Buffer.from(b64, 'base64')
+          await fs.writeFile(path.join(articleDir, 'media', filename), buf)
+          return { src: `./media/${filename}` }
+        } catch {
+          // Fallback to inline data URI if anything goes wrong
+          const b64 = await image.read('base64')
+          const ct2 = String(image.contentType || 'application/octet-stream')
+          return { src: `data:${ct2};base64,${b64}` }
+        }
+      }),
     })
     // Clean up: remove any OLE icon images that Mammoth rendered (usually EMF/WMF data URLs)
     // and remove icon-only blocks that appear immediately before our placeholders. Then
@@ -375,11 +394,28 @@ export class ArticleService {
       const ytResult = await injectYouTubePlaceholders(workingBuffer)
       if (ytResult.modifiedBuffer) workingBuffer = ytResult.modifiedBuffer
       const mammothInput: any = workingBuffer ? { buffer: workingBuffer } : { path: docxFinal }
+      // Extract inline images to media dir during update as well
+      let imageSeq = 0
       const { value: initialHtml } = await mammoth.convertToHtml(mammothInput, {
         styleMap: [
           "p[style-name='Title'] => h1:fresh",
           "p[style-name='Subtitle'] => h2:fresh",
-        ]
+        ],
+        convertImage: (mammoth as any).images.imgElement(async (image: any) => {
+          try {
+            const ct = String(image.contentType || '').toLowerCase()
+            const ext = ct.endsWith('png') ? '.png' : (ct.endsWith('jpeg') || ct.endsWith('jpg')) ? '.jpg' : ct.endsWith('gif') ? '.gif' : '.bin'
+            const filename = `image-${imageSeq++}${ext}`
+            const b64 = await image.read('base64')
+            const buf = Buffer.from(b64, 'base64')
+            await fs.writeFile(path.join(articleDir, 'media', filename), buf)
+            return { src: `./media/${filename}` }
+          } catch {
+            const b64 = await image.read('base64')
+            const ct2 = String(image.contentType || 'application/octet-stream')
+            return { src: `data:${ct2};base64,${b64}` }
+          }
+        }),
       })
       let html = removeOleIconDataImages(initialHtml)
       const mediaPlaceholders = mediaResult.inline.map(i => i.placeholder)

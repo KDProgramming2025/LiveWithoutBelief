@@ -1,3 +1,1 @@
-
-
-
+cd /var/www/LWB/server && git reset --hard && git clean -fd && git pull --ff-only && /opt/lwb-node/current/bin/npm ci && /opt/lwb-node/current/bin/npm run build && systemctl restart lwb-server && systemctl --no-pager status lwb-server | head -n 30
