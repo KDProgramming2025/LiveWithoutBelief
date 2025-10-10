@@ -14,14 +14,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import info.lwb.core.common.log.Logger
 import info.lwb.feature.reader.ui.internal.ArticleClient
 import info.lwb.feature.reader.ui.internal.WebViewAssetScripts
-import info.lwb.feature.reader.ui.internal.buildInlineHtml
 import info.lwb.feature.reader.ui.internal.configureBaseSettings
 import info.lwb.feature.reader.ui.internal.numArg
 import info.lwb.feature.reader.ui.internal.safeLoadAsset
@@ -31,37 +30,28 @@ import info.lwb.feature.reader.ui.internal.setupTouchHandlers
 // region logging
 private const val SCROLL_PREFIX = "Scroll:"
 private const val LOG_TAG = "ReaderWeb"
+// Inline HTML path eliminated; remote URL only.
+
 private const val ZERO_SCROLL = 0
-private const val INLINE_PREFIX = "inline:"
-private const val NO_HTML_FALLBACK = "nohtml"
-private const val RADIX_HEX = 16
-private const val UNKNOWN_URL_LENGTH = -1
 // endregion
 
 /**
- * Reader WebView composable for displaying either a remote URL or inline HTML content produced from a
- * server-converted DOCX (HTML/CSS/JS) representation. It injects theme & typography variables at runtime
- * while avoiding any inline JavaScript/CSS source code inside Kotlin.
- * (Only function invocations are built.)
- *
+ * Reader WebView composable (remote-only).
  * Responsibilities:
- *  - Loads either [url] or provided [htmlBody] (with optional [injectedCss]).
+ *  - Loads remote [url].
  *  - Applies reader configuration: [fontScale], [lineHeight], [backgroundColor].
- *  - Restores scroll position by numeric [initialScrollY] only (anchor logic removed).
- *  - Emits scroll changes and current anchor via [onScrollChanged] / [onAnchorChanged].
- *  - Detects taps and invokes [onTap].
+ *  - Restores numeric scroll via [initialScrollY]; anchor logic removed.
+ *  - Emits scroll changes and anchor callbacks.
+ *  - Detects taps.
  */
 @Composable
 internal fun ArticleWebView(
-    htmlBody: String? = null,
-    baseUrl: String? = null,
-    url: String? = null,
+    url: String,
     injectedCss: String? = null,
     fontScale: Float? = null,
     lineHeight: Float? = null,
     backgroundColor: String? = null,
     initialScrollY: Int? = null,
-    modifier: Modifier = Modifier,
     onTap: (() -> Unit)? = null,
     onScrollChanged: ((scrollY: Int) -> Unit)? = null,
     onAnchorChanged: ((anchor: String) -> Unit)? = null,
@@ -70,15 +60,12 @@ internal fun ArticleWebView(
     onParagraphLongPress: ((id: String, text: String) -> Unit)? = null,
 ) {
     ArticleWebViewContent(
-        htmlBody = htmlBody,
-        baseUrl = baseUrl,
         url = url,
         injectedCss = injectedCss,
         fontScale = fontScale,
         lineHeight = lineHeight,
         backgroundColor = backgroundColor,
         initialScrollY = initialScrollY,
-        modifier = modifier,
         onTap = onTap,
         onScrollChanged = onScrollChanged,
         onAnchorChanged = onAnchorChanged,
@@ -90,15 +77,12 @@ internal fun ArticleWebView(
 
 @Composable
 private fun ArticleWebViewContent(
-    htmlBody: String?,
-    baseUrl: String?,
-    url: String?,
+    url: String,
     injectedCss: String?,
     fontScale: Float?,
     lineHeight: Float?,
     backgroundColor: String?,
     initialScrollY: Int?,
-    modifier: Modifier,
     onTap: (() -> Unit)?,
     onScrollChanged: ((scrollY: Int) -> Unit)?,
     onAnchorChanged: ((anchor: String) -> Unit)?,
@@ -106,10 +90,7 @@ private fun ArticleWebViewContent(
     onWebViewCreated: ((WebView) -> Unit)?,
     onParagraphLongPress: ((id: String, text: String) -> Unit)?,
 ) {
-    val state = rememberArticleWebState(
-        url = url,
-        htmlBody = htmlBody,
-    )
+    val state = rememberArticleWebState(url = url)
     // Fire onReady exactly once after first ready transition
     androidx.compose.runtime.LaunchedEffect(state.ready.value) {
         if (state.ready.value) {
@@ -117,10 +98,7 @@ private fun ArticleWebViewContent(
         }
     }
     articleWebContentBody(
-        modifier = modifier,
         state = state,
-        htmlBody = htmlBody,
-        baseUrl = baseUrl,
         url = url,
         injectedCss = injectedCss,
         fontScale = fontScale,
@@ -137,11 +115,8 @@ private fun ArticleWebViewContent(
 
 @Composable
 private fun articleWebContentBody(
-    modifier: Modifier,
     state: ArticleWebState,
-    htmlBody: String?,
-    baseUrl: String?,
-    url: String?,
+    url: String,
     injectedCss: String?,
     fontScale: Float?,
     lineHeight: Float?,
@@ -157,12 +132,7 @@ private fun articleWebContentBody(
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
     val context = LocalContext.current.applicationContext
     // Derive a stable key for scroll restoration: prefer remote URL, else a hashed inline body identity.
-    val scrollKey = remember(url, htmlBody) {
-        url ?: run {
-            val bodyHash = htmlBody?.hashCode()?.toUInt()?.toString(RADIX_HEX) ?: NO_HTML_FALLBACK
-            INLINE_PREFIX + bodyHash
-        }
-    }
+    val scrollKey = remember(url) { url }
     val providedInit = initialScrollY ?: ZERO_SCROLL
     // Only use stored scroll if caller didn't explicitly provide a non-zero initialScrollY.
     val storedScroll = remember(scrollKey, providedInit) {
@@ -181,13 +151,10 @@ private fun articleWebContentBody(
     Logger.d(LOG_TAG) {
         "$SCROLL_PREFIX compose:init key=$shortKey saved=$storedScroll provided=$providedInit effective=$effectiveInit"
     }
-    val urlDescriptor = url ?: htmlBody?.length?.toString() ?: UNKNOWN_URL_LENGTH.toString()
-    Logger.d(LOG_TAG) { "$SCROLL_PREFIX compose:ArticleWebContentBody enter url=$urlDescriptor" }
-    Box(modifier = modifier) {
+    Logger.d(LOG_TAG) { "$SCROLL_PREFIX compose:ArticleWebContentBody enter url=$url" }
+    Box(modifier = Modifier.fillMaxSize()) {
         ArticleWebAndroidView(
             state = state,
-            htmlBody = htmlBody,
-            baseUrl = baseUrl,
             url = url,
             injectedCss = injectedCss,
             fontScale = fontScale,
@@ -224,8 +191,6 @@ internal class ArticleWebState(
 @Composable
 private fun ArticleWebAndroidView(
     state: ArticleWebState,
-    htmlBody: String?,
-    baseUrl: String?,
     url: String?,
     injectedCss: String?,
     fontScale: Float?,
@@ -244,8 +209,6 @@ private fun ArticleWebAndroidView(
             createArticleWebView(
                 ctx = ctx,
                 state = state,
-                htmlBody = htmlBody,
-                baseUrl = baseUrl,
                 url = url,
                 injectedCss = injectedCss,
                 fontScale = fontScale,
@@ -260,17 +223,20 @@ private fun ArticleWebAndroidView(
             )
         },
         update = { webView ->
-            applyArticleWebViewUpdates(
-                webView = webView,
-                state = state,
-                url = url,
-                htmlBody = htmlBody,
-                injectedCss = injectedCss,
-                baseUrl = baseUrl,
-                fontScale = fontScale,
-                lineHeight = lineHeight,
-                backgroundColor = backgroundColor,
-            )
+            if (!url.isNullOrBlank()) {
+                applyRemoteArticleContent(
+                    webView = webView,
+                    url = url,
+                    injectedCss = injectedCss,
+                    fontScale = fontScale,
+                    lineHeight = lineHeight,
+                    backgroundColor = backgroundColor,
+                    setLastValues = { fs, lh ->
+                        state.lastFontScale.value = fs
+                        state.lastLineHeight.value = lh
+                    },
+                )
+            }
         },
     )
 }
@@ -278,8 +244,6 @@ private fun ArticleWebAndroidView(
 private fun createArticleWebView(
     ctx: android.content.Context,
     state: ArticleWebState,
-    htmlBody: String?,
-    baseUrl: String?,
     url: String?,
     injectedCss: String?,
     fontScale: Float?,
@@ -294,9 +258,7 @@ private fun createArticleWebView(
 ): WebView = createConfiguredWebView(
     ctx = ctx,
     url = url,
-    htmlBody = htmlBody,
     injectedCss = injectedCss,
-    baseUrl = baseUrl,
     backgroundColor = backgroundColor,
     fontScale = fontScale,
     lineHeight = lineHeight,
@@ -307,87 +269,18 @@ private fun createArticleWebView(
     onWebViewCreated = onWebViewCreated,
     onParagraphLongPress = onParagraphLongPress,
     readyState = { state.ready.value to state.firstLoad.value },
-    setReady = { isReady, isFirst ->
-        state.ready.value = isReady
-        state.firstLoad.value = isFirst
+    setReady = { readyFlag, firstLoadFlag ->
+        state.ready.value = readyFlag
+        state.firstLoad.value = firstLoadFlag
     },
     setLastValues = { fs, lh ->
         state.lastFontScale.value = fs
         state.lastLineHeight.value = lh
     },
-    startRestore = { target ->
-        if (target > 0) {
-            state.restoreActive.value = true
-        }
-    },
-    finishRestore = {
-        state.restoreActive.value = false
-    },
+    startRestore = { _ -> state.restoreActive.value = true },
+    finishRestore = { state.restoreActive.value = false },
     restoreActiveProvider = { state.restoreActive.value },
 )
-
-private fun applyArticleWebViewUpdates(
-    webView: WebView,
-    state: ArticleWebState,
-    url: String?,
-    htmlBody: String?,
-    injectedCss: String?,
-    baseUrl: String?,
-    fontScale: Float?,
-    lineHeight: Float?,
-    backgroundColor: String?,
-) = applyArticleContent(
-    webView = webView,
-    url = url,
-    htmlBody = htmlBody,
-    injectedCss = injectedCss,
-    baseUrl = baseUrl,
-    fontScale = fontScale,
-    lineHeight = lineHeight,
-    backgroundColor = backgroundColor,
-    setLastValues = { fs, lh ->
-        state.lastFontScale.value = fs
-        state.lastLineHeight.value = lh
-    },
-)
-// The large helpers & client implementation were extracted into separate internal files to
-// reduce indentation depth and improve readability / maintainability.
-
-private fun applyArticleContent(
-    webView: WebView,
-    url: String?,
-    htmlBody: String?,
-    injectedCss: String?,
-    baseUrl: String?,
-    fontScale: Float?,
-    lineHeight: Float?,
-    backgroundColor: String?,
-    setLastValues: (Float?, Float?) -> Unit,
-) {
-    if (url.isNullOrBlank()) {
-        loadInlineArticle(
-            webView = webView,
-            htmlBody = htmlBody,
-            injectedCss = injectedCss,
-            baseUrl = baseUrl,
-        )
-        return
-    }
-    applyRemoteArticleContent(
-        webView = webView,
-        url = url,
-        injectedCss = injectedCss,
-        fontScale = fontScale,
-        lineHeight = lineHeight,
-        backgroundColor = backgroundColor,
-        setLastValues = setLastValues,
-    )
-}
-
-private fun loadInlineArticle(webView: WebView, htmlBody: String?, injectedCss: String?, baseUrl: String?) {
-    val finalHtml = buildInlineHtml(body = htmlBody, css = injectedCss)
-    webView.loadDataWithBaseURL(baseUrl, finalHtml, "text/html", "utf-8", null)
-}
 
 private fun applyRemoteArticleContent(
     webView: WebView,
@@ -488,9 +381,7 @@ private fun reloadIfDifferentUrl(webView: WebView, url: String) {
 private fun createConfiguredWebView(
     ctx: android.content.Context,
     url: String?,
-    htmlBody: String?,
     injectedCss: String?,
-    baseUrl: String?,
     backgroundColor: String?,
     fontScale: Float?,
     lineHeight: Float?,
@@ -523,11 +414,9 @@ private fun createConfiguredWebView(
         onAnchorChanged = onAnchorChanged,
     )
     // client
-    val isInlineContent = url.isNullOrBlank() && !htmlBody.isNullOrBlank()
     val assets = loadAssetScripts(webView)
     installArticleClient(
         webView = webView,
-        isInlineContent = isInlineContent,
         injectedCss = injectedCss,
         initialScrollY = initialScrollY ?: 0,
         fontScale = fontScale,
@@ -543,13 +432,11 @@ private fun createConfiguredWebView(
     )
     // content load
     onWebViewCreated?.invoke(webView)
-    loadInitialContent(
-        webView = webView,
-        url = url,
-        htmlBody = htmlBody,
-        injectedCss = injectedCss,
-        baseUrl = baseUrl,
-    )
+    if (!url.isNullOrBlank()) {
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX load remote url=$url" }
+        (webView.tag as? WebViewMeta)?.lastRequestedUrl = url
+        webView.loadUrl(url)
+    }
     return webView
 }
 
@@ -600,7 +487,6 @@ private fun loadAssetScripts(webView: WebView): WebViewAssetScripts = WebViewAss
 
 private fun installArticleClient(
     webView: WebView,
-    isInlineContent: Boolean,
     injectedCss: String?,
     initialScrollY: Int,
     fontScale: Float?,
@@ -622,7 +508,6 @@ private fun installArticleClient(
         }
     }
     webView.webViewClient = ArticleClient(
-        isInlineContent = isInlineContent,
         cssRef = arrayOf(
             (webView.tag as? WebViewMeta)?.injectedCssRef,
             (webView.tag as? WebViewMeta)?.lastRequestedUrl,
@@ -658,20 +543,4 @@ private fun installArticleClient(
     )
 }
 
-private fun loadInitialContent(
-    webView: WebView,
-    url: String?,
-    htmlBody: String?,
-    injectedCss: String?,
-    baseUrl: String?,
-) {
-    if (!url.isNullOrBlank()) {
-        Logger.d(LOG_TAG) { "$SCROLL_PREFIX load remote url=$url" }
-        (webView.tag as? WebViewMeta)?.lastRequestedUrl = url
-        webView.loadUrl(url)
-    } else {
-        val finalHtml = buildInlineHtml(body = htmlBody, css = injectedCss)
-        Logger.d(LOG_TAG) { "$SCROLL_PREFIX load inline len=${finalHtml.length}" }
-        webView.loadDataWithBaseURL(baseUrl, finalHtml, "text/html", "utf-8", null)
-    }
-}
+// loadInitialContent removed (inline path eliminated).

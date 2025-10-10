@@ -8,7 +8,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ViewModelComponent
 import info.lwb.core.domain.ArticleRepository
-import info.lwb.core.domain.GetArticleContentUseCase
 import info.lwb.core.domain.GetArticlesByLabelUseCase
 import info.lwb.core.domain.GetArticlesUseCase
 import info.lwb.core.domain.RefreshArticlesUseCase
@@ -30,14 +29,6 @@ object ArticlesModule {
     fun provideGetArticlesByLabelUseCase(
         repo: ArticleRepository,
     ): GetArticlesByLabelUseCase = GetArticlesByLabelUseCase(
-        articleRepository = repo,
-    )
-
-    /** Provides a use case fetching article content (HTML + plain text body). */
-    @Provides
-    fun provideGetArticleContentUseCase(
-        repo: ArticleRepository,
-    ): GetArticleContentUseCase = GetArticleContentUseCase(
         articleRepository = repo,
     )
 

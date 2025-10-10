@@ -8,10 +8,8 @@ import info.lwb.core.common.log.Logger
 import info.lwb.core.common.Result
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.model.Article
-import info.lwb.core.model.ArticleContent
 import info.lwb.data.network.ArticleApi
 import info.lwb.data.network.ManifestItemDto
-import info.lwb.data.repo.db.ArticleContentEntity
 import info.lwb.data.repo.db.ArticleDao
 import info.lwb.data.repo.db.ArticleEntity
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +22,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 // removed unused onStart/catch imports after flow refactor
 import kotlinx.coroutines.withContext
-import java.security.MessageDigest
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -77,28 +74,6 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         articleDao.listArticles().map { it.toDomain() }
     }
 
-    override fun getArticleContent(articleId: String): Flow<Result<ArticleContent>> = flow {
-        emit(Result.Loading)
-        try {
-            var contentEntity = articleDao.getArticleContent(articleId)
-            if (contentEntity == null) {
-                contentEntity = fetchAndPersistContent(articleId, api, articleDao)
-            }
-            val domain = contentEntity?.toDomain()
-            if (domain != null) {
-                emit(Result.Success(domain))
-            } else {
-                emit(Result.Error(IllegalStateException("Content not found")))
-            }
-        } catch (io: java.io.IOException) {
-            emit(Result.Error(io))
-        } catch (sql: java.sql.SQLException) {
-            emit(Result.Error(sql))
-        } catch (ise: IllegalStateException) {
-            emit(Result.Error(ise))
-        }
-    }
-
     override suspend fun refreshArticles() {
         Logger.d(TAG) { "refresh:start" }
         val manifest = fetchManifestInternal()
@@ -107,7 +82,12 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             return
         }
         if (manifest.isEmpty()) {
-            Logger.d(TAG) { "refresh:manifest=empty" }
+            Logger.d(TAG) { "refresh:manifest=empty -> clearing all local articles & related tables" }
+            withContext(Dispatchers.IO) {
+                // Full reset so UI immediately reflects authoritative empty state
+                articleDao.clearAllAssets()
+                articleDao.clearAllArticles()
+            }
             return
         }
         Logger.d(TAG) { "refresh:manifest.size=" + manifest.size }
@@ -117,6 +97,10 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
                 manifest = manifest,
                 localById = localById,
             )
+            // Authoritative pruning: remove any locally cached articles absent from the manifest
+            val keepIds = manifest.map { it.id }
+            articleDao.deleteArticlesNotIn(keepIds)
+            articleDao.deleteAssetsNotIn(keepIds)
             applyEvictionPolicy(manifest)
         }
         Logger.d(TAG) { "refresh:applied size=" + manifest.size }
@@ -137,11 +121,11 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         coroutineScope {
             manifest
                 .mapIndexed { index, item ->
-                    async { upsertArticleAndMaybeContent(item, localById[item.id], index) }
+                    async { upsertArticle(item, localById[item.id], index) }
                 }.awaitAll()
         }
 
-    private suspend fun upsertArticleAndMaybeContent(item: ManifestItemDto, local: ArticleEntity?, orderIndex: Int) {
+    private suspend fun upsertArticle(item: ManifestItemDto, local: ArticleEntity?, orderIndex: Int) {
         val articleEntity = ArticleEntity(
             id = item.id,
             title = item.title,
@@ -155,8 +139,7 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             iconUrl = item.iconUrl,
             indexUrl = item.indexUrl,
         )
-        val hasLocalContent = articleDao.getArticleContent(item.id) != null
-        if (local?.version == item.version && hasLocalContent) {
+        if (local?.version == item.version) {
             articleDao.upsertArticle(articleEntity)
             return
         }
@@ -165,27 +148,8 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
             articleDao.upsertArticle(articleEntity)
             return
         }
-        val plain = dto.text ?: ""
-        val html = dto.html ?: ""
-        val textHash = sha256(plain)
-        val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
-        if (!checksumOk) {
-            articleDao.upsertArticle(articleEntity)
-            return
-        }
-        val existing = articleDao.getArticleContent(item.id)
-        if (existing == null || existing.textHash != textHash) {
-            val contentEntity = ArticleContentEntity(
-                articleId = item.id,
-                htmlBody = html,
-                plainText = plain,
-                textHash = textHash,
-                indexUrl = dto.indexUrl,
-            )
-            articleDao.upsertArticleWithContent(articleEntity, contentEntity)
-        } else {
-            articleDao.upsertArticle(articleEntity)
-        }
+        // Only metadata persisted (body/plain text no longer stored).
+        articleDao.upsertArticle(articleEntity)
         persistAndPruneMedia(dto, item.id)
     }
 
@@ -234,14 +198,13 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         }
     }
 
-    // Keep the most recent 'KEEP_RECENT_COUNT' articles' content/assets; evict older ones.
+    // Keep the most recent 'KEEP_RECENT_COUNT' articles' assets; evict older ones.
     private suspend fun applyEvictionPolicy(manifest: List<ManifestItemDto>) {
         val keepIds = manifest
             .sortedByDescending { it.updatedAt }
             .take(KEEP_RECENT_COUNT)
             .map { it.id }
         try {
-            articleDao.deleteContentsNotIn(keepIds)
             articleDao.deleteAssetsNotIn(keepIds)
         } catch (_: java.sql.SQLException) {
             // Swallow DB pruning issues; refresh already succeeded.
@@ -250,51 +213,7 @@ class ArticleRepositoryImpl(private val api: ArticleApi, private val articleDao:
         }
     }
 
-    private suspend fun fetchAndPersistContent(
-        articleId: String,
-        api: ArticleApi,
-        articleDao: ArticleDao,
-    ): ArticleContentEntity? {
-        Logger.d(TAG) { "fetch id=$articleId" }
-        val dto = retryWithBackoff { api.getArticle(articleId) }
-        if (dto == null) {
-            Logger.d(TAG) { "fetchNull id=$articleId" }
-            return null
-        }
-        val plain = dto.text ?: ""
-        val html = dto.html ?: ""
-        val textHash = sha256(plain)
-        val checksumOk = dto.checksum.isBlank() || dto.checksum == textHash
-        if (!checksumOk) {
-            Logger.d(TAG) { "checksumFail id=$articleId" }
-            return null
-        }
-        // Attempt to preserve existing metadata for artwork / ordering if we only fetched content.
-        val existing = articleDao.getArticle(articleId)
-        val articleEntity = ArticleEntity(
-            id = dto.id,
-            title = dto.title,
-            slug = dto.slug,
-            version = dto.version,
-            updatedAt = dto.updatedAt,
-            wordCount = dto.wordCount,
-            label = existing?.label,
-            order = existing?.order ?: Int.MAX_VALUE,
-            coverUrl = existing?.coverUrl ?: "",
-            iconUrl = existing?.iconUrl ?: "",
-            indexUrl = existing?.indexUrl ?: (dto.indexUrl ?: ""),
-        )
-        val newContent = ArticleContentEntity(
-            articleId = dto.id,
-            htmlBody = html,
-            plainText = plain,
-            textHash = textHash,
-            indexUrl = dto.indexUrl,
-        )
-        articleDao.upsertArticleWithContent(articleEntity, newContent)
-        Logger.d(TAG) { "persisted id=" + articleId + " hasIndexUrl=" + !newContent.indexUrl.isNullOrBlank() }
-        return newContent
-    }
+    // (Content persistence removed.)
 }
 
 // Exposed constant at top-level (if referenced elsewhere)
@@ -314,14 +233,7 @@ private fun ArticleEntity.toDomain() = Article(
     indexUrl = indexUrl,
 )
 
-// Note: Manifest images are not persisted in ArticleEntity; domain mapping from repo-by-label uses DTO directly.
-private fun ArticleContentEntity.toDomain() = ArticleContent(articleId, htmlBody, plainText, textHash, indexUrl)
-
-private fun sha256(input: String): String {
-    val md = MessageDigest.getInstance("SHA-256")
-    val bytes = md.digest(input.toByteArray(Charsets.UTF_8))
-    return bytes.joinToString(separator = "") { b -> "%02x".format(b) }
-}
+// Note: Manifest images are not persisted in ArticleEntity; domain mapping uses DTO directly.
 
 // Retry with exponential backoff and jitter. Returns null if all attempts fail.
 private suspend fun <T> retryWithBackoff(

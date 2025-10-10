@@ -30,7 +30,6 @@ internal class ReaderSessionViewModel @Inject constructor(private val settingsRe
     }
 
     private val articleIdState = MutableStateFlow("")
-    private val htmlBodyState = MutableStateFlow("")
     private var loadedArticleId: String? = null
 
     val fontScale = settingsRepository.fontScale.stateIn(
@@ -68,12 +67,11 @@ internal class ReaderSessionViewModel @Inject constructor(private val settingsRe
         ReaderUiState.EMPTY,
     )
 
-    fun loadArticle(articleId: String, htmlBody: String) {
+    fun loadArticle(articleId: String) {
         if (loadedArticleId == articleId) {
             return
         }
         articleIdState.value = articleId
-        htmlBodyState.value = htmlBody
         loadedArticleId = articleId
     }
 

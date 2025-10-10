@@ -15,7 +15,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
-import info.lwb.feature.reader.ui.mergeHtmlAndCss
 import info.lwb.core.common.log.Logger
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -55,12 +54,6 @@ private val RESTORE_DELAYS_MS = longArrayOf(
     RESTORE_DELAY_STEP_6,
 )
 // endregion
-
-internal fun buildInlineHtml(body: String?, css: String?): String = if (!body.isNullOrBlank() && !css.isNullOrBlank()) {
-    mergeHtmlAndCss(body, css)
-} else {
-    body.orEmpty()
-}
 
 internal fun numArg(v: Float?): String = if (v == null) {
     "undefined"
@@ -176,7 +169,6 @@ internal fun WebView.postRestore(target: Int, onDone: () -> Unit) {
 }
 
 internal class ArticleClient(
-    private val isInlineContent: Boolean,
     private val cssRef: Array<String?>,
     private val injectedCss: String?,
     private val initialScrollY: Int,
@@ -204,12 +196,12 @@ internal class ArticleClient(
 
     @Volatile private var lastAppliedBg: String? = null
 
-    private fun performInitialInjectionIfNeeded(isInline: Boolean, css: String?) {
+    private fun performInitialInjectionIfNeeded(css: String?) {
         if (injectedOnceForLoad) {
             return
         }
-        Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:start inline=$isInline cssPresent=${!css.isNullOrBlank()}" }
-        if (!isInline) {
+        Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:start cssPresent=${!css.isNullOrBlank()}" }
+        run {
             evaluate(assets.domHelpersJs)
             evaluate("lwbEnsureLightMeta()")
             evaluate("lwbEnsureThemeLink()")
@@ -257,13 +249,9 @@ internal class ArticleClient(
     }
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-        val raw = request?.url?.toString()
-        if (raw == null) {
-            return false
-        }
-        val allowExternal = !(isInlineContent && raw.startsWith(ASSET_SCHEME_PREFIX))
+        val raw = request?.url?.toString() ?: return false
         val mainFrame = request.isForMainFrame
-        return allowExternal && mainFrame && openExternal(view, raw)
+        return mainFrame && openExternal(view, raw)
     }
 
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
@@ -282,7 +270,7 @@ internal class ArticleClient(
         Logger.d(LOG_TAG) {
             "$SCROLL_PREFIX onPageFinished url=$url firstLoad=${firstLoad()} initScroll=$initialScrollY"
         }
-        performInitialInjectionIfNeeded(isInlineContent, injectedCss)
+        performInitialInjectionIfNeeded(injectedCss)
         applyReaderVarsIfChanged(fontScale, lineHeight, backgroundColor)
         if (firstLoad()) {
             onFirstReady()
@@ -303,9 +291,7 @@ internal class ArticleClient(
             }
         }
         setLastValues(fontScale, lineHeight)
-        if (isInlineContent) {
-            evaluate(assets.clampJs)
-        }
+        // clampJs no longer applied (inline content path removed)
     }
 
     private fun intercept(view: WebView?, url: String?): WebResourceResponse? {
@@ -343,7 +329,7 @@ internal class ArticleClient(
     }
 
     private fun resolveInlineAssetResponse(view: WebView?, u: String): WebResourceResponse? {
-        if (!(isInlineContent && u.startsWith(ASSET_SCHEME_PREFIX))) {
+        if (!u.startsWith(ASSET_SCHEME_PREFIX)) {
             return null
         }
         val path = u.removePrefix(ASSET_SCHEME_PREFIX)

@@ -155,15 +155,7 @@ detekt {
     parallel = true
 }
 
-// Aggregate task to run detekt everywhere
-tasks.register("detektAll") {
-    group = "verification"
-    description = "Run detekt on all modules (aggregate)"
-    // Now that detekt is applied unconditionally, depend on every subproject's detekt task.
-    dependsOn(subprojects.map { "${it.path}:detekt" })
-    dependsOn(":detekt")
-    notCompatibleWithConfigurationCache("Aggregates dynamic subproject tasks and lists SARIF outputs")
-}
+// Aggregate detekt task removed to improve configuration-cache compatibility
 
 // Coverage verification: stable overall rule. Layered thresholds TODO via custom XML parsing script.
 kover {
@@ -286,25 +278,16 @@ tasks.register("detektAggregateReport") {
 // objects are captured in the task state. This allows reuse of the configuration cache across
 // successive builds while enforcing a zero-detekt-findings rule.
 // Clean existing detekt report directories before running detektAll to avoid stale or missing SARIF confusion.
-tasks.register("cleanDetektReports") {
-    group = "verification"
-    description = "Deletes all detekt report directories"
-    notCompatibleWithConfigurationCache("Deletes build outputs dynamically")
-    doLast {
-        val dirs = mutableListOf<File>()
-        dirs += layout.buildDirectory.dir("reports/detekt").get().asFile
-        subprojects.forEach { sp -> dirs += sp.layout.buildDirectory.dir("reports/detekt").get().asFile }
-        dirs.filter { it.exists() }.forEach { if (!it.deleteRecursively()) println("[cleanDetektReports] Failed to delete ${it}") }
-    }
-}
+// cleanDetektReports removed (not configuration-cache friendly and unnecessary)
 
 tasks.register<QualityGateTask>("qualityGate") {
     group = "verification"
     description = "Fails if detekt findings or formatting violations are present before debug build/install"
-    // Order enforced separately: detektAll dependsOn cleanDetektReports (declared below)
-    dependsOn("detektAll")
-    // Avoid configuration cache reuse for this aggregation task to prevent stale SARIF lists when files are deleted.
-    notCompatibleWithConfigurationCache("qualityGate must always re-scan SARIF outputs to reflect file deletions/renames")
+    // Depend directly on all detekt tasks so SARIF is produced freshly when needed
+    dependsOn(":detekt")
+    subprojects.forEach { sp ->
+        dependsOn(sp.tasks.named("detekt"))
+    }
     // Collect SARIF outputs from root + subprojects (lazy providers)
     val rootSarifDir = layout.buildDirectory.dir("reports/detekt")
     sarifFiles.from(rootSarifDir.map { it.asFileTree.matching { include("*.sarif") } })
@@ -330,33 +313,8 @@ subprojects {
     }
 }
 
-// Ensure detektAll always runs after cleaning reports (prevents race where cleaning deletes freshly generated SARIF)
-tasks.named("detektAll") {
-    dependsOn("cleanDetektReports")
-    // Always rerun detektAll so SARIF is freshly produced even if sources unchanged.
-    outputs.upToDateWhen { false }
-    doLast {
-        val sarifFiles = subprojects.mapNotNull { sp ->
-            sp.layout.buildDirectory.asFile.get().resolve("reports/detekt").listFiles { f -> f.extension == "sarif" }?.toList()
-        }.flatten() + rootProject.layout.buildDirectory.asFile.get()
-            .resolve("reports/detekt")
-            .listFiles { f -> f.extension == "sarif" }
-            .orEmpty()
-        println("[detektAll] Generated SARIF count=${sarifFiles.size}")
-        sarifFiles.forEach { println("[detektAll] SARIF: ${it.relativeTo(rootProject.projectDir)}") }
-    }
-}
+// detektAll removal means we no longer add extra printing logic here
 
 // Ensure every per-module detekt task re-runs (some modules may have been skipped earlier if considered up-to-date)
-subprojects {
-    tasks.matching { it.name == "detekt" }.configureEach {
-        outputs.upToDateWhen { false }
-        doFirst { println("[detekt-task] Forcing run: ${project.path}") }
-        notCompatibleWithConfigurationCache("Detekt task uses project APIs at execution time")
-    }
-}
-
-tasks.matching { it.name == "detekt" }.configureEach {
-    notCompatibleWithConfigurationCache("Root detekt task uses project APIs at execution time")
-}
+// Do not mutate detekt tasks with execution-time prints; keep them configuration-cache friendly
 

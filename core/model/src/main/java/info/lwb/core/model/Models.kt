@@ -42,23 +42,6 @@ data class Article(
 )
 
 /**
- * Full article content payload loaded for reading.
- * @property articleId Related [Article] id.
- * @property htmlBody Raw HTML body.
- * @property plainText Extracted plain text (search / indexing).
- * @property textHash Hash of the text for change detection.
- * @property indexUrl Optional pre-rendered server URL to prefer over inline body.
- */
-@Serializable
-data class ArticleContent(
-    val articleId: String,
-    val htmlBody: String,
-    val plainText: String,
-    val textHash: String,
-    val indexUrl: String? = null,
-)
-
-/**
  * Asset belonging to an article (image, video, etc.).
  * @property id Asset id.
  * @property articleId Parent article id.

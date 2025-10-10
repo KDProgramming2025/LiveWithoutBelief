@@ -7,7 +7,6 @@ package info.lwb.core.domain
 import info.lwb.core.common.Result
 import info.lwb.core.model.Annotation
 import info.lwb.core.model.Article
-import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
 import info.lwb.core.model.MenuItem
@@ -15,18 +14,15 @@ import info.lwb.core.model.ThreadMessage
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Primary entry point for article domain data (list + detailed content + local search cache).
- * Implementations are expected to coordinate local persistence and remote synchronization.
+ * Provides access to article metadata: stream, snapshot refresh and local search.
+ * Implementations coordinate local cache and remote synchronization.
  */
+@Suppress("BlankLineBeforeDeclaration", "SpacingBetweenDeclarationsWithComments")
 interface ArticleRepository {
     /** Emits the current list of articles (cached + remote refresh errors wrapped in [Result]). */
     fun getArticles(): Flow<Result<List<Article>>>
-
     /** Returns a one-shot snapshot of currently cached articles (no remote call). */
     suspend fun snapshotArticles(): List<Article>
-
-    /** Emits the full parsed content (pages/blocks) for a given [articleId]. */
-    fun getArticleContent(articleId: String): Flow<Result<ArticleContent>>
 
     /** Triggers a foreground refresh of the article index (errors surfaced in [getArticles]). */
     suspend fun refreshArticles()

@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Article metadata persisted locally.
  *
- * Immutable identifying & descriptive fields of an article. Body content resides in
- * [ArticleContentEntity]; media assets in [ArticleAssetEntity]. Fields [label], [order],
+ * Immutable identifying & descriptive fields of an article.
+ * Media assets in [ArticleAssetEntity]. Fields [label], [order],
  * [coverUrl], [iconUrl] and [indexUrl] originate from the remote manifest enabling offline list
  * rendering and direct WebView fast-path loading when a pre-rendered HTML export exists.
  *
@@ -55,27 +55,7 @@ data class ArticleEntity(
     val indexUrl: String,
 )
 
-/**
- * Denormalized textual content for an article.
- *
- * Keeping body separate allows metadata refreshes without re-downloading large HTML. Plain text
- * facilitates local search / highlighting while `textHash` is used to detect upstream changes.
- *
- * @property articleId FK to [ArticleEntity.id]
- * @property htmlBody Raw sanitized HTML used by the reader webview
- * @property plainText Extracted plain text (no markup) for fast searching/highlighting
- * @property textHash Hash/fingerprint of the plain text for diff detection
- * @property indexUrl Optional canonical URL for externally generated HTML export
- */
-@Entity(tableName = "article_contents")
-data class ArticleContentEntity(
-    @PrimaryKey val articleId: String,
-    val htmlBody: String,
-    val plainText: String,
-    val textHash: String,
-    // Optional canonical URL of the exported HTML index for this article
-    val indexUrl: String? = null,
-)
+// ArticleContentEntity removed: no local HTML/plain text storage.
 
 /**
  * Media / auxiliary assets belonging to an article.
@@ -228,7 +208,6 @@ interface MenuDao {
 @Database(
     entities = [
         ArticleEntity::class,
-        ArticleContentEntity::class,
         ArticleAssetEntity::class,
         BookmarkFolderEntity::class,
         BookmarkEntity::class,

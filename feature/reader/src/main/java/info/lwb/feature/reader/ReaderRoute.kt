@@ -43,8 +43,8 @@ fun ReaderByIdRoute(
     }
     val vm: ReaderSessionViewModel = hiltViewModel()
     LaunchedEffect(Unit) { Logger.d(TAG) { "Entered ReaderByIdRoute (navUrl) articleId=" + articleId } }
-    // Record active article id for appearance persistence (content body not used).
-    LaunchedEffect(articleId) { vm.loadArticle(articleId, "") }
+    // Record active article id for appearance persistence.
+    LaunchedEffect(articleId) { vm.loadArticle(articleId) }
     Logger.d(TAG) { "Using navIndexUrl articleId=" + articleId + " url=" + url }
     ReaderIndexScreen(url = url, vm = vm, onNavigateBack = onNavigateBack)
 }

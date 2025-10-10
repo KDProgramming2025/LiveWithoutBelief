@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import mammoth from 'mammoth'
 import JSZip from 'jszip'
 import { injectYouTubePlaceholders } from './YouTubeEmbedInjector.js'
+import { env } from '../server/config/env.js'
 
 export interface ArticleRecord {
   id: string
@@ -15,7 +16,7 @@ export interface ArticleRecord {
   coverUrl: string | null
   iconUrl: string | null
   docxPath: string
-  indexUrl: string
+  indexUrl: string | null
   createdAt: string
   updatedAt: string
 }
@@ -28,7 +29,7 @@ export class ArticleService {
   // Template resolution: prefer dist/templates when compiled, fallback to src/templates during dev
   private readonly templateResolver = createTemplateResolver(import.meta.url)
 
-  constructor(private readonly baseUrl = 'https://aparat.feezor.net/LWB/Admin') {}
+  constructor(private readonly baseUrl: string | null = (env.APP_SERVER_HOST ? `${env.APP_SERVER_SCHEME}://${env.APP_SERVER_HOST}/LWB/Admin` : null)) {}
 
   async ensure(): Promise<void> {
     await fs.mkdir(this.webArticlesDir, { recursive: true })
@@ -76,14 +77,14 @@ export class ArticleService {
       const ext = path.extname(input.coverPath) || '.jpg'
       const dest = path.join(articleDir, `cover${ext}`)
       await fs.rename(input.coverPath, dest)
-      coverUrl = `${this.baseUrl}/web/articles/${slug}/cover${ext}`
+      coverUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/cover${ext}` : null
     }
     let iconUrl: string | null = existing?.iconUrl ?? null
     if (input.iconPath) {
       const ext = path.extname(input.iconPath) || '.png'
       const dest = path.join(articleDir, `icon${ext}`)
       await fs.rename(input.iconPath, dest)
-      iconUrl = `${this.baseUrl}/web/articles/${slug}/icon${ext}`
+      iconUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/icon${ext}` : null
     }
 
     // Extract embedded media from DOCX (mp4/mp3) into ./media
@@ -234,7 +235,7 @@ export class ArticleService {
       coverUrl,
       iconUrl,
       docxPath: docxFinal,
-      indexUrl: `${this.baseUrl}/web/articles/${slug}/`,
+  indexUrl: this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/` : null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now
     }
@@ -351,13 +352,13 @@ export class ArticleService {
       const ext = path.extname(input.coverPath) || '.jpg'
       const dest = path.join(articleDir, `cover${ext}`)
       await fs.rename(input.coverPath, dest)
-      rec.coverUrl = `${this.baseUrl}/web/articles/${slug}/cover${ext}`
+      rec.coverUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/cover${ext}` : null
     }
     if (input.iconPath) {
       const ext = path.extname(input.iconPath) || '.png'
       const dest = path.join(articleDir, `icon${ext}`)
       await fs.rename(input.iconPath, dest)
-      rec.iconUrl = `${this.baseUrl}/web/articles/${slug}/icon${ext}`
+      rec.iconUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/icon${ext}` : null
     }
 
     // Reprocess DOCX if a new one was provided
@@ -431,7 +432,7 @@ export class ArticleService {
 
     // Update slug-related fields if changed
     rec.slug = slug
-    rec.indexUrl = `${this.baseUrl}/web/articles/${slug}/`
+  rec.indexUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/` : null
     rec.updatedAt = now
     items[idx] = rec
     await this.saveAll(items)

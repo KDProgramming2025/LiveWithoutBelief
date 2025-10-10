@@ -5,16 +5,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 
 /**
- * Provides a remembered [ArticleWebState] keyed by url + html body content.
- * Split into its own file to work around a detekt crash in large composite source files.
+ * Provides a remembered [ArticleWebState] keyed by remote url .
  */
 @Composable
-internal fun rememberArticleWebState(url: String?, htmlBody: String?): ArticleWebState {
-    val ready = remember(key1 = url, key2 = htmlBody) { mutableStateOf(false) }
-    val firstLoad = remember(key1 = url, key2 = htmlBody) { mutableStateOf(true) }
-    val lastFontScale = remember(key1 = url, key2 = htmlBody) { mutableStateOf<Float?>(null) }
-    val lastLineHeight = remember(key1 = url, key2 = htmlBody) { mutableStateOf<Float?>(null) }
-    val restoreActive = remember(key1 = url, key2 = htmlBody) { mutableStateOf(false) }
+internal fun rememberArticleWebState(url: String?): ArticleWebState {
+    val ready = remember(key1 = url) { mutableStateOf(false) }
+    val firstLoad = remember(key1 = url) { mutableStateOf(true) }
+    val lastFontScale = remember(key1 = url) { mutableStateOf<Float?>(null) }
+    val lastLineHeight = remember(key1 = url) { mutableStateOf<Float?>(null) }
+    val restoreActive = remember(key1 = url) { mutableStateOf(false) }
     return ArticleWebState(
         ready = ready,
         firstLoad = firstLoad,

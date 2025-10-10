@@ -46,7 +46,7 @@ Both remain `@HiltViewModel`; scoping is independent. They are resolved in `Read
 - `val svcVm: ArticlesViewModel = hiltViewModel()`
 - `val vm: ReaderSessionViewModel = hiltViewModel()`
 
-No cross-dependency between them to avoid a cycle. Communication path is via navigation argument (`articleId`) + the HTML string provided to `ReaderSessionViewModel.loadArticle()`.
+No cross-dependency between them to avoid a cycle. Communication path is via navigation argument (`articleId`) only (WebView loads remote `indexUrl`).
 
 ## Future Extensions
 - Introduce a domain use case that returns pre-parsed block models to move parsing out of the session VM if needed.

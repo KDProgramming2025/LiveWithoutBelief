@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -85,22 +87,33 @@ android {
                 ?: (project.findProperty("EMAIL_LINK_CONTINUE_URL") as String?)
                 ?: "https://live-without-belief-app.firebaseapp.com/emailLink"
         buildConfigField("String", "EMAIL_LINK_CONTINUE_URL", '"' + emailLinkContinue + '"')
-        val authBase =
-            System.getenv("AUTH_BASE_URL")
-                ?: (project.findProperty("AUTH_BASE_URL") as String?)
-                ?: "https://aparat.feezor.net/LWB/API"
-        buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
+        // Load optional .env from repo root to source server host when not provided via environment/Gradle props
+        val rootEnvProps = Properties()
+        run {
+            val f = rootProject.file(".env")
+            if (f.exists()) {
+                try {
+                    f.inputStream().use { stream -> rootEnvProps.load(stream) }
+                } catch (_: Exception) {
+                    // ignore .env parse errors; fall back to other sources
+                }
+            }
+        }
+        fun cfg(key: String): String? = System.getenv(key)
+            ?: (project.findProperty(key) as String?)
+            ?: (rootEnvProps.getProperty(key))
+        val scheme = cfg("APP_SERVER_SCHEME") ?: "https"
+        val host = cfg("APP_SERVER_HOST")
+        val inferredAuth = host?.let { "$scheme://$it/LWB/API" }
+        val authBase = cfg("AUTH_BASE_URL") ?: inferredAuth
+        buildConfigField("String", "AUTH_BASE_URL", authBase?.let { '"' + it + '"' } ?: "null")
         // Central API base URL for all endpoints
-        val apiBase =
-            System.getenv("API_BASE_URL")
-                ?: (project.findProperty("API_BASE_URL") as String?)
-                ?: "https://aparat.feezor.net/LWB/API/"
-        buildConfigField("String", "API_BASE_URL", '"' + apiBase + '"')
-        val uploadsBase =
-            System.getenv("UPLOADS_BASE_URL")
-                ?: (project.findProperty("UPLOADS_BASE_URL") as String?)
-                ?: "https://aparat.feezor.net/LWB/Admin/uploads/"
-        buildConfigField("String", "UPLOADS_BASE_URL", '"' + uploadsBase + '"')
+        val inferredApi = host?.let { "$scheme://$it/LWB/API/" }
+        val apiBase = cfg("API_BASE_URL") ?: inferredApi
+        buildConfigField("String", "API_BASE_URL", apiBase?.let { '"' + it + '"' } ?: "null")
+        val inferredUploads = host?.let { "$scheme://$it/LWB/Admin/uploads/" }
+        val uploadsBase = cfg("UPLOADS_BASE_URL") ?: inferredUploads
+        buildConfigField("String", "UPLOADS_BASE_URL", uploadsBase?.let { '"' + it + '"' } ?: "null")
         // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
 
         // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)

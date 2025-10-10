@@ -9,20 +9,10 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Data access layer for article metadata, content bodies, auxiliary media assets and
- * localized search. Centralized to keep multi-entity transactional operations simple.
- *
- * Rationale for keeping a single interface (detekt ComplexInterface):
- * 1. Methods operate on strongly related tables that are nearly always coordinated.
- * 2. Splitting right now would create additional indirection in repositories without
- *    reducing cognitive load (call sites would hold multiple DAO references).
- * 3. Transactional helper [upsertArticleWithContent] benefits from co-location.
- * 4. Future growth trigger: if more responsibilities than CRUD + search + assets
- *    appear, we will extract specialized DAOs (Content, Assets) and update modules.
+ * Data access layer for article metadata, auxiliary media assets and localized search.
  */
 @Suppress("ComplexInterface")
 @Dao
@@ -43,28 +33,6 @@ interface ArticleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertArticle(article: ArticleEntity)
 
-    /** Insert or replace a single article textual content body. */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertContent(content: ArticleContentEntity)
-
-    /**
-     * Atomically persist (replace) an article metadata row and its content body.
-     * This prevents inconsistent states where one is updated without the other.
-     */
-    @Transaction
-    suspend fun upsertArticleWithContent(article: ArticleEntity, content: ArticleContentEntity) {
-        upsertArticle(article)
-        upsertContent(content)
-    }
-
-    /** Fetch only the content body for an article id. */
-    @Query("SELECT * FROM article_contents WHERE articleId = :articleId")
-    suspend fun getContent(articleId: String): ArticleContentEntity?
-
-    /** Alias of [getContent]; retained for semantic clarity at call sites. */
-    @Query("SELECT * FROM article_contents WHERE articleId = :articleId")
-    suspend fun getArticleContent(articleId: String): ArticleContentEntity?
-
     // ----- Asset management -----
 
     /** Batch upsert of zero or more media asset references for an article. */
@@ -81,33 +49,30 @@ interface ArticleDao {
 
     // ----- Eviction helpers -----
 
-    /** Delete content rows whose owning article id is not in the keep set. */
-    @Query("DELETE FROM article_contents WHERE articleId NOT IN (:keepIds)")
-    suspend fun deleteContentsNotIn(keepIds: List<String>)
-
     /** Delete asset rows whose owning article id is not in the keep set. */
     @Query("DELETE FROM article_assets WHERE articleId NOT IN (:keepIds)")
     suspend fun deleteAssetsNotIn(keepIds: List<String>)
-
-    /** Remove all article content rows (cache reset). */
-    @Query("DELETE FROM article_contents")
-    suspend fun clearAllContents()
 
     /** Remove all article asset rows (cache reset). */
     @Query("DELETE FROM article_assets")
     suspend fun clearAllAssets()
 
-    /**
-     * Lightweight LIKE-based local search across title and plain text content.
-     * Not using FTS yet due to limited scale; returns paged rows ordered by recency.
-     */
+    /** Delete article rows whose id is not in the keep set (authoritative pruning). */
+    @Query("DELETE FROM articles WHERE id NOT IN (:keepIds)")
+    suspend fun deleteArticlesNotIn(keepIds: List<String>)
+
+    /** Remove all article rows (full reset). */
+    @Query("DELETE FROM articles")
+    suspend fun clearAllArticles()
+
+    /** Title-only LIKE-based local search (body removed). */
     @Query(
         "SELECT a.id AS id, a.title AS title, a.slug AS slug, a.version AS version, " +
-            "a.updatedAt AS updatedAt, a.wordCount AS wordCount, c.plainText AS plainText, " +
+            "a.updatedAt AS updatedAt, a.wordCount AS wordCount, " +
             "a.label AS label, a.`order` AS ordering, a.coverUrl AS coverUrl, " +
             "a.iconUrl AS iconUrl, a.indexUrl AS indexUrl " +
-            "FROM articles a JOIN article_contents c ON c.articleId = a.id " +
-            "WHERE (c.plainText LIKE '%' || :q || '%' OR a.title LIKE '%' || :q || '%') " +
+            "FROM articles a " +
+            "WHERE a.title LIKE '%' || :q || '%' " +
             "ORDER BY a.updatedAt DESC LIMIT :limit OFFSET :offset",
     )
     suspend fun searchArticlesLike(q: String, limit: Int, offset: Int): List<ArticleSearchRow>
@@ -118,29 +83,27 @@ interface ArticleDao {
  * All properties map 1:1 with the selected columns in the query.
  */
 data class ArticleSearchRow(
-    /** Article primary id. */
+    /** Article primary identifier. */
     val id: String,
-    /** Current localized title (may change across versions). */
+    /** Current localized display title. */
     val title: String,
-    /** Human readable slug used in shareable URLs. */
+    /** URL friendly slug used in links. */
     val slug: String,
-    /** Monotonic content version for optimistic updates. */
+    /** Monotonic content/version integer. */
     val version: Int,
-    /** RFC 3339 last update timestamp string. */
+    /** ISO-8601 last update timestamp. */
     val updatedAt: String,
-    /** Approximate word count for reading time heuristics. */
+    /** Estimated word count for reading time heuristics. */
     val wordCount: Int,
-    /** Plain text body excerpt / full text used for LIKE search. */
-    val plainText: String,
-    /** Optional category label for result ordering/filtering. */
+    /** Optional category/label badge. */
     val label: String?,
-    /** Explicit ordering index (matches ArticleEntity.`order`). */
+    /** Explicit ordering index (ascending). */
     val ordering: Int?,
-    /** Cover image URL (nullable if legacy rows). */
+    /** Cover image URL (nullable for legacy rows). */
     val coverUrl: String?,
-    /** Icon image URL (nullable if legacy rows). */
+    /** Icon/thumbnail image URL. */
     val iconUrl: String?,
-    /** Pre-rendered index HTML URL (nullable if legacy rows). */
+    /** Pre-rendered index HTML URL. */
     val indexUrl: String?,
 )
 

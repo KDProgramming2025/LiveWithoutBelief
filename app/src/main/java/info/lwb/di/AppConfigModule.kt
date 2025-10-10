@@ -27,7 +27,10 @@ object AppConfigModule {
     @Provides
     @Singleton
     @Named("apiBaseUrl")
-    fun provideApiBaseUrl(): String = info.lwb.BuildConfig.API_BASE_URL
+    fun provideApiBaseUrl(): String = requireNotNull(info.lwb.BuildConfig.API_BASE_URL) {
+        "API_BASE_URL is not configured. Set APP_SERVER_HOST (and optionally APP_SERVER_SCHEME) " +
+            "or provide API_BASE_URL via environment/Gradle property."
+    }
 
     /**
      * Provides the base URL used for retrieving user-uploaded (or static media) assets.
@@ -36,5 +39,8 @@ object AppConfigModule {
     @Provides
     @Singleton
     @Named("uploadsBaseUrl")
-    fun provideUploadsBaseUrl(): String = info.lwb.BuildConfig.UPLOADS_BASE_URL
+    fun provideUploadsBaseUrl(): String = requireNotNull(info.lwb.BuildConfig.UPLOADS_BASE_URL) {
+        "UPLOADS_BASE_URL is not configured. Set APP_SERVER_HOST (and optionally APP_SERVER_SCHEME) " +
+            "or provide UPLOADS_BASE_URL via environment/Gradle property."
+    }
 }

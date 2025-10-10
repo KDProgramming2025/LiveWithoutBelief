@@ -121,7 +121,10 @@ object AuthProvisionModule {
     /** Provides base URL for auth service (switchable via build config). */
     @Provides
     @AuthBaseUrl
-    fun provideAuthBaseUrl(): String = BuildConfig.AUTH_BASE_URL
+    fun provideAuthBaseUrl(): String = requireNotNull(BuildConfig.AUTH_BASE_URL) {
+        "AUTH_BASE_URL is not configured. Set APP_SERVER_HOST (and optionally APP_SERVER_SCHEME) " +
+            "or provide AUTH_BASE_URL via environment/Gradle property."
+    }
 
     /** Provides a background application-wide coroutine scope (Supervisor + Default dispatcher). */
     @Provides

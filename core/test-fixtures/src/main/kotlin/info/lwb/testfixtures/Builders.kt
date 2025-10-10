@@ -6,7 +6,6 @@ package info.lwb.testfixtures
 
 import info.lwb.core.model.Article
 import info.lwb.core.model.ArticleAsset
-import info.lwb.core.model.ArticleContent
 
 /**
  * Factory helpers for creating model objects in tests with sensible defaults.
@@ -30,18 +29,6 @@ object Builders {
         wordCount = 1000,
         coverUrl = coverUrl,
         iconUrl = iconUrl,
-        indexUrl = indexUrl,
-    )
-
-    /** Build [ArticleContent] for an article. */
-    fun content(
-        articleId: String = "a1",
-        indexUrl: String? = "https://example.com/a1/index.html",
-    ): ArticleContent = ArticleContent(
-        articleId = articleId,
-        htmlBody = "<p>Hello</p>",
-        plainText = "Hello",
-        textHash = "deadbeef",
         indexUrl = indexUrl,
     )
 

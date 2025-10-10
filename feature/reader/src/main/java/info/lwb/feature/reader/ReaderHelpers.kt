@@ -367,7 +367,6 @@ private fun ReaderArticleWeb(
         lineHeight = ui.lineHeight.toFloat(),
         backgroundColor = readerPalette(ui.background).background,
         initialScrollY = scrollInitial,
-        modifier = Modifier.fillMaxSize(),
         onTap = { onTap() },
         onScrollChanged = { onScroll(it) },
         onAnchorChanged = {},

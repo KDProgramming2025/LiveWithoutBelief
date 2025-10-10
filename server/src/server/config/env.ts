@@ -30,4 +30,6 @@ export const env = {
   ADMIN_PASSWORD,
   ADMIN_PASSWORD_HASH,
   ADMIN_JWT_SECRET,
+  APP_SERVER_HOST: process.env.APP_SERVER_HOST,
+  APP_SERVER_SCHEME: process.env.APP_SERVER_SCHEME || 'https',
 }

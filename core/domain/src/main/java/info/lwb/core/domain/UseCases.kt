@@ -7,7 +7,6 @@ package info.lwb.core.domain
 import info.lwb.core.common.Result
 import info.lwb.core.model.Annotation
 import info.lwb.core.model.Article
-import info.lwb.core.model.ArticleContent
 import info.lwb.core.model.Bookmark
 import info.lwb.core.model.BookmarkFolder
 import info.lwb.core.model.MenuItem
@@ -27,19 +26,6 @@ class GetArticlesUseCase(private val articleRepository: ArticleRepository) {
      * @return a cold [Flow] emitting [Result] wrapping lists of [Article].
      */
     operator fun invoke(): Flow<Result<List<Article>>> = articleRepository.getArticles()
-}
-
-/**
- * Loads rich content for the specified article id including structured blocks, media references
- * and metadata. This is a reactive wrapper around [ArticleRepository.getArticleContent].
- */
-class GetArticleContentUseCase(private val articleRepository: ArticleRepository) {
-    /**
-     * @param articleId stable identifier of the article whose content should be observed.
-     * @return a [Flow] of [Result] providing the current [ArticleContent].
-     */
-    operator fun invoke(articleId: String): Flow<Result<ArticleContent>> =
-        articleRepository.getArticleContent(articleId)
 }
 
 /**

@@ -58,14 +58,6 @@ class BookmarkRepositoryImplTest {
                 indexUrl = "https://example.com/a1/index.html",
             ),
         )
-        articleDao.upsertContent(
-            info.lwb.data.repo.db.ArticleContentEntity(
-                articleId = "a1",
-                htmlBody = "<p>Hello Kotlin</p>",
-                plainText = "Hello Kotlin body",
-                textHash = "t1",
-            ),
-        )
         articleDao.upsertArticle(
             info.lwb.data.repo.db.ArticleEntity(
                 id = "a2",
@@ -79,14 +71,6 @@ class BookmarkRepositoryImplTest {
                 coverUrl = "https://example.com/covers/a2.jpg",
                 iconUrl = "https://example.com/icons/a2.png",
                 indexUrl = "https://example.com/a2/index.html",
-            ),
-        )
-        articleDao.upsertContent(
-            info.lwb.data.repo.db.ArticleContentEntity(
-                articleId = "a2",
-                htmlBody = "<p>World Compose</p>",
-                plainText = "World Compose body",
-                textHash = "t2",
             ),
         )
 
