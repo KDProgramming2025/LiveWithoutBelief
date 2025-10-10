@@ -212,10 +212,27 @@ export class ArticleService {
         return `<h${level}${attrs}>${updated}</h${level}>`
       })
     }
+    // Remove YouTube thumbnail images (often base64) that remain directly before the embed figure
+    // Strategy: for each youtube figure occurrence, strip any base64 <img> within ~400 chars before it.
+    {
+      const ytFigureRe = /<div class="media__item youtube">/g
+      let m: RegExpExecArray | null
+      while ((m = ytFigureRe.exec(html)) !== null) {
+        const start = Math.max(0, m.index - 500)
+        const head = html.slice(0, start)
+        const mid = html.slice(start, m.index)
+        const tail = html.slice(m.index)
+        const cleaned = mid.replace(/<img[^>]+src="data:image\/[^"]+"[^>]*>\s*/gi, '')
+        if (cleaned !== mid) {
+          html = head + cleaned + tail
+          ytFigureRe.lastIndex = start + cleaned.length
+        }
+      }
+    }
     // Now wrap plain <img ...> tags with image template containing question button.
     // Only wrap standalone <img> elements not already inside a figure.media__item to avoid double-wrapping
     // and skip data URIs and images within YouTube embed blocks.
-    html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+    html = html.replace(/<img\b([^>]*?)src=\"([^\"]+)\"([^>]*)>/gi,
       (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
         if (/^data:/i.test(src)) return full
         // Skip if inside an existing media__item figure (look back a bit for an opening figure without a closing one)
@@ -229,6 +246,11 @@ export class ArticleService {
               return full
             }
           }
+        }
+        // Skip if a media video/audio figure follows very closely (likely an OLE icon image directly before it)
+        const ahead = whole.slice(offset, Math.min(offset + 600, whole.length))
+        if (/<figure\s+class=\"[^\"]*\bmedia__item\b[^\"]*\">[\s\S]*?<\/(video|audio)>[\s\S]*?<\/figure>/i.test(ahead)) {
+          return full
         }
         return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
       }
@@ -458,8 +480,24 @@ export class ArticleService {
           html = html.replace(pattern, iframe)
         }
       }
+      // Remove residual YouTube thumbnail images directly before the embed figure (base64 images)
+      {
+        const ytFigureRe = /<div class="media__item youtube">/g
+        let m: RegExpExecArray | null
+        while ((m = ytFigureRe.exec(html)) !== null) {
+          const start = Math.max(0, m.index - 500)
+          const head = html.slice(0, start)
+          const mid = html.slice(start, m.index)
+          const tail = html.slice(m.index)
+          const cleaned = mid.replace(/<img[^>]+src="data:image\/[^"]+"[^>]*>\s*/gi, '')
+          if (cleaned !== mid) {
+            html = head + cleaned + tail
+            ytFigureRe.lastIndex = start + cleaned.length
+          }
+        }
+      }
       // After YouTube replacement, wrap standalone images with question button (avoid wrapping when already inside media__item)
-      html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+      html = html.replace(/<img\b([^>]*?)src=\"([^\"]+)\"([^>]*)>/gi,
         (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
           if (/^data:/i.test(src)) return full
           const lookBehind = whole.lastIndexOf('<figure', offset)
@@ -471,6 +509,10 @@ export class ArticleService {
                 return full
               }
             }
+          }
+          const ahead = whole.slice(offset, Math.min(offset + 600, whole.length))
+          if (/<figure\s+class=\"[^\"]*\bmedia__item\b[^\"]*\">[\s\S]*?<\/(video|audio)>[\s\S]*?<\/figure>/i.test(ahead)) {
+            return full
           }
           return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
         }
