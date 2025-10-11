@@ -27,7 +27,7 @@
           '}\n'+
           // Make all nested element backgrounds transparent so our solid page bg shows through
           // Exclude YouTube deep-link button and overlay card to preserve brand red and overlay styles
-          'body *:not(img):not(video):not(canvas):not(svg):not(code):not(pre):not(figure):not(.yt-open-btn):not(.yt-card){'+
+          'body *:not(img):not(video):not(canvas):not(svg):not(code):not(pre):not(figure):not(.yt-open-btn):not(.yt-card):not(.media-question-btn){'+
           '  background:transparent !important;'+
           '  background-color:transparent !important;'+
           '}';
