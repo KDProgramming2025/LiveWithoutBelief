@@ -230,11 +230,13 @@ private fun ConfirmExitDialog(show: Boolean, onDismiss: () -> Unit, onConfirm: (
 // endregion
 
 @Composable
+@Suppress("LongMethod")
 // Entry point composable
 internal fun ReaderIndexScreen(
     url: String,
     vm: ReaderSessionViewModel,
     onNavigateBack: (() -> Unit)? = null,
+    @Suppress("UnusedParameter") onRequireLogin: (() -> Unit)? = null,
 ) {
     // Back navigation consumed via BackHandler when confirm-exit path reached.
 
@@ -299,6 +301,7 @@ internal fun ReaderIndexScreen(
                 webRef = webRef,
                 mediaDialog = mediaDialog,
                 clearMediaDialog = { mediaDialog = null },
+                onRequireLogin = onRequireLogin,
             )
         }
     }
@@ -397,6 +400,7 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
     webRef: androidx.compose.runtime.MutableState<android.webkit.WebView?>,
     mediaDialog: Pair<String, String>?,
     clearMediaDialog: () -> Unit,
+    onRequireLogin: (() -> Unit)?,
 ) {
     ReaderActionRail(
         show = fab.visible,
@@ -428,19 +432,18 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
             // ignore
         }
     }
-    LoginRequiredDialog(mediaDialog, onDismiss = { clearMediaDialog() }, registerBase = uiRegisterBase())
+    MediaLoginOverlay(mediaDialog, clearMediaDialog, onRequireLogin)
 }
 
 @Composable
-private fun uiRegisterBase(): String {
-    // Build from API base bound in ReaderEnv via Hilt; fall back to window origin.
-    // For now, return relative path handled by WebViewClient external intent.
-    return "/register"
-}
-
-@Composable
-private fun LoginRequiredDialog(data: Pair<String, String>?, onDismiss: () -> Unit, registerBase: String) {
-    if (data == null) return
+private fun LoginRequiredDialog(
+    data: Pair<String, String>?,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    if (data == null) {
+        return
+    }
     val (kind, _src) = data
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -448,13 +451,32 @@ private fun LoginRequiredDialog(data: Pair<String, String>?, onDismiss: () -> Un
         text = { Text("To start a private discussion about this $kind, please sign in or register.") },
         confirmButton = {
             TextButton(onClick = {
-                // Open the server register micro-site in external browser; WebView will delegate.
+                onConfirm()
                 onDismiss()
-            }) { Text("Got it") }
+            }) { Text("Continue") }
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) { Text("Cancel") }
-        }
+        },
+    )
+}
+
+@Composable
+private fun MediaLoginOverlay(
+    mediaDialog: Pair<String, String>?,
+    clearMediaDialog: () -> Unit,
+    onRequireLogin: (() -> Unit)?,
+) {
+    LoginRequiredDialog(
+        data = mediaDialog,
+        onDismiss = { clearMediaDialog() },
+        onConfirm = {
+            try {
+                onRequireLogin?.invoke()
+            } catch (_: Throwable) {
+                // ignore
+            }
+        },
     )
 }
 

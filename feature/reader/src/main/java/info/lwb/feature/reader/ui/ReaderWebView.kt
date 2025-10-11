@@ -436,7 +436,6 @@ private fun createConfiguredWebView(
         startRestore = startRestore,
         finishRestore = finishRestore,
         assets = assets,
-        onParagraphLongPress = onParagraphLongPress,
     )
     // JS bridges
     try {
@@ -508,7 +507,6 @@ private fun installArticleClient(
     startRestore: (Int) -> Unit,
     finishRestore: () -> Unit,
     assets: WebViewAssetScripts,
-    onParagraphLongPress: ((id: String, text: String) -> Unit)?,
 ) {
     webView.webViewClient = ArticleClient(
         cssRef = arrayOf(

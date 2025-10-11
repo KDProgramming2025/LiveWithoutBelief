@@ -12,12 +12,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -96,18 +101,28 @@ private fun PasswordAuthSection(onRegister: (String, String) -> Unit, onLogin: (
     var password by remember { mutableStateOf("") }
     Text("Or use username & password:")
     Spacer(Modifier.height(8.dp))
-    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username or email") })
+    OutlinedTextField(
+        value = username,
+        onValueChange = { username = it },
+        label = { Text("Username or email") },
+        modifier = Modifier.fillMaxWidth(),
+    )
     Spacer(Modifier.height(8.dp))
-    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") })
+    OutlinedTextField(
+        value = password,
+        onValueChange = { password = it },
+        label = { Text("Password") },
+        modifier = Modifier.fillMaxWidth(),
+    )
     Spacer(Modifier.height(8.dp))
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Button(onClick = {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Button(modifier = Modifier.fillMaxWidth(), onClick = {
             if (username.isNotBlank() && password.isNotBlank()) {
                 onRegister(username.trim(), password)
             }
         }) { Text("Register") }
         Spacer(Modifier.height(6.dp))
-        Button(onClick = {
+        Button(modifier = Modifier.fillMaxWidth(), onClick = {
             if (username.isNotBlank() && password.isNotBlank()) {
                 onLogin(username.trim(), password)
             }
@@ -154,13 +169,86 @@ private fun ReaderByIdDestination(
     val decodedIndexUrl = rawIndexUrl?.let {
         kotlin.runCatching { URLDecoder.decode(it, Charsets.UTF_8.name()) }.getOrNull()
     }
+    // Login dialog state handled in host
+    var showLogin by remember { mutableStateOf(false) }
+    val authVm: AuthViewModel = hiltViewModel()
+    val authState by authVm.state.collectAsState()
+    // Auto-close dialog on successful sign-in
+    if (showLogin && authState is info.lwb.auth.AuthUiState.SignedIn) {
+        showLogin = false
+    }
     if (id != null) {
         ReaderByIdRoute(
             articleId = id,
             navIndexUrl = decodedIndexUrl,
             onNavigateBack = { navController.popBackStack() },
+            onRequireLogin = { showLogin = true },
         )
+        if (showLogin) {
+            LoginDialog(
+                authVm = authVm,
+                authState = authState,
+                onDismiss = { showLogin = false },
+            )
+        }
     }
+}
+
+@Composable
+private fun LoginDialog(
+    authVm: AuthViewModel,
+    authState: info.lwb.auth.AuthUiState,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Sign in") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Button(
+                    onClick = {
+                        val activity = (context as? android.app.Activity)
+                        if (activity != null) {
+                            authVm.signIn { activity }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = authState !is info.lwb.auth.AuthUiState.Loading,
+                ) { Text("Continue with Google") }
+                Spacer(Modifier.height(12.dp))
+                PasswordAuthSection(
+                    onRegister = { username, password ->
+                        val activity = (context as? android.app.Activity)
+                        if (activity != null) {
+                            authVm.passwordRegister({ activity }, username, password)
+                        }
+                    },
+                    onLogin = { username, password ->
+                        authVm.passwordLogin(username, password)
+                    },
+                )
+                when (val s = authState) {
+                    is info.lwb.auth.AuthUiState.Error -> {
+                        Spacer(Modifier.height(8.dp))
+                        Text(s.message, color = MaterialTheme.colorScheme.error)
+                    }
+                    is info.lwb.auth.AuthUiState.RegionBlocked -> {
+                        Spacer(Modifier.height(8.dp))
+                        Text(s.message, color = MaterialTheme.colorScheme.error)
+                    }
+                    is info.lwb.auth.AuthUiState.Loading -> {
+                        Spacer(Modifier.height(12.dp))
+                        CircularProgressIndicator()
+                    }
+                    else -> {
+                        // No-op
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
 }
 
 @Composable

@@ -13,6 +13,10 @@ internal class LwbJsBridge(
 ) {
     private val tag = "ReaderWeb"
 
+    private companion object {
+        private const val PREVIEW_LEN = 128
+    }
+
     @JavascriptInterface
     fun onParagraphLongPress(id: String?, text: String?) {
         val pid = id?.trim().orEmpty()
@@ -21,8 +25,16 @@ internal class LwbJsBridge(
             Logger.d(tag) { "ParaLongPress: ignored blank id/text" }
             return
         }
-        try { Logger.d(tag) { "ParaLongPress: id=$pid len=${body.length}" } } catch (_: Throwable) {}
-        try { onParagraphLongPress?.invoke(pid, body) } catch (_: Throwable) {}
+        try {
+            Logger.d(tag) { "ParaLongPress: id=$pid len=${body.length}" }
+        } catch (_: Throwable) {
+            // ignore
+        }
+        try {
+            onParagraphLongPress?.invoke(pid, body)
+        } catch (_: Throwable) {
+            // ignore
+        }
     }
 
     @JavascriptInterface
@@ -33,7 +45,15 @@ internal class LwbJsBridge(
             Logger.d(tag) { "MediaQuestion: ignored blank kind/src" }
             return
         }
-        try { Logger.d(tag) { "MediaQuestion: kind=$k src=${s.take(128)}" } } catch (_: Throwable) {}
-        try { onMediaQuestion?.invoke(k, s) } catch (_: Throwable) {}
+        try {
+            Logger.d(tag) { "MediaQuestion: kind=$k src=${s.take(PREVIEW_LEN)}" }
+        } catch (_: Throwable) {
+            // ignore
+        }
+        try {
+            onMediaQuestion?.invoke(k, s)
+        } catch (_: Throwable) {
+            // ignore
+        }
     }
 }
