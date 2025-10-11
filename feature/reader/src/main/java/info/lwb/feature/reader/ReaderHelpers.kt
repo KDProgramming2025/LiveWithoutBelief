@@ -247,6 +247,7 @@ internal fun ReaderIndexScreen(
     val (fab, showFabTemp, setFab) = rememberFabController()
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     var paraDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var mediaDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
     val haptics = LocalHapticFeedback.current
 
     ReaderBackHandler(
@@ -279,6 +280,10 @@ internal fun ReaderIndexScreen(
                         webRef = webRef,
                     )
                 },
+                onMediaQuestion = { kind, src ->
+                    // For now, require login and direct to registration page.
+                    mediaDialog = kind to src
+                },
             )
             // Overlays (dialogs, rails, etc.) rendered above WebView
             ReaderOverlays(
@@ -292,6 +297,8 @@ internal fun ReaderIndexScreen(
                 paraDialog = paraDialog,
                 clearDialog = { paraDialog = null },
                 webRef = webRef,
+                mediaDialog = mediaDialog,
+                clearMediaDialog = { mediaDialog = null },
             )
         }
     }
@@ -358,6 +365,7 @@ private fun ReaderArticleWeb(
     ready: androidx.compose.runtime.MutableState<Boolean>,
     webRef: androidx.compose.runtime.MutableState<android.webkit.WebView?>,
     onParagraph: (String, String) -> Unit,
+    onMediaQuestion: (String, String) -> Unit,
 ) {
     ArticleWebView(
         url = url,
@@ -371,6 +379,7 @@ private fun ReaderArticleWeb(
         onReady = { ready.value = true },
         onWebViewCreated = { w -> webRef.value = w },
         onParagraphLongPress = { id, text -> onParagraph(id, text) },
+        onMediaQuestion = { kind, src -> onMediaQuestion(kind, src) },
     )
 }
 
@@ -386,6 +395,8 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
     paraDialog: Pair<String, String>?,
     clearDialog: () -> Unit,
     webRef: androidx.compose.runtime.MutableState<android.webkit.WebView?>,
+    mediaDialog: Pair<String, String>?,
+    clearMediaDialog: () -> Unit,
 ) {
     ReaderActionRail(
         show = fab.visible,
@@ -417,6 +428,34 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
             // ignore
         }
     }
+    LoginRequiredDialog(mediaDialog, onDismiss = { clearMediaDialog() }, registerBase = uiRegisterBase())
+}
+
+@Composable
+private fun uiRegisterBase(): String {
+    // Build from API base bound in ReaderEnv via Hilt; fall back to window origin.
+    // For now, return relative path handled by WebViewClient external intent.
+    return "/register"
+}
+
+@Composable
+private fun LoginRequiredDialog(data: Pair<String, String>?, onDismiss: () -> Unit, registerBase: String) {
+    if (data == null) return
+    val (kind, _src) = data
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Sign in required") },
+        text = { Text("To start a private discussion about this $kind, please sign in or register.") },
+        confirmButton = {
+            TextButton(onClick = {
+                // Open the server register micro-site in external browser; WebView will delegate.
+                onDismiss()
+            }) { Text("Got it") }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDismiss() }) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable

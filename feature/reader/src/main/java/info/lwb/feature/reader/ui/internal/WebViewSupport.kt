@@ -28,7 +28,12 @@ private const val LOG_TAG = "ReaderWeb"
 /**
  * Lightweight container for JS snippets loaded from assets. Splitting keeps primary composable short.
  */
-internal data class WebViewAssetScripts(val clampJs: String, val themeJs: String, val domHelpersJs: String)
+internal data class WebViewAssetScripts(
+    val clampJs: String,
+    val themeJs: String,
+    val domHelpersJs: String,
+    val mediaButtonsJs: String,
+)
 
 // region internal constants
 private const val THEME_CSS_PATH_SUFFIX = "/lwb-theme.css"
@@ -213,6 +218,8 @@ internal class ArticleClient(
             evaluate("window.lwbApplyThemeCss('$b64')")
             Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:themeCss applied size=${css.length}" }
         }
+        // Install media button click handler
+        evaluate(assets.mediaButtonsJs)
         injectedOnceForLoad = true
         // force re-application of reader vars after initial injection
         lastAppliedFontScale = null
