@@ -73,3 +73,19 @@ video::-webkit-media-controls-enclosure{overflow:hidden}
 	}
 	.media-question-btn{background:#000 !important;color:#fff !important;}
 }
+
+/* Mobile UA overrides: force filled background in all states */
+.media__item .media-question-btn,
+.media__item .media-question-btn:focus,
+.media__item .media-question-btn:active{
+	background:#000 !important;
+	background-color:#000 !important;
+	background-image:none !important;
+	color:#fff !important;
+	border:1px solid #000 !important;
+	-webkit-appearance:none;
+	appearance:none;
+	box-shadow:none !important;
+	background-clip:padding-box;
+	-webkit-tap-highlight-color: transparent;
+}

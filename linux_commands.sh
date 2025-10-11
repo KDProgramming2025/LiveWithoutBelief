@@ -1,3 +1,3 @@
 
-systemctl --no-pager status lwb-server | head -n 30
+node /var/www/LWB/server/dist/scripts/refresh-article-assets.mjs
 
