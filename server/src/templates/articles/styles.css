@@ -40,10 +40,13 @@ video::-webkit-media-controls-enclosure{overflow:hidden}
 .media__item.youtube .yt-deeplink .yt-open-btn:active{filter:brightness(0.9)}
 .media-question-btn{
 	background:#000 !important;
+	background-color:#000 !important; /* some mobile engines honor only background-color */
+	background-image:none !important; /* suppress UA gradients */
 	color:#fff !important;
 	-webkit-appearance: none;
 	appearance: none;
-	box-shadow: none;
+	box-shadow: none !important;
+	border-color:#000 !important; /* ensure contrast border */
 }
 .media-question-btn:hover{filter:brightness(1.05)}
 .media-question-btn:active{filter:brightness(0.9)}
