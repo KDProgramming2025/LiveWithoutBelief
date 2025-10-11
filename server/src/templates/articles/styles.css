@@ -29,7 +29,6 @@ video::-webkit-media-controls-enclosure{overflow:hidden}
 	font-weight:700;
 	cursor:pointer;
 	text-align:center;
-	border:1px solid transparent;
 }
 .media__item.youtube .yt-deeplink .yt-open-btn{
 	border-color:#FF0000;
@@ -39,31 +38,9 @@ video::-webkit-media-controls-enclosure{overflow:hidden}
 .media__item.youtube .yt-deeplink .yt-open-btn:hover{filter:brightness(0.95)}
 .media__item.youtube .yt-deeplink .yt-open-btn:active{filter:brightness(0.9)}
 .media-question-btn{
-	background:#000 !important;
-	background-color:#000 !important; /* some mobile engines honor only background-color */
-	background-image:none !important; /* suppress UA gradients */
+	background:#000000 !important;
 	color:#fff !important;
-	-webkit-appearance: none;
-	appearance: none;
-	box-shadow: none !important;
-	border-color:#000 !important; /* ensure contrast border */
-}
-.media-question-btn:hover{filter:brightness(1.05)}
-.media-question-btn:active{
-	filter:brightness(0.9);
-	background:#000 !important;
-	background-color:#000 !important;
-}
-.media-question-btn:focus{
-	outline:2px solid #444;
-	outline-offset:2px;
-	background:#000 !important;
-	background-color:#000 !important;
-}
-.media-question-btn:visited{
-	color:#fff !important;
-	background:#000 !important;
-	background-color:#000 !important;
+	border-color:#000 !important;
 }
 @media (prefers-color-scheme: dark){
 	.media__item.youtube .yt-deeplink .yt-open-btn{
@@ -71,21 +48,13 @@ video::-webkit-media-controls-enclosure{overflow:hidden}
 		background:#FF0000;
 		color:#FFFFFF;
 	}
-	.media-question-btn{background:#000 !important;color:#fff !important;}
+	.media-question-btn{background:#000000 !important;color:#fff !important;}
 }
 
-/* Mobile UA overrides: force filled background in all states */
 .media__item .media-question-btn,
 .media__item .media-question-btn:focus,
 .media__item .media-question-btn:active{
-	background:#000 !important;
-	background-color:#000 !important;
-	background-image:none !important;
+	background:#000000 !important;
 	color:#fff !important;
 	border:1px solid #000 !important;
-	-webkit-appearance:none;
-	appearance:none;
-	box-shadow:none !important;
-	background-clip:padding-box;
-	-webkit-tap-highlight-color: transparent;
 }
