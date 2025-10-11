@@ -216,9 +216,12 @@ export class ArticleService {
       this.templateResolver('articles', 'styles.css'),
       this.templateResolver('articles', 'script.js'),
     ])
+    const assetsVersion = String(Date.now())
     const indexHtml = htmlTpl
       .replace(/\{\{\s*TITLE\s*\}\}/g, escapeHtml(input.title))
       .replace(/\{\{\s*BODY\s*\}\}/g, html)
+      .replace(/href="\.\/styles\.css"/g, `href="./styles.css?v=${assetsVersion}"`)
+      .replace(/src="\.\/script\.js"/g, `src="./script.js?v=${assetsVersion}"`)
     await fs.writeFile(path.join(articleDir, 'index.html'), indexHtml, 'utf8')
     await fs.writeFile(path.join(articleDir, 'styles.css'), cssTpl, 'utf8')
     await fs.writeFile(path.join(articleDir, 'script.js'), jsTpl, 'utf8')
@@ -428,9 +431,12 @@ export class ArticleService {
         this.templateResolver('articles', 'styles.css'),
         this.templateResolver('articles', 'script.js'),
       ])
+      const assetsVersion = String(Date.now())
       const indexHtml = htmlTpl
         .replace(/\{\{\s*TITLE\s*\}\}/g, escapeHtml(rec.title))
         .replace(/\{\{\s*BODY\s*\}\}/g, html)
+        .replace(/href="\.\/styles\.css"/g, `href="./styles.css?v=${assetsVersion}"`)
+        .replace(/src="\.\/script\.js"/g, `src="./script.js?v=${assetsVersion}"`)
       await fs.writeFile(path.join(articleDir, 'index.html'), indexHtml, 'utf8')
       await fs.writeFile(path.join(articleDir, 'styles.css'), cssTpl, 'utf8')
       await fs.writeFile(path.join(articleDir, 'script.js'), jsTpl, 'utf8')
