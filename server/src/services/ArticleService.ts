@@ -140,24 +140,7 @@ export class ArticleService {
       const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
       html = html.replace(pattern, tag)
     }
-    // Wrap plain <img ...> tags with the image template (adds the question button),
-    // but avoid double-wrapping if the image already sits inside our media figure wrapper
-    // produced by templates (i.e., <figure class="media__item ..."> ... </figure>).
-    html = html.replace(/<img\b([^>]*?)src=\"([^\"]+)\"([^>]*)>/gi,
-      (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
-        // We also wrap data URI images so they get the question button as well
-        // Heuristic double-wrap guard: if the matched <img> occurs inside a figure.media__item,
-        // leave it as-is. We'll look backwards/forwards within a small window for surrounding figure tags.
-        const lookBehindStart = Math.max(0, offset - 800)
-        const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
-        const before = whole.slice(lookBehindStart, offset)
-        const after = whole.slice(offset + full.length, lookAheadEnd)
-        const figureOpenIdx = before.lastIndexOf('<figure')
-        const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class="[^"]*\bmedia__item\b[^"]*"/i.test(before.slice(figureOpenIdx))
-        const figureCloseAfter = /<\/figure>/i.test(after)
-        if (hasMediaClass && figureCloseAfter) return full
-        return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
-      })
+    // Note: image wrapping is performed AFTER YouTube replacement/cleanup to avoid wrapping YT thumbnails.
     // Replace YouTube placeholders with iframe embeds
     if (ytResult && ytResult.embeds.length > 0) {
       for (const yt of ytResult.embeds) {
@@ -210,6 +193,20 @@ export class ArticleService {
         return `<h${level}${attrs}>${updated}</h${level}>`
       })
     }
+    // Now wrap remaining plain <img ...> tags with the image template (adds the question button),
+    // avoiding double-wrap if already inside a figure.media__item
+    html = html.replace(/<img\b([^>]*?)src=\"([^\"]+)\"([^>]*)>/gi,
+      (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+        const lookBehindStart = Math.max(0, offset - 800)
+        const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
+        const before = whole.slice(lookBehindStart, offset)
+        const after = whole.slice(offset + full.length, lookAheadEnd)
+        const figureOpenIdx = before.lastIndexOf('<figure')
+        const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class=\"[^\"]*\bmedia__item\b[^\"]*\"/i.test(before.slice(figureOpenIdx))
+        const figureCloseAfter = new RegExp('</figure>', 'i').test(after)
+        if (hasMediaClass && figureCloseAfter) return full
+        return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+      })
     // No non-inline media append; only inline replacements are supported.
     const [htmlTpl, cssTpl, jsTpl] = await Promise.all([
       this.templateResolver('articles', 'article.html'),
@@ -424,7 +421,45 @@ export class ArticleService {
           const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
           html = html.replace(pattern, iframe)
         }
+        // Mirror robust cleanup from createOrReplace: remove base64 thumbnail <img> inside a heading containing a YouTube embed
+        const headingRe = /<h([1-6])([^>]*)>([\s\S]*?)<\/h\1>/gi
+        html = html.replace(headingRe, (
+          full: string,
+          level: string,
+          attrs: string,
+          inner: string
+        ) => {
+          if (!/class=\"media__item youtube\"/i.test(inner)) return full
+          let updated = inner.replace(/<img[^>]+src=\"data:image\/[a-zA-Z0-9+]+;base64,[^\"]+\"[^>]*>/gi, '')
+          updated = updated.replace(/<(p|span|strong|em)[^>]*>\s*<\/(?:p|span|strong|em)>/gi, '')
+          for (let i = 0; i < 5; i++) {
+            updated = updated.replace(/^(?:\s*<(p|span|strong|em)[^>]*>\s*)+(<div class=\"media__item youtube\">[\s\S]*?<\/div>)(?:\s*<\/(?:p|span|strong|em)>\s*)+$/i, '$2')
+            updated = updated.replace(/^\s*<p[^>]*>\s*(<div class=\"media__item youtube\">[\s\S]*?<\/div>)\s*<\/p>\s*$/i, '$1')
+          }
+          const textContent = updated
+            .replace(/<div class=\"media__item youtube\">[\s\S]*?<\/div>/gi, '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .trim()
+          if (textContent === '') {
+            return `<div class=\"youtube-heading-wrap h${level}\">${updated}</div>`
+          }
+          return `<h${level}${attrs}>${updated}</h${level}>`
+        })
       }
+      // After YT cleanup, wrap remaining images with the image template and avoid double-wrap
+      html = html.replace(/<img\b([^>]*?)src=\"([^\"]+)\"([^>]*)>/gi,
+        (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+          const lookBehindStart = Math.max(0, offset - 800)
+          const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
+          const before = whole.slice(lookBehindStart, offset)
+          const after = whole.slice(offset + full.length, lookAheadEnd)
+          const figureOpenIdx = before.lastIndexOf('<figure')
+          const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class=\"[^\"]*\bmedia__item\b[^\"]*\"/i.test(before.slice(figureOpenIdx))
+          const figureCloseAfter = new RegExp('</figure>', 'i').test(after)
+          if (hasMediaClass && figureCloseAfter) return full
+          return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+        })
       // No non-inline media append; only inline replacements are supported.
       const [htmlTpl, cssTpl, jsTpl] = await Promise.all([
         this.templateResolver('articles', 'article.html'),
