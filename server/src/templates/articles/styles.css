@@ -49,7 +49,22 @@ video::-webkit-media-controls-enclosure{overflow:hidden}
 	border-color:#000 !important; /* ensure contrast border */
 }
 .media-question-btn:hover{filter:brightness(1.05)}
-.media-question-btn:active{filter:brightness(0.9)}
+.media-question-btn:active{
+	filter:brightness(0.9);
+	background:#000 !important;
+	background-color:#000 !important;
+}
+.media-question-btn:focus{
+	outline:2px solid #444;
+	outline-offset:2px;
+	background:#000 !important;
+	background-color:#000 !important;
+}
+.media-question-btn:visited{
+	color:#fff !important;
+	background:#000 !important;
+	background-color:#000 !important;
+}
 @media (prefers-color-scheme: dark){
 	.media__item.youtube .yt-deeplink .yt-open-btn{
 		border-color:#FF0000;
