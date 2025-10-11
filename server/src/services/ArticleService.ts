@@ -143,10 +143,9 @@ export class ArticleService {
     // Wrap plain <img ...> tags with the image template (adds the question button),
     // but avoid double-wrapping if the image already sits inside our media figure wrapper
     // produced by templates (i.e., <figure class="media__item ..."> ... </figure>).
-    html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+    html = html.replace(/<img\b([^>]*?)src=\"([^\"]+)\"([^>]*)>/gi,
       (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
-        // Skip data URI images
-        if (/^data:/i.test(src)) return full
+        // We also wrap data URI images so they get the question button as well
         // Heuristic double-wrap guard: if the matched <img> occurs inside a figure.media__item,
         // leave it as-is. We'll look backwards/forwards within a small window for surrounding figure tags.
         const lookBehindStart = Math.max(0, offset - 800)
@@ -404,7 +403,7 @@ export class ArticleService {
       // Wrap plain <img> tags with the image template; avoid double-wrapping if already inside our media figure
       html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
         (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
-          if (/^data:/i.test(src)) return full
+          // Wrap data URI images as well for consistency
           const lookBehindStart = Math.max(0, offset - 800)
           const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
           const before = whole.slice(lookBehindStart, offset)
