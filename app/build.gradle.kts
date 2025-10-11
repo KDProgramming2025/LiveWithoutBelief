@@ -78,10 +78,6 @@ android {
                 println("[auth-config] Warning: failed to parse google-services.json: ${e.message}")
             }
         }
-        // Fallback: if android id still placeholder, reuse server id (not ideal but non-fatal)
-        if (androidClientId.startsWith("CHANGE_ME") && !serverId.startsWith("CHANGE_ME")) androidClientId = serverId
-        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"' + serverId + '"')
-        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", '"' + androidClientId + '"')
         val emailLinkContinue =
             System.getenv("EMAIL_LINK_CONTINUE_URL")
                 ?: (project.findProperty("EMAIL_LINK_CONTINUE_URL") as String?)
@@ -99,6 +95,18 @@ android {
                 }
             }
         }
+        // If Google client ids were not provided via env/Gradle and google-services.json, try .env as a fallback
+        if (serverId == "CHANGE_ME_SERVER_CLIENT_ID") {
+            rootEnvProps.getProperty("GOOGLE_SERVER_CLIENT_ID")?.let { if (it.isNotBlank()) serverId = it }
+        }
+        if (androidClientId == "CHANGE_ME_ANDROID_CLIENT_ID") {
+            rootEnvProps.getProperty("GOOGLE_ANDROID_CLIENT_ID")?.let { if (it.isNotBlank()) androidClientId = it }
+        }
+        // Fallback: if android id still placeholder, reuse server id (not ideal but non-fatal)
+        if (androidClientId.startsWith("CHANGE_ME") && !serverId.startsWith("CHANGE_ME")) androidClientId = serverId
+        // Emit build config values after all fallbacks
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"' + serverId + '"')
+        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", '"' + androidClientId + '"')
         fun cfg(key: String): String? = System.getenv(key)
             ?: (project.findProperty(key) as String?)
             ?: (rootEnvProps.getProperty(key))
