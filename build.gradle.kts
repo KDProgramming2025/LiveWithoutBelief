@@ -49,6 +49,9 @@ subprojects {
         // We want reports even when there are violations so we can aggregate counts.
         // ignoreFailures allows the build to continue after generating reports.
         ignoreFailures = true
+        // Avoid implicit dependency on variant-specific baseline outputs by pointing to a static
+        // (non-variant) baseline file. If the file doesn't exist, detekt will ignore it.
+        baseline.set(project.layout.projectDirectory.file("detekt-baseline.xml"))
         // Detekt Gradle plugin 2.0.0-alpha.0 uses output properties that can conflict with
         // Gradle's state tracking in some environments. Disable state tracking for this task.
         doNotTrackState("Detekt reports output properties are not compatible with state tracking on this build setup")
@@ -65,7 +68,10 @@ subprojects {
             // xml.outputLocation intentionally not set (disabled)
         }
     }
-    tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach { jvmTarget.set("17") }
+    tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach {
+        jvmTarget.set("17")
+    }
+    // No additional wiring to baseline tasks; CI should not create or depend on baselines.
     apply(plugin = "com.diffplug.spotless")
     apply(plugin = "org.gradle.test-retry")
 
