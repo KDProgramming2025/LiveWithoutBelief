@@ -100,7 +100,7 @@ export class ArticleService {
     if (ytResult.modifiedBuffer) {
       workingBuffer = ytResult.modifiedBuffer
     }
-    const extractedMedia = mediaResult.items
+  // mediaResult.items is tracked via inline placeholders; no separate variable required here
 
     // Convert docx → HTML using mammoth
     const mammothInput: any = workingBuffer ? { buffer: workingBuffer } : { path: docxFinal }
@@ -195,15 +195,15 @@ export class ArticleService {
     }
     // Now wrap remaining plain <img ...> tags with the image template (adds the question button),
     // avoiding double-wrap if already inside a figure.media__item
-    html = html.replace(/<img\b([^>]*?)src=\"([^\"]+)\"([^>]*)>/gi,
+  html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
       (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
         const lookBehindStart = Math.max(0, offset - 800)
         const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
         const before = whole.slice(lookBehindStart, offset)
         const after = whole.slice(offset + full.length, lookAheadEnd)
         const figureOpenIdx = before.lastIndexOf('<figure')
-        const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class=\"[^\"]*\bmedia__item\b[^\"]*\"/i.test(before.slice(figureOpenIdx))
-        const figureCloseAfter = new RegExp('</figure>', 'i').test(after)
+  const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class="[^"]*\bmedia__item\b[^"]*"/i.test(before.slice(figureOpenIdx))
+  const figureCloseAfter = new RegExp('</figure>', 'i').test(after)
         if (hasMediaClass && figureCloseAfter) return full
         return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
       })
@@ -429,33 +429,33 @@ export class ArticleService {
           attrs: string,
           inner: string
         ) => {
-          if (!/class=\"media__item youtube\"/i.test(inner)) return full
-          let updated = inner.replace(/<img[^>]+src=\"data:image\/[a-zA-Z0-9+]+;base64,[^\"]+\"[^>]*>/gi, '')
+          if (!/class="media__item youtube"/i.test(inner)) return full
+          let updated = inner.replace(/<img[^>]+src="data:image\/[a-zA-Z0-9+]+;base64,[^"]+"[^>]*>/gi, '')
           updated = updated.replace(/<(p|span|strong|em)[^>]*>\s*<\/(?:p|span|strong|em)>/gi, '')
           for (let i = 0; i < 5; i++) {
-            updated = updated.replace(/^(?:\s*<(p|span|strong|em)[^>]*>\s*)+(<div class=\"media__item youtube\">[\s\S]*?<\/div>)(?:\s*<\/(?:p|span|strong|em)>\s*)+$/i, '$2')
-            updated = updated.replace(/^\s*<p[^>]*>\s*(<div class=\"media__item youtube\">[\s\S]*?<\/div>)\s*<\/p>\s*$/i, '$1')
+            updated = updated.replace(/^(?:\s*<(p|span|strong|em)[^>]*>\s*)+(<div class="media__item youtube">[\s\S]*?<\/div>)(?:\s*<\/(?:p|span|strong|em)>\s*)+$/i, '$2')
+            updated = updated.replace(/^\s*<p[^>]*>\s*(<div class="media__item youtube">[\s\S]*?<\/div>)\s*<\/p>\s*$/i, '$1')
           }
           const textContent = updated
-            .replace(/<div class=\"media__item youtube\">[\s\S]*?<\/div>/gi, '')
+            .replace(/<div class="media__item youtube">[\s\S]*?<\/div>/gi, '')
             .replace(/<[^>]+>/g, '')
             .replace(/&nbsp;/g, ' ')
             .trim()
           if (textContent === '') {
-            return `<div class=\"youtube-heading-wrap h${level}\">${updated}</div>`
+            return `<div class="youtube-heading-wrap h${level}">${updated}</div>`
           }
           return `<h${level}${attrs}>${updated}</h${level}>`
         })
       }
       // After YT cleanup, wrap remaining images with the image template and avoid double-wrap
-      html = html.replace(/<img\b([^>]*?)src=\"([^\"]+)\"([^>]*)>/gi,
+      html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
         (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
           const lookBehindStart = Math.max(0, offset - 800)
           const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
           const before = whole.slice(lookBehindStart, offset)
           const after = whole.slice(offset + full.length, lookAheadEnd)
           const figureOpenIdx = before.lastIndexOf('<figure')
-          const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class=\"[^\"]*\bmedia__item\b[^\"]*\"/i.test(before.slice(figureOpenIdx))
+          const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class="[^"]*\bmedia__item\b[^"]*"/i.test(before.slice(figureOpenIdx))
           const figureCloseAfter = new RegExp('</figure>', 'i').test(after)
           if (hasMediaClass && figureCloseAfter) return full
           return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
