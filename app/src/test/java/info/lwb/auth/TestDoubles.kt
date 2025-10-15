@@ -55,10 +55,14 @@ interface CredentialCall {
 
 /** Minimal provider for tests that attempts to call the CredentialCall and extracts a token when possible. */
 class CredentialManagerOneTapProvider(private val call: CredentialCall) {
-    suspend fun getIdToken(activity: Activity): String? = runCatching {
-        val req = GetCredentialRequest(listOf())
-        val resp = call.get(activity, req)
+    suspend fun getIdToken(activity: Activity): String? = try {
+    val req = GetCredentialRequest(credentialOptions = emptyList())
+        call.get(activity, req)
         // In real impl we'd inspect resp.credential. For tests, return null (no crash path)
         null
-    }.getOrNull()
+    } catch (ce: kotlinx.coroutines.CancellationException) {
+        throw ce
+    } catch (_: Throwable) {
+        null
+    }
 }
