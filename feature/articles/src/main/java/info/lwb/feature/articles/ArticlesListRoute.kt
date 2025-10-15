@@ -4,16 +4,15 @@
 package info.lwb.feature.articles
 
 import info.lwb.core.common.log.Logger
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,12 +23,10 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,9 +45,10 @@ import info.lwb.ui.designsystem.GrainyBackground
 import info.lwb.ui.designsystem.LocalSurfaceStyle
 import info.lwb.ui.designsystem.ProvideSurfaceStyle
 import info.lwb.ui.designsystem.RaisedIconWell
-import info.lwb.ui.designsystem.RaisedSurface
+import info.lwb.ui.designsystem.PressableSurface
 import info.lwb.ui.designsystem.SurfaceStyleColors
 import info.lwb.ui.designsystem.image.ArticleImage
+// (imports cleaned)
 
 /** Generic route for displaying an article list filtered by label. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +56,6 @@ import info.lwb.ui.designsystem.image.ArticleImage
 fun ArticlesListRoute(
     label: String,
     onArticleClick: (Article) -> Unit = {},
-    onNavigateHome: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
 ) {
     val vm: ArticlesViewModel = hiltViewModel()
@@ -81,18 +78,6 @@ fun ArticlesListRoute(
     ProvideSurfaceStyle(dark = dark) {
         Scaffold(
             containerColor = Color.Transparent,
-            topBar = {
-                TopAppBar(
-                    title = {
-                        val crumbs = if (label.isBlank()) {
-                            listOf(Crumb("Home", onNavigateHome), Crumb("Articles", null))
-                        } else {
-                            listOf(Crumb("Home", onNavigateHome), Crumb(label, null))
-                        }
-                        Breadcrumb(segments = crumbs)
-                    },
-                )
-            },
         ) { padding ->
             ArticlesListContent(
                 state = listState,
@@ -124,7 +109,7 @@ private fun ArticlesListContent(
     val neo = LocalSurfaceStyle.current
     val refreshState = rememberPullRefreshState(refreshing = refreshing, onRefresh = onRefresh)
     Box(modifier = Modifier.fillMaxSize().pullRefresh(refreshState)) {
-        GrainyBackground(modifier = Modifier.matchParentSize())
+        GrainyBackground(modifier = Modifier.fillMaxSize())
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -217,36 +202,14 @@ private fun ArticlesList(items: List<Article>, onArticleClick: (Article) -> Unit
     }
 }
 
-private data class Crumb(val label: String, val onClick: (() -> Unit)?)
-
-@Composable
-private fun Breadcrumb(segments: List<Crumb>) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        segments.forEachIndexed { index, crumb ->
-            val isLast = index == segments.lastIndex
-            FilterChip(
-                selected = isLast,
-                onClick = {
-                    if (!isLast) {
-                        crumb.onClick?.invoke()
-                    }
-                },
-                enabled = !isLast && crumb.onClick != null,
-                label = { Text(crumb.label) },
-            )
-            if (index != segments.lastIndex) {
-                Spacer(Modifier.width(8.dp))
-            }
-        }
-    }
-}
+// Breadcrumb feature removed per request.
 
 @Composable
 private fun ArticleCard(title: String, coverUrl: String?, iconUrl: String?, onClick: () -> Unit) {
-    RaisedSurface(
+    PressableSurface(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .fillMaxWidth(),
+        onClick = onClick,
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
             ArticleCover(coverUrl = coverUrl, iconUrl = iconUrl)

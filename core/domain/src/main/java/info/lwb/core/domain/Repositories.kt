@@ -7,8 +7,6 @@ package info.lwb.core.domain
 import info.lwb.core.common.Result
 import info.lwb.core.model.Annotation
 import info.lwb.core.model.Article
-import info.lwb.core.model.Bookmark
-import info.lwb.core.model.BookmarkFolder
 import info.lwb.core.model.MenuItem
 import info.lwb.core.model.ThreadMessage
 import kotlinx.coroutines.flow.Flow
@@ -35,33 +33,6 @@ interface ArticleRepository {
      * @param offset Pagination offset (default 0).
      */
     suspend fun searchLocal(query: String, limit: Int = 25, offset: Int = 0): List<Article>
-}
-
-/**
- * Manages user bookmarks and folders. Implementations persist state locally and/or remotely.
- */
-
-interface BookmarkRepository {
-    /** Stream of all bookmarks with loading/error encapsulated. */
-    fun getBookmarks(): Flow<Result<List<Bookmark>>>
-
-    /** Stream of bookmark folders (hierarchy is flat for simplicity). */
-    fun getBookmarkFolders(): Flow<Result<List<BookmarkFolder>>>
-
-    /** Adds a bookmark for an article optionally into a folder. */
-    suspend fun addBookmark(articleId: String, folderId: String?): Result<Unit>
-
-    /** Removes a bookmark by id. */
-    suspend fun removeBookmark(bookmarkId: String): Result<Unit>
-
-    /** Creates a folder returning its generated id. */
-    suspend fun createFolder(name: String): Result<String>
-
-    /** Moves an existing bookmark into (or out of) a folder. */
-    suspend fun moveBookmark(bookmarkId: String, folderId: String?): Result<Unit>
-
-    /** Local / cached search constrained to bookmarked articles only. */
-    suspend fun searchBookmarked(query: String, limit: Int = 25, offset: Int = 0): List<Article>
 }
 
 /**

@@ -17,6 +17,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.ConnectionSpec
+import okhttp3.CipherSuite
+import okhttp3.TlsVersion
+import info.lwb.data.network.LwbOkHttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
 import javax.inject.Singleton
@@ -107,16 +112,37 @@ object AuthProvisionModule {
     /** Provides Identity API credential facade implementation. */
     @Provides
     @Singleton
-    fun provideIdentityCredentialFacade(): IdentityCredentialFacade = DefaultIdentityCredentialFacade()
+    fun provideIdentityCredentialFacade(
+        @ServerClientId serverClientId: String,
+    ): IdentityCredentialFacade = DefaultIdentityCredentialFacade(serverClientId)
 
     /** Provides auth-scoped OkHttp client with a small call timeout appropriate for auth endpoints. */
     @Provides
     @Singleton
     @AuthClient
-    fun provideAuthOkHttp(): OkHttpClient = OkHttpClient
-        .Builder()
-        .callTimeout(AUTH_OKHTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .build()
+    fun provideAuthOkHttp(): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+        // Align protocol policy with main client: some TLS setups on port 44443 mis-handle HTTP/2
+        // causing handshake closures. Force HTTP/1.1 for maximum compatibility.
+        builder.protocols(listOf(Protocol.HTTP_1_1))
+        // Match main client TLS policy: prefer TLS 1.3 with fallback to 1.2 and common ciphers
+        val csBuilder = ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+        csBuilder.tlsVersions(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2)
+        csBuilder.cipherSuites(
+            CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+            CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+        )
+        val tlsSpec = csBuilder.build()
+        builder.connectionSpecs(listOf(tlsSpec))
+        // Add lightweight BASIC logging for auth HTTP calls to aid diagnosis
+        builder.addInterceptor(LwbOkHttpLoggingInterceptor(LwbOkHttpLoggingInterceptor.Level.BASIC))
+        builder.callTimeout(AUTH_OKHTTP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        return builder.build()
+    }
 
     /** Provides base URL for auth service (switchable via build config). */
     @Provides

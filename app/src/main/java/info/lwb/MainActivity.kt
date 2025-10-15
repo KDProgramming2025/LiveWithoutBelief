@@ -5,10 +5,10 @@
 package info.lwb
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,7 +40,6 @@ import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import info.lwb.auth.AuthViewModel
 import info.lwb.feature.articles.ArticlesListRoute
-import info.lwb.feature.bookmarks.BookmarksRoute
 import info.lwb.feature.home.HomeRoute
 import info.lwb.feature.reader.ReaderByIdRoute
 import info.lwb.feature.search.SearchRoute
@@ -48,6 +47,7 @@ import info.lwb.feature.settings.SettingsRoute
 import info.lwb.feature.settings.SettingsViewModel
 import info.lwb.feature.settings.ThemeMode
 import info.lwb.ui.designsystem.LwbTheme
+import info.lwb.lastread.LastReadViewModel
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -76,6 +76,11 @@ private fun AppRoot() {
     val navController = rememberNavController()
     val settingsVm: SettingsViewModel = hiltViewModel()
     val theme by settingsVm.themeMode.collectAsState()
+    val authVm: AuthViewModel = hiltViewModel()
+    val authState by authVm.state.collectAsState()
+    val lastReadVm: LastReadViewModel = hiltViewModel()
+    val lastRead by lastReadVm.lastRead.collectAsState()
+    val context = LocalContext.current
     val dark = when (theme) {
         ThemeMode.SYSTEM -> {
             isSystemInDarkTheme()
@@ -89,14 +94,42 @@ private fun AppRoot() {
     }
     LwbTheme(darkTheme = dark) {
         Surface(color = MaterialTheme.colorScheme.background) {
-            hiltViewModel<AuthViewModel>()
-            AppNavHost(navController)
+            val signedIn = authState is info.lwb.auth.AuthUiState.SignedIn
+            val userLabel = if (signedIn) {
+                val u = (authState as info.lwb.auth.AuthUiState.SignedIn).user
+                u.displayName ?: u.email ?: "Signed in"
+            } else {
+                null
+            }
+            // Show a one-time toast when authentication transitions to signed-in
+            var wasSignedIn by remember { mutableStateOf(signedIn) }
+            androidx.compose.runtime.LaunchedEffect(signedIn) {
+                if (!wasSignedIn && signedIn) {
+                    val u = (authState as info.lwb.auth.AuthUiState.SignedIn).user
+                    val label = u.displayName ?: u.email ?: "Signed in"
+                    Toast.makeText(context, "Signed in as $label", Toast.LENGTH_SHORT).show()
+                }
+                wasSignedIn = signedIn
+            }
+            AppNavHost(
+                navController = navController,
+                authVm = authVm,
+                signedIn = signedIn,
+                userLabel = userLabel,
+                onSignOut = { authVm.signOut() },
+                lastReadVm = lastReadVm,
+                lastRead = lastRead,
+            )
         }
     }
 }
 
 @Composable
-private fun PasswordAuthSection(onRegister: (String, String) -> Unit, onLogin: (String, String) -> Unit) {
+private fun PasswordAuthSection(
+    onRegister: (String, String) -> Unit,
+    onLogin: (String, String) -> Unit,
+    enabled: Boolean = true,
+) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     Text("Or use username & password:")
@@ -120,13 +153,13 @@ private fun PasswordAuthSection(onRegister: (String, String) -> Unit, onLogin: (
             if (username.isNotBlank() && password.isNotBlank()) {
                 onRegister(username.trim(), password)
             }
-        }) { Text("Register") }
+        }, enabled = enabled) { Text("Register") }
         Spacer(Modifier.height(6.dp))
         Button(modifier = Modifier.fillMaxWidth(), onClick = {
             if (username.isNotBlank() && password.isNotBlank()) {
                 onLogin(username.trim(), password)
             }
-        }) { Text("Login") }
+        }, enabled = enabled) { Text("Login") }
     }
 }
 
@@ -134,14 +167,19 @@ private object Destinations {
     const val HOME = "home"
     const val READER_BY_ID = "reader/{articleId}?indexUrl={indexUrl}"
     const val SEARCH = "search"
-    const val BOOKMARKS = "bookmarks"
     const val SETTINGS = "settings"
     const val LABEL_LIST = "label_list/{label}"
 }
 
 @Composable
-private fun HomeDestination(navController: NavHostController) {
-    Box(Modifier.fillMaxSize()) {
+private fun HomeDestination(
+    navController: NavHostController,
+    signedIn: Boolean,
+    userLabel: String?,
+    onSignOut: () -> Unit,
+    lastRead: info.lwb.lastread.LastRead?,
+) {
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         HomeRoute(
             onItemClick = { _, label ->
                 if (!label.isNullOrBlank()) {
@@ -151,10 +189,16 @@ private fun HomeDestination(navController: NavHostController) {
                     // Fallback: no label mapping yet
                 }
             },
-            onContinueReading = {
-                // Disabled: no default article id. User must pick an article explicitly.
+            onContinueReading = lastRead?.let { lr ->
+                {
+                    val enc = URLEncoder.encode(lr.indexUrl, Charsets.UTF_8.name())
+                    navController.navigate("reader/${lr.articleId}?indexUrl=$enc")
+                }
             },
             onOpenSettings = { navController.navigate(Destinations.SETTINGS) },
+            signedIn = signedIn,
+            userLabel = userLabel,
+            onSignOut = onSignOut,
         )
     }
 }
@@ -163,6 +207,11 @@ private fun HomeDestination(navController: NavHostController) {
 private fun ReaderByIdDestination(
     navController: NavHostController,
     backStackEntry: androidx.navigation.NavBackStackEntry,
+    authVm: AuthViewModel,
+    signedIn: Boolean,
+    userLabel: String?,
+    onSignOut: () -> Unit,
+    lastReadVm: LastReadViewModel,
 ) {
     val id = backStackEntry.arguments?.getString("articleId")
     val rawIndexUrl = backStackEntry.arguments?.getString("indexUrl")
@@ -171,18 +220,26 @@ private fun ReaderByIdDestination(
     }
     // Login dialog state handled in host
     var showLogin by remember { mutableStateOf(false) }
-    val authVm: AuthViewModel = hiltViewModel()
     val authState by authVm.state.collectAsState()
     // Auto-close dialog on successful sign-in
     if (showLogin && authState is info.lwb.auth.AuthUiState.SignedIn) {
         showLogin = false
     }
     if (id != null) {
+        // Persist this as the last-read article whenever we navigate to it
+        if (!decodedIndexUrl.isNullOrBlank()) {
+            androidx.compose.runtime.LaunchedEffect(id, decodedIndexUrl) {
+                lastReadVm.save(id, decodedIndexUrl)
+            }
+        }
         ReaderByIdRoute(
             articleId = id,
             navIndexUrl = decodedIndexUrl,
             onNavigateBack = { navController.popBackStack() },
             onRequireLogin = { showLogin = true },
+            signedIn = signedIn,
+            userLabel = userLabel,
+            onSignOut = onSignOut,
         )
         if (showLogin) {
             LoginDialog(
@@ -227,6 +284,7 @@ private fun LoginDialog(
                     onLogin = { username, password ->
                         authVm.passwordLogin(username, password)
                     },
+                    enabled = authState !is info.lwb.auth.AuthUiState.Loading,
                 )
                 when (val s = authState) {
                     is info.lwb.auth.AuthUiState.Error -> {
@@ -265,24 +323,31 @@ private fun LabelListDestination(
             val enc = URLEncoder.encode(article.indexUrl, Charsets.UTF_8.name())
             navController.navigate("reader/$id?indexUrl=$enc")
         },
-        onNavigateHome = { navController.popBackStack(Destinations.HOME, inclusive = false) },
         onNavigateBack = { navController.popBackStack() },
     )
 }
 
 @Composable
-private fun AppNavHost(navController: NavHostController) = NavHost(
-    navController = navController,
-    startDestination = Destinations.HOME,
-) {
-    composable(Destinations.HOME) { HomeDestination(navController) }
-    composable(Destinations.READER_BY_ID) { backStackEntry ->
-        ReaderByIdDestination(navController, backStackEntry)
+private fun AppNavHost(
+    navController: NavHostController,
+    authVm: AuthViewModel,
+    signedIn: Boolean,
+    userLabel: String?,
+    onSignOut: () -> Unit,
+    lastReadVm: LastReadViewModel,
+    lastRead: info.lwb.lastread.LastRead?,
+) =
+    NavHost(
+        navController = navController,
+        startDestination = Destinations.HOME,
+    ) {
+        composable(Destinations.HOME) { HomeDestination(navController, signedIn, userLabel, onSignOut, lastRead) }
+        composable(Destinations.READER_BY_ID) { backStackEntry ->
+            ReaderByIdDestination(navController, backStackEntry, authVm, signedIn, userLabel, onSignOut, lastReadVm)
+        }
+        composable(Destinations.SEARCH) { SearchRoute() }
+        composable(Destinations.SETTINGS) { SettingsRoute(onBack = { navController.popBackStack() }) }
+        composable(Destinations.LABEL_LIST) { backStackEntry ->
+            LabelListDestination(navController, backStackEntry)
+        }
     }
-    composable(Destinations.SEARCH) { SearchRoute() }
-    composable(Destinations.BOOKMARKS) { BookmarksRoute() }
-    composable(Destinations.SETTINGS) { SettingsRoute(onBack = { navController.popBackStack() }) }
-    composable(Destinations.LABEL_LIST) { backStackEntry ->
-        LabelListDestination(navController, backStackEntry)
-    }
-}

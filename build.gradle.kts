@@ -49,16 +49,20 @@ subprojects {
         // We want reports even when there are violations so we can aggregate counts.
         // ignoreFailures allows the build to continue after generating reports.
         ignoreFailures = true
+        // Detekt Gradle plugin 2.0.0-alpha.0 uses output properties that can conflict with
+        // Gradle's state tracking in some environments. Disable state tracking for this task.
+        doNotTrackState("Detekt reports output properties are not compatible with state tracking on this build setup")
         reports {
             sarif.required.set(true)
             html.required.set(true)
-            xml.required.set(true)
+            // XML report is not used by our gate; disable to avoid plugin output property issues
+            xml.required.set(false)
             md.required.set(false)
             // Explicitly set destination directories to ensure generation
             val reportsDir = project.layout.buildDirectory.dir("reports/detekt").get().asFile
             sarif.outputLocation.set(reportsDir.resolve("${project.name}.sarif"))
             html.outputLocation.set(reportsDir.resolve("${project.name}.html"))
-            xml.outputLocation.set(reportsDir.resolve("${project.name}.xml"))
+            // xml.outputLocation intentionally not set (disabled)
         }
     }
     tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach { jvmTarget.set("17") }
@@ -108,6 +112,16 @@ subprojects {
 }
 kotlin.run {
     // placeholder for potential shared config additions later
+}
+
+// Root aggregate Detekt task; ensures a single entry point exists at the root project
+tasks.register("detektAll") {
+    group = "verification"
+    description = "Run detekt on all modules (aggregate)"
+    dependsOn(":detekt")
+    subprojects.forEach { sp ->
+        dependsOn(sp.tasks.named("detekt"))
+    }
 }
 
 // Simple dependency guard (regex-based) to enforce no forbidden cross-layer imports.
@@ -271,8 +285,28 @@ tasks.register("detektAggregateReport") {
 }
 
 // ---------------------------------------------------------------------------
-// Quality Gate (configuration-cache compatible)
+// Quality Gate (force fresh reports; avoid configuration cache reuse)
 // ---------------------------------------------------------------------------
+// Clean old SARIF reports before running detekt to avoid stale file pickup
+val cleanDetektReports = tasks.register("cleanDetektReports") {
+    group = "verification"
+    description = "Deletes detekt report directories in root and subprojects"
+    notCompatibleWithConfigurationCache("Performs direct file IO across project dirs")
+    doLast {
+        val deleted = mutableListOf<String>()
+        val rootDir = rootProject.layout.buildDirectory.get().asFile.resolve("reports/detekt")
+        if (rootDir.exists()) {
+            rootDir.deleteRecursively(); deleted += rootDir.absolutePath
+        }
+        subprojects.forEach { sp ->
+            val spDir = sp.layout.buildDirectory.get().asFile.resolve("reports/detekt")
+            if (spDir.exists()) {
+                spDir.deleteRecursively(); deleted += spDir.absolutePath
+            }
+        }
+        if (deleted.isNotEmpty()) println("[cleanDetektReports] Deleted: \n - " + deleted.joinToString("\n - "))
+    }
+}
 // Implemented as a typed task (see buildSrc/QualityGateTask) with declared inputs so Gradle can
 // safely snapshot task configuration. Sarif file discovery uses lazy providers; no Project
 // objects are captured in the task state. This allows reuse of the configuration cache across
@@ -283,8 +317,14 @@ tasks.register("detektAggregateReport") {
 tasks.register<QualityGateTask>("qualityGate") {
     group = "verification"
     description = "Fails if detekt findings or formatting violations are present before debug build/install"
+    // This gate must always evaluate fresh SARIF; never reuse configuration cache
+    notCompatibleWithConfigurationCache("Must always re-scan fresh detekt SARIF reports to avoid stale cache")
+    // Ensure we run cleanup first
+    dependsOn(cleanDetektReports)
     // Depend directly on all detekt tasks so SARIF is produced freshly when needed
     dependsOn(":detekt")
+    // Also depend on the aggregate which wires all subprojects
+    dependsOn("detektAll")
     subprojects.forEach { sp ->
         dependsOn(sp.tasks.named("detekt"))
     }

@@ -217,7 +217,6 @@ dependencies {
     implementation(project(":data:network"))
     implementation(project(":feature:reader"))
     implementation(project(":feature:search"))
-    implementation(project(":feature:bookmarks"))
     implementation(project(":feature:annotations"))
     implementation(project(":feature:articles"))
     implementation(project(":feature:home"))
@@ -246,6 +245,8 @@ dependencies {
     implementation(libs.okhttp)
     // Using self-hosted ALTCHA via WebView asset
     implementation(libs.kotlinx.serialization.json)
+    // DataStore for last-read persistence
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

@@ -108,12 +108,21 @@ class FirebaseCredentialAuthFacade @javax.inject.Inject constructor(
             return AuthUser(live.uid, live.displayName, live.email, live.photoUrl?.toString())
         }
         val token = secureStorage.getIdToken()
-        val subject = token?.let { JwtUtils.extractSubject(it) }
-        return if (subject == null) {
-            null
-        } else {
+        // Support password sessions which store a pseudo token in the form "pwd:<uid>"
+        val subject = when {
+            token.isNullOrBlank() -> {
+                null
+            }
+            token.startsWith("pwd:") -> {
+                token.removePrefix("pwd:")
+            }
+            else -> {
+                JwtUtils.extractSubject(token)
+            }
+        }
+        return subject?.let { sub ->
             val (name, email, avatar) = secureStorage.getProfile()
-            AuthUser(subject, name, email, avatar)
+            AuthUser(sub, name, email, avatar)
         }
     }
 

@@ -4,8 +4,9 @@
  */
 package info.lwb.feature.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -22,11 +23,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.clickable
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -41,8 +40,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -59,7 +63,7 @@ import info.lwb.ui.designsystem.LocalSurfaceStyle
 import info.lwb.ui.designsystem.ProvideSurfaceStyle
 import info.lwb.ui.designsystem.RaisedButton
 import info.lwb.ui.designsystem.RaisedIconWell
-import info.lwb.ui.designsystem.RaisedSurface
+import info.lwb.ui.designsystem.PressableSurface
 
 /**
  * Entry point composable for the Home feature.
@@ -79,6 +83,9 @@ fun HomeRoute(
     onItemClick: (String, String?) -> Unit = { _, _ -> },
     onContinueReading: (() -> Unit)? = null,
     onOpenSettings: () -> Unit = {},
+    signedIn: Boolean = false,
+    userLabel: String? = null,
+    onSignOut: () -> Unit = {},
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -108,6 +115,9 @@ fun HomeRoute(
             onItemClick = onItemClick,
             onContinueReading = onContinueReading,
             onOpenSettings = onOpenSettings,
+            signedIn = signedIn,
+            userLabel = userLabel,
+            onSignOut = onSignOut,
             refreshing = refreshing,
             onRefresh = { viewModel.refresh() },
         )
@@ -128,6 +138,22 @@ private object HomeDimens {
     val GridContentBottom = 16.dp
     val CardMinHeight = 112.dp
     val GridAdaptiveMin = 240.dp
+
+    // Continue reading card specifics
+
+    val ContinueCardMinHeight = 56.dp
+    val ContinueCapsuleCorner = 14.dp
+    val ContinueCapsulePaddingH = 12.dp
+    val ContinueCapsulePaddingV = 8.dp
+}
+
+// Alpha and stylistic constants for Home UI elements.
+private object HomeStyle {
+    const val CAPSULE_BORDER_ALPHA = 0.10f
+    const val CAPSULE_ICON_BG_ALPHA = 0.18f
+    const val CAPSULE_SUBTITLE_ALPHA = 0.86f
+    const val CAPSULE_BG_ALPHA = 0.60f
+    const val CAPSULE_WIDTH_FRACTION = 0.5f
 }
 
 /**
@@ -141,6 +167,9 @@ internal fun HomeScreen(
     onItemClick: (String, String?) -> Unit,
     onContinueReading: (() -> Unit)?,
     onOpenSettings: () -> Unit,
+    signedIn: Boolean,
+    userLabel: String?,
+    onSignOut: () -> Unit,
     refreshing: Boolean,
     onRefresh: () -> Unit,
 ) {
@@ -166,6 +195,9 @@ internal fun HomeScreen(
                         onItemClick = onItemClick,
                         onContinueReading = onContinueReading,
                         onOpenSettings = onOpenSettings,
+                        signedIn = signedIn,
+                        userLabel = userLabel,
+                        onSignOut = onSignOut,
                         surfaceTextPrimary = surface.textPrimary,
                         surfaceTextMuted = surface.textMuted,
                     )
@@ -210,6 +242,9 @@ private fun HomeSuccess(
     onItemClick: (String, String?) -> Unit,
     onContinueReading: (() -> Unit)?,
     onOpenSettings: () -> Unit,
+    signedIn: Boolean,
+    userLabel: String?,
+    onSignOut: () -> Unit,
     surfaceTextPrimary: androidx.compose.ui.graphics.Color,
     surfaceTextMuted: androidx.compose.ui.graphics.Color,
 ) {
@@ -235,45 +270,105 @@ private fun HomeSuccess(
                 textMuted = surfaceTextMuted,
             )
         }
-        HomeActionsOverlay(onOpenSettings = onOpenSettings)
+        HomeActionsOverlay(
+            onOpenSettings = onOpenSettings,
+            signedIn = signedIn,
+            userLabel = userLabel,
+            onSignOut = onSignOut,
+        )
     }
 }
 
 @Composable
-private fun BoxScope.HomeActionsOverlay(onOpenSettings: () -> Unit) {
+private fun BoxScope.HomeActionsOverlay(
+    onOpenSettings: () -> Unit,
+    signedIn: Boolean,
+    userLabel: String?,
+    onSignOut: () -> Unit,
+) {
     // Simple always-visible action rail; could be stateful later
     ActionRail(
         modifier = Modifier.align(Alignment.BottomEnd),
-        items = listOf(
-            ActionRailItem(Icons.Filled.Settings, "Settings") { onOpenSettings() },
-            ActionRailItem(Icons.Filled.Star, "Bookmarks") { /* TODO hook bookmarks */ },
-            ActionRailItem(Icons.Filled.PlayArrow, "Comments") { /* TODO hook comments */ },
-        ),
-        mainIcon = Icons.Filled.Settings,
+        items = buildList {
+            if (signedIn && !userLabel.isNullOrBlank()) {
+                add(
+                    ActionRailItem(
+                        icon = Icons.Filled.Star,
+                        label = userLabel,
+                        onClick = { /* no-op */ },
+                        role = info.lwb.ui.designsystem.ActionRole.Header,
+                    ),
+                )
+                add(
+                    ActionRailItem(
+                        icon = Icons.Filled.Star,
+                        label = "Sign out",
+                        onClick = { onSignOut() },
+                        role = info.lwb.ui.designsystem.ActionRole.Footer,
+                    ),
+                )
+            }
+            add(ActionRailItem(Icons.Filled.Star, "Settings") { onOpenSettings() })
+        },
+        mainIcon = Icons.Filled.Star,
         mainContentDescription = "Home quick actions",
         edgePadding = 16.dp,
     )
 }
 
 @Composable
-private fun ContinueReadingBar(onContinueReading: (() -> Unit)?, textColor: androidx.compose.ui.graphics.Color) {
-    Row(
+private fun ContinueReadingBar(
+    onContinueReading: (() -> Unit)?,
+    textColor: androidx.compose.ui.graphics.Color,
+) {
+    if (onContinueReading == null) {
+        return
+    }
+    val shape = RoundedCornerShape(HomeDimens.ContinueCapsuleCorner)
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val bgColor = surfaceVariant.copy(alpha = HomeStyle.CAPSULE_BG_ALPHA)
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(HomeStyle.CAPSULE_WIDTH_FRACTION)
+                .heightIn(min = HomeDimens.ContinueCardMinHeight)
+                .clip(shape)
+                .background(bgColor)
+                .border(width = 1.dp, color = onSurface.copy(alpha = HomeStyle.CAPSULE_BORDER_ALPHA), shape = shape)
+                .clickable { onContinueReading() },
+        ) {
+            ContinueCapsuleContent(textColor = textColor)
+        }
+    }
+}
+
+@Composable
+private fun ContinueCapsuleContent(textColor: androidx.compose.ui.graphics.Color) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = HomeDimens.HorizontalPadding),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start,
+            .padding(
+                horizontal = HomeDimens.ContinueCapsulePaddingH,
+                vertical = HomeDimens.ContinueCapsulePaddingV,
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (onContinueReading != null) {
-            RaisedButton(onClick = onContinueReading) {
-                Text(
-                    text = "Continue reading",
-                    color = textColor,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
+        Text(
+            text = "Continue reading",
+            style = MaterialTheme.typography.titleMedium.copy(lineHeight = 20.sp),
+            color = textColor,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Tap to resume",
+            style = MaterialTheme.typography.bodySmall,
+            color = textColor.copy(alpha = HomeStyle.CAPSULE_SUBTITLE_ALPHA),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
     }
 }
 
@@ -347,11 +442,11 @@ private fun NeoMenuCard(
     textPrimary: androidx.compose.ui.graphics.Color,
     textMuted: androidx.compose.ui.graphics.Color,
 ) {
-    RaisedSurface(
+    PressableSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
             .heightIn(min = minHeight),
+        onClick = onClick,
     ) {
         Box(
             modifier = Modifier.padding(HomeDimens.CardPadding),
@@ -425,6 +520,9 @@ private fun HomeMenuPreviewContent(dark: Boolean) {
             onItemClick = { _, _ -> },
             onContinueReading = {},
             onOpenSettings = {},
+            signedIn = true,
+            userLabel = "Preview User",
+            onSignOut = {},
             refreshing = false,
             onRefresh = {},
         )

@@ -7,8 +7,6 @@ package info.lwb.core.domain
 import info.lwb.core.common.Result
 import info.lwb.core.model.Annotation
 import info.lwb.core.model.Article
-import info.lwb.core.model.Bookmark
-import info.lwb.core.model.BookmarkFolder
 import info.lwb.core.model.MenuItem
 import info.lwb.core.model.ThreadMessage
 import kotlinx.coroutines.flow.Flow
@@ -78,75 +76,6 @@ class GetArticlesByLabelUseCase(private val articleRepository: ArticleRepository
                 .thenBy { it.title },
         )
     }
-}
-
-/**
- * Stream of the user's bookmarks including newly added or removed items.
- */
-class GetBookmarksUseCase(private val bookmarkRepository: BookmarkRepository) {
-    /** @return a [Flow] of bookmark list [Result] updates. */
-    operator fun invoke(): Flow<Result<List<Bookmark>>> = bookmarkRepository.getBookmarks()
-}
-
-/**
- * Adds a bookmark for an article optionally placing it inside a folder.
- */
-class AddBookmarkUseCase(private val bookmarkRepository: BookmarkRepository) {
-    /**
-     * @param articleId id of the target article.
-     * @param folderId optional folder destination; null for root.
-     */
-    suspend operator fun invoke(articleId: String, folderId: String? = null) =
-        bookmarkRepository.addBookmark(articleId, folderId)
-}
-
-/**
- * Removes a bookmark by its primary identifier.
- */
-class RemoveBookmarkUseCase(private val bookmarkRepository: BookmarkRepository) {
-    /** @param bookmarkId identifier of the bookmark to remove. */
-    suspend operator fun invoke(bookmarkId: String) = bookmarkRepository.removeBookmark(bookmarkId)
-}
-
-/**
- * Reactive stream of bookmark folder structures for navigation / organization UIs.
- */
-class GetBookmarkFoldersUseCase(private val bookmarkRepository: BookmarkRepository) {
-    /** @return a [Flow] of folder list [Result] values. */
-    operator fun invoke(): Flow<Result<List<BookmarkFolder>>> = bookmarkRepository.getBookmarkFolders()
-}
-
-/**
- * Creates a new bookmark folder at the root hierarchy level.
- */
-class CreateFolderUseCase(private val bookmarkRepository: BookmarkRepository) {
-    /** @param name human readable folder name. */
-    suspend operator fun invoke(name: String) = bookmarkRepository.createFolder(name)
-}
-
-/**
- * Moves a bookmark to a different folder or the root when [folderId] is null.
- */
-class MoveBookmarkUseCase(private val bookmarkRepository: BookmarkRepository) {
-    /**
-     * @param bookmarkId id of the bookmark being moved.
-     * @param folderId destination folder or null for root.
-     */
-    suspend operator fun invoke(bookmarkId: String, folderId: String?) =
-        bookmarkRepository.moveBookmark(bookmarkId, folderId)
-}
-
-/**
- * Executes a search constrained to the user's bookmarked articles.
- */
-class SearchBookmarkedUseCase(private val bookmarkRepository: BookmarkRepository) {
-    /**
-     * @param query free‑text search string.
-     * @param limit pagination size.
-     * @param offset pagination offset.
-     */
-    suspend operator fun invoke(query: String, limit: Int = 25, offset: Int = 0) =
-        bookmarkRepository.searchBookmarked(query, limit, offset)
 }
 
 /**

@@ -66,25 +66,6 @@ data class ArticleAsset(
 )
 
 /**
- * User bookmark pointing at an article.
- * @property id Bookmark id.
- * @property articleId Target article id.
- * @property folderId Optional folder grouping id.
- * @property createdAt ISO-8601 creation timestamp.
- */
-@Serializable
-data class Bookmark(val id: String, val articleId: String, val folderId: String?, val createdAt: String)
-
-/**
- * Folder grouping user bookmarks.
- * @property id Folder id.
- * @property name Display name.
- * @property createdAt ISO-8601 creation timestamp.
- */
-@Serializable
-data class BookmarkFolder(val id: String, val name: String, val createdAt: String)
-
-/**
  * Tag for classifying articles.
  * @property id Tag id.
  * @property name Tag label.

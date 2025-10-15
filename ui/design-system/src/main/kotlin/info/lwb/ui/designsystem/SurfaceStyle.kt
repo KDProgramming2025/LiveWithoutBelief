@@ -7,6 +7,8 @@ package info.lwb.ui.designsystem
 import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
@@ -15,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -171,9 +174,9 @@ object SurfaceStyleDefaults {
     )
 }
 
-// Extracted color hex constants to satisfy MagicNumber rule
-private const val COLOR_DARK_BG_TOP = 0xFF1F1A17
-private const val COLOR_DARK_BG_BOTTOM = 0xFF191410
+// Cooler, lighter dark background gradient (do not touch surface color)
+private const val COLOR_DARK_BG_TOP = 0xFF2C333C
+private const val COLOR_DARK_BG_BOTTOM = 0xFF232930
 private const val COLOR_DARK_SURFACE = 0xFF24201C
 private const val COLOR_DARK_SHADOW_DARK = 0xFF0E0B09
 private const val COLOR_DARK_SHADOW_LIGHT = 0xFF34373D
@@ -336,6 +339,101 @@ fun RaisedSurface(modifier: Modifier = Modifier, content: @Composable BoxScope.(
     }
 }
 
+/**
+ * Pressable surface that appears raised by default and shifts to an inset "pressed well" look
+ * while pressed. Removes the default ripple and relies on light/shadow inversion for feedback.
+ *
+ * Pressed effect per request: top-left outside highlight becomes bottom-right inside highlight,
+ * and bottom-right outside shadow becomes top-left inside shadow.
+ */
+@Composable
+fun PressableSurface(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val colors = LocalSurfaceStyle.current
+    val metrics = LocalSurfaceMetrics.current
+    val isDark = LocalIsDarkTheme.current
+    val shape = RoundedCornerShape(metrics.cornerRadius)
+    val shadowPadding = calculateShadowPadding(metrics)
+
+    // Track pressed state via interaction source; suppress ripple indication
+    val interactionSource = androidx.compose.runtime.remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    // External shadow rendering only when not pressed
+    val outerModifier = if (pressed) {
+        // No external shadow while pressed (inset look)
+        modifier
+    } else {
+        modifier.drawWithCache {
+            val padPx = shadowPadding.toPx()
+            val left = padPx
+            val top = padPx
+            val right = size.width - padPx
+            val bottom = size.height - padPx
+            val w = size.width.roundToInt().coerceAtLeast(MIN_BITMAP_DIMENSION)
+            val h = size.height.roundToInt().coerceAtLeast(MIN_BITMAP_DIMENSION)
+            val bitmaps = renderShadowBitmaps(
+                widthPx = w,
+                heightPx = h,
+                left = left,
+                top = top,
+                right = right,
+                bottom = bottom,
+                radius = metrics.cornerRadius.toPx(),
+                offset = metrics.shadowOffset.toPx(),
+                blur = metrics.shadowBlur.toPx(),
+                colors = colors,
+                metrics = metrics,
+            )
+            onDrawBehind { drawOuterShadows(bitmaps, isDark) }
+        }
+    }
+
+    Box(
+        outerModifier
+            .clickable(
+                onClick = onClick,
+                indication = null, // suppress ripple
+                interactionSource = interactionSource,
+            ),
+    ) {
+        val innerModifier =
+            if (pressed) {
+                // Inset (pressed) look with inverted inner light/shadow orientation
+                Modifier
+                    .padding(shadowPadding)
+                    .pressedSurfaceRim(colors, metrics, shape)
+            } else {
+                // Raised look (default)
+                Modifier
+                    .padding(shadowPadding)
+                    .surfaceRim(colors, metrics, shape)
+            }
+        Box(innerModifier) { content() }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawOuterShadows(
+    bitmaps: SurfaceRendering,
+    isDark: Boolean,
+) {
+    val shadowMode = if (isDark) {
+        BlendMode.Darken
+    } else {
+        BlendMode.Multiply
+    }
+    val lightMode = if (isDark) {
+        BlendMode.Lighten
+    } else {
+        BlendMode.Screen
+    }
+    drawImage(bitmaps.dark, blendMode = shadowMode)
+    drawImage(bitmaps.light, blendMode = lightMode)
+}
+
 private fun calculateShadowPadding(metrics: SurfaceStyleMetrics): Dp {
     val computed =
         metrics.shadowBlur +
@@ -371,6 +469,59 @@ private fun Modifier.surfaceRim(
                 style = Stroke(width = metrics.strokeDarkWidth.toPx()),
                 cornerRadius = CornerRadius(r, r),
             )
+        }
+    }
+    return current
+}
+
+private fun Modifier.pressedSurfaceRim(
+    colors: SurfaceStyleColors,
+    metrics: SurfaceStyleMetrics,
+    shape: RoundedCornerShape,
+): Modifier {
+    var current: Modifier = this
+    current = current.clip(shape)
+    current = current.background(colors.surface)
+    current = current.drawBehind {
+        val corner = metrics.cornerRadius.toPx()
+        drawIntoCanvas { canvas ->
+            val paint = Paint()
+            val fp = paint.asFrameworkPaint()
+            fp.isAntiAlias = true
+            fp.style = android.graphics.Paint.Style.STROKE
+            fp.strokeWidth = INSET_WELL_STROKE_WIDTH
+
+            // Top-left inside shadow (swap from outside bottom-right)
+            fp.color = colors.shadowDark
+                .copy(alpha = metrics.shadowDarkAlpha * DARK_WELL_ALPHA_MULT)
+                .toArgb()
+            fp.maskFilter = BlurMaskFilter(
+                metrics.shadowBlur.toPx() * DARK_WELL_BLUR_MULT,
+                BlurMaskFilter.Blur.NORMAL,
+            )
+            canvas.save()
+            canvas.translate(
+                -metrics.shadowOffset.toPx() * LIGHT_WELL_TRANSLATE_X_MULT, // use light multipliers for symmetry
+                -metrics.shadowOffset.toPx() * LIGHT_WELL_TRANSLATE_Y_MULT,
+            )
+            canvas.drawRoundRect(0f, 0f, this.size.width, this.size.height, corner, corner, paint)
+            canvas.restore()
+
+            // Bottom-right inside highlight (swap from outside top-left)
+            fp.color = colors.shadowLight
+                .copy(alpha = metrics.shadowLightAlpha * LIGHT_WELL_ALPHA_MULT)
+                .toArgb()
+            fp.maskFilter = BlurMaskFilter(
+                metrics.shadowBlur.toPx() * LIGHT_WELL_BLUR_MULT,
+                BlurMaskFilter.Blur.NORMAL,
+            )
+            canvas.save()
+            canvas.translate(
+                metrics.shadowOffset.toPx() * DARK_WELL_TRANSLATE_X_MULT, // use dark multipliers for symmetry
+                metrics.shadowOffset.toPx() * DARK_WELL_TRANSLATE_Y_MULT,
+            )
+            canvas.drawRoundRect(0f, 0f, this.size.width, this.size.height, corner, corner, paint)
+            canvas.restore()
         }
     }
     return current

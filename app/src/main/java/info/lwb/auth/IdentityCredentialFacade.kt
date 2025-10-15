@@ -42,12 +42,13 @@ interface IdentityCredentialFacade {
  * Default production implementation backed by the AndroidX Credential Manager + Google Identity Services.
  * Runs work on [Dispatchers.IO] to avoid blocking the main thread during credential resolution.
  */
-class DefaultIdentityCredentialFacade : IdentityCredentialFacade {
+class DefaultIdentityCredentialFacade(@ServerClientId private val serverClientId: String) : IdentityCredentialFacade {
     override suspend fun getIdToken(activity: ComponentActivity): GoogleIdTokenResult = withContext(Dispatchers.IO) {
         val cm = CredentialManager.create(activity)
         val googleOption =
             GetGoogleIdOption
                 .Builder()
+                .setServerClientId(serverClientId)
                 .setFilterByAuthorizedAccounts(false)
                 .setAutoSelectEnabled(true)
                 .build()

@@ -5,7 +5,6 @@
 package info.lwb.data.repo.db
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -84,51 +83,6 @@ data class ArticleSearchRow(
     /** Pre-rendered index HTML URL. */
     val indexUrl: String?,
 )
-
-/** Data access for per-user bookmarks of articles. */
-@Dao
-interface BookmarkDao {
-    /** Reactive stream of all bookmark rows for a user id. */
-    @Query("SELECT * FROM bookmarks WHERE userId = :userId")
-    fun observeBookmarks(userId: String): Flow<List<BookmarkEntity>>
-
-    /** Insert or replace a bookmark. */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertBookmark(bookmark: BookmarkEntity)
-
-    /** Delete a single bookmark row. */
-    @Delete
-    suspend fun deleteBookmark(bookmark: BookmarkEntity)
-
-    /** Paged LIKE search limited to bookmarked articles for the user. */
-    @Query(
-        "SELECT a.* " +
-            "FROM articles a JOIN bookmarks b ON b.articleId = a.id " +
-            "WHERE b.userId = :userId AND (a.title LIKE '%' || :q || '%') " +
-            "ORDER BY a.updatedAt DESC LIMIT :limit OFFSET :offset",
-    )
-    suspend fun searchBookmarkedArticles(userId: String, q: String, limit: Int, offset: Int): List<ArticleEntity>
-}
-
-/** Data access for user-defined bookmark folders. */
-@Dao
-interface FolderDao {
-    /** Observe all folders belonging to a user. */
-    @Query("SELECT * FROM bookmark_folders WHERE userId = :userId")
-    fun observeFolders(userId: String): Flow<List<BookmarkFolderEntity>>
-
-    /** Insert or update a folder metadata row. */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(folder: BookmarkFolderEntity)
-
-    /** Delete a specific folder (bookmarks may need cascading behavior configured). */
-    @Delete
-    suspend fun delete(folder: BookmarkFolderEntity)
-
-    /** Find a folder by exact name for the given user or null if absent. */
-    @Query("SELECT * FROM bookmark_folders WHERE userId = :userId AND name = :name LIMIT 1")
-    suspend fun findByName(userId: String, name: String): BookmarkFolderEntity?
-}
 
 /** Data access for per-user inline text/image annotations linked to articles. */
 @Dao

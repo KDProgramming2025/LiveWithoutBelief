@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import info.lwb.feature.reader.ui.AppearanceState
 import info.lwb.feature.reader.ui.ArticleWebView
@@ -46,6 +45,9 @@ import kotlinx.coroutines.launch
 private const val SCROLL_SAVE_DELAY_MS = 400L
 private const val FAB_HIDE_DELAY_MS = 5_000L
 private const val FAB_MARGIN_DP = 16f
+private const val TAG_READER_WEB = "ReaderWeb"
+private const val KIND_PARAGRAPH = "paragraph"
+private const val JS_CLEAR_HIGHLIGHT = "window.lwbClearParagraphHighlight()"
 
 // Holds scroll persistence callbacks.
 
@@ -156,8 +158,9 @@ private fun rememberFabController(): Triple<FabState, () -> Unit, (FabState) -> 
 private fun androidx.compose.foundation.layout.BoxScope.ReaderActionRail(
     show: Boolean,
     onAppearance: () -> Unit,
-    onBookmark: () -> Unit,
     onListen: () -> Unit,
+    userLabel: String?,
+    onSignOut: (() -> Unit)?,
 ) {
     if (!show) {
         return
@@ -167,23 +170,40 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderActionRail(
     Box(Modifier.fillMaxSize()) {
         ActionRail(
             modifier = Modifier.align(Alignment.BottomEnd),
-            items = listOf(
-                ActionRailItem(
-                    icon = Icons.Filled.Settings,
-                    label = "Appearance",
-                    onClick = { onAppearance() },
-                ),
-                ActionRailItem(
-                    icon = Icons.Filled.Edit,
-                    label = "Bookmark",
-                    onClick = { onBookmark() },
-                ),
-                ActionRailItem(
-                    icon = Icons.Filled.PlayArrow,
-                    label = "Listen",
-                    onClick = { onListen() },
-                ),
-            ),
+            items = buildList {
+                if (!userLabel.isNullOrBlank()) {
+                    add(
+                        ActionRailItem(
+                            icon = Icons.Filled.Settings,
+                            label = userLabel,
+                            onClick = { /* no-op */ },
+                            role = info.lwb.ui.designsystem.ActionRole.Header,
+                        ),
+                    )
+                    add(
+                        ActionRailItem(
+                            icon = Icons.Filled.Edit,
+                            label = "Sign out",
+                            onClick = { onSignOut?.invoke() },
+                            role = info.lwb.ui.designsystem.ActionRole.Footer,
+                        ),
+                    )
+                }
+                add(
+                    ActionRailItem(
+                        icon = Icons.Filled.Settings,
+                        label = "Appearance",
+                        onClick = { onAppearance() },
+                    ),
+                )
+                add(
+                    ActionRailItem(
+                        icon = Icons.Filled.PlayArrow,
+                        label = "Listen",
+                        onClick = { onListen() },
+                    ),
+                )
+            },
             mainIcon = Icons.Filled.Settings,
             mainContentDescription = "Reader actions",
             edgePadding = fabMargin,
@@ -230,13 +250,16 @@ private fun ConfirmExitDialog(show: Boolean, onDismiss: () -> Unit, onConfirm: (
 // endregion
 
 @Composable
-@Suppress("LongMethod")
+@Suppress("LongMethod", "ComplexMethod", "CognitiveComplexMethod")
 // Entry point composable
 internal fun ReaderIndexScreen(
     url: String,
     vm: ReaderSessionViewModel,
     onNavigateBack: (() -> Unit)? = null,
     @Suppress("UnusedParameter") onRequireLogin: (() -> Unit)? = null,
+    signedIn: Boolean = false,
+    userLabel: String? = null,
+    onSignOut: (() -> Unit)? = null,
 ) {
     // Back navigation consumed via BackHandler when confirm-exit path reached.
 
@@ -248,7 +271,6 @@ internal fun ReaderIndexScreen(
     val css = rememberCss(ui.background)
     val (fab, showFabTemp, setFab) = rememberFabController()
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-    var paraDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
     var mediaDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
     val haptics = LocalHapticFeedback.current
 
@@ -263,7 +285,7 @@ internal fun ReaderIndexScreen(
 
     Scaffold { inner ->
         Box(Modifier.fillMaxSize().padding(inner)) {
-            // Back navigation callback consumed in BackHandler above
+            // WebView + content
             ReaderArticleWeb(
                 url = url,
                 css = css,
@@ -274,16 +296,36 @@ internal fun ReaderIndexScreen(
                 ready = ready,
                 webRef = webRef,
                 onParagraph = { id, text ->
-                    handleParagraphLongPress(
-                        id = id,
-                        text = text,
-                        haptics = haptics,
-                        setDialog = { paraDialog = it },
-                        webRef = webRef,
-                    )
+                    // Treat paragraph long-press the same as the "question" button
+                    // 1) Haptic feedback and highlight the paragraph in WebView
+                    // 2) Trigger the same login flow by reusing the media question dialog pipeline
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    try {
+                        info.lwb.core.common.log.Logger.d(TAG_READER_WEB) {
+                            "ParaQuestion: launching id=" + id + " len=" + text.length
+                        }
+                    } catch (_: Throwable) {
+                        // ignore
+                    }
+                    try {
+                        webRef.value?.evaluateJavascript(
+                            "(function(){return window.lwbHighlightParagraph('" + id + "');})()",
+                        ) { res ->
+                            try {
+                                info.lwb.core.common.log.Logger.d(TAG_READER_WEB) {
+                                    "ParaQuestion: highlight result id=" + id + " res=" + res
+                                }
+                            } catch (_: Throwable) {
+                                // ignore
+                            }
+                        }
+                    } catch (_: Throwable) {
+                        // ignore highlight errors
+                    }
+                    // Use the same dialog/login flow as media question
+                    mediaDialog = KIND_PARAGRAPH to id
                 },
                 onMediaQuestion = { kind, src ->
-                    // For now, require login and direct to registration page.
                     mediaDialog = kind to src
                 },
             )
@@ -296,65 +338,27 @@ internal fun ReaderIndexScreen(
                 showFabTemp = showFabTemp,
                 onNavigateBack = onNavigateBack,
                 backDispatcher = backDispatcher,
-                paraDialog = paraDialog,
-                clearDialog = { paraDialog = null },
-                webRef = webRef,
                 mediaDialog = mediaDialog,
-                clearMediaDialog = { mediaDialog = null },
+                clearMediaDialog = {
+                    // If we opened the media dialog from a paragraph, also clear highlight on dismiss
+                    if (mediaDialog?.first == KIND_PARAGRAPH) {
+                        try {
+                            webRef.value?.evaluateJavascript(JS_CLEAR_HIGHLIGHT, null)
+                        } catch (_: Throwable) {
+                            // ignore
+                        }
+                    }
+                    mediaDialog = null
+                },
                 onRequireLogin = onRequireLogin,
+                signedIn = signedIn,
+                userLabel = userLabel,
+                onSignOut = onSignOut,
             )
         }
     }
 }
 
-private fun handleParagraphLongPress(
-    id: String,
-    text: String,
-    haptics: HapticFeedback,
-    setDialog: (Pair<String, String>?) -> Unit,
-    webRef: androidx.compose.runtime.MutableState<android.webkit.WebView?>,
-) {
-    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-    try {
-        info.lwb.core.common.log.Logger.d("ReaderWeb") {
-            "ParaDialog: launching id=$id len=${text.length}"
-        }
-    } catch (_: Throwable) {
-        // ignore
-    }
-    setDialog(id to text)
-    try {
-        webRef.value?.evaluateJavascript(
-            "(function(){return window.lwbHighlightParagraph('" + id + "');})()",
-        ) { res ->
-            try {
-                info.lwb.core.common.log.Logger.d("ReaderWeb") {
-                    "ParaDialog: highlight result id=" + id + " res=" + res
-                }
-            } catch (_: Throwable) {
-                // ignore
-            }
-        }
-    } catch (_: Throwable) {
-        // ignore highlight errors
-    }
-}
-
-@Composable
-private fun ParagraphDialog(data: Pair<String, String>?, onDismiss: () -> Unit) {
-    if (data == null) {
-        return
-    }
-    val (_, text) = data
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        title = { Text("Paragraph") },
-        text = { Text(text.take(PARAGRAPH_DIALOG_MAX)) },
-        confirmButton = { TextButton(onClick = { onDismiss() }) { Text("Close") } },
-    )
-}
-
-private const val PARAGRAPH_DIALOG_MAX = 500
 // EOF
 
 @Composable
@@ -395,18 +399,19 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
     showFabTemp: () -> Unit,
     onNavigateBack: (() -> Unit)?,
     backDispatcher: androidx.activity.OnBackPressedDispatcher?,
-    paraDialog: Pair<String, String>?,
-    clearDialog: () -> Unit,
-    webRef: androidx.compose.runtime.MutableState<android.webkit.WebView?>,
     mediaDialog: Pair<String, String>?,
     clearMediaDialog: () -> Unit,
     onRequireLogin: (() -> Unit)?,
+    signedIn: Boolean,
+    userLabel: String?,
+    onSignOut: (() -> Unit)?,
 ) {
     ReaderActionRail(
         show = fab.visible,
         onAppearance = { setFab(fab.copy(showAppearance = true)) },
-        onBookmark = { showFabTemp() },
         onListen = { showFabTemp() },
+        userLabel = userLabel,
+        onSignOut = onSignOut,
     )
     AppearanceSheetOverlay(
         visible = fab.showAppearance,
@@ -422,17 +427,7 @@ private fun androidx.compose.foundation.layout.BoxScope.ReaderOverlays(
             onNavigateBack?.invoke() ?: backDispatcher?.onBackPressed()
         },
     )
-    ParagraphDialog(paraDialog) {
-        // Clear dialog state
-        clearDialog()
-        // Also clear highlight via JS (fire and forget)
-        try {
-            webRef.value?.evaluateJavascript("window.lwbClearParagraphHighlight()", null)
-        } catch (_: Throwable) {
-            // ignore
-        }
-    }
-    MediaLoginOverlay(mediaDialog, clearMediaDialog, onRequireLogin)
+    MediaLoginOverlay(mediaDialog, clearMediaDialog, onRequireLogin, signedIn)
 }
 
 @Composable
@@ -444,7 +439,7 @@ private fun LoginRequiredDialog(
     if (data == null) {
         return
     }
-    val (kind, _src) = data
+    val (kind, _) = data
     AlertDialog(
         onDismissRequest = { onDismiss() },
         title = { Text("Sign in required") },
@@ -466,7 +461,16 @@ private fun MediaLoginOverlay(
     mediaDialog: Pair<String, String>?,
     clearMediaDialog: () -> Unit,
     onRequireLogin: (() -> Unit)?,
+    signedIn: Boolean,
 ) {
+    // If already signed in, bypass confirmation entirely.
+    if (signedIn) {
+        if (mediaDialog != null) {
+            // Close the media dialog immediately; nothing else to do now.
+            clearMediaDialog()
+        }
+        return
+    }
     LoginRequiredDialog(
         data = mediaDialog,
         onDismiss = { clearMediaDialog() },

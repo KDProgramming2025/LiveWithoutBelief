@@ -56,44 +56,6 @@ data class ArticleEntity(
 )
 
 /**
- * User-defined bookmark folder grouping.
- *
- * Constraint ensures folder names are unique per user.
- *
- * @property id Unique folder id
- * @property userId Owner user id
- * @property name Human readable folder name (unique per user)
- * @property createdAt ISO-8601 creation timestamp
- */
-@Entity(tableName = "bookmark_folders", indices = [Index(value = ["userId", "name"], unique = true)])
-data class BookmarkFolderEntity(
-    @PrimaryKey val id: String,
-    val userId: String,
-    val name: String,
-    val createdAt: String,
-)
-
-/**
- * Single bookmark referencing an article optionally scoped to a folder.
- *
- * Unique composite index enforces only one bookmark of an article per user.
- *
- * @property id Unique bookmark id
- * @property userId Owner user id
- * @property articleId Target article id
- * @property folderId Optional containing folder
- * @property createdAt ISO-8601 creation timestamp
- */
-@Entity(tableName = "bookmarks", indices = [Index(value = ["userId", "articleId"], unique = true)])
-data class BookmarkEntity(
-    @PrimaryKey val id: String,
-    val userId: String,
-    val articleId: String,
-    val folderId: String?,
-    val createdAt: String,
-)
-
-/**
  * Text range annotation created by a user.
  *
  * Offsets are character offsets within the article's plain text representation.
@@ -180,8 +142,6 @@ interface MenuDao {
 @Database(
     entities = [
         ArticleEntity::class,
-        BookmarkFolderEntity::class,
-        BookmarkEntity::class,
         AnnotationEntity::class,
         ThreadMessageEntity::class,
         MenuItemEntity::class,
@@ -192,12 +152,6 @@ interface MenuDao {
 abstract class AppDatabase : RoomDatabase() {
     /** Data access object for article metadata & queries */
     abstract fun articleDao(): ArticleDao
-
-    /** DAO for user bookmarks */
-    abstract fun bookmarkDao(): BookmarkDao
-
-    /** DAO for bookmark folders */
-    abstract fun folderDao(): FolderDao
 
     /** DAO for text range annotations */
     abstract fun annotationDao(): AnnotationDao

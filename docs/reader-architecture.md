@@ -50,7 +50,6 @@ No cross-dependency between them to avoid a cycle. Communication path is via nav
 
 ## Future Extensions
 - Introduce a domain use case that returns pre-parsed block models to move parsing out of the session VM if needed.
-- Add bookmarking and annotation repositories; extend `ReaderSessionViewModel` with lightweight delegators rather than bloating.
 - Consider a unified `ReaderScreenState` sealed interface if later we blend acquisition & session into a single screen.
 - Multi-language support: reinject language setting into both VMs; augment `ReaderSessionViewModel` to invalidate pagination on language switch.
 
@@ -65,7 +64,7 @@ Avoid generic `*ViewModel` names when multiple roles exist; prefer `*Session`, `
 No external API exposed yet; change is internal to the feature module so refactor risk is low. If later a public contract emerges, expose only necessary read-only interfaces instead of full ViewModel types.
 
 ## Status / Ownership
-Owned by reader feature maintainers. Architectural review required if adding cross-cutting responsibilities (bookmarks/comments) to keep separation clear.
+Owned by reader feature maintainers. Architectural review required if adding cross-cutting responsibilities to keep separation clear.
 
 ---
 This document should be updated if additional responsibilities shift between the two ViewModels or a merge is reconsidered.

@@ -15,6 +15,10 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Interceptor
 import okhttp3.Response
+import okhttp3.Protocol
+import okhttp3.ConnectionSpec
+import okhttp3.CipherSuite
+import okhttp3.TlsVersion
 import info.lwb.core.common.log.Logger
 import retrofit2.Retrofit
 import javax.inject.Named
@@ -50,6 +54,24 @@ object NetworkModule {
     @Singleton
     fun provideOkHttp(): OkHttpClient {
         val builder = OkHttpClient.Builder()
+        // Some reverse proxies on nonstandard TLS ports (e.g., 44443) can mis-handle HTTP/2 ALPN
+        // which leads to TLS handshake closures on Android. Force HTTP/1.1 only to ensure
+        // broad compatibility with such edge deployments.
+        val http1Only = listOf(Protocol.HTTP_1_1)
+        builder.protocols(http1Only)
+        // Prefer TLS 1.3 with fallback to 1.2; specify common TLS 1.2 ciphers.
+        val csBuilder = ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+        csBuilder.tlsVersions(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2)
+        csBuilder.cipherSuites(
+            CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+            CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+        )
+        val tlsSpec = csBuilder.build()
+        builder.connectionSpecs(listOf(tlsSpec))
         // Interceptor to log raw (or empty) responses for any article-related endpoints
         builder.addInterceptor(object : Interceptor {
             override fun intercept(chain: Interceptor.Chain): Response {

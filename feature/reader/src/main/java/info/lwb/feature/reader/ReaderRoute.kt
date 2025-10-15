@@ -35,6 +35,9 @@ fun ReaderByIdRoute(
     navIndexUrl: String?,
     onNavigateBack: (() -> Unit)? = null,
     onRequireLogin: (() -> Unit)? = null,
+    signedIn: Boolean = false,
+    userLabel: String? = null,
+    onSignOut: (() -> Unit)? = null,
 ) {
     val url = navIndexUrl
     if (url.isNullOrBlank()) {
@@ -47,7 +50,15 @@ fun ReaderByIdRoute(
     // Record active article id for appearance persistence.
     LaunchedEffect(articleId) { vm.loadArticle(articleId) }
     Logger.d(TAG) { "Using navIndexUrl articleId=" + articleId + " url=" + url }
-    ReaderIndexScreen(url = url, vm = vm, onNavigateBack = onNavigateBack, onRequireLogin = onRequireLogin)
+    ReaderIndexScreen(
+        url = url,
+        vm = vm,
+        onNavigateBack = onNavigateBack,
+        onRequireLogin = onRequireLogin,
+        signedIn = signedIn,
+        userLabel = userLabel,
+        onSignOut = onSignOut,
+    )
 }
 
 // Minimal Hilt VM to surface environment strings
