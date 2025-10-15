@@ -1,0 +1,10 @@
+/* Gray dark theme */
+:root { --lwb-font-size: 16px; --lwb-line-height: 1.6; --lwb-bg: #202124; }
+html, body { background: var(--lwb-bg) !important; }
+body { color: #F1F3F4 !important; font-size: var(--lwb-font-size) !important; line-height: var(--lwb-line-height) !important; }
+h1, h2, h3, h4, h5, h6 { color: #F1F3F4 !important; font-size: inherit !important; line-height: inherit !important; }
+p, li { font-size: inherit !important; line-height: inherit !important; }
+hr { border: none !important; border-top: 1px solid #2C2D30 !important; }
+a { color: #66A3FF !important; }
+blockquote { border-left: 4px solid #2C2D30 !important; padding-left: 12px !important; color: #B8B9BA !important; }
+figure figcaption { color: #B8B9BA !important; }

@@ -1,0 +1,49 @@
+/* Base layout constraints */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100%;
+}
+
+/* Media scaling */
+img, video {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Iframes scale to width */
+iframe {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* Hide download buttons where supported */
+audio::-webkit-media-controls-download-button,
+video::-webkit-media-controls-download-button {
+  display: none !important;
+}
+
+audio::-internal-media-controls-download-button,
+video::-internal-media-controls-download-button {
+  display: none !important;
+}
+
+/* Pre/code wrapping */
+pre, code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* YouTube responsive container */
+.lwb-yt-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.lwb-yt-container iframe {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}

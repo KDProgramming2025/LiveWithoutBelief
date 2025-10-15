@@ -45,6 +45,18 @@
 				"type",
 				"c:\\Users\\MDP\\Desktop\\AD\\LiveWithoutBelief\\linux_commands.sh"
 			]
+		},
+		{
+			"label": "Install Android app (debug)",
+			"type": "shell",
+			"command": ".\\gradlew.bat",
+			"args": [
+				"app:installDebug",
+				"-x",
+				"lint",
+				"-x",
+				"test"
+			]
 		}
 	]
 }

@@ -4,7 +4,9 @@
  */
 package info.lwb.auth
 
-import org.junit.Assert.*
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Base64
 
@@ -12,7 +14,11 @@ class JwtUtilsTest {
     private fun buildJwt(exp: Long?): String {
         val headerJson = "{\"alg\":\"none\"}"
         val header = Base64.getUrlEncoder().withoutPadding().encodeToString(headerJson.toByteArray())
-        val payloadObj = if (exp == null) "{}" else "{\"exp\":$exp}"
+        val payloadObj = if (exp == null) {
+            "{}"
+        } else {
+            "{\"exp\":$exp}"
+        }
         val payload = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadObj.toByteArray())
         return "$header.$payload" // omit trailing dot to simplify splitting
     }

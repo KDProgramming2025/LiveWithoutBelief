@@ -1,9 +1,11 @@
 import fs from 'node:fs/promises'
 import fssync from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import mammoth from 'mammoth'
 import JSZip from 'jszip'
 import { injectYouTubePlaceholders } from './YouTubeEmbedInjector.js'
+import { env } from '../server/config/env.js'
 
 export interface ArticleRecord {
   id: string
@@ -14,7 +16,7 @@ export interface ArticleRecord {
   coverUrl: string | null
   iconUrl: string | null
   docxPath: string
-  indexUrl: string
+  indexUrl: string | null
   createdAt: string
   updatedAt: string
 }
@@ -24,8 +26,10 @@ export class ArticleService {
   private webArticlesDir = path.join(this.baseDir, 'web', 'articles')
   private docxDir = path.join(this.baseDir, 'docx')
   private jsonPath = path.join(this.baseDir, 'articles.json')
+  // Template resolution: prefer dist/templates when compiled, fallback to src/templates during dev
+  private readonly templateResolver = createTemplateResolver(import.meta.url)
 
-  constructor(private readonly baseUrl = 'https://aparat.feezor.net/LWB/Admin') {}
+  constructor(private readonly baseUrl: string | null = (env.APP_SERVER_HOST ? `${env.APP_SERVER_SCHEME}://${env.APP_SERVER_HOST}/LWB/Admin` : null)) { }
 
   async ensure(): Promise<void> {
     await fs.mkdir(this.webArticlesDir, { recursive: true })
@@ -37,7 +41,7 @@ export class ArticleService {
     await this.ensure()
     const raw = await fs.readFile(this.jsonPath, 'utf8')
     const arr = JSON.parse(raw) as ArticleRecord[]
-    return arr.sort((a,b) => a.order - b.order || a.title.localeCompare(b.title))
+    return arr.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
   }
 
   private async saveAll(items: ArticleRecord[]) {
@@ -73,14 +77,14 @@ export class ArticleService {
       const ext = path.extname(input.coverPath) || '.jpg'
       const dest = path.join(articleDir, `cover${ext}`)
       await fs.rename(input.coverPath, dest)
-      coverUrl = `${this.baseUrl}/web/articles/${slug}/cover${ext}`
+      coverUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/cover${ext}` : null
     }
     let iconUrl: string | null = existing?.iconUrl ?? null
     if (input.iconPath) {
       const ext = path.extname(input.iconPath) || '.png'
       const dest = path.join(articleDir, `icon${ext}`)
       await fs.rename(input.iconPath, dest)
-      iconUrl = `${this.baseUrl}/web/articles/${slug}/icon${ext}`
+      iconUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/icon${ext}` : null
     }
 
     // Extract embedded media from DOCX (mp4/mp3) into ./media
@@ -96,7 +100,7 @@ export class ArticleService {
     if (ytResult.modifiedBuffer) {
       workingBuffer = ytResult.modifiedBuffer
     }
-    const extractedMedia = mediaResult.items
+  // mediaResult.items is tracked via inline placeholders; no separate variable required here
 
     // Convert docx → HTML using mammoth
     const mammothInput: any = workingBuffer ? { buffer: workingBuffer } : { path: docxFinal }
@@ -119,21 +123,31 @@ export class ArticleService {
     if (allPlaceholders.length > 0) {
       html = removeOleIconBlocksBeforePlaceholders(html, allPlaceholders)
     }
-    // Replace media placeholders
+    // Load snippet templates
+    const [videoItemTpl, audioItemTpl, imageItemTpl, ytEmbedTpl, ytLinkTpl] = await Promise.all([
+      this.templateResolver('articles', 'media-item-video.html'),
+      this.templateResolver('articles', 'media-item-audio.html'),
+      this.templateResolver('articles', 'media-item-image.html'),
+      this.templateResolver('articles', 'youtube-embed.html'),
+      this.templateResolver('articles', 'youtube-link.html'),
+    ])
+    // Replace media placeholders via templates
     for (const m of mediaResult.inline) {
+      const src = `./media/${m.filename}`
       const tag = m.type === 'video'
-        ? `<figure class="media__item"><video controls src="./media/${m.filename}"></video></figure>`
-        : `<figure class="media__item"><audio controls src="./media/${m.filename}"></audio></figure>`
+        ? renderTpl(videoItemTpl, { SRC: src })
+        : renderTpl(audioItemTpl, { SRC: src })
       const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
       html = html.replace(pattern, tag)
     }
+    // Note: image wrapping is performed AFTER YouTube replacement/cleanup to avoid wrapping YT thumbnails.
     // Replace YouTube placeholders with iframe embeds
     if (ytResult && ytResult.embeds.length > 0) {
       for (const yt of ytResult.embeds) {
         const id = yt.videoId || yt.videoId || ''
         const iframe = id
-          ? `<div class="media__item youtube"><iframe src="https://www.youtube.com/embed/${id}" title="YouTube video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`
-          : `<div class="media__item youtube"><a href="${yt.url}">YouTube Video</a></div>`
+          ? renderTpl(ytEmbedTpl, { VIDEO_ID: id })
+          : renderTpl(ytLinkTpl, { URL: yt.url ?? '' })
         const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
         html = html.replace(pattern, iframe)
       }
@@ -179,22 +193,35 @@ export class ArticleService {
         return `<h${level}${attrs}>${updated}</h${level}>`
       })
     }
-    // Append extracted media players (if any)
-    let bodyHtml = html
-    const remaining = extractedMedia.filter(x => !mediaResult.inline.some(i => i.filename === x.filename))
-    if (remaining.length > 0) {
-      const items = remaining.map((m: ExtractedMedia) => {
-        const src = `./media/${m.filename}`
-        return m.type === 'video'
-          ? `<figure class="media__item"><video controls src="${src}"></video></figure>`
-          : `<figure class="media__item"><audio controls src="${src}"></audio></figure>`
-      }).join('')
-      bodyHtml += `<section class="media"><h2>Media</h2>${items}</section>`
-    }
-    const indexHtml = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>${escapeHtml(input.title)}</title><link rel="stylesheet" href="./styles.css"/></head><body><main class="article">${bodyHtml}</main><script src="./script.js" defer></script></body></html>`
+    // Now wrap remaining plain <img ...> tags with the image template (adds the question button),
+    // avoiding double-wrap if already inside a figure.media__item
+  html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+      (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+        const lookBehindStart = Math.max(0, offset - 800)
+        const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
+        const before = whole.slice(lookBehindStart, offset)
+        const after = whole.slice(offset + full.length, lookAheadEnd)
+        const figureOpenIdx = before.lastIndexOf('<figure')
+  const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class="[^"]*\bmedia__item\b[^"]*"/i.test(before.slice(figureOpenIdx))
+  const figureCloseAfter = new RegExp('</figure>', 'i').test(after)
+        if (hasMediaClass && figureCloseAfter) return full
+        return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+      })
+    // No non-inline media append; only inline replacements are supported.
+    const [htmlTpl, cssTpl, jsTpl] = await Promise.all([
+      this.templateResolver('articles', 'article.html'),
+      this.templateResolver('articles', 'styles.css'),
+      this.templateResolver('articles', 'script.js'),
+    ])
+    const assetsVersion = String(Date.now())
+    const indexHtml = htmlTpl
+      .replace(/\{\{\s*TITLE\s*\}\}/g, escapeHtml(input.title))
+      .replace(/\{\{\s*BODY\s*\}\}/g, html)
+      .replace(/href="\.\/styles\.css"/g, `href="./styles.css?v=${assetsVersion}"`)
+      .replace(/src="\.\/script\.js"/g, `src="./script.js?v=${assetsVersion}"`)
     await fs.writeFile(path.join(articleDir, 'index.html'), indexHtml, 'utf8')
-    await fs.writeFile(path.join(articleDir, 'styles.css'), defaultArticleCss, 'utf8')
-    await fs.writeFile(path.join(articleDir, 'script.js'), defaultArticleJs, 'utf8')
+    await fs.writeFile(path.join(articleDir, 'styles.css'), cssTpl, 'utf8')
+    await fs.writeFile(path.join(articleDir, 'script.js'), jsTpl, 'utf8')
 
     // Upsert into JSON list
     const now = new Date().toISOString()
@@ -207,7 +234,7 @@ export class ArticleService {
       coverUrl,
       iconUrl,
       docxPath: docxFinal,
-      indexUrl: `${this.baseUrl}/web/articles/${slug}/`,
+      indexUrl: this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/` : null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now
     }
@@ -289,7 +316,7 @@ export class ArticleService {
     const items = JSON.parse(raw) as ArticleRecord[]
     const idx = items.findIndex(a => a.id === idOrSlug || a.slug === idOrSlug)
     if (idx < 0) return null
-  const rec = items[idx]
+    const rec = items[idx]
     let slug = rec.slug
     const now = new Date().toISOString()
 
@@ -300,8 +327,8 @@ export class ArticleService {
         // Move articleDir and docx file
         const oldDir = path.join(this.webArticlesDir, rec.slug)
         const newDir = path.join(this.webArticlesDir, newSlug)
-  try { await fs.mkdir(newDir, { recursive: true }) } catch { void 0 }
-  try { await fs.rename(oldDir, newDir) } catch { void 0 }
+        try { await fs.mkdir(newDir, { recursive: true }) } catch { void 0 }
+        try { await fs.rename(oldDir, newDir) } catch { void 0 }
         // Move docx path to new slug filename (keep extension)
         try {
           const ext = path.extname(rec.docxPath) || '.docx'
@@ -324,13 +351,13 @@ export class ArticleService {
       const ext = path.extname(input.coverPath) || '.jpg'
       const dest = path.join(articleDir, `cover${ext}`)
       await fs.rename(input.coverPath, dest)
-      rec.coverUrl = `${this.baseUrl}/web/articles/${slug}/cover${ext}`
+      rec.coverUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/cover${ext}` : null
     }
     if (input.iconPath) {
       const ext = path.extname(input.iconPath) || '.png'
       const dest = path.join(articleDir, `icon${ext}`)
       await fs.rename(input.iconPath, dest)
-      rec.iconUrl = `${this.baseUrl}/web/articles/${slug}/icon${ext}`
+      rec.iconUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/icon${ext}` : null
     }
 
     // Reprocess DOCX if a new one was provided
@@ -360,42 +387,99 @@ export class ArticleService {
       if (allPlaceholders.length > 0) {
         html = removeOleIconBlocksBeforePlaceholders(html, allPlaceholders)
       }
+      const [videoItemTpl, audioItemTpl, imageItemTpl, ytEmbedTpl, ytLinkTpl] = await Promise.all([
+        this.templateResolver('articles', 'media-item-video.html'),
+        this.templateResolver('articles', 'media-item-audio.html'),
+        this.templateResolver('articles', 'media-item-image.html'),
+        this.templateResolver('articles', 'youtube-embed.html'),
+        this.templateResolver('articles', 'youtube-link.html'),
+      ])
       for (const m of mediaResult.inline) {
-        const tag = m.type === 'video'
-          ? `<figure class="media__item"><video controls src="./media/${m.filename}"></video></figure>`
-          : `<figure class="media__item"><audio controls src="./media/${m.filename}"></audio></figure>`
+        const src = `./media/${m.filename}`
+        const tag = m.type === 'video' ? renderTpl(videoItemTpl, { SRC: src }) : renderTpl(audioItemTpl, { SRC: src })
         const pattern = new RegExp(escapeRegExp(m.placeholder), 'g')
         html = html.replace(pattern, tag)
       }
+      // Wrap plain <img> tags with the image template; avoid double-wrapping if already inside our media figure
+      html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+        (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+          // Wrap data URI images as well for consistency
+          const lookBehindStart = Math.max(0, offset - 800)
+          const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
+          const before = whole.slice(lookBehindStart, offset)
+          const after = whole.slice(offset + full.length, lookAheadEnd)
+          const figureOpenIdx = before.lastIndexOf('<figure')
+          const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class="[^"]*\bmedia__item\b[^"]*"/i.test(before.slice(figureOpenIdx))
+          const figureCloseAfter = /<\/figure>/i.test(after)
+          if (hasMediaClass && figureCloseAfter) return full
+          return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+        })
       if (ytResult && ytResult.embeds.length > 0) {
         for (const yt of ytResult.embeds) {
           const id = yt.videoId || yt.videoId || ''
-          const iframe = id
-            ? `<div class="media__item youtube"><iframe src="https://www.youtube.com/embed/${id}" title="YouTube video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`
-            : `<div class="media__item youtube"><a href="${yt.url}">YouTube Video</a></div>`
+          const iframe = id ? renderTpl(ytEmbedTpl, { VIDEO_ID: id }) : renderTpl(ytLinkTpl, { URL: yt.url ?? '' })
           const pattern = new RegExp(escapeRegExp(yt.placeholder), 'g')
           html = html.replace(pattern, iframe)
         }
+        // Mirror robust cleanup from createOrReplace: remove base64 thumbnail <img> inside a heading containing a YouTube embed
+        const headingRe = /<h([1-6])([^>]*)>([\s\S]*?)<\/h\1>/gi
+        html = html.replace(headingRe, (
+          full: string,
+          level: string,
+          attrs: string,
+          inner: string
+        ) => {
+          if (!/class="media__item youtube"/i.test(inner)) return full
+          let updated = inner.replace(/<img[^>]+src="data:image\/[a-zA-Z0-9+]+;base64,[^"]+"[^>]*>/gi, '')
+          updated = updated.replace(/<(p|span|strong|em)[^>]*>\s*<\/(?:p|span|strong|em)>/gi, '')
+          for (let i = 0; i < 5; i++) {
+            updated = updated.replace(/^(?:\s*<(p|span|strong|em)[^>]*>\s*)+(<div class="media__item youtube">[\s\S]*?<\/div>)(?:\s*<\/(?:p|span|strong|em)>\s*)+$/i, '$2')
+            updated = updated.replace(/^\s*<p[^>]*>\s*(<div class="media__item youtube">[\s\S]*?<\/div>)\s*<\/p>\s*$/i, '$1')
+          }
+          const textContent = updated
+            .replace(/<div class="media__item youtube">[\s\S]*?<\/div>/gi, '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .trim()
+          if (textContent === '') {
+            return `<div class="youtube-heading-wrap h${level}">${updated}</div>`
+          }
+          return `<h${level}${attrs}>${updated}</h${level}>`
+        })
       }
-      const remaining = mediaResult.items.filter(x => !mediaResult.inline.some(i => i.filename === x.filename))
-      if (remaining.length > 0) {
-        const itemsHtml = remaining.map((m: ExtractedMedia) => {
-          const src = `./media/${m.filename}`
-          return m.type === 'video'
-            ? `<figure class="media__item"><video controls src="${src}"></video></figure>`
-            : `<figure class="media__item"><audio controls src="${src}"></audio></figure>`
-        }).join('')
-        html += `<section class="media"><h2>Media</h2>${itemsHtml}</section>`
-      }
-      const indexHtml = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>${escapeHtml(rec.title)}</title><link rel="stylesheet" href="./styles.css"/></head><body><main class="article">${html}</main><script src="./script.js" defer></script></body></html>`
+      // After YT cleanup, wrap remaining images with the image template and avoid double-wrap
+      html = html.replace(/<img\b([^>]*?)src="([^"]+)"([^>]*)>/gi,
+        (full: string, pre: string, src: string, post: string, offset: number, whole: string): string => {
+          const lookBehindStart = Math.max(0, offset - 800)
+          const lookAheadEnd = Math.min(whole.length, offset + full.length + 800)
+          const before = whole.slice(lookBehindStart, offset)
+          const after = whole.slice(offset + full.length, lookAheadEnd)
+          const figureOpenIdx = before.lastIndexOf('<figure')
+          const hasMediaClass = figureOpenIdx >= 0 && /<figure[^>]*class="[^"]*\bmedia__item\b[^"]*"/i.test(before.slice(figureOpenIdx))
+          const figureCloseAfter = new RegExp('</figure>', 'i').test(after)
+          if (hasMediaClass && figureCloseAfter) return full
+          return renderTpl(imageItemTpl, { SRC: src, ALT: extractAltFromImg(full) })
+        })
+      // No non-inline media append; only inline replacements are supported.
+      const [htmlTpl, cssTpl, jsTpl] = await Promise.all([
+        this.templateResolver('articles', 'article.html'),
+        this.templateResolver('articles', 'styles.css'),
+        this.templateResolver('articles', 'script.js'),
+      ])
+      const assetsVersion = String(Date.now())
+      const indexHtml = htmlTpl
+        .replace(/\{\{\s*TITLE\s*\}\}/g, escapeHtml(rec.title))
+        .replace(/\{\{\s*BODY\s*\}\}/g, html)
+        .replace(/href="\.\/styles\.css"/g, `href="./styles.css?v=${assetsVersion}"`)
+        .replace(/src="\.\/script\.js"/g, `src="./script.js?v=${assetsVersion}"`)
       await fs.writeFile(path.join(articleDir, 'index.html'), indexHtml, 'utf8')
-      await fs.writeFile(path.join(articleDir, 'styles.css'), defaultArticleCss, 'utf8')
-      await fs.writeFile(path.join(articleDir, 'script.js'), defaultArticleJs, 'utf8')
+      await fs.writeFile(path.join(articleDir, 'styles.css'), cssTpl, 'utf8')
+      await fs.writeFile(path.join(articleDir, 'script.js'), jsTpl, 'utf8')
     }
 
     // Update slug-related fields if changed
     rec.slug = slug
-    rec.indexUrl = `${this.baseUrl}/web/articles/${slug}/`
+    rec.indexUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/` : null
     rec.updatedAt = now
     items[idx] = rec
     await this.saveAll(items)
@@ -404,16 +488,16 @@ export class ArticleService {
 
   // Extract embedded media (mp4/mp3) from DOCX into ./media
   // Returns: list of media items, inline placeholder mapping, and an optional modified docx buffer
-  private async extractMediaFromDocx(docxPath: string, articleDir: string): Promise<{ items: ExtractedMedia[]; inline: Array<{ placeholder: string; filename: string; type: 'audio'|'video' }>; modifiedDocxBuffer?: Buffer }> {
+  private async extractMediaFromDocx(docxPath: string, articleDir: string): Promise<{ items: ExtractedMedia[]; inline: Array<{ placeholder: string; filename: string; type: 'audio' | 'video' }>; modifiedDocxBuffer?: Buffer }> {
     const items: ExtractedMedia[] = []
-    const inline: Array<{ placeholder: string; filename: string; type: 'audio'|'video' }> = []
+    const inline: Array<{ placeholder: string; filename: string; type: 'audio' | 'video' }> = []
     const mediaDir = path.join(articleDir, 'media')
     await fs.mkdir(mediaDir, { recursive: true })
     const data = await fs.readFile(docxPath)
     const zip = await JSZip.loadAsync(data)
 
     // 1) Direct media under word/media
-  const direct = Object.keys(zip.files).filter(p => p.startsWith('word/media/'))
+    const direct = Object.keys(zip.files).filter(p => p.startsWith('word/media/'))
     for (const p of direct) {
       const ext = path.extname(p).toLowerCase()
       const base = path.basename(p)
@@ -426,7 +510,7 @@ export class ArticleService {
 
     // 2) OLE-embedded media under word/embeddings/*.bin
     const embeddings = Object.keys(zip.files).filter(p => p.startsWith('word/embeddings/') && p.toLowerCase().endsWith('.bin'))
-    const oleMap = new Map<string, { filename: string; type: 'audio'|'video' }>()
+    const oleMap = new Map<string, { filename: string; type: 'audio' | 'video' }>()
     for (const p of embeddings) {
       const buf = await extractBufferFile(zip, p)
       const sniff = sniffOleEmbedded(buf)
@@ -449,7 +533,7 @@ export class ArticleService {
       if (docXml && relsXml) {
         // Map rId -> Target
         const relMap = new Map<string, string>()
-  const relRe = /<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"[^>]*\/>/g
+        const relRe = /<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"[^>]*\/>/g
         let m: RegExpExecArray | null
         while ((m = relRe.exec(relsXml)) !== null) relMap.set(m[1], m[2])
 
@@ -494,55 +578,51 @@ export class ArticleService {
   }
 }
 
-function escapeHtml(s: string){
-  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c] as string))
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c] as string))
 }
 
-const defaultArticleCss = `
-body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;color:#0a0a0a;margin:0;padding:16px;background:#fff}
-.article img{max-width:100%;height:auto}
-.article h1,.article h2,.article h3{margin:18px 0 8px}
-.article p{margin:12px 0}
-.media{margin-top:24px;padding-top:8px;border-top:1px solid #ddd}
-.media h2{font-size:18px;margin:0 0 12px}
-.media__item{margin:8px 0}
-video{max-width:100%;height:auto;background:#000}
-audio{width:100%}
-`
+// Extract alt attribute from an <img ...> tag markup (very lightweight; no full HTML parse)
+function extractAltFromImg(tag: string): string {
+  const m = tag.match(/\balt="([^"]*)"/i)
+  if (!m) return ''
+  return escapeHtml(m[1])
+}
 
-const defaultArticleJs = `
-// Enhance YouTube links into embeds
-document.addEventListener('DOMContentLoaded', () => {
-  const anchors = Array.from(document.querySelectorAll('a[href]'))
-  for(const a of anchors){
-    const href = a.getAttribute('href') || ''
-    const vid = extractYouTubeId(href)
-    if(!vid) continue
-    const iframe = document.createElement('iframe')
-    iframe.width = '560'; iframe.height = '315'
-    iframe.src = 'https://www.youtube.com/embed/' + vid
-    iframe.title = 'YouTube video player'
-    iframe.frameBorder = '0'
-    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
-    iframe.allowFullscreen = true
-    const wrap = document.createElement('div')
-    wrap.style.position = 'relative'; wrap.style.paddingBottom = '56.25%'; wrap.style.height = '0'; wrap.style.margin = '12px 0'
-    iframe.style.position = 'absolute'; iframe.style.top = '0'; iframe.style.left = '0'; iframe.style.width = '100%'; iframe.style.height = '100%'
-    wrap.appendChild(iframe)
-    a.insertAdjacentElement('afterend', wrap)
+// Template resolver to load static HTML/CSS/JS from files instead of inline strings
+function createTemplateResolver(metaUrl: string) {
+  const __filename = fileURLToPath(metaUrl)
+  const __dirname = path.dirname(__filename)
+  // Candidates: dist/templates, src/templates, repo-root/server/src/templates
+  const candidates = (
+    subdir: string,
+    file: string
+  ) => [
+      path.resolve(__dirname, `../templates/${subdir}/${file}`), // dist/services -> dist/templates
+      path.resolve(__dirname, `../../src/templates/${subdir}/${file}`), // dist/services -> src/templates
+      path.resolve(process.cwd(), `server/src/templates/${subdir}/${file}`), // fallback when cwd is repo root
+    ]
+  return async (subdir: string, file: string): Promise<string> => {
+    for (const p of candidates(subdir, file)) {
+      try {
+        if (fssync.existsSync(p)) return await fs.readFile(p, 'utf8')
+      } catch { /* try next */ }
+    }
+    throw new Error(`Template not found: ${subdir}/${file}`)
   }
-  function extractYouTubeId(u){
-    try{
-      const url = new URL(u)
-      if(url.hostname.includes('youtube.com')) return url.searchParams.get('v')
-  if(url.hostname.includes('youtu.be')) return url.pathname.replace(/^[/]/,'')
-    }catch{}
-    return null
-  }
-})
-`
+}
 
-export type ExtractedMedia = { filename: string; type: 'audio'|'video' }
+// Very small template renderer for {{ KEY }} tokens
+function renderTpl(tpl: string, data: Record<string, string>): string {
+  let out = tpl
+  for (const [k, v] of Object.entries(data)) {
+    const re = new RegExp(`\\{\\{\\s*${escapeRegExp(k)}\\s*\\}\\}`, 'g')
+    out = out.replace(re, v)
+  }
+  return out
+}
+
+export type ExtractedMedia = { filename: string; type: 'audio' | 'video' }
 
 // Helper to read file contents from docx zip
 async function extractBufferFile(zip: JSZip, pathInZip: string): Promise<Buffer> {
@@ -624,7 +704,7 @@ function removeOleIconBlocksBeforePlaceholders(html: string, placeholders: strin
 }
 
 // Sniff OLE .bin payload to find embedded media start offset and type/extension
-function sniffOleEmbedded(buf: Buffer): { start: number; type?: 'audio'|'video'; ext?: string } {
+function sniffOleEmbedded(buf: Buffer): { start: number; type?: 'audio' | 'video'; ext?: string } {
   // Look for common tags
   const ftyp = buf.indexOf(Buffer.from('ftyp'))
   if (ftyp >= 4) {

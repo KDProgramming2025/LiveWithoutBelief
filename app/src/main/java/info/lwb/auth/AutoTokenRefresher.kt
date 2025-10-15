@@ -11,15 +11,27 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
+private const val SECONDS_PER_MINUTE = 60L
+private const val DEFAULT_REFRESH_LEAD_TIME_SECONDS = 5 * SECONDS_PER_MINUTE
+private const val DEFAULT_POLL_INTERVAL_SECONDS = 60L
+private const val MILLIS_PER_SECOND = 1000L
+
 /**
- * Periodically checks stored token expiry and triggers a refresh a few minutes before.
- * Simple in-memory scheduler; tie its scope to application lifecycle (e.g., via Hilt @Singleton + ProcessLifecycleOwner scope).
+ * Configuration for automatic token refresh.
+ * @property refreshLeadTimeSeconds How many seconds before expiry a refresh should be attempted.
+ * @property pollIntervalSeconds Interval between background polls.
  */
 data class TokenRefreshConfig(
-    val refreshLeadTimeSeconds: Long = 5 * 60L,
-    val pollIntervalSeconds: Long = 60L,
+    val refreshLeadTimeSeconds: Long = DEFAULT_REFRESH_LEAD_TIME_SECONDS,
+    val pollIntervalSeconds: Long = DEFAULT_POLL_INTERVAL_SECONDS,
 )
 
+/**
+ * Automatically refreshes an ID token shortly before expiry.
+ *
+ * Call [start] once (idempotent) and later [stop] to cancel. Designed to be used as a singleton.
+ * Thread-safety: confined to the provided [scope].
+ */
 class AutoTokenRefresher(
     private val storage: SecureStorage,
     private val authFacade: AuthFacade,
@@ -29,35 +41,52 @@ class AutoTokenRefresher(
 ) {
     private var job: Job? = null
 
+    /** Start background refresh loop if not already running. */
     fun start() {
-        if (job != null) return
+        if (job != null) {
+            return
+        }
         job = scope.launch {
             var didInitialValidation = false
             while (isActive) {
-                try {
-                    // On app start, if a token exists from a previous session, validate it once.
-                    if (!didInitialValidation) {
-                        val existing = storage.getIdToken()
-                        if (!existing.isNullOrEmpty()) {
-                            runCatching { sessionValidator.validate(existing) }
-                        }
-                        didInitialValidation = true
-                    }
-                    val exp = storage.getTokenExpiry()
-                    val now = System.currentTimeMillis() / 1000L
-                    if (exp != null && exp - now <= config.refreshLeadTimeSeconds) {
-                        authFacade.refreshIdToken(false)
-                    }
-                } catch (_: Exception) {
-                    // swallow; best effort
-                }
+                performIteration(::authFacadeRefresh, didInitialValidation).also { didInitialValidation = true }
                 delay(config.pollIntervalSeconds.seconds)
             }
         }
     }
 
+    /** Stop background refresh loop if running. */
     fun stop() {
         job?.cancel()
         job = null
     }
+
+    private suspend fun performIteration(refresh: suspend () -> Unit, didInitialValidation: Boolean): Boolean = try {
+        if (!didInitialValidation) {
+            validateExistingOnce()
+        }
+        maybeRefresh(refresh)
+        true
+    } catch (_: Exception) {
+        // Swallow all exceptions – background best-effort policy.
+        true
+    }
+
+    private suspend fun validateExistingOnce() {
+        val existing = storage.getIdToken()
+        if (!existing.isNullOrEmpty()) {
+            runCatching { sessionValidator.validate(existing) }
+        }
+    }
+
+    private suspend fun maybeRefresh(refresh: suspend () -> Unit) {
+        val expirySeconds = storage.getTokenExpiry() ?: return
+        val nowSeconds = System.currentTimeMillis() / MILLIS_PER_SECOND
+        val remaining = expirySeconds - nowSeconds
+        if (remaining <= config.refreshLeadTimeSeconds) {
+            refresh()
+        }
+    }
+
+    private suspend fun authFacadeRefresh() = authFacade.refreshIdToken(false)
 }

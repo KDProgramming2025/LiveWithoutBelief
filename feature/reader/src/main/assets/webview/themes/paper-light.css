@@ -1,0 +1,10 @@
+/* Paper light theme */
+:root { --lwb-font-size: 16px; --lwb-line-height: 1.6; --lwb-bg: #FCFCF7; }
+html, body { background: var(--lwb-bg) !important; }
+body { color: #21211C !important; font-size: var(--lwb-font-size) !important; line-height: var(--lwb-line-height) !important; }
+h1, h2, h3, h4, h5, h6 { color: #21211C !important; font-size: inherit !important; line-height: inherit !important; }
+p, li { font-size: inherit !important; line-height: inherit !important; }
+hr { border: none !important; border-top: 1px solid #E8E8E0 !important; }
+a { color: #3366CC !important; }
+blockquote { border-left: 4px solid #E8E8E0 !important; padding-left: 12px !important; color: #5E5E57 !important; }
+figure figcaption { color: #5E5E57 !important; }

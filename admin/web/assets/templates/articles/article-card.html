@@ -1,0 +1,21 @@
+<div class="menu-card article-card">
+  <div class="article-card__cover">{{ COVER }}</div>
+  <div class="article-card__meta">
+    <div class="menu-card__icon">{{ ICON }}</div>
+    <div class="article-card__title" title="{{ TITLE_ESC }}">{{ TITLE }}</div>
+  </div>
+  <div class="article-card__footer">
+    <div class="article-card__label">{{ LABEL }}</div>
+    <div class="menu-card__actions article-card__actions">
+      <a class="button secondary" href="{{ INDEX_URL }}" target="_blank" rel="noopener">Open</a>
+      <button class="button secondary" data-article-edit="{{ ID }}" data-title="{{ TITLE_ESC }}" data-label="{{ LABEL }}" data-order="{{ ORDER }}">Edit</button>
+      <button class="button danger" data-article-del="{{ ID }}">Delete</button>
+    </div>
+  </div>
+  <div class="article-card__move">
+    <div class="menu-card__move">
+      <button class="button secondary btn-move btn-move--up" data-article-move="up" data-id="{{ ID }}">↑</button>
+      <button class="button secondary btn-move btn-move--down" data-article-move="down" data-id="{{ ID }}">↓</button>
+    </div>
+  </div>
+</div>

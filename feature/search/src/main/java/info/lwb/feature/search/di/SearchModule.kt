@@ -11,9 +11,16 @@ import dagger.hilt.android.components.ViewModelComponent
 import info.lwb.core.domain.ArticleRepository
 import info.lwb.core.domain.SearchArticlesUseCase
 
+/**
+ * Hilt module wiring search related domain dependencies into the ViewModel scope.
+ *
+ * Provides:
+ *  - [SearchArticlesUseCase]: orchestrates article search logic via [ArticleRepository].
+ */
 @Module
 @InstallIn(ViewModelComponent::class)
 object SearchModule {
+    /** Supplies a [SearchArticlesUseCase] backed by the injected [ArticleRepository]. */
     @Provides
     fun provideSearchArticlesUseCase(repo: ArticleRepository): SearchArticlesUseCase = SearchArticlesUseCase(repo)
 }

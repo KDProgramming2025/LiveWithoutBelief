@@ -1,1 +1,21 @@
-// Removed: Legacy reCAPTCHA login test, superseded by ALTCHA-only registration and password login (no CAPTCHA).
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2024 Live Without Belief
+ */
+package info.lwb.auth
+
+import org.junit.Test
+import org.junit.Assert.assertTrue
+
+/**
+ * Placeholder test retained after removal of legacy reCAPTCHA flow.
+ * Ensures package presence and prevents ktlint no-empty-file violation.
+ * Replace with real tests when new auth edge cases are introduced.
+ */
+class AuthViewModelLoginNoRecaptchaTest {
+    @Test
+    fun placeholder() {
+        // Intentionally trivial assertion; serves as a scaffold for future tests.
+        assertTrue(true)
+    }
+}

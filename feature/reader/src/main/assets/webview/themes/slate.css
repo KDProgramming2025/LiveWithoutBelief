@@ -1,0 +1,10 @@
+/* Slate medium-dark theme */
+:root { --lwb-font-size: 16px; --lwb-line-height: 1.6; --lwb-bg: #2B2F36; }
+html, body { background: var(--lwb-bg) !important; }
+body { color: #E8EAED !important; font-size: var(--lwb-font-size) !important; line-height: var(--lwb-line-height) !important; }
+h1, h2, h3, h4, h5, h6 { color: #E8EAED !important; font-size: inherit !important; line-height: inherit !important; }
+p, li { font-size: inherit !important; line-height: inherit !important; }
+hr { border: none !important; border-top: 1px solid #3A3F47 !important; }
+a { color: #8AB4F8 !important; }
+blockquote { border-left: 4px solid #3A3F47 !important; padding-left: 12px !important; color: #B0B6BC !important; }
+figure figcaption { color: #B0B6BC !important; }

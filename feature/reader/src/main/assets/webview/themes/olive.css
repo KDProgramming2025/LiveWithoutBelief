@@ -1,0 +1,10 @@
+/* Olive medium-dark theme */
+:root { --lwb-font-size: 16px; --lwb-line-height: 1.6; --lwb-bg: #3A3F2B; }
+html, body { background: var(--lwb-bg) !important; }
+body { color: #F1F3E6 !important; font-size: var(--lwb-font-size) !important; line-height: var(--lwb-line-height) !important; }
+h1, h2, h3, h4, h5, h6 { color: #F1F3E6 !important; font-size: inherit !important; line-height: inherit !important; }
+p, li { font-size: inherit !important; line-height: inherit !important; }
+hr { border: none !important; border-top: 1px solid #4A5038 !important; }
+a { color: #A1C9FF !important; }
+blockquote { border-left: 4px solid #4A5038 !important; padding-left: 12px !important; color: #C2C7B0 !important; }
+figure figcaption { color: #C2C7B0 !important; }

@@ -6,6 +6,21 @@ package info.lwb.core.model
 
 import kotlinx.serialization.Serializable
 
+/**
+ * Represents a published article available to the reader.
+ * Fields mirror the manifest payload persisted locally to support offline filtering & ordering.
+ * @property id Stable unique identifier.
+ * @property title Human readable display title.
+ * @property slug URL friendly slug used in links.
+ * @property version Incrementing content version for cache busting.
+ * @property updatedAt ISO-8601 last update timestamp.
+ * @property wordCount Estimated word count for reading time heuristics.
+ * @property label Optional short category / badge.
+ * @property order Display ordering index (lower first). Defaults to a large value if unspecified.
+ * @property coverUrl Non-null large cover image URL (server guarantees presence).
+ * @property iconUrl Non-null small icon / thumbnail URL (server guarantees presence).
+ * @property indexUrl Non-null exported HTML index URL for direct WebView loading.
+ */
 @Serializable
 data class Article(
     val id: String,
@@ -14,16 +29,29 @@ data class Article(
     val version: Int,
     val updatedAt: String,
     val wordCount: Int,
+    /** Optional short label/category; used for UI grouping & filtering. */
+    val label: String? = null,
+    /** Explicit display ordering index (lower first). */
+    val order: Int = Int.MAX_VALUE,
+    /** Non-null large/cover image URL (server guarantees presence). */
+    val coverUrl: String,
+    /** Non-null small/icon image URL (server guarantees presence). */
+    val iconUrl: String,
+    /** Full index URL for fast-path WebView loading (mandatory). */
+    val indexUrl: String,
 )
 
-@Serializable
-data class ArticleContent(
-    val articleId: String,
-    val htmlBody: String,
-    val plainText: String,
-    val textHash: String,
-)
-
+/**
+ * Asset belonging to an article (image, video, etc.).
+ * @property id Asset id.
+ * @property articleId Parent article id.
+ * @property type Media type (e.g. "image", "video").
+ * @property uri Remote/local URI.
+ * @property checksum Integrity checksum for validation.
+ * @property width Optional width in pixels.
+ * @property height Optional height in pixels.
+ * @property sizeBytes Optional file size in bytes.
+ */
 @Serializable
 data class ArticleAsset(
     val id: String,
@@ -37,28 +65,24 @@ data class ArticleAsset(
     val sizeBytes: Long? = null,
 )
 
+/**
+ * Tag for classifying articles.
+ * @property id Tag id.
+ * @property name Tag label.
+ * @property createdAt ISO-8601 creation timestamp.
+ */
 @Serializable
-data class Bookmark(
-    val id: String,
-    val articleId: String,
-    val folderId: String?,
-    val createdAt: String,
-)
+data class Tag(val id: String, val name: String, val createdAt: String)
 
-@Serializable
-data class BookmarkFolder(
-    val id: String,
-    val name: String,
-    val createdAt: String,
-)
-
-@Serializable
-data class Tag(
-    val id: String,
-    val name: String,
-    val createdAt: String,
-)
-
+/**
+ * User annotation referencing a text span of an article.
+ * @property id Annotation id.
+ * @property articleId Article id.
+ * @property startOffset Inclusive start character offset.
+ * @property endOffset Exclusive end character offset.
+ * @property anchorHash Hash derived from surrounding text for resilience.
+ * @property createdAt ISO-8601 creation timestamp.
+ */
 @Serializable
 data class Annotation(
     val id: String,
@@ -69,6 +93,14 @@ data class Annotation(
     val createdAt: String,
 )
 
+/**
+ * Message inside a private thread attached to an annotation.
+ * @property id Message id.
+ * @property annotationId Parent annotation id.
+ * @property type Message type (text, image, audio, pdf, system).
+ * @property contentRef Reference to stored payload / value.
+ * @property createdAt ISO-8601 creation timestamp.
+ */
 @Serializable
 data class ThreadMessage(
     val id: String,
@@ -79,15 +111,15 @@ data class ThreadMessage(
     val createdAt: String,
 )
 
-@Serializable
-data class ReadingProgress(
-    val articleId: String,
-    val pageIndex: Int,
-    val totalPages: Int,
-    val progress: Double,
-    val updatedAt: String,
-)
-
+/**
+ * Menu entry used for navigation / home grid.
+ * @property id Item id.
+ * @property title Display title.
+ * @property label Optional grouping label.
+ * @property order Sort order (lower renders first).
+ * @property iconPath Optional relative icon path.
+ * @property createdAt ISO-8601 creation timestamp (may be blank for seed data).
+ */
 @Serializable
 data class MenuItem(
     val id: String,

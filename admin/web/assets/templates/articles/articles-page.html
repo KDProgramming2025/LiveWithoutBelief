@@ -1,0 +1,52 @@
+<section class="card">
+  <div class="row" style="justify-content: space-between; align-items: center">
+    <h3>Upload Article (.docx)</h3>
+    <span id="article-mode-badge" class="badge">Create</span>
+  </div>
+  <form id="article-form" class="form-grid" autocomplete="off">
+    <input class="input" name="title" placeholder="Title" required />
+    <div class="row row--two">
+      <input class="input" name="label" placeholder="Label" required />
+      <input class="input" name="order" type="number" placeholder="Order (0..n)" min="0" />
+    </div>
+    <div class="row row--center file-tiles" role="group" aria-label="Article files">
+      <div class="file-tile-wrap">
+        <label class="file-tile file-button" data-kind="icon" aria-label="Icon image">
+          <span class="tile-icon" data-lucide="image"></span>
+          <input class="input" name="icon" type="file" accept="image/*" aria-label="Select icon image" />
+        </label>
+        <div class="tile-caption">Icon</div>
+      </div>
+      <div class="file-tile-wrap">
+        <label class="file-tile file-button" data-kind="cover" aria-label="Cover image">
+          <span class="tile-icon" data-lucide="image"></span>
+          <input class="input" name="cover" type="file" accept="image/*" aria-label="Select cover image" />
+        </label>
+        <div class="tile-caption">Cover</div>
+      </div>
+      <div class="file-tile-wrap">
+        <label class="file-tile file-button" data-kind="docx" aria-label="Article DOCX">
+          <span class="tile-icon" data-lucide="file-text"></span>
+          <input class="input" name="docx" type="file" accept=".docx" required aria-label="Select DOCX file" />
+        </label>
+        <div class="tile-caption">DOCX</div>
+      </div>
+    </div>
+    <div class="row" style="justify-content: space-between">
+      <button class="button" id="article-cancel-edit" type="button" style="display:none">Cancel Edit</button>
+      <button class="button" id="article-submit" type="submit">Upload</button>
+    </div>
+    <div class="row row--center">
+      <span id="article-uploading" class="badge" style="display:none">Uploading…</span>
+    </div>
+  </form>
+  <div id="article-progress" style="display:none;gap:8px;align-items:center">
+    <div class="progress" style="flex:1"><div class="progress__bar" id="article-progress-bar"></div></div>
+    <div class="progress__text" id="article-progress-text">0%</div>
+    <button class="button secondary" id="article-cancel" type="button" style="display:none">Cancel</button>
+  </div>
+</section>
+<section class="card" style="margin-top: var(--space-16)">
+  <h2>Articles</h2>
+  <div id="article-list" class="grid"></div>
+</section>

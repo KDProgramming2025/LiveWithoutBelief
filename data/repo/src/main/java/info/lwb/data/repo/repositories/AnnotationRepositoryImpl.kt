@@ -19,21 +19,32 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
 
+private const val ERROR_UNAUTHENTICATED = "unauthenticated"
+
+/**
+ * Concrete implementation of [AnnotationRepository] that persists annotations and their
+ * discussion thread messages via DAOs. All operations require an authenticated user; if the
+ * current session has no user an [IllegalStateException] with a consistent message is returned
+ * wrapped in [Result.Error]. Timestamps use an ISO-8601 offset date-time string.
+ */
 class AnnotationRepositoryImpl @Inject constructor(
     private val annotationDao: AnnotationDao,
     private val threadDao: ThreadMessageDao,
     private val session: UserSession,
 ) : AnnotationRepository {
-
+    // No blank line at top of class body per style rule
     override fun getAnnotations(articleId: String): Flow<Result<List<Annotation>>> =
         session.currentUserId()?.let { user ->
-            annotationDao.observeAnnotations(user, articleId).map { list ->
-                Result.Success(list.map { it.toModel() }) as Result<List<Annotation>>
-            }
-        } ?: flowOf(Result.Error(IllegalStateException("unauthenticated")))
+            annotationDao
+                .observeAnnotations(user, articleId)
+                .map { list ->
+                    Result.Success(list.map { it.toModel() }) as Result<List<Annotation>>
+                }
+        } ?: flowOf(Result.Error(IllegalStateException(ERROR_UNAUTHENTICATED)))
 
-    override fun getThreadMessages(annotationId: String): Flow<Result<List<ThreadMessage>>> =
-        threadDao.observeMessages(annotationId).map { list ->
+    override fun getThreadMessages(annotationId: String): Flow<Result<List<ThreadMessage>>> = threadDao
+        .observeMessages(annotationId)
+        .map { list ->
             Result.Success(list.map { it.toModel() })
         }
 
@@ -43,7 +54,7 @@ class AnnotationRepositoryImpl @Inject constructor(
         endOffset: Int,
         anchorHash: String,
     ): Result<String> {
-        val user = session.currentUserId() ?: return Result.Error(IllegalStateException("unauthenticated"))
+        val user = session.currentUserId() ?: return Result.Error(IllegalStateException(ERROR_UNAUTHENTICATED))
         val id = UUID.randomUUID().toString()
         val now = nowIso()
         val entity = AnnotationEntity(
@@ -60,7 +71,7 @@ class AnnotationRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addThreadMessage(annotationId: String, type: String, contentRef: String): Result<String> {
-        val user = session.currentUserId() ?: return Result.Error(IllegalStateException("unauthenticated"))
+        val user = session.currentUserId() ?: return Result.Error(IllegalStateException(ERROR_UNAUTHENTICATED))
         val id = UUID.randomUUID().toString()
         val now = nowIso()
         val entity = ThreadMessageEntity(
@@ -93,4 +104,7 @@ private fun ThreadMessageEntity.toModel() = ThreadMessage(
     createdAt = createdAt,
 )
 
-private fun nowIso(): String = java.time.OffsetDateTime.now().toString()
+private fun nowIso(): String = java.time
+    .OffsetDateTime
+    .now()
+    .toString()

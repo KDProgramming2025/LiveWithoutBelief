@@ -1,7 +1,9 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.compose)
     // Make plugin available on classpath but don't apply automatically
@@ -65,39 +67,62 @@ android {
                 val webMatch = Regex(""""client_id"\s*:\s*"([^"]+)"\s*,\s*"client_type"\s*:\s*3""").find(txt)
                 val androidMatch = Regex(""""client_id"\s*:\s*"([^"]+)"\s*,\s*"client_type"\s*:\s*1""").find(txt)
                 if (serverId == "CHANGE_ME_SERVER_CLIENT_ID") webMatch?.groupValues?.get(1)?.let { serverId = it }
-                if (androidClientId == "CHANGE_ME_ANDROID_CLIENT_ID") androidMatch?.groupValues?.get(1)?.let { androidClientId = it }
+                if (androidClientId == "CHANGE_ME_ANDROID_CLIENT_ID") {
+                    androidMatch?.groupValues?.get(
+                        1,
+                    )?.let { androidClientId = it }
+                }
             }
         } catch (e: Exception) {
             if (project.hasProperty("org.gradle.logging.stacktrace")) {
                 println("[auth-config] Warning: failed to parse google-services.json: ${e.message}")
             }
         }
-        // Fallback: if android id still placeholder, reuse server id (not ideal but non-fatal)
-        if (androidClientId.startsWith("CHANGE_ME") && !serverId.startsWith("CHANGE_ME")) androidClientId = serverId
-        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"' + serverId + '"')
-        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", '"' + androidClientId + '"')
         val emailLinkContinue =
             System.getenv("EMAIL_LINK_CONTINUE_URL")
                 ?: (project.findProperty("EMAIL_LINK_CONTINUE_URL") as String?)
                 ?: "https://live-without-belief-app.firebaseapp.com/emailLink"
         buildConfigField("String", "EMAIL_LINK_CONTINUE_URL", '"' + emailLinkContinue + '"')
-    val authBase =
-            System.getenv("AUTH_BASE_URL")
-                ?: (project.findProperty("AUTH_BASE_URL") as String?)
-        ?: "https://aparat.feezor.net/LWB/API"
-        buildConfigField("String", "AUTH_BASE_URL", '"' + authBase + '"')
+        // Load optional .env from repo root to source server host when not provided via environment/Gradle props
+        val rootEnvProps = Properties()
+        run {
+            val f = rootProject.file(".env")
+            if (f.exists()) {
+                try {
+                    f.inputStream().use { stream -> rootEnvProps.load(stream) }
+                } catch (_: Exception) {
+                    // ignore .env parse errors; fall back to other sources
+                }
+            }
+        }
+        // If Google client ids were not provided via env/Gradle and google-services.json, try .env as a fallback
+        if (serverId == "CHANGE_ME_SERVER_CLIENT_ID") {
+            rootEnvProps.getProperty("GOOGLE_SERVER_CLIENT_ID")?.let { if (it.isNotBlank()) serverId = it }
+        }
+        if (androidClientId == "CHANGE_ME_ANDROID_CLIENT_ID") {
+            rootEnvProps.getProperty("GOOGLE_ANDROID_CLIENT_ID")?.let { if (it.isNotBlank()) androidClientId = it }
+        }
+        // Fallback: if android id still placeholder, reuse server id (not ideal but non-fatal)
+        if (androidClientId.startsWith("CHANGE_ME") && !serverId.startsWith("CHANGE_ME")) androidClientId = serverId
+        // Emit build config values after all fallbacks
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", '"' + serverId + '"')
+        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", '"' + androidClientId + '"')
+        fun cfg(key: String): String? = System.getenv(key)
+            ?: (project.findProperty(key) as String?)
+            ?: (rootEnvProps.getProperty(key))
+        val scheme = cfg("APP_SERVER_SCHEME") ?: "https"
+        val host = cfg("APP_SERVER_HOST")
+        val inferredAuth = host?.let { "$scheme://$it/LWB/API" }
+        val authBase = cfg("AUTH_BASE_URL") ?: inferredAuth
+        buildConfigField("String", "AUTH_BASE_URL", authBase?.let { '"' + it + '"' } ?: "null")
         // Central API base URL for all endpoints
-    val apiBase =
-            System.getenv("API_BASE_URL")
-                ?: (project.findProperty("API_BASE_URL") as String?)
-        ?: "https://aparat.feezor.net/LWB/API/"
-        buildConfigField("String", "API_BASE_URL", '"' + apiBase + '"')
-    val uploadsBase =
-        System.getenv("UPLOADS_BASE_URL")
-        ?: (project.findProperty("UPLOADS_BASE_URL") as String?)
-        ?: "https://aparat.feezor.net/LWB/Admin/uploads/"
-    buildConfigField("String", "UPLOADS_BASE_URL", '"' + uploadsBase + '"')
-    // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
+        val inferredApi = host?.let { "$scheme://$it/LWB/API/" }
+        val apiBase = cfg("API_BASE_URL") ?: inferredApi
+        buildConfigField("String", "API_BASE_URL", apiBase?.let { '"' + it + '"' } ?: "null")
+        val inferredUploads = host?.let { "$scheme://$it/LWB/Admin/uploads/" }
+        val uploadsBase = cfg("UPLOADS_BASE_URL") ?: inferredUploads
+        buildConfigField("String", "UPLOADS_BASE_URL", uploadsBase?.let { '"' + it + '"' } ?: "null")
+        // CAPTCHA note: using self-hosted ALTCHA; no Google reCAPTCHA BuildConfig needed
 
         // Optional tuning knobs (env / Gradle property override; fallback to sensible defaults)
         fun intCfg(
@@ -152,7 +177,10 @@ android {
     }
     // Optional release signing from environment (CI-friendly). If not provided, release stays unsigned.
     val ksPath = System.getenv("SIGNING_KEYSTORE_PATH") ?: (project.findProperty("SIGNING_KEYSTORE_PATH") as String?)
-    val ksPass = System.getenv("SIGNING_KEYSTORE_PASSWORD") ?: (project.findProperty("SIGNING_KEYSTORE_PASSWORD") as String?)
+    val ksPass =
+        System.getenv(
+            "SIGNING_KEYSTORE_PASSWORD",
+        ) ?: (project.findProperty("SIGNING_KEYSTORE_PASSWORD") as String?)
     val keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: (project.findProperty("SIGNING_KEY_ALIAS") as String?)
     val keyPass = System.getenv("SIGNING_KEY_PASSWORD") ?: (project.findProperty("SIGNING_KEY_PASSWORD") as String?)
     if (!ksPath.isNullOrBlank() && !ksPass.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPass.isNullOrBlank()) {
@@ -172,8 +200,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    // Retain desugaring if other libs require it
-    isCoreLibraryDesugaringEnabled = true
+        // Retain desugaring if other libs require it
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -189,8 +217,8 @@ dependencies {
     implementation(project(":data:network"))
     implementation(project(":feature:reader"))
     implementation(project(":feature:search"))
-    implementation(project(":feature:bookmarks"))
     implementation(project(":feature:annotations"))
+    implementation(project(":feature:articles"))
     implementation(project(":feature:home"))
     implementation(project(":feature:settings"))
 
@@ -203,16 +231,12 @@ dependencies {
     implementation(libs.lifecycle.runtime.ktx)
 
     implementation(libs.hilt.android)
-    kapt(libs.hilt.android.compiler)
+    ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.analytics)
-    // Crashlytics temporarily disabled until plugin onboarding
-    // implementation(libs.firebase.crashlytics)
-    // Firebase Performance temporarily disabled
-    // implementation("com.google.firebase:firebase-perf-ktx")
     implementation(libs.play.services.auth)
     implementation(libs.credential.manager)
     implementation(libs.credential.manager.play.services)
@@ -221,6 +245,8 @@ dependencies {
     implementation(libs.okhttp)
     // Using self-hosted ALTCHA via WebView asset
     implementation(libs.kotlinx.serialization.json)
+    // DataStore for last-read persistence
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -234,17 +260,14 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    // Hilt instrumentation testing
+    // Hilt instrumentation testing (KSP)
     androidTestImplementation("com.google.dagger:hilt-android-testing:${libs.versions.hilt.get()}")
-    kaptAndroidTest(libs.hilt.android.compiler)
+    kspAndroidTest(libs.hilt.android.compiler)
     androidTestImplementation("androidx.test:core:1.6.1")
 
     implementation(libs.navigation.compose)
-    // Background periodic sync
-    implementation(libs.work.runtime)
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
-    testImplementation("androidx.work:work-testing:${libs.versions.work.get()}")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
 }

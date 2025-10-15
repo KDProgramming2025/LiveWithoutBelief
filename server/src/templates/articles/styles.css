@@ -1,0 +1,60 @@
+body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;color:#0a0a0a;margin:0;padding:16px;background:#fff}
+.article img{max-width:100%;height:auto}
+.article h1,.article h2,.article h3{margin:18px 0 8px}
+.article p{margin:12px 0}
+.media{margin-top:24px;padding-top:8px;border-top:1px solid #ddd}
+.media h2{font-size:18px;margin:0 0 12px}
+.media__item{margin:8px 0}
+video{max-width:100%;height:auto;background:#000}
+audio{width:100%}
+
+/* Hide native download buttons where browsers expose them */
+audio::-internal-media-controls-download-button{display:none}
+audio::-webkit-media-controls-enclosure{overflow:hidden}
+video::-internal-media-controls-download-button{display:none}
+video::-webkit-media-controls-enclosure{overflow:hidden}
+
+/* Responsive YouTube embeds */
+.media__item.youtube{position:relative}
+.media__item.youtube .yt-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+.media__item.youtube .yt-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+/* Below-video deep link rectangle */
+.media__item.youtube .yt-deeplink{margin:8px 0 0;}
+.media-question-btn, .media__item.youtube .yt-deeplink .yt-open-btn{
+	width:100%;
+	display:block;
+	padding:10px 14px;
+	border-radius:8px;
+	font-weight:700;
+	cursor:pointer;
+	text-align:center;
+}
+.media__item.youtube .yt-deeplink .yt-open-btn{
+	border-color:#FF0000;
+	background:#FF0000; /* YouTube red */
+	color:#FFFFFF;
+}
+.media__item.youtube .yt-deeplink .yt-open-btn:hover{filter:brightness(0.95)}
+.media__item.youtube .yt-deeplink .yt-open-btn:active{filter:brightness(0.9)}
+.media-question-btn{
+	background:#000000 !important;
+	color:#fff !important;
+	border-color:#000 !important;
+}
+@media (prefers-color-scheme: dark){
+	.media__item.youtube .yt-deeplink .yt-open-btn{
+		border-color:#FF0000;
+		background:#FF0000;
+		color:#FFFFFF;
+	}
+	.media-question-btn{background:#000000 !important;color:#fff !important;}
+}
+
+.media__item .media-question-btn,
+.media__item .media-question-btn:focus,
+.media__item .media-question-btn:active{
+	background:#000000 !important;
+	color:#fff !important;
+	border:1px solid #000 !important;
+}

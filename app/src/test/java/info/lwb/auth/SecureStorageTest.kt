@@ -4,7 +4,8 @@
  */
 package info.lwb.auth
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SecureStorageTest {
@@ -14,9 +15,9 @@ class SecureStorageTest {
         assertNull(storage.getIdToken())
         assertNull(storage.getTokenExpiry())
 
-        storage.putIdToken("tok123")
-        storage.putTokenExpiry(12345L)
-        storage.putProfile("Alice", "alice@example.com", "avatar.png")
+        storage.putIdToken(token = "tok123")
+        storage.putTokenExpiry(epochSeconds = 12345L)
+        storage.putProfile(name = "Alice", email = "alice@example.com", avatar = "avatar.png")
 
         assertEquals("tok123", storage.getIdToken())
         assertEquals(12345L, storage.getTokenExpiry())

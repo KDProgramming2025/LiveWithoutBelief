@@ -4,7 +4,6 @@ export interface AdminUserListItem {
   id: string
   username: string | null
   registeredAt: string
-  bookmarks: number
   threads: number
   lastLogin: string | null
 }
@@ -26,7 +25,6 @@ export class AdminUserService {
     }
     const sql = `
       SELECT u.id, u.username, u.created_at, u.last_login,
-             0 AS bookmarks,
              0 AS threads
       FROM users u
       ${where}
@@ -38,7 +36,6 @@ export class AdminUserService {
       id: String(row.id),
       username: row.username ?? null,
       registeredAt: row.created_at ? new Date(row.created_at).toISOString() : '',
-      bookmarks: Number(row.bookmarks ?? 0),
       threads: Number(row.threads ?? 0),
       lastLogin: row.last_login ? new Date(row.last_login).toISOString() : null,
     }))

@@ -1,9 +1,10 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
+    // Needed for kotlinx.serialization usage in repository layer (exception types & potential JSON parsing)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -25,8 +26,12 @@ dependencies {
     implementation("androidx.room:room-ktx:${libs.versions.room.get()}")
     ksp(libs.room.compiler)
     implementation(libs.hilt.android)
-    kapt(libs.hilt.android.compiler)
+    ksp(libs.hilt.android.compiler)
     implementation(project(":data:network"))
+    // Retrofit + serialization (referenced by MenuRepositoryImpl via HttpException & SerializationException)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)

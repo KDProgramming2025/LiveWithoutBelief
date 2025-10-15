@@ -2,51 +2,65 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2024 Live Without Belief
  */
-@file:Suppress("FunctionName")
-
 package info.lwb.feature.reader
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import info.lwb.core.common.log.Logger
+import javax.inject.Inject
+import javax.inject.Named
+
+private const val TAG = "ReaderRoute"
+
+// Inline html-based ReaderRoute has been removed; use ReaderByIdRoute(articleId) exclusively.
 
 /**
- * Entry point composable for the Reader feature wiring the ViewModel (Hilt) to the UI layer.
- * For now it loads a temporary hard-coded sample article until ingestion pipeline supplies real data.
+ * Route that loads the article content by id, resolves the server WebView URL and renders the
+ * reader experience (web content + action rail + appearance sheet + exit dialog).
+ *
+ * High level orchestration only; heavy UI logic is split into smaller composables to keep
+ * complexity low and satisfy Detekt rules.
  */
 @Composable
-fun ReaderRoute(
-    articleId: String = "sample-1",
-    htmlBody: String = SAMPLE_HTML,
-    vm: ReaderViewModel = hiltViewModel(),
+fun ReaderByIdRoute(
+    articleId: String,
+    navIndexUrl: String?,
+    onNavigateBack: (() -> Unit)? = null,
+    onRequireLogin: (() -> Unit)? = null,
+    signedIn: Boolean = false,
+    userLabel: String? = null,
+    onSignOut: (() -> Unit)? = null,
 ) {
-    // Load article only once per id change
-    androidx.compose.runtime.LaunchedEffect(articleId, htmlBody) {
-        vm.loadArticle(articleId, htmlBody)
+    val url = navIndexUrl
+    if (url.isNullOrBlank()) {
+        // Nothing to render; backend must always supply indexUrl via navigation.
+        Box(Modifier.fillMaxSize()) { CircularProgressIndicator(Modifier.align(Alignment.Center)) }
+        return
     }
-    val ui by vm.uiState.collectAsState()
-    val settingsState = ReaderSettingsState(
-        fontScale = ui.fontScale,
-        lineHeight = ui.lineHeight,
-        onFontScaleChange = vm::onFontScaleChange,
-        onLineHeightChange = vm::onLineHeightChange,
-    )
-    ReaderScreen(
-        articleTitle = ui.articleId.ifBlank { "Sample Article" },
-        htmlBody = htmlBody,
-        settings = settingsState,
-        pages = ui.pages,
-        currentPageIndex = ui.currentPageIndex,
-        onPageChange = vm::onPageChange,
+    val vm: ReaderSessionViewModel = hiltViewModel()
+    LaunchedEffect(Unit) { Logger.d(TAG) { "Entered ReaderByIdRoute (navUrl) articleId=" + articleId } }
+    // Record active article id for appearance persistence.
+    LaunchedEffect(articleId) { vm.loadArticle(articleId) }
+    Logger.d(TAG) { "Using navIndexUrl articleId=" + articleId + " url=" + url }
+    ReaderIndexScreen(
+        url = url,
+        vm = vm,
+        onNavigateBack = onNavigateBack,
+        onRequireLogin = onRequireLogin,
+        signedIn = signedIn,
+        userLabel = userLabel,
+        onSignOut = onSignOut,
     )
 }
 
-private val SAMPLE_HTML = """
-    <h1>Sample Article Heading</h1>
-    <p>This is a sample paragraph used for initial reader validation before the ingestion pipeline is active.</p>
-    <p>Adjust font size and line spacing using the controls below. Use search to highlight terms like sample.</p>
-    <img src="https://placekitten.com/800/400" alt="Kitten" />
-    <audio src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
-    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
-""".trimIndent()
+// Minimal Hilt VM to surface environment strings
+@HiltViewModel
+internal class ReaderEnv @Inject constructor(@Named("apiBaseUrl") val apiBaseUrl: String) : ViewModel()

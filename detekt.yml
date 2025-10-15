@@ -1,24 +1,143 @@
-build:
-  maxIssues: 0
 config:
   validation: true
 processors:
   active: true
+performance:
+  ArrayPrimitive:
+    active: true
+  ForEachOnRange:
+    active: true
 style:
-  MagicNumber:
+  ReturnCount:
     active: false
+  MagicNumber:
+    active: true
   WildcardImport:
     active: true
     excludes: ['**/test/**']
   MaxLineLength:
     active: true
-    maxLineLength: 140
+    maxLineLength: 120
+  BracesOnIfStatements:
+    active: true
+    singleLine: 'always'
+    multiLine: 'always'
+  BracesOnWhenStatements:
+    active: true
+    singleLine: 'always'
+    multiLine: 'always'
+  ExplicitItLambdaMultipleParameters:
+    active: true
+  MandatoryBracesLoops:
+    active: true
+  UnusedImport:
+    active: true
+  UnusedParameter:
+    active: true
+  UnusedPrivateClass:
+    active: true
+  UnusedPrivateFunction:
+    active: true
+    ignoreAnnotated: ['Preview', 'Composable']
+  UnusedPrivateProperty:
+    active: true
+  UnusedVariable:
+    active: true
+  UseEmptyCounterpart:
+    active: true
+  UseIfInsteadOfWhen:
+    active: true
 naming:
   FunctionNaming:
     active: true
-    ignoreAnnotated: ['Composable']
+    ignoreAnnotated: ['Preview', 'Composable']
+comments:
+  CommentOverPrivateFunction:
+    active: true
+  CommentOverPrivateProperty:
+    active: true
+  DeprecatedBlockTag:
+    active: true
+  OutdatedDocumentation:
+    active: true
+  UndocumentedPublicClass:
+    active: true
+  UndocumentedPublicFunction:
+    active: true
+  UndocumentedPublicProperty:
+    active: true
 complexity:
   LongParameterList:
     active: false
+  CognitiveComplexMethod:
+    active: true
+  ComplexCondition:
+    active: true
+    allowedConditions: 3
+  ComplexInterface:
+    active: true
+    allowedDefinitions: 10
+  CyclomaticComplexMethod:
+    active: true
+    allowedComplexity: 14
+  LabeledExpression:
+    active: true
+  LargeClass:
+    active: true
+    allowedLines: 600
+  NamedArguments:
+    active: true
+    allowedArguments: 0
+  NestedBlockDepth:
+    active: true
+    allowedDepth: 3
+  NestedScopeFunctions:
+    active: true
+    allowedDepth: 1
+  ReplaceSafeCallChainWithRun:
+    active: true
+  StringLiteralDuplication:
+    active: true
+    allowedDuplications: 2
   TooManyFunctions:
+    active: true
+    allowedFunctionsPerFile: 20
+    allowedFunctionsPerClass: 20
+    allowedFunctionsPerInterface: 20
+    allowedFunctionsPerObject: 20
+    allowedFunctionsPerEnum: 20
+    ignoreAnnotatedFunctions : ['Composable']
+coroutines:
+  CoroutineLaunchedInTestWithoutRunTest:
+    active: true
+  GlobalCoroutineUsage:
+    active: true
+  InjectDispatcher:
+    active: true
+  RedundantSuspendModifier:
+    active: true
+  SleepInsteadOfDelay:
+    active: true
+  SuspendFunInFinallySection:
+    active: true
+  SuspendFunSwallowedCancellation:
+    active: true
+  SuspendFunWithCoroutineScopeReceiver:
+    active: true
+  SuspendFunWithFlowReturnType:
+    active: true
+ktlint:
+  Kdoc:
+    active: true
+  NoUnusedImports:
+    active: true
+  MultilineExpressionWrapping:
+    active: false
+  FunctionSignature:
+    active: false
+  TrailingCommaOnCallSite:
+    active: false
+  TrailingCommaOnDeclarationSite:
+    active: false
+  ImportOrdering:
     active: false

@@ -6,7 +6,7 @@ package info.lwb.auth
 
 import android.app.Activity
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -20,9 +20,7 @@ class CredentialManagerOneTapProviderTest {
             override suspend fun get(
                 activity: Activity,
                 request: androidx.credentials.GetCredentialRequest,
-            ): androidx.credentials.GetCredentialResponse {
-                throw UnsupportedOperationException("fake")
-            }
+            ): androidx.credentials.GetCredentialResponse = throw UnsupportedOperationException("fake")
         }
         val provider = CredentialManagerOneTapProvider(fakeCall)
         val activity = Activity() // Robolectric plain activity

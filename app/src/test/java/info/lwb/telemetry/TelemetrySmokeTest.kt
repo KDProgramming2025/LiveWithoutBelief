@@ -16,7 +16,7 @@ class TelemetrySmokeTest {
     fun init_and_log_doesNotCrash() {
         val ctx = ApplicationProvider.getApplicationContext<Context>() as android.app.Application
         Telemetry.init(ctx)
-        Telemetry.logEvent("test_event", mapOf("k" to "v"))
+        Telemetry.logEvent(name = "test_event", params = mapOf("k" to "v"))
         Telemetry.recordCaught(RuntimeException("test"))
     }
 }
