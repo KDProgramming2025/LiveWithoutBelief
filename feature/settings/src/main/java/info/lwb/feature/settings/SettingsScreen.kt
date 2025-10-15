@@ -220,7 +220,8 @@ private fun VersionFooter() {
         val pkgInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             pm.getPackageInfo(
                 context.packageName,
-                android.content.pm.PackageManager.PackageInfoFlags.of(0L),
+                android.content.pm.PackageManager.PackageInfoFlags
+                    .of(0L),
             )
         } else {
             @Suppress("DEPRECATION")
