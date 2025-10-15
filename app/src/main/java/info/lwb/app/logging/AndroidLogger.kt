@@ -11,7 +11,11 @@ class AndroidLogger(globalTag: String) : AppLogger {
     private fun classPackageName(clazz: Class<*>): String {
         val name = clazz.name
         val idx = name.lastIndexOf('.')
-        return if (idx >= 0) name.substring(0, idx) else ""
+        return if (idx >= 0) {
+            name.substring(0, idx)
+        } else {
+            ""
+        }
     }
 
     private fun callerFileLine(): String {
