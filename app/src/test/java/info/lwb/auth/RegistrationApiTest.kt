@@ -48,9 +48,9 @@ class RegistrationApiTest {
                 "extra":"ignored"
             }}
             """.trimIndent()
-    server.enqueue(MockResponse().setResponseCode(200).setBody(body))
+        server.enqueue(MockResponse().setResponseCode(200).setBody(body))
 
-    val (user, created) = api.register(email = "alice@example.com")
+        val (user, created) = api.register(email = "alice@example.com")
 
         // Assert request
         val req = server.takeRequest()
@@ -74,9 +74,9 @@ class RegistrationApiTest {
                 "username":"bob"
             }}
             """.trimIndent()
-    server.enqueue(MockResponse().setResponseCode(201).setBody(body))
+        server.enqueue(MockResponse().setResponseCode(201).setBody(body))
 
-    val (user, created) = api.register(email = "bob@example.com")
+        val (user, created) = api.register(email = "bob@example.com")
 
         assertEquals("u-456", user.uid)
         assertTrue(created)

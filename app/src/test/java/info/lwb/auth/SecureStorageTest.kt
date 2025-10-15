@@ -15,9 +15,9 @@ class SecureStorageTest {
         assertNull(storage.getIdToken())
         assertNull(storage.getTokenExpiry())
 
-    storage.putIdToken(token: "tok123")
-    storage.putTokenExpiry(epochSeconds: 12345L)
-    storage.putProfile(name: "Alice", email: "alice@example.com", avatar: "avatar.png")
+    storage.putIdToken(token = "tok123")
+    storage.putTokenExpiry(epochSeconds = 12345L)
+    storage.putProfile(name = "Alice", email = "alice@example.com", avatar = "avatar.png")
 
         assertEquals("tok123", storage.getIdToken())
         assertEquals(12345L, storage.getTokenExpiry())
