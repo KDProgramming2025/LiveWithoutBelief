@@ -97,6 +97,18 @@ jobs:
         if: matrix.java == 17
         run: ./gradlew --stacktrace --no-configuration-cache quality
 
+      - name: Managed device UI tests (fresh-only)
+        if: matrix.java == 17
+        env:
+          ANDROID_AVD_HOME: ${{ github.workspace }}/.android-avd
+        run: |
+          # Ensure emulator and aosp_atd image for API level ${{ matrix.sdk }} are present
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" \
+            "emulator" \
+            "system-images;android-${ANDROID_COMPILE_SDK};aosp_atd;x86_64"
+          # Run app's managed device instrumentation tests (fresh state)
+          ./gradlew --stacktrace --no-configuration-cache :app:pixel9xlApi36DebugAndroidTest
+
       - name: Collect Detekt SARIF
         if: always()
         run: |

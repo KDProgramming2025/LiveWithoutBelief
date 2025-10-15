@@ -359,3 +359,114 @@ subprojects {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Local connected-device UI test orchestration (two-phase: upgrade then fresh)
+// ---------------------------------------------------------------------------
+
+// Attempt to resolve adb from local SDK for portability; fallback to PATH 'adb'
+fun resolveAdbPath(): String {
+    try {
+        val props = java.util.Properties()
+        val lp = rootProject.file("local.properties")
+        if (lp.exists()) lp.inputStream().use { props.load(it) }
+        val envSdk = System.getenv("ANDROID_SDK_ROOT") ?: System.getenv("ANDROID_HOME")
+        val sdkDir = props.getProperty("sdk.dir") ?: envSdk
+        if (!sdkDir.isNullOrBlank()) {
+            val exe = if (System.getProperty("os.name").lowercase().contains("win")) "adb.exe" else "adb"
+            val p = java.io.File(sdkDir).resolve("platform-tools").resolve(exe)
+            if (p.exists()) return p.absolutePath
+        }
+    } catch (_: Exception) {
+        // ignore; we'll fallback to PATH
+    }
+    return "adb"
+}
+
+val adbBin = resolveAdbPath()
+
+// Verify that at least one real device is connected and ready
+val verifyConnectedDevice = tasks.register("verifyConnectedDevice") {
+    group = "verification"
+    description = "Fails if no connected device is available for instrumentation tests"
+    notCompatibleWithConfigurationCache("Invokes external adb process and parses output at execution time")
+    doLast {
+        val proc = ProcessBuilder(adbBin, "devices").redirectErrorStream(true).start()
+        val output = proc.inputStream.bufferedReader().readText()
+        val exit = proc.waitFor()
+        if (exit != 0) throw GradleException("adb devices failed with exit=$exit. Output: $output")
+        // Find lines like: SERIAL\tdevice (ignore 'offline', 'unauthorized', 'emulator')
+        val devices = output
+            .lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotBlank() && !it.startsWith("List of devices") }
+            .mapNotNull { line ->
+                val parts = line.split('\t')
+                if (parts.size >= 2) parts[1] else null
+            }
+            .filter { it == "device" } // state is exactly 'device'
+            .toList()
+        if (devices.isEmpty()) {
+            throw GradleException("No connected device in 'device' state. Connect a real device and enable USB debugging.")
+        } else {
+            println("[verifyConnectedDevice] OK: found ${devices.size} device(s)")
+        }
+    }
+}
+
+// Aggregate task to run all modules' connectedDebugAndroidTest on a connected device
+val connectedUiTestAll = tasks.register("connectedUiTestAll") {
+    group = "verification"
+    description = "Runs instrumentation tests (connectedDebugAndroidTest) across all Android modules"
+    dependsOn(verifyConnectedDevice)
+    notCompatibleWithConfigurationCache("Aggregates dynamic subproject tasks after evaluation")
+}
+
+// After all projects are evaluated, collect connectedDebugAndroidTest tasks and depend on them
+gradle.projectsEvaluated {
+    val deps = mutableListOf<org.gradle.api.Task>()
+    subprojects.forEach { sp ->
+        sp.tasks.findByName("connectedDebugAndroidTest")?.let { deps += it }
+    }
+    tasks.named("connectedUiTestAll").configure { dependsOn(deps) }
+}
+
+// Clear app data for the debug package (fresh state)
+val clearAppData = tasks.register<Exec>("clearAppData") {
+    group = "verification"
+    description = "Clears app data for the debug applicationId (fresh state)"
+    dependsOn(verifyConnectedDevice)
+    notCompatibleWithConfigurationCache("Invokes adb shell to clear app data")
+    // ApplicationId must match defaultConfig.applicationId
+    commandLine(adbBin, "shell", "pm", "clear", "info.lwb")
+}
+
+// Phase 1: Upgrade path (do NOT clear data beforehand). Ensure APKs installed, then run tests.
+val uiTestsUpgradePhase = tasks.register("uiTestsUpgradePhase") {
+    group = "verification"
+    description = "Runs UI tests on connected device without clearing app data (upgrade path)"
+    dependsOn(verifyConnectedDevice)
+    // Running connected tests will build/install as needed
+    dependsOn(connectedUiTestAll)
+    notCompatibleWithConfigurationCache("Coordinates external adb + instrumentation tasks")
+}
+
+// Phase 2: Fresh path (clear app data, then run same tests again)
+val uiTestsFreshPhase = tasks.register("uiTestsFreshPhase") {
+    group = "verification"
+    description = "Clears app data and re-runs the same UI tests on connected device (fresh path)"
+    dependsOn(verifyConnectedDevice)
+    dependsOn(clearAppData)
+    dependsOn(connectedUiTestAll)
+    mustRunAfter(uiTestsUpgradePhase)
+    notCompatibleWithConfigurationCache("Coordinates external adb + instrumentation tasks")
+}
+
+// Two-phase orchestrator: upgrade then fresh
+tasks.register("uiTestsTwoPhaseConnected") {
+    group = "verification"
+    description = "Runs connected UI tests twice: 1) upgrade path 2) fresh path (after clearing data)"
+    dependsOn(uiTestsUpgradePhase)
+    dependsOn(uiTestsFreshPhase)
+    notCompatibleWithConfigurationCache("Aggregates dynamic UI test phases")
+}
+
