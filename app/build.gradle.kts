@@ -260,6 +260,13 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    // Compose UI testing
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    // Espresso-Web for WebView assertions
+    androidTestImplementation("androidx.test.espresso:espresso-web:${libs.versions.espressoCore.get()}")
+    // UIAutomator (optional, for system-level interactions)
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     // Hilt instrumentation testing (KSP)
     androidTestImplementation("com.google.dagger:hilt-android-testing:${libs.versions.hilt.get()}")
     kspAndroidTest(libs.hilt.android.compiler)
@@ -270,4 +277,15 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
+}
+
+// Define a Gradle Managed Device for running instrumentation tests locally/CI
+android {
+    testOptions.managedDevices.allDevices {
+        create<com.android.build.api.dsl.ManagedVirtualDevice>("pixel9xlApi36") {
+            device = "Pixel 9 XL"
+            apiLevel = 36
+            systemImageSource = "aosp"
+        }
+    }
 }
