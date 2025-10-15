@@ -5,7 +5,7 @@
 package info.lwb.auth
 
 import org.junit.Test
-import kotlin.test.assertTrue
+import org.junit.Assert.assertTrue
 
 /**
  * Placeholder test retained after removal of legacy reCAPTCHA flow.
