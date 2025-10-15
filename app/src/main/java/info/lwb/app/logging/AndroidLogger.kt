@@ -8,9 +8,16 @@ import info.lwb.BuildConfig
 class AndroidLogger(globalTag: String) : AppLogger {
     private val tag: String = globalTag
 
+    private fun classPackageName(clazz: Class<*>): String {
+        val name = clazz.name
+        val idx = name.lastIndexOf('.')
+        return if (idx >= 0) name.substring(0, idx) else ""
+    }
+
     private fun callerFileLine(): String {
         val stack = Exception("capture").stackTrace
-        val loggerPkg = this::class.java.packageName
+        // Avoid Class.getPackageName API 31+; derive from class name for broad compatibility
+        val loggerPkg = classPackageName(this::class.java)
         val skipPrefixes = listOf(
             loggerPkg, // this logger's package
             "info.lwb.core.common.log", // core logging facade
