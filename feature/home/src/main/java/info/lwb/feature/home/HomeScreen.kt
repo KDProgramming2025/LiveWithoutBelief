@@ -51,6 +51,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import info.lwb.core.model.MenuItem
@@ -445,7 +447,8 @@ private fun NeoMenuCard(
     PressableSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = minHeight),
+            .heightIn(min = minHeight)
+            .semantics { contentDescription = "Home menu item" },
         onClick = onClick,
     ) {
         Box(
@@ -453,35 +456,49 @@ private fun NeoMenuCard(
             contentAlignment = Alignment.CenterStart,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RaisedIconWell(
-                    wellSize = HomeDimens.IconWellSize,
-                    innerPadding = HomeDimens.IconWellInnerPadding,
+                // Icon container with explicit semantics for UI testing: image vs placeholder
+                Box(
+                    modifier = Modifier
+                        .semantics {
+                            contentDescription = if (imageUrl != null) {
+                                "Home menu icon - image"
+                            } else {
+                                "Home menu icon - placeholder"
+                            }
+                        },
                 ) {
-                    if (imageUrl != null) {
-                        AsyncImage(
-                            model = imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit,
-                        )
-                    } else {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                text = title.take(1).uppercase(),
-                                color = textMuted,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
+                    RaisedIconWell(
+                        wellSize = HomeDimens.IconWellSize,
+                        innerPadding = HomeDimens.IconWellInnerPadding,
+                    ) {
+                        if (imageUrl != null) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit,
                             )
+                        } else {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = title.take(1).uppercase(),
+                                    color = textMuted,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
                         }
                     }
                 }
                 Spacer(modifier = Modifier.width(HomeDimens.IconTitleSpacing))
                 Column(modifier = Modifier.weight(1f)) {
+                    // Title with explicit semantics for UI testing
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium.copy(lineHeight = 20.sp),
                         color = textPrimary,
                         maxLines = 3,
+                        modifier = Modifier.semantics { contentDescription = "Home menu title" },
                     )
                 }
             }

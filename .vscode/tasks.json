@@ -57,6 +57,47 @@
 				"-x",
 				"test"
 			]
+		},
+		{
+			"label": "UI tests (two-phase)",
+			"type": "shell",
+			"command": ".\\gradlew.bat",
+			"args": [
+				"uiTests",
+				"--no-configuration-cache",
+				"--stacktrace"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "UI tests (two-phase, class filter)",
+			"type": "shell",
+			"command": ".\\gradlew.bat",
+			"args": [
+				"uiTests",
+				"--no-configuration-cache",
+				"--stacktrace",
+				"-PuiTestClass=${input:uiTestClass}"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		}
+	],
+	"inputs": [
+		{
+			"id": "uiTestClass",
+			"type": "promptString",
+			"description": "Fully-qualified test class (e.g., info.lwb.startup.HomeFirstLoadTimingTest)",
+			"default": "info.lwb.startup.HomeFirstLoadTimingTest"
 		}
 	]
 }

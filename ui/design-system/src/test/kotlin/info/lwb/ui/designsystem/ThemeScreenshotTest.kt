@@ -26,7 +26,12 @@ class ThemeScreenshotTest {
 @Composable
 private fun SampleSurface(dark: Boolean = false) {
     MaterialTheme {
-        androidx.compose.material3.Surface(color = if (dark) Color(0xFF111111) else Color(0xFFFFFFFF)) {
+        val bg = if (dark) {
+            Color(0xFF111111)
+        } else {
+            Color(0xFFFFFFFF)
+        }
+        androidx.compose.material3.Surface(color = bg) {
             androidx.compose.material3.Text("Design System Preview")
         }
     }

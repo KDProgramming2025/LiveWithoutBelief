@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import info.lwb.core.model.Article
 import info.lwb.feature.articles.internal.ArticlesViewModel
@@ -208,7 +210,8 @@ private fun ArticlesList(items: List<Article>, onArticleClick: (Article) -> Unit
 private fun ArticleCard(title: String, coverUrl: String?, iconUrl: String?, onClick: () -> Unit) {
     PressableSurface(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .semantics { contentDescription = "Article card" },
         onClick = onClick,
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
