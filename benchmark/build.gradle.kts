@@ -13,6 +13,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Ensure Java/Kotlin targets are consistent for androidTest compilation
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -39,11 +48,12 @@ dependencies {
 
 // Enable macrobenchmark device definition
 android {
-    testOptions.managedDevices.allDevices {
+    testOptions.managedDevices.devices {
         create<com.android.build.api.dsl.ManagedVirtualDevice>("pixel9xlApi36") {
-            device = "Pixel 9 XL"
+            device = "Pixel 4 XL"
             apiLevel = 36
-            systemImageSource = "aosp"
+            systemImageSource = "google"
+            testedAbi = "x86_64"
         }
     }
 }

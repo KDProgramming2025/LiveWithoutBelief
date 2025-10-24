@@ -3,8 +3,6 @@
  * Copyright (c) 2024 Live Without Belief
  */
 package info.lwb.benchmark
-
-import androidx.benchmark.macro.ExperimentalBaselineProfilesApi
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
@@ -22,7 +20,6 @@ class StartupBenchmark {
     @get:Rule
     val benchmarkRule = MacrobenchmarkRule()
 
-    @OptIn(ExperimentalBaselineProfilesApi::class)
     @Test
     fun coldStartup() = benchmarkRule.measureRepeated(
         packageName = TARGET_PACKAGE,

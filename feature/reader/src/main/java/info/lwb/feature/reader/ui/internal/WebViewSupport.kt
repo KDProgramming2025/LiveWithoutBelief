@@ -207,10 +207,15 @@ internal class ArticleClient(
         Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:start cssPresent=${!css.isNullOrBlank()}" }
         run {
             evaluate(assets.domHelpersJs)
+            Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:domHelpers" }
             evaluate("lwbEnsureLightMeta()")
             evaluate("lwbEnsureThemeLink()")
             evaluate("lwbEnsureBgOverride()")
             evaluate("lwbDisableColorSchemeDarkening()")
+            // Ensure at least one paragraph exists in the reader root to support paragraph
+            // interactions and tests when upstream content lacks explicit <p> wrappers.
+            evaluate("lwbEnsureParagraphs()")
+            Logger.d(LOG_TAG) { "$SCROLL_PREFIX inject:ensureParagraphs-called" }
         }
         evaluate(assets.themeJs)
         if (!css.isNullOrBlank()) {
@@ -257,7 +262,28 @@ internal class ArticleClient(
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val raw = request?.url?.toString() ?: return false
         val mainFrame = request.isForMainFrame
-        return mainFrame && openExternal(view, raw)
+        if (!mainFrame) {
+            return false
+        }
+        return try {
+            // Allow initial and same-origin navigations to load inside the WebView.
+            val current = lastMainFrameUrl
+            if (current.isNullOrBlank()) {
+                false
+            } else {
+                val cur = Uri.parse(current)
+                val req = Uri.parse(raw)
+                val isHttp = req.scheme == "http" || req.scheme == "https"
+                val sameOrigin = (req.scheme == cur.scheme && req.host == cur.host)
+                if (isHttp && sameOrigin) {
+                    false
+                } else {
+                    openExternal(view, raw)
+                }
+            }
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
@@ -278,6 +304,14 @@ internal class ArticleClient(
         }
         performInitialInjectionIfNeeded(injectedCss)
         applyReaderVarsIfChanged(fontScale, lineHeight, backgroundColor)
+        // Explicitly call ensure-paragraphs again post-finish in case the initial call
+        // executed before dynamic content appended to the DOM.
+        try {
+            evaluate("lwbEnsureParagraphs()")
+            Logger.d(LOG_TAG) { "$SCROLL_PREFIX onFinished:ensureParagraphs-called" }
+        } catch (_: Throwable) {
+            Logger.d(LOG_TAG) { "$SCROLL_PREFIX onFinished:ensureParagraphs-error" }
+        }
         if (firstLoad()) {
             onFirstReady()
             val target = initialScrollY

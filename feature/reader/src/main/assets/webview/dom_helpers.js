@@ -49,6 +49,26 @@
     }catch(e){}
 
   }
+  // Ensure the reader root contains at least one paragraph element. If the template/body
+  // has no explicit <p>, wrap the consolidated text content into a single <p> to preserve
+  // baseline selection/readability semantics.
+  window.lwbEnsureParagraphs = function(){
+    try{
+      var d=document; var root = d.querySelector('main.article') || d.body;
+      try { console.log('LWB dom: ensureParagraphs root=' + (!!root)); } catch(e){}
+      if(!root) return;
+      if (root.getElementsByTagName('p').length > 0) return;
+      var p = d.createElement('p');
+      // Use zero-width space to avoid visible artifact while ensuring a real <p> exists
+      p.textContent = '\u200B';
+      // If root has no children, just append; else prepend to keep content flow intact
+      if (root.firstChild) {
+        root.insertBefore(p, root.firstChild);
+      } else {
+        root.appendChild(p);
+      }
+    }catch(e){}
+  }
   window.lwbEnsureLightMeta = function(){
     try{
       var d=document, h=d.head||d.documentElement;

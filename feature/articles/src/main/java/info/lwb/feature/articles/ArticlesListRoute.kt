@@ -229,6 +229,7 @@ private fun ArticleCover(coverUrl: String?, iconUrl: String?) {
                 model = coverUrl,
                 contentDescription = null,
                 modifier = Modifier
+                    .semantics { contentDescription = "Article cover - image" }
                     .fillMaxWidth()
                     .height(160.dp),
                 contentScale = ContentScale.Crop,
@@ -239,6 +240,7 @@ private fun ArticleCover(coverUrl: String?, iconUrl: String?) {
                 model = iconUrl,
                 contentDescription = null,
                 modifier = Modifier
+                    .semantics { contentDescription = "Article cover - image" }
                     .fillMaxWidth()
                     .height(120.dp),
                 contentScale = ContentScale.Fit,
@@ -247,6 +249,7 @@ private fun ArticleCover(coverUrl: String?, iconUrl: String?) {
         else -> {
             Spacer(
                 modifier = Modifier
+                    .semantics { contentDescription = "Article cover - placeholder" }
                     .fillMaxWidth()
                     .height(80.dp),
             )
@@ -268,12 +271,16 @@ private fun ArticleTitleRow(title: String, iconUrl: String?) {
                 ArticleImage(
                     model = iconUrl,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .semantics { contentDescription = "Article icon - image" }
+                        .fillMaxSize(),
                     contentScale = ContentScale.Fit,
                 )
             } else {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .semantics { contentDescription = "Article icon - placeholder" }
+                        .fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -289,6 +296,7 @@ private fun ArticleTitleRow(title: String, iconUrl: String?) {
             text = title,
             style = MaterialTheme.typography.titleMedium,
             color = neo.textPrimary,
+            modifier = Modifier.semantics { contentDescription = "Article title" },
         )
     }
 }

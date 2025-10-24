@@ -282,11 +282,27 @@ dependencies {
 
 // Define a Gradle Managed Device for running instrumentation tests locally/CI
 android {
-    testOptions.managedDevices.allDevices {
+    testOptions.managedDevices.devices {
         create<com.android.build.api.dsl.ManagedVirtualDevice>("pixel9xlApi36") {
-            device = "Pixel 9 XL"
+            // Use a supported hardware profile name
+            device = "Pixel 4 XL"
             apiLevel = 36
-            systemImageSource = "aosp"
+            // Use Google APIs system image (installed) instead of AOSP default
+            systemImageSource = "google"
+            // Explicitly set tested ABI to avoid NDK translation issues/warnings
+            testedAbi = "x86_64"
         }
+    }
+}
+
+// Avoid Windows file lock issues on test outputs by not tracking state for connectedDebugAndroidTest
+tasks.matching { it.name == "connectedDebugAndroidTest" }.configureEach {
+    // This disables input/output snapshotting for this task, preventing Gradle from trying to clean locked files
+    doNotTrackState("UTP log files can be locked by adb/logcat on Windows; skip state tracking to avoid cleanup errors")
+}
+// Work around Gradle CC + UTP proxy serialization issue for connected*AndroidTest tasks
+tasks.configureEach {
+    if (name.startsWith("connected") && name.endsWith("AndroidTest")) {
+        notCompatibleWithConfigurationCache("UTP test result listener uses dynamic proxies that are not CC-serializable")
     }
 }

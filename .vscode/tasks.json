@@ -91,13 +91,5 @@
 			},
 			"problemMatcher": []
 		}
-	],
-	"inputs": [
-		{
-			"id": "uiTestClass",
-			"type": "promptString",
-			"description": "Fully-qualified test class (e.g., info.lwb.startup.HomeFirstLoadTimingTest)",
-			"default": "info.lwb.startup.HomeFirstLoadTimingTest"
-		}
 	]
 }

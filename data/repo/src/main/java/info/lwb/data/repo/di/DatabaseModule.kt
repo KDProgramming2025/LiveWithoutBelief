@@ -13,20 +13,14 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import info.lwb.core.domain.AnnotationRepository
 import info.lwb.core.domain.ArticleRepository
-import info.lwb.core.domain.GetMenuUseCase
-import info.lwb.core.domain.MenuRepository
-import info.lwb.core.domain.RefreshMenuUseCase
 import info.lwb.core.domain.UserSession
 import info.lwb.data.network.ArticleApi
-import info.lwb.data.network.MenuApi
 import info.lwb.data.repo.db.AnnotationDao
 import info.lwb.data.repo.db.AppDatabase
 import info.lwb.data.repo.db.ArticleDao
-import info.lwb.data.repo.db.MenuDao
 import info.lwb.data.repo.db.ThreadMessageDao
 import info.lwb.data.repo.repositories.AnnotationRepositoryImpl
 import info.lwb.data.repo.repositories.ArticleRepositoryImpl
-import info.lwb.data.repo.repositories.menu.MenuRepositoryImpl
 import javax.inject.Singleton
 
 /**
@@ -59,7 +53,7 @@ object DatabaseModule {
 
     /** DAO for menu items table. */
     @Provides
-    fun provideMenuDao(db: AppDatabase): MenuDao = db.menuDao()
+    fun provideMenuDao(db: AppDatabase): info.lwb.data.repo.db.MenuDao = db.menuDao()
 
     /**
      * Repository for articles syncing and persistence.
@@ -83,17 +77,5 @@ object DatabaseModule {
             session,
         )
 
-    /** Repository for menu structure retrieval. */
-    @Provides
-    @Singleton
-    fun provideMenuRepository(api: MenuApi, menuDao: MenuDao): MenuRepository =
-        MenuRepositoryImpl(api, menuDao)
-
-    /** Use case for reactive menu retrieval. */
-    @Provides
-    fun provideGetMenuUseCase(repo: MenuRepository): GetMenuUseCase = GetMenuUseCase(repo)
-
-    /** Use case to trigger remote menu refresh. */
-    @Provides
-    fun provideRefreshMenuUseCase(repo: MenuRepository): RefreshMenuUseCase = RefreshMenuUseCase(repo)
+    // Menu repository and use-cases moved to MenuDataModule for easier test replacement
 }

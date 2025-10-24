@@ -50,6 +50,7 @@ import info.lwb.ui.designsystem.LwbTheme
 import info.lwb.lastread.LastReadViewModel
 import java.net.URLDecoder
 import java.net.URLEncoder
+import info.lwb.core.common.log.Logger
 
 /**
  * Root activity hosting the composable navigation graph.
@@ -60,14 +61,48 @@ import java.net.URLEncoder
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    /**
+     * Static container for MainActivity constants and tags used in logs.
+     */
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Logger.d(TAG) { "onCreate" }
         setContent { AppRoot() }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
+        Logger.d(TAG) { "onNewIntent action=" + (intent.action ?: "") }
         setContent { AppRoot() }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Logger.d(TAG) { "onStart" }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Logger.d(TAG) { "onResume" }
+    }
+
+    override fun onPause() {
+        Logger.d(TAG) { "onPause" }
+        super.onPause()
+    }
+
+    override fun onStop() {
+        Logger.d(TAG) { "onStop" }
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        Logger.d(TAG) { "onDestroy" }
+        super.onDestroy()
     }
 }
 

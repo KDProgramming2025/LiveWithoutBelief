@@ -359,8 +359,6 @@ subprojects {
     }
 }
 
-// Connected-device UI test orchestration (two-phase: upgrade then fresh)
-
 // Attempt to resolve adb from local SDK for portability; fallback to PATH 'adb'
 fun resolveAdbPath(): String {
     try {
@@ -404,13 +402,6 @@ val verifyConnectedDevice = tasks.register("verifyConnectedDevice") {
     }
 }
 
-val clearAppData = tasks.register<Exec>("clearAppData") {
-    group = "verification"
-    description = "Clears app data for the debug applicationId (fresh state)"
-    dependsOn(verifyConnectedDevice)
-    notCompatibleWithConfigurationCache("Invokes adb shell to clear app data")
-    commandLine(adbBin, "shell", "sh", "-c", "pm clear info.lwb || true")
-}
 
 // Clear logcat before timing-sensitive runs so we can parse fresh output easily
 val clearLogcat = tasks.register<Exec>("clearLogcat") {
@@ -420,76 +411,6 @@ val clearLogcat = tasks.register<Exec>("clearLogcat") {
     notCompatibleWithConfigurationCache("Invokes adb logcat to clear buffers")
     commandLine(adbBin, "logcat", "-c")
 }
-// Two-phase orchestrator: upgrade then fresh (exec-based to force two runs)
-tasks.register("uiTestsTwoPhaseConnected") {
-    group = "verification"
-    description = "Runs connected UI tests twice: upgrade path, then fresh (after clearing data)"
-}
 
-// Exec-based invocations of gradlew to force two distinct executions within one outer build
-val gradlewPath = rootProject.projectDir.resolve(
-    if (System.getProperty("os.name").lowercase().contains("win")) "gradlew.bat" else "./gradlew"
-).absolutePath
-
-val runUiTestsUpgradeExec = tasks.register<Exec>("runUiTestsUpgradeExec") {
-    group = "verification"
-    description = "Exec: run :app:connectedDebugAndroidTest (upgrade path)"
-    dependsOn(verifyConnectedDevice, clearLogcat)
-    workingDir = rootProject.projectDir
-    // Allow an optional class filter via either the official property or a friendly alias
-    // Usage examples:
-    //   -Pandroid.testInstrumentationRunnerArguments.class=info.lwb.startup.HomeFirstLoadTimingTest
-    //   -PuiTestClass=info.lwb.startup.HomeFirstLoadTimingTest
-    doFirst {
-        val explicit = (project.findProperty("android.testInstrumentationRunnerArguments.class") as String?)?.trim()
-        val alias = (project.findProperty("uiTestClass") as String?)?.trim()
-        val sys = System.getProperty("uiTestClass")?.trim()
-        val env = System.getenv("UI_TEST_CLASS")?.trim()
-        val klass = listOf(explicit, alias, sys, env).firstOrNull { !it.isNullOrBlank() }
-        val cmd = mutableListOf(gradlewPath, ":app:connectedDebugAndroidTest")
-        if (!klass.isNullOrBlank()) {
-            cmd += "-Pandroid.testInstrumentationRunnerArguments.class=$klass"
-        }
-        commandLine(cmd)
-    }
-}
-
-val runUiTestsFreshExec = tasks.register<Exec>("runUiTestsFreshExec") {
-    group = "verification"
-    description = "Exec: clear data, then run :app:connectedDebugAndroidTest (fresh path)"
-    dependsOn(clearAppData)
-    mustRunAfter(runUiTestsUpgradeExec)
-    workingDir = rootProject.projectDir
-    doFirst {
-        val explicit = (project.findProperty("android.testInstrumentationRunnerArguments.class") as String?)?.trim()
-        val alias = (project.findProperty("uiTestClass") as String?)?.trim()
-        val sys = System.getProperty("uiTestClass")?.trim()
-        val env = System.getenv("UI_TEST_CLASS")?.trim()
-        val klass = listOf(explicit, alias, sys, env).firstOrNull { !it.isNullOrBlank() }
-        val cmd = mutableListOf(gradlewPath, ":app:connectedDebugAndroidTest")
-        if (!klass.isNullOrBlank()) {
-            cmd += "-Pandroid.testInstrumentationRunnerArguments.class=$klass"
-        }
-        commandLine(cmd)
-    }
-}
-
-// Rewire the two-phase orchestrator to depend on the exec runs
-tasks.named("uiTestsTwoPhaseConnected").configure {
-    setDependsOn(listOf(runUiTestsUpgradeExec, runUiTestsFreshExec))
-}
-
-// Simple aliases so "UI tests" default to the two-phase run
-tasks.register("connectedUiTests") {
-    group = "verification"
-    description = "Alias: runs two-phase connected UI tests (upgrade + fresh)"
-    dependsOn(tasks.named("uiTestsTwoPhaseConnected"))
-}
-
-tasks.register("uiTests") {
-    group = "verification"
-    description = "Alias: runs two-phase connected UI tests (upgrade + fresh)"
-    dependsOn(tasks.named("uiTestsTwoPhaseConnected"))
-}
 
 

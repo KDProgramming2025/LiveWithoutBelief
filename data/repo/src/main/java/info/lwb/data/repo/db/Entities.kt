@@ -146,7 +146,10 @@ interface MenuDao {
         ThreadMessageEntity::class,
         MenuItemEntity::class,
     ],
-    version = 1,
+    // Bump version to force destructive migration on pre-release schema changes.
+    // This resolves identity hash mismatches observed on devices/emulators when
+    // the schema evolved while keeping the previous version.
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
