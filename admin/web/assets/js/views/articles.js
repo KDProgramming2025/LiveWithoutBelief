@@ -165,7 +165,7 @@ export async function viewArticles(){
     let lastAt = startedAt
     let smoothedSpeed = 0
     let evtSource = null
-    const uploadId = crypto.randomUUID()
+    const uploadId = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString() + Math.random().toString().slice(2)
 
     const url = isEdit 
       ? `/v1/admin/articles/${encodeURIComponent(editId)}` 
