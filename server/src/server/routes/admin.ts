@@ -199,6 +199,13 @@ adminRouter.post('/articles', (req, res) => {
       fields[name] = val
     })
 
+    busboy.on('error', (err: any) => {
+      console.error('Busboy error:', err)
+      if (uploadId) uploadProgress.setStatus(uploadId, 'error', 'Upload failed')
+      // Ensure we don't send double response if finish already fired (unlikely but possible)
+      if (!res.headersSent) res.status(400).json({ error: 'upload_failed' })
+    })
+
     busboy.on('finish', async () => {
       try {
         if (uploadId) uploadProgress.setStatus(uploadId, 'processing', 'Processing files...')
