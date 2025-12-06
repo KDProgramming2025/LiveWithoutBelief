@@ -104,12 +104,14 @@ internal class ArticlesViewModel @Inject constructor(
 
     private fun handleArticlesSuccessForList(result: Result.Success<List<Article>>) {
         _articles.value = result
-        _listState.value = _listState.value.copy(
-            loading = false,
-            items = result.data,
-            error = null,
-            initializing = false,
-        )
+        if (_listState.value.label.isBlank()) {
+            _listState.value = _listState.value.copy(
+                loading = false,
+                items = result.data,
+                error = null,
+                initializing = false,
+            )
+        }
     }
 
     private fun handleArticlesErrorForList(result: Result.Error) {
