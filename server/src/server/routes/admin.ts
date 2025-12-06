@@ -61,12 +61,14 @@ adminRouter.post('/login', async (req, res) => {
 
 adminRouter.get('/progress/:id', (req, res) => {
   const { id } = req.params
+  console.log(`[SSE] Client connected for uploadId=${id}`)
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
 
   const onProgress = (uploadId: string, status: any) => {
     if (uploadId === id) {
+      // console.log(`[SSE] Sending progress for ${id}: ${status.loaded}/${status.total}`)
       res.write(`data: ${JSON.stringify(status)}\n\n`)
       if (status.status === 'completed' || status.status === 'error') {
         res.end()
@@ -79,10 +81,14 @@ adminRouter.get('/progress/:id', (req, res) => {
 
   const current = uploadProgress.get(id)
   if (current) {
+    console.log(`[SSE] Sending initial state for ${id}`)
     res.write(`data: ${JSON.stringify(current)}\n\n`)
+  } else {
+    console.log(`[SSE] No active upload found for ${id}`)
   }
 
   req.on('close', () => {
+    console.log(`[SSE] Client disconnected for ${id}`)
     uploadProgress.off('progress', onProgress)
   })
 })
@@ -174,10 +180,12 @@ adminRouter.post('/articles', (req, res) => {
     fs.mkdirSync(tmpDir, { recursive: true })
 
     let totalBytes = Number(req.headers['content-length']) || 0
+    console.log(`[Upload] Starting uploadId=${uploadId} total=${totalBytes}`)
     if (uploadId) uploadProgress.init(uploadId, totalBytes)
     let loadedBytes = 0
 
     busboy.on('file', (name, file, info) => {
+      console.log(`[Upload] File start: ${name} ${info.filename}`)
       const tmpPath = path.join(tmpDir, `upload_${crypto.randomBytes(8).toString('hex')}_${info.filename}`)
       const writeStream = fs.createWriteStream(tmpPath)
       
@@ -189,7 +197,10 @@ adminRouter.post('/articles', (req, res) => {
       file.pipe(writeStream)
       
       const filePromise = new Promise((resolve, reject) => {
-          writeStream.on('finish', () => resolve({ path: tmpPath, originalname: info.filename }))
+          writeStream.on('finish', () => {
+            console.log(`[Upload] File finish: ${name}`)
+            resolve({ path: tmpPath, originalname: info.filename })
+          })
           writeStream.on('error', reject)
       })
       files[name] = filePromise
