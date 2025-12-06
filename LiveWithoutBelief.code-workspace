@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"name": "LiveWithoutBelief",
+			"path": "."
+		}
+	],
+	"settings": {
+		"github.copilot.chat.commitMessageGeneration.instructions": [
+			{
+				"text": "Never use these characters in commit messsage: ':' ';'"
+			}
+		]
+	}
+}

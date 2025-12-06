@@ -238,6 +238,14 @@ private fun ArticleWebAndroidView(
                 )
             }
         },
+        onRelease = { webView ->
+            try {
+                webView.onPause()
+                webView.destroy()
+            } catch (_: Throwable) {
+                // ignore
+            }
+        },
     )
 }
 
