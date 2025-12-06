@@ -163,21 +163,38 @@ export async function viewArticles(){
     const startedAt = Date.now()
     let lastLoaded = 0
     let lastAt = startedAt
-  xhr.open(isEdit ? 'PATCH' : 'POST', isEdit ? `/v1/admin/articles/${encodeURIComponent(editId)}` : '/v1/admin/articles')
+    let smoothedSpeed = 0
+
+    xhr.open(isEdit ? 'PATCH' : 'POST', isEdit ? `/v1/admin/articles/${encodeURIComponent(editId)}` : '/v1/admin/articles')
     if (state.token) xhr.setRequestHeader('Authorization', `Bearer ${state.token}`)
     xhr.upload.onprogress = (ev) => {
       if(!ev.lengthComputable) return
-      const percent = Math.min(100, Math.round((ev.loaded / ev.total) * 100))
+      const percent = Math.min(100, (ev.loaded / ev.total) * 100)
       progBar.style.width = percent + '%'
+      
       const now = Date.now()
-      const dt = Math.max(1, now - lastAt) / 1000
-      const dbytes = Math.max(0, ev.loaded - lastLoaded)
-      const speed = dbytes / dt
-      const remain = Math.max(0, ev.total - ev.loaded)
-      const etaSec = speed > 0 ? Math.round(remain / speed) : 0
-      progText.textContent = `${percent}% • ${fmtBytes(ev.loaded)} / ${fmtBytes(ev.total)} • ${fmtBytes(speed)}/s • ${fmtEta(etaSec)}`
-      lastLoaded = ev.loaded
-      lastAt = now
+      const dt = (now - lastAt) / 1000
+      
+      // Update stats every 500ms or when complete to avoid jitter
+      if (dt >= 0.5 || percent >= 100) {
+        const dbytes = ev.loaded - lastLoaded
+        const currentSpeed = dbytes / dt
+        
+        // Smooth the speed (exponential moving average)
+        if (smoothedSpeed === 0) {
+          smoothedSpeed = currentSpeed
+        } else {
+          smoothedSpeed = (currentSpeed * 0.3) + (smoothedSpeed * 0.7)
+        }
+        
+        const remain = ev.total - ev.loaded
+        const etaSec = smoothedSpeed > 0 ? Math.ceil(remain / smoothedSpeed) : 0
+        
+        progText.textContent = `${Math.round(percent)}% • ${fmtBytes(ev.loaded)} / ${fmtBytes(ev.total)} • ${fmtBytes(smoothedSpeed)}/s • ${fmtEta(etaSec)}`
+        
+        lastLoaded = ev.loaded
+        lastAt = now
+      }
     }
     xhr.onreadystatechange = async () => {
       if(xhr.readyState !== 4) return
