@@ -261,6 +261,7 @@ adminRouter.post('/articles/:id/move', (req, res) => {
 })
 
 // Articles: partial update (multipart fields optional)
+const articleUpload = multer({ dest: path.resolve('/var/www/LWB/tmp') })
 adminRouter.patch('/articles/:id', articleUpload.fields([
   { name: 'docx', maxCount: 1 },
   { name: 'cover', maxCount: 1 },
