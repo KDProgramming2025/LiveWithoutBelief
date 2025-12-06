@@ -164,40 +164,88 @@ export async function viewArticles(){
     let lastLoaded = 0
     let lastAt = startedAt
     let smoothedSpeed = 0
+    let evtSource = null
+    const uploadId = crypto.randomUUID()
 
-    xhr.open(isEdit ? 'PATCH' : 'POST', isEdit ? `/v1/admin/articles/${encodeURIComponent(editId)}` : '/v1/admin/articles')
+    const url = isEdit 
+      ? `/v1/admin/articles/${encodeURIComponent(editId)}` 
+      : `/v1/admin/articles?uploadId=${uploadId}`
+
+    xhr.open(isEdit ? 'PATCH' : 'POST', url)
     if (state.token) xhr.setRequestHeader('Authorization', `Bearer ${state.token}`)
+
+    if (!isEdit) {
+      evtSource = new EventSource(`/v1/admin/progress/${uploadId}`)
+      evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data)
+        if (data.status === 'uploading') {
+          const percent = Math.min(100, (data.loaded / data.total) * 100)
+          progBar.style.width = percent + '%'
+          
+          const now = Date.now()
+          const dt = (now - lastAt) / 1000
+          
+          if (dt >= 0.5 || percent >= 100) {
+            const dbytes = data.loaded - lastLoaded
+            const currentSpeed = dbytes / dt
+            
+            if (smoothedSpeed === 0) {
+              smoothedSpeed = currentSpeed
+            } else {
+              smoothedSpeed = (currentSpeed * 0.3) + (smoothedSpeed * 0.7)
+            }
+            
+            const remain = data.total - data.loaded
+            const etaSec = smoothedSpeed > 0 ? Math.ceil(remain / smoothedSpeed) : 0
+            
+            progText.textContent = `${Math.round(percent)}% • ${fmtBytes(data.loaded)} / ${fmtBytes(data.total)} • ${fmtBytes(smoothedSpeed)}/s • ${fmtEta(etaSec)}`
+            
+            lastLoaded = data.loaded
+            lastAt = now
+          }
+        } else if (data.status === 'processing') {
+          progBar.style.width = '100%'
+          progText.textContent = data.message || 'Processing files...'
+        }
+      }
+    }
+
     xhr.upload.onprogress = (ev) => {
       if(!ev.lengthComputable) return
-      const percent = Math.min(100, (ev.loaded / ev.total) * 100)
-      progBar.style.width = percent + '%'
-      
-      const now = Date.now()
-      const dt = (now - lastAt) / 1000
-      
-      // Update stats every 500ms or when complete to avoid jitter
-      if (dt >= 0.5 || percent >= 100) {
-        const dbytes = ev.loaded - lastLoaded
-        const currentSpeed = dbytes / dt
+      // Only use client-side progress for Edit mode (PATCH)
+      if (isEdit) {
+        const percent = Math.min(100, (ev.loaded / ev.total) * 100)
+        progBar.style.width = percent + '%'
         
-        // Smooth the speed (exponential moving average)
-        if (smoothedSpeed === 0) {
-          smoothedSpeed = currentSpeed
-        } else {
-          smoothedSpeed = (currentSpeed * 0.3) + (smoothedSpeed * 0.7)
+        const now = Date.now()
+        const dt = (now - lastAt) / 1000
+        
+        if (dt >= 0.5 || percent >= 100) {
+          const dbytes = ev.loaded - lastLoaded
+          const currentSpeed = dbytes / dt
+          
+          if (smoothedSpeed === 0) {
+            smoothedSpeed = currentSpeed
+          } else {
+            smoothedSpeed = (currentSpeed * 0.3) + (smoothedSpeed * 0.7)
+          }
+          
+          const remain = ev.total - ev.loaded
+          const etaSec = smoothedSpeed > 0 ? Math.ceil(remain / smoothedSpeed) : 0
+          
+          progText.textContent = `${Math.round(percent)}% • ${fmtBytes(ev.loaded)} / ${fmtBytes(ev.total)} • ${fmtBytes(smoothedSpeed)}/s • ${fmtEta(etaSec)}`
+          
+          lastLoaded = ev.loaded
+          lastAt = now
         }
-        
-        const remain = ev.total - ev.loaded
-        const etaSec = smoothedSpeed > 0 ? Math.ceil(remain / smoothedSpeed) : 0
-        
-        progText.textContent = `${Math.round(percent)}% • ${fmtBytes(ev.loaded)} / ${fmtBytes(ev.total)} • ${fmtBytes(smoothedSpeed)}/s • ${fmtEta(etaSec)}`
-        
-        lastLoaded = ev.loaded
-        lastAt = now
       }
     }
     xhr.onreadystatechange = async () => {
       if(xhr.readyState !== 4) return
+      if (evtSource) {
+        evtSource.close()
+        evtSource = null
+      }
       uploading.style.display = 'none'
       progWrap.style.display = 'none'
       submitBtn.disabled = false

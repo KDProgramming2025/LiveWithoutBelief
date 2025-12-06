@@ -6,8 +6,10 @@ import multer from 'multer'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import Busboy from 'busboy'
 import { MenuService } from '../../services/MenuService.js'
 import { ArticleService } from '../../services/ArticleService.js'
+import { uploadProgress } from '../../services/UploadProgressService.js'
 
 export const adminRouter = express.Router()
 const auth = new AdminAuthService()
@@ -55,6 +57,34 @@ adminRouter.post('/login', async (req, res) => {
   if (!ok) return res.status(401).json({ error: 'unauthorized' })
   const token = auth.issueToken(username)
   res.json({ token })
+})
+
+adminRouter.get('/progress/:id', (req, res) => {
+  const { id } = req.params
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+
+  const onProgress = (uploadId: string, status: any) => {
+    if (uploadId === id) {
+      res.write(`data: ${JSON.stringify(status)}\n\n`)
+      if (status.status === 'completed' || status.status === 'error') {
+        res.end()
+        uploadProgress.cleanup(id)
+      }
+    }
+  }
+
+  uploadProgress.on('progress', onProgress)
+
+  const current = uploadProgress.get(id)
+  if (current) {
+    res.write(`data: ${JSON.stringify(current)}\n\n`)
+  }
+
+  req.on('close', () => {
+    uploadProgress.off('progress', onProgress)
+  })
 })
 
 export function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -131,23 +161,81 @@ adminRouter.get('/articles', (req, res) => {
 })
 
 // Articles: upload (multipart form) — fields: title, label, order; files: docx, cover, icon
-const articleUpload = multer({ dest: path.resolve('/var/www/LWB/tmp') })
-adminRouter.post('/articles', articleUpload.fields([
-  { name: 'docx', maxCount: 1 },
-  { name: 'cover', maxCount: 1 },
-  { name: 'icon', maxCount: 1 },
-]), (req, res) => {
+adminRouter.post('/articles', (req, res) => {
   const handler = async () => {
-    const { title, label, order } = req.body || {}
-    const anyReq: any = req
-    if (!title || !anyReq.files || !anyReq.files.docx || !anyReq.files.docx[0]) {
-      return res.status(400).json({ error: 'bad_request' })
-    }
-    const docxTmpPath = anyReq.files.docx[0].path
-    const coverPath = anyReq.files.cover?.[0]?.path
-    const iconPath = anyReq.files.icon?.[0]?.path
-    const item = await articleSvc.createOrReplace({ title, label: label ?? null, order: Number(order ?? 0), docxTmpPath, coverPath, iconPath })
-    res.status(201).json({ item })
+    const uploadId = req.query.uploadId as string
+    // If no uploadId, fallback to old behavior? No, let's enforce it or just not track progress.
+    // But we need busboy anyway to avoid multer buffering if we want progress.
+    
+    const busboy = Busboy({ headers: req.headers })
+    const fields: any = {}
+    const files: any = {}
+    const tmpDir = '/var/www/LWB/tmp'
+    fs.mkdirSync(tmpDir, { recursive: true })
+
+    let totalBytes = Number(req.headers['content-length']) || 0
+    if (uploadId) uploadProgress.init(uploadId, totalBytes)
+    let loadedBytes = 0
+
+    busboy.on('file', (name, file, info) => {
+      const tmpPath = path.join(tmpDir, `upload_${crypto.randomBytes(8).toString('hex')}_${info.filename}`)
+      const writeStream = fs.createWriteStream(tmpPath)
+      
+      file.on('data', (data) => {
+        loadedBytes += data.length
+        if (uploadId) uploadProgress.update(uploadId, loadedBytes)
+      })
+
+      file.pipe(writeStream)
+      
+      const filePromise = new Promise((resolve, reject) => {
+          writeStream.on('finish', () => resolve({ path: tmpPath, originalname: info.filename }))
+          writeStream.on('error', reject)
+      })
+      files[name] = filePromise
+    })
+
+    busboy.on('field', (name, val) => {
+      fields[name] = val
+    })
+
+    busboy.on('finish', async () => {
+      try {
+        if (uploadId) uploadProgress.setStatus(uploadId, 'processing', 'Processing files...')
+        
+        const resolvedFiles: any = {}
+        for (const key of Object.keys(files)) {
+          resolvedFiles[key] = await files[key]
+        }
+
+        const { title, label, order } = fields
+        const docxTmpPath = resolvedFiles.docx?.path
+        const coverPath = resolvedFiles.cover?.path
+        const iconPath = resolvedFiles.icon?.path
+
+        if (!title || !docxTmpPath) {
+           return res.status(400).json({ error: 'bad_request' })
+        }
+
+        const item = await articleSvc.createOrReplace({ 
+          title, 
+          label: label ?? null, 
+          order: Number(order ?? 0), 
+          docxTmpPath, 
+          coverPath, 
+          iconPath 
+        })
+        
+        if (uploadId) uploadProgress.setStatus(uploadId, 'completed')
+        res.status(201).json({ item })
+      } catch (err) {
+        console.error(err)
+        if (uploadId) uploadProgress.setStatus(uploadId, 'error', 'Server error')
+        res.status(500).json({ error: 'server_error' })
+      }
+    })
+
+    req.pipe(busboy)
   }
   return requireAdmin(req, res, (err?: any) => err ? res.status(401).end() : handler())
 })
