@@ -77,14 +77,14 @@ export class ArticleService {
       const ext = path.extname(input.coverPath) || '.jpg'
       const dest = path.join(articleDir, `cover${ext}`)
       await fs.rename(input.coverPath, dest)
-      coverUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/cover${ext}` : null
+      coverUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/cover${ext}?v=${Date.now()}` : null
     }
     let iconUrl: string | null = existing?.iconUrl ?? null
     if (input.iconPath) {
       const ext = path.extname(input.iconPath) || '.png'
       const dest = path.join(articleDir, `icon${ext}`)
       await fs.rename(input.iconPath, dest)
-      iconUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/icon${ext}` : null
+      iconUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/icon${ext}?v=${Date.now()}` : null
     }
 
     // Extract embedded media from DOCX (mp4/mp3) into ./media
@@ -351,13 +351,13 @@ export class ArticleService {
       const ext = path.extname(input.coverPath) || '.jpg'
       const dest = path.join(articleDir, `cover${ext}`)
       await fs.rename(input.coverPath, dest)
-      rec.coverUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/cover${ext}` : null
+      rec.coverUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/cover${ext}?v=${Date.now()}` : null
     }
     if (input.iconPath) {
       const ext = path.extname(input.iconPath) || '.png'
       const dest = path.join(articleDir, `icon${ext}`)
       await fs.rename(input.iconPath, dest)
-      rec.iconUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/icon${ext}` : null
+      rec.iconUrl = this.baseUrl ? `${this.baseUrl}/web/articles/${slug}/icon${ext}?v=${Date.now()}` : null
     }
 
     // Reprocess DOCX if a new one was provided
